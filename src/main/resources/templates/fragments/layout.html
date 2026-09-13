@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head th:fragment="head(title)">
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title th:text="${title + ' | Training Center'}">Training Center</title>
+        <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet" />
+        <link th:href="@{/css/app.css}" rel="stylesheet" />
+        <script defer th:src="@{/js/lucide.min.js}"></script>
+        <script defer th:src="@{/js/app.js}"></script>
+    </head>
+</html>

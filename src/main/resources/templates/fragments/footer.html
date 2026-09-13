@@ -1,8 +1,19 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<body>
-<footer th:fragment="footer" class="border-top py-3 mt-5 text-center text-muted small">
-    <div class="container">Course Operation Management</div>
-</footer>
-</body>
+    <body>
+        <footer th:fragment="footer" class="site-footer">
+            <div class="footer-shell">
+                <span class="footer-brand">
+                    Training Center
+                    <span class="footer-dot"></span>
+                    Learning starts here.
+                </span>
+                <span>
+                    &copy;
+                    <span th:text="${#dates.year(#dates.createNow())}">2026</span>
+                    Training Center
+                </span>
+            </div>
+        </footer>
+    </body>
 </html>

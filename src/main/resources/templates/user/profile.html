@@ -1,40 +1,82 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Profile</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link th:href="@{/css/app.css}" rel="stylesheet">
-</head>
-<body>
-<div th:replace="~{fragments/navbar :: navbar}"></div>
-
-<main class="page-shell">
-    <div th:replace="~{fragments/messages :: messages}"></div>
-
-    <section class="content-panel">
-        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-            <h1 class="h4 mb-0">Profile</h1>
-            <a class="btn btn-outline-primary btn-sm" th:href="@{/profile/change-password}">Change Password</a>
-        </div>
-
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Full Name</dt>
-            <dd class="col-sm-9" th:text="${user.fullName}"></dd>
-
-            <dt class="col-sm-3">Email</dt>
-            <dd class="col-sm-9" th:text="${user.email}"></dd>
-
-            <dt class="col-sm-3">Role</dt>
-            <dd class="col-sm-9" th:text="${user.role}"></dd>
-
-            <dt class="col-sm-3">Status</dt>
-            <dd class="col-sm-9" th:text="${user.status}"></dd>
-        </dl>
-    </section>
-</main>
-
-<div th:replace="~{fragments/footer :: footer}"></div>
-</body>
+<html
+    lang="en"
+    xmlns:th="http://www.thymeleaf.org"
+    xmlns:sec="https://www.thymeleaf.org/extras/spring-security"
+>
+    <head th:replace="~{fragments/layout :: head('My account')}"></head>
+    <body>
+        <div th:replace="~{fragments/navbar :: navbar}"></div>
+        <main id="main-content" class="page-shell">
+            <div th:replace="~{fragments/messages :: messages}"></div>
+            <header class="page-heading">
+                <p class="eyebrow">PERSONAL WORKSPACE</p>
+                <h1>My account</h1>
+            </header>
+            <nav class="section-tabs" aria-label="Account settings">
+                <a th:href="@{/profile}" aria-current="page">Profile</a>
+                <a th:href="@{/profile/change-password}">Password &amp; security</a>
+            </nav>
+            <div class="profile-layout">
+                <aside class="identity-block">
+                    <span
+                        class="avatar avatar-large"
+                        th:text="${#strings.toUpperCase(#strings.substring(user.fullName,0,1))}"
+                    >
+                        U
+                    </span>
+                    <h2 th:text="${user.fullName}"></h2>
+                    <p th:text="${user.email}"></p>
+                    <span
+                        class="status-badge"
+                        th:classappend="${user.status.name() == 'ACTIVE'} ? 'active' : 'inactive'"
+                        th:text="${user.status}"
+                    ></span>
+                </aside>
+                <section class="details-section">
+                    <div class="section-heading">
+                        <h2>Personal information</h2>
+                        <i data-lucide="contact-round" aria-hidden="true"></i>
+                    </div>
+                    <dl class="detail-list">
+                        <div>
+                            <dt>Full name</dt>
+                            <dd th:text="${user.fullName}"></dd>
+                        </div>
+                        <div>
+                            <dt>Email address</dt>
+                            <dd th:text="${user.email}"></dd>
+                        </div>
+                        <div>
+                            <dt>Account role</dt>
+                            <dd>
+                                <span
+                                    class="role-badge"
+                                    th:text="${#strings.capitalize(#strings.toLowerCase(user.role.name()))}"
+                                ></span>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Member since</dt>
+                            <dd th:text="${#temporals.format(user.createdAt, 'dd MMM yyyy')}"></dd>
+                        </div>
+                    </dl>
+                    <div class="security-row">
+                        <span class="action-icon coral">
+                            <i data-lucide="shield-check" aria-hidden="true"></i>
+                        </span>
+                        <div>
+                            <h3>Account security</h3>
+                            <p>Password &amp; sign-in access</p>
+                        </div>
+                        <a class="btn btn-outline-secondary btn-sm" th:href="@{/profile/change-password}">
+                            Change password
+                            <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </section>
+            </div>
+        </main>
+        <div th:replace="~{fragments/footer :: footer}"></div>
+    </body>
 </html>

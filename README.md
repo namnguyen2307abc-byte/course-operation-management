@@ -80,6 +80,31 @@ cmd /c mvnw.cmd test
 
 The tests are designed to run without requiring a live SQL Server database.
 
+To also export server-rendered test pages for visual checks:
+
+```bat
+mvnw.cmd -Dui.snapshots=true test
+```
+
+The exported pages are written to `target/ui-snapshots` with test account data.
+
+## Web Interface
+
+The responsive portal includes an overview, sign-in and registration forms,
+account settings, and the admin user directory. Navigation respects the signed-in
+user's role. User counts and account information come from the existing backend;
+course enrollment and scheduling modules are not added by this interface update.
+
+Shared page metadata and assets live in `templates/fragments/layout.html`.
+Appearance is controlled by `static/css/app.css`; mobile navigation and password
+visibility controls live in `static/js/app.js`.
+
+Bootstrap 5.3.3 (MIT) and Lucide 0.468.0 (ISC) are bundled locally.
+Their license files are in `static/licenses`.
+The classroom photo is an illustrative image from
+[Unsplash](https://images.unsplash.com/photo-1524178232363-1fb2b075b655),
+stored locally at `static/images/campus.jpg`.
+
 ## Default Routes
 
 - `GET /` home

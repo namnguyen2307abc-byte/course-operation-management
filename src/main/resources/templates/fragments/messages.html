@@ -1,11 +1,23 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<body>
-<div th:fragment="messages">
-    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-    <div th:if="${param.error}" class="alert alert-danger">Invalid email or password.</div>
-    <div th:if="${param.logout}" class="alert alert-success">You have been logged out.</div>
-</div>
-</body>
+    <body>
+        <div th:fragment="messages" class="messages" aria-live="polite">
+            <div th:if="${successMessage}" class="alert alert-success" role="status">
+                <i data-lucide="circle-check" aria-hidden="true"></i>
+                <span th:text="${successMessage}"></span>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+                <i data-lucide="circle-alert" aria-hidden="true"></i>
+                <span th:text="${errorMessage}"></span>
+            </div>
+            <div th:if="${param.error}" class="alert alert-danger" role="alert">
+                <i data-lucide="circle-alert" aria-hidden="true"></i>
+                <span>Invalid email or password. Please try again.</span>
+            </div>
+            <div th:if="${param.logout}" class="alert alert-success" role="status">
+                <i data-lucide="circle-check" aria-hidden="true"></i>
+                <span>You have been signed out.</span>
+            </div>
+        </div>
+    </body>
 </html>
