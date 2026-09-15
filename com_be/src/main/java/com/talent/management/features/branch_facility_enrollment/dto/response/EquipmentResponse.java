@@ -1,4 +1,4 @@
-package com.talent.management.features.branch_facility_enrollment.dto;
+package com.talent.management.features.branch_facility_enrollment.dto.response;
 
 import com.talent.management.shared.enums.EquipmentCategory;
 import com.talent.management.shared.enums.EquipmentStatus;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EquipmentDto {
+public class EquipmentResponse {
     private Long id;
     private Long roomId;
     private String roomName;

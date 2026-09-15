@@ -1,4 +1,4 @@
-package com.talent.management.features.tuition_payment.dto;
+package com.talent.management.features.placement_test.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class InvoiceDto {
-
+public class PlacementTestResponse {
     private Long id;
+    private Long studentId;
+    private Long teacherId;
+    private String notes;
 }

@@ -1,4 +1,4 @@
-package com.talent.management.features.attendance_makeup.dto;
+package com.talent.management.features.branch_facility_enrollment.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AbsenceRequestDto {
-
+public class BranchOptionResponse {
     private Long id;
+    private String name;
+    private String code;
 }

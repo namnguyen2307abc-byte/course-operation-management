@@ -1,4 +1,4 @@
-package com.talent.management.features.branch_facility_enrollment.dto;
+package com.talent.management.features.branch_facility_enrollment.dto.response;
 
 import com.talent.management.shared.enums.RoomStatus;
 import com.talent.management.shared.enums.RoomType;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoomDto {
+public class RoomResponse {
     private Long id;
     private Long branchId;
     private String branchName;

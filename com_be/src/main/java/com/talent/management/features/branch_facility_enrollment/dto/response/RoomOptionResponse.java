@@ -1,4 +1,4 @@
-package com.talent.management.features.placement_test.dto;
+package com.talent.management.features.branch_facility_enrollment.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PlacementTestDto {
-
+public class RoomOptionResponse {
     private Long id;
+    private String roomName;
+    private String roomCode;
 }
