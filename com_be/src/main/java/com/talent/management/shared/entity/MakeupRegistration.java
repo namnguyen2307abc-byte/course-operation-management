@@ -32,13 +32,13 @@ public class MakeupRegistration {
     private Lesson originalLesson;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "target_lesson_id", nullable = false)
-    private Lesson targetLesson; 
+    @JoinColumn(name = "target_lesson_id")
+    private Lesson targetLesson;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
-    private MakeupStatus status = MakeupStatus.REGISTERED;
+    private MakeupStatus status = MakeupStatus.PENDING;
 
     @Column(length = 500)
     private String note;
