@@ -1,6 +1,7 @@
 function checkAuth() {
     const token = localStorage.getItem("token");
     if (!token && !window.location.pathname.endsWith("login.html")) {
+        window.location.href = "/login.html";
     }
 }
 

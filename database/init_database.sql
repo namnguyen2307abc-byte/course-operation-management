@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS absence_requests;
 DROP TABLE IF EXISTS teacher_availabilities;
 DROP TABLE IF EXISTS attendances;
 DROP TABLE IF EXISTS lessons;
+DROP TABLE IF EXISTS enrollment_requests;
 DROP TABLE IF EXISTS enrollments;
 DROP TABLE IF EXISTS classes;
 DROP TABLE IF EXISTS courses;
@@ -137,6 +138,21 @@ CREATE TABLE enrollments (
     enrollment_date DATETIME2 DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(30) DEFAULT 'PENDING_PAYMENT',
     notes NVARCHAR(500)
+);
+GO
+
+CREATE TABLE enrollment_requests (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    student_id BIGINT NOT NULL FOREIGN KEY REFERENCES students(id),
+    class_id BIGINT NOT NULL FOREIGN KEY REFERENCES classes(id),
+    requested_by_user_id BIGINT NOT NULL FOREIGN KEY REFERENCES users(id),
+    reviewed_by_user_id BIGINT FOREIGN KEY REFERENCES users(id),
+    enrollment_id BIGINT FOREIGN KEY REFERENCES enrollments(id),
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    note NVARCHAR(500),
+    review_note NVARCHAR(500),
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME2
 );
 GO
 
@@ -281,11 +297,11 @@ CREATE TABLE payments (
 GO
 
 INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES
-('admin', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Quản Trị Viên Hệ Thống', 'admin@talentcenter.edu.vn', '0901234567', 'ADMIN', 'ACTIVE'),
-('teacher_huong', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Cô Vũ Thu Hương (GV Piano)', 'huong.vu@talentcenter.edu.vn', '0912345678', 'TEACHER', 'ACTIVE'),
-('teacher_tuan', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Thầy Trần Anh Tuấn (GV Guitar)', 'tuan.tran@talentcenter.edu.vn', '0923456789', 'TEACHER', 'ACTIVE'),
-('cashier_mai', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Nguyễn Thanh Mai (Thu Ngân)', 'mai.nguyen@talentcenter.edu.vn', '0934567890', 'STAFF', 'ACTIVE'),
-('parent_lan', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Phụ Huynh Lê Thị Lan', 'lan.le@gmail.com', '0987654321', 'PARENT', 'ACTIVE');
+('admin', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Quản Trị Viên Hệ Thống', 'admin@talentcenter.edu.vn', '0901234567', 'ADMIN', 'ACTIVE'),
+('teacher_huong', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Cô Vũ Thu Hương (GV Piano)', 'huong.vu@talentcenter.edu.vn', '0912345678', 'TEACHER', 'ACTIVE'),
+('teacher_tuan', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Thầy Trần Anh Tuấn (GV Guitar)', 'tuan.tran@talentcenter.edu.vn', '0923456789', 'TEACHER', 'ACTIVE'),
+('cashier_mai', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Nguyễn Thanh Mai (Thu Ngân)', 'mai.nguyen@talentcenter.edu.vn', '0934567890', 'STAFF', 'ACTIVE'),
+('parent_lan', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Phụ Huynh Lê Thị Lan', 'lan.le@gmail.com', '0987654321', 'PARENT', 'ACTIVE');
 
 INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, notes) VALUES
 (5, N'Nguyễn Bảo Nam (Bé Bin)', '2016-05-12', N'Nam', N'Tiểu học Thực Nghiệm', N'Thích học đàn Piano cổ điển'),
@@ -317,7 +333,9 @@ INSERT INTO courses (program_id, code, name, level, duration_weeks, total_sessio
 (1, 'PIA-G1', N'Piano Sơ Cấp (Grade 1)', N'Grade 1', 16, 32, 4800000.00, N'Học tư thế ngón, nhịp phách, thị tấu và ghép 2 tay');
 
 INSERT INTO classes (course_id, branch_id, room_id, teacher_id, class_code, class_name, class_type, max_students, current_students, start_date, end_date, schedule_description, status) VALUES
-(2, 1, 1, 2, 'CL-PIA-01', N'Piano 1-1 Bé Bảo Nam', 'ONE_ON_ONE', 1, 1, '2026-10-01', '2027-01-31', N'Thứ 2 & Thứ 5 (18:00 - 19:00)', 'OPEN');
+(2, 1, 1, 2, 'CL-PIA-01', N'Piano 1-1 Bé Bảo Nam', 'ONE_ON_ONE', 1, 1, '2026-10-01', '2027-01-31', N'Thứ 2 & Thứ 5 (18:00 - 19:00)', 'OPEN'),
+(1, 1, 2, 2, 'CL-PIA-PRE-G01', N'Piano Mầm Non - Nhóm Sáng', 'GROUP', 8, 0, '2026-10-15', '2027-01-15', N'Thứ 7 (09:00 - 10:30)', 'OPEN'),
+(2, 2, 4, 2, 'CL-PIA-G1-G02', N'Piano Grade 1 - Nhóm Tối', 'GROUP', 8, 0, '2026-10-20', '2027-02-20', N'Thứ 3 & Thứ 6 (18:30 - 19:30)', 'OPEN');
 
 INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
 (1, 1, 5, 'ENROLLED', N'Đã hoàn tất học phí, xếp lớp thành công');
