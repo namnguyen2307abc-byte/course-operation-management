@@ -3,7 +3,7 @@
 
 <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top py-2">
     <div class="container">
-        <a class="navbar-brand d-flex align-items-center text-white text-decoration-none" href="<c:url value='/pages/absence-makeup'/>">
+        <a class="navbar-brand d-flex align-items-center text-white text-decoration-none" href="<c:url value='/'/>">
             <span class="logo-icon">🎹</span>
             <div>
                 <span class="fw-bold tracking-tight">TALENT ACADEMY</span>
@@ -16,7 +16,12 @@
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
                 <li class="nav-item">
-                    <a class="nav-link active" href="<c:url value='/pages/absence-makeup'/>">
+                    <a class="nav-link" href="<c:url value='/'/>">
+                        <i class="bi bi-house-door me-1"></i>Trang Chủ
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<c:url value='/pages/absence-makeup'/>">
                         <i class="bi bi-calendar2-check me-1"></i>Nghỉ Học & Bù (JSP)
                     </a>
                 </li>

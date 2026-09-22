@@ -1,0 +1,335 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="true"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Điều Khiển - Học Viện Âm Nhạc & Nghệ Thuật Talent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="<c:url value='/css/style.css'/>">
+</head>
+<body>
+    <!-- Navbar fragment -->
+    <%@ include file="/WEB-INF/views/fragments/navbar.jsp" %>
+
+    <main class="container my-4">
+        <!-- Hero Banner -->
+        <div class="hero-banner mb-4">
+            <div class="row align-items-center position-relative" style="z-index: 2;">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-warning text-dark px-2 py-1 fw-bold" style="font-size: 0.72rem;">HỆ THỐNG VẬN HÀNH ĐÀO TẠO</span>
+                        <span id="currentDateBadge" class="text-white-50 small"><i class="bi bi-calendar3 me-1"></i>Hôm nay</span>
+                    </div>
+                    <h1 class="display-6 fw-bold mb-2 text-white">
+                        Xin chào, <span id="heroUserName" class="text-warning">Ban Quản Lý</span>! 👋
+                    </h1>
+                    <p class="text-white-50 fs-6 mb-3 col-lg-10">
+                        Chào mừng bạn đến với Cổng thông tin Điều phối & Vận hành Đào tạo Học viện Talent. Giám sát phòng học, điều phối đàn Piano biểu diễn, điểm danh chuyên cần và quản lý học vụ theo thời gian thực.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-warning btn-sm px-3 py-2 fw-semibold rounded-pill shadow-sm">
+                            <i class="bi bi-calendar2-check me-1"></i> Quản Lý Nghỉ Học & Học Bù (JSP)
+                        </a>
+                        <a href="<c:url value='/swagger-ui.html'/>" target="_blank" class="btn btn-outline-light btn-sm px-3 py-2 rounded-pill">
+                            <i class="bi bi-code-slash me-1"></i> Swagger API Documentation
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-4 d-none d-lg-block text-end">
+                    <div class="p-3 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 text-start shadow-sm">
+                        <div class="text-warning small fw-bold mb-2"><i class="bi bi-geo-alt-fill me-1"></i>HỆ THỐNG CHI NHÁNH</div>
+                        <div class="small text-white mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i><strong>Cơ Sở 1 (Cầu Giấy):</strong> 4 Phòng đàn &bull; 8 Ca học
+                        </div>
+                        <div class="small text-white mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i><strong>Cơ Sở 2 (Đống Đa):</strong> 4 Phòng học &bull; 6 Ca học
+                        </div>
+                        <div class="small text-white-50" style="font-size: 0.78rem;">
+                            <i class="bi bi-shield-check text-warning me-1"></i>Hệ thống vận hành an toàn và ổn định
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 Thẻ Thống Kê Nhanh -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-icon-wrapper stat-icon-blue">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle small">2 Chi Nhánh</span>
+                    </div>
+                    <div class="stat-value">8 Phòng Học</div>
+                    <div class="stat-label">Cơ sở vật chất</div>
+                    <div class="text-muted mt-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-piano text-primary me-1"></i>Đàn Grand Yamaha C3X & Upright
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-icon-wrapper stat-icon-amber">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">Chính Thức</span>
+                    </div>
+                    <div class="stat-value">128 Học Viên</div>
+                    <div class="stat-label">Đào tạo nghệ thuật</div>
+                    <div class="text-muted mt-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-mortarboard text-warning me-1"></i>12 Lớp Piano, Guitar & Thanh nhạc
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-icon-wrapper stat-icon-emerald">
+                            <i class="bi bi-calendar2-check"></i>
+                        </div>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle small">96.5%</span>
+                    </div>
+                    <div class="stat-value">Chuyên Cần</div>
+                    <div class="stat-label">Tỷ lệ đi học tuần này</div>
+                    <div class="text-muted mt-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-clock-history text-success me-1"></i>Đã tích hợp module Nghỉ học & Bù
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="stat-icon-wrapper stat-icon-purple">
+                            <i class="bi bi-award-fill"></i>
+                        </div>
+                        <span class="badge bg-info-subtle text-info border border-info-subtle small">Đạt Tiêu Chuẩn</span>
+                    </div>
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Chất lượng thiết bị</div>
+                    <div class="text-muted mt-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-check2-all text-secondary me-1"></i>Phòng cách âm & thiết bị âm thanh
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 Phân Hệ Nghiệp Vụ -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h4 class="fw-bold mb-0 text-dark">Phân Hệ Quản Trị Đào Tạo</h4>
+                <p class="text-muted small mb-0">Các nghiệp vụ vận hành trung tâm năng khiếu & nghệ thuật</p>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <!-- Phân hệ 1 -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card-modern feature-card h-100">
+                    <div class="feature-tag bg-primary-subtle text-primary border border-primary-subtle">
+                        Phân Hệ 1
+                    </div>
+                    <div class="feature-title text-primary">
+                        <i class="bi bi-building me-2"></i>Cơ Sở & CSVC
+                    </div>
+                    <p class="feature-desc">
+                        Quản lý hệ thống chi nhánh, danh mục phòng học, thiết bị đàn Grand Piano Yamaha C3X, đàn Upright U3H và tổ chức xếp lớp học viên.
+                    </p>
+                    <div class="pt-2 border-top">
+                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
+                            Xem Danh Sách Cơ Sở <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phân hệ 2: NGHỈ HỌC & HỌC BÙ -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card-modern feature-card h-100 border border-success border-2 shadow-sm">
+                    <div class="feature-tag bg-success text-white">
+                        Phân Hệ 2 &bull; Đã Hoàn Thiện
+                    </div>
+                    <div class="feature-title text-success">
+                        <i class="bi bi-calendar-event me-2"></i>Nghỉ Học & Học Bù
+                    </div>
+                    <p class="feature-desc">
+                        Quy trình tiếp nhận đơn xin nghỉ phép từ phụ huynh, duyệt đơn thường và duyệt nhân văn, tự động sinh ca học bù, xếp lịch và điểm danh.
+                    </p>
+                    <div class="pt-2 border-top">
+                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-success btn-sm w-100 py-2 rounded-3 fw-semibold shadow-sm">
+                            Vào Quản Lý Nghỉ Bù (JSP) <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phân hệ 3 -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card-modern feature-card h-100">
+                    <div class="feature-tag bg-warning-subtle text-dark border border-warning-subtle">
+                        Phân Hệ 3
+                    </div>
+                    <div class="feature-title text-warning">
+                        <i class="bi bi-soundwave me-2"></i>Đánh Giá Năng Khiếu
+                    </div>
+                    <p class="feature-desc">
+                        Khảo sát năng khiếu đầu vào, ghi âm và lưu video thực hành phím đàn piano của học viên, chấm điểm tiêu chí và xây dựng lộ trình tài năng.
+                    </p>
+                    <div class="pt-2 border-top">
+                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-outline-warning btn-sm w-100 py-2 rounded-3 fw-semibold text-dark">
+                            Khảo Sát Năng Khiếu <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phân hệ 4 -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card-modern feature-card h-100">
+                    <div class="feature-tag bg-danger-subtle text-danger border border-danger-subtle">
+                        Phân Hệ 4
+                    </div>
+                    <div class="feature-title text-danger">
+                        <i class="bi bi-wallet2 me-2"></i>Nghĩa Vụ Học Phí
+                    </div>
+                    <p class="feature-desc">
+                        Quản lý hóa đơn thu học phí, xác định chính sách miễn giảm học phí, hỗ trợ nộp tiền mặt tại quầy thu ngân hoặc chuyển khoản nhanh qua mã VietQR.
+                    </p>
+                    <div class="pt-2 border-top">
+                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-outline-danger btn-sm w-100 py-2 rounded-3 fw-semibold">
+                            Quản Lý Học Phí <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lịch Đào Tạo Hôm Nay & Thông Báo -->
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card-modern p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-calendar-range text-primary me-2"></i>Lịch Đào Tạo Hôm Nay Tại Học Viện</h5>
+                            <span class="text-muted small">Thời gian thực các lớp đàn Piano & Nhạc cụ đang diễn ra</span>
+                        </div>
+                        <span class="badge bg-primary px-2 py-1">Hôm Nay</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="text-muted small">
+                                    <th>Khung Giờ</th>
+                                    <th>Khóa Học / Bộ Môn</th>
+                                    <th>Phòng Học & CSVC</th>
+                                    <th>Giảng Viên</th>
+                                    <th>Sĩ Số</th>
+                                    <th>Trạng Thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark border">08:30 - 10:00</span></td>
+                                    <td class="fw-bold text-primary">Piano Cổ Điển K01</td>
+                                    <td>P101 (Đàn Yamaha C3X)</td>
+                                    <td>Cô Vũ Thu Hương</td>
+                                    <td>4/4</td>
+                                    <td><span class="badge bg-success-subtle text-success border border-success-subtle">Đang học</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark border">14:00 - 15:30</span></td>
+                                    <td class="fw-bold text-dark">Guitar Cổ Điển K02</td>
+                                    <td>P102 (Phòng Guitar)</td>
+                                    <td>Thầy Trần Anh Tuấn</td>
+                                    <td>6/8</td>
+                                    <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">Sắp tới</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark border">16:00 - 17:30</span></td>
+                                    <td class="fw-bold text-dark">Piano Mầm Non K05</td>
+                                    <td>P101 (Đàn Yamaha U3H)</td>
+                                    <td>Cô Vũ Thu Hương</td>
+                                    <td>3/4</td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary border">Chưa bắt đầu</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark border">18:00 - 19:00</span></td>
+                                    <td class="fw-bold text-warning">Khảo Sát Năng Khiếu Đầu Vào</td>
+                                    <td>Studio Âm Nhạc P103</td>
+                                    <td>Hội đồng chuyên môn</td>
+                                    <td>1 Thí sinh</td>
+                                    <td><span class="badge bg-warning-subtle text-dark border border-warning-subtle">Đã lên lịch</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card-modern p-4 h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-bell text-warning me-2"></i>Thông Báo Học Vụ</h5>
+                        <div class="list-group list-group-flush mb-3">
+                            <div class="list-group-item px-0 py-2 border-0">
+                                <div class="fw-semibold small text-dark"><i class="bi bi-tools text-primary me-2"></i>Bảo dưỡng đàn Grand định kỳ</div>
+                                <div class="text-muted" style="font-size: 0.78rem;">Toàn bộ đàn Piano cơ tại Chi nhánh Cầu Giấy đã được căn chỉnh phím đàn đạt chuẩn biểu diễn.</div>
+                            </div>
+                            <div class="list-group-item px-0 py-2 border-0">
+                                <div class="fw-semibold small text-dark"><i class="bi bi-calendar-event text-success me-2"></i>Kỳ thi kiểm tra tiến độ Quý III</div>
+                                <div class="text-muted" style="font-size: 0.78rem;">Dự kiến tổ chức đánh giá cảm âm và ngón đàn cho các lớp Piano K01, K05 vào cuối tuần này.</div>
+                            </div>
+                            <div class="list-group-item px-0 py-2 border-0">
+                                <div class="fw-semibold small text-dark"><i class="bi bi-credit-card text-info me-2"></i>Hạn hoàn thành học phí tháng 9</div>
+                                <div class="text-muted" style="font-size: 0.78rem;">Phụ huynh vui lòng quét mã VietQR trên hóa đơn trước ngày 20/09 để hưởng chiết khấu.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="fw-bold small text-secondary mb-1"><i class="bi bi-headset me-1 text-primary"></i>HỖ TRỢ HỌC VỤ</div>
+                        <p class="text-muted small mb-0" style="font-size: 0.78rem;">
+                            Phòng Đào Tạo & Quản Lý Học Viên: Hotline <strong>024.3888.9999</strong> &bull; Giờ làm việc: 08:00 - 20:30 hàng ngày.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer fragment -->
+    <%@ include file="/WEB-INF/views/fragments/footer.jsp" %>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<c:url value='/js/api.js'/>"></script>
+    <script src="<c:url value='/js/auth.js'/>"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const user = getCurrentUser();
+            if (user && user.fullName) {
+                const heroEl = document.getElementById('heroUserName');
+                if (heroEl) heroEl.innerText = user.fullName;
+                const nameDisplay = document.getElementById('userNameDisplay');
+                if (nameDisplay) nameDisplay.innerText = user.fullName + ' (' + user.role + ')';
+            }
+            const dateBadge = document.getElementById('currentDateBadge');
+            if (dateBadge) {
+                const today = new Date();
+                const d = String(today.getDate()).padStart(2, '0');
+                const m = String(today.getMonth() + 1).padStart(2, '0');
+                const y = today.getFullYear();
+                dateBadge.innerHTML = `<i class="bi bi-calendar3 me-1"></i>Hôm nay, ${d}/${m}/${y}`;
+            }
+        });
+    </script>
+</body>
+</html>

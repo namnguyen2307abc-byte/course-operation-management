@@ -20,11 +20,12 @@ public class AbsenceMakeupViewController {
     }
 
     /**
-     * Chuyển hướng trang chủ về màn hình Nghỉ học & Học bù
+     * Màn hình Trang Chủ / Bảng Điều Khiển Học Viện (JSP)
+     * Ánh xạ tới file /WEB-INF/views/index.jsp
      */
     @GetMapping({"/", "/index", "/index.html"})
     public String indexPage() {
-        return "redirect:/pages/absence-makeup";
+        return "index";
     }
 
     /**

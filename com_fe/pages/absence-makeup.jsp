@@ -94,7 +94,7 @@
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb small mb-1">
-                        <li class="breadcrumb-item"><a href="<c:url value='/pages/absence-makeup'/>" class="text-decoration-none">Trang Chủ</a></li>
+                        <li class="breadcrumb-item"><a href="<c:url value='/'/>" class="text-decoration-none">Trang Chủ</a></li>
                         <li class="breadcrumb-item active" aria-current="page">Nghỉ Học & Học Bù (JSP)</li>
                     </ol>
                 </nav>
