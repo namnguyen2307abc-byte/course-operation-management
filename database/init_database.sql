@@ -1,4 +1,4 @@
-﻿IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'course_operation_management')
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'course_operation_management')
 BEGIN
     CREATE DATABASE course_operation_management;
 END
@@ -197,8 +197,8 @@ CREATE TABLE makeup_registrations (
     absence_request_id BIGINT FOREIGN KEY REFERENCES absence_requests(id),
     student_id BIGINT NOT NULL FOREIGN KEY REFERENCES students(id),
     original_lesson_id BIGINT NOT NULL FOREIGN KEY REFERENCES lessons(id),
-    target_lesson_id BIGINT NOT NULL FOREIGN KEY REFERENCES lessons(id),
-    status VARCHAR(30) DEFAULT 'REGISTERED',
+    target_lesson_id BIGINT FOREIGN KEY REFERENCES lessons(id),
+    status VARCHAR(30) DEFAULT 'PENDING',
     note NVARCHAR(500),
     created_at DATETIME2 DEFAULT CURRENT_TIMESTAMP
 );
