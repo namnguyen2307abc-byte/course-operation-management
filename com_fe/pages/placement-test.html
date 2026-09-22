@@ -1,1 +1,493 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đánh Giá Năng Khiếu & Xếp Lớp - Học Viện Talent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .page-header-title {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease-in-out;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+            border-color: #cbd5e1;
+        }
+        .filter-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+        .table-custom {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .table-custom th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.9rem 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .table-custom td {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .table-custom tr:hover td {
+            background-color: #f8fafc;
+        }
+        .score-slider-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        .score-badge-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .toast-container {
+            z-index: 1080;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar Container -->
+    <div id="navbar-container"></div>
 
+    <main class="container my-4">
+        <!-- Header & Breadcrumb -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb small mb-1">
+                        <li class="breadcrumb-item"><a href="/index.html" class="text-decoration-none">Trang Chủ</a></li>
+                        <li class="breadcrumb-item active">Đánh Giá Năng Khiếu & Xếp Lớp</li>
+                    </ol>
+                </nav>
+                <h3 class="page-header-title text-dark mb-1">
+                    <i class="bi bi-music-note-beamed text-warning me-2"></i>Đánh Giá Năng Khiếu & Xếp Lớp
+                </h3>
+                <p class="text-muted small mb-0">Hệ thống đồng bộ trực tiếp với Spring Boot API (`/api/placement-tests`).</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadPlacementTests()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                </button>
+                <button class="btn btn-primary btn-sm px-3 rounded-pill fw-semibold shadow-sm" onclick="openCreateModal()">
+                    <i class="bi bi-plus-lg me-1"></i> Đăng Ký Test Mới
+                </button>
+            </div>
+        </div>
+
+        <!-- Role Permission Warning Banner (Populated via placement-test.js if user is PARENT) -->
+        <div id="rolePermissionBanner" class="d-none"></div>
+
+        <!-- Metric Stat Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="stat-icon-wrapper stat-icon-blue m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
+                            <i class="bi bi-clipboard-data"></i>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Tổng số</span>
+                    </div>
+                    <div class="stat-value" id="statTotalTests">-- Ca</div>
+                    <div class="stat-label">Lượt khảo sát năng khiếu</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="stat-icon-wrapper stat-icon-amber m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">SCHEDULED</span>
+                    </div>
+                    <div class="stat-value" id="statScheduledTests">-- Ca</div>
+                    <div class="stat-label">Ca chờ kiểm tra</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="stat-icon-wrapper stat-icon-emerald m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
+                            <i class="bi bi-check2-circle"></i>
+                        </div>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">COMPLETED</span>
+                    </div>
+                    <div class="stat-value" id="statCompletedTests">-- Ca</div>
+                    <div class="stat-label">Đã chấm điểm & hoàn thành</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="stat-icon-wrapper stat-icon-purple m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
+                            <i class="bi bi-star-fill text-warning"></i>
+                        </div>
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Backend Score</span>
+                    </div>
+                    <div class="stat-value" id="statAvgScore">-- / 10</div>
+                    <div class="stat-label">Điểm đánh giá trung bình</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div class="filter-container mb-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control bg-light border-start-0 ps-0" placeholder="Tìm theo Mã #PT, Tên học viên, Tiêu đề bài test...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select id="levelFilter" class="form-select bg-light">
+                        <option value="">-- Tất cả Trình độ (Level) --</option>
+                        <option value="BEGINNER">Sơ Cấp (BEGINNER)</option>
+                        <option value="INTERMEDIATE">Trung Cấp (INTERMEDIATE)</option>
+                        <option value="ADVANCED">Nâng Cao (ADVANCED)</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select id="statusFilter" class="form-select bg-light">
+                        <option value="">-- Trạng thái --</option>
+                        <option value="SCHEDULED">Chờ Kiểm Tra (SCHEDULED)</option>
+                        <option value="COMPLETED">Đã Hoàn Thành (COMPLETED)</option>
+                        <option value="CANCELLED">Đã Hủy (CANCELLED)</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 text-md-end">
+                    <div class="form-check form-switch d-inline-flex align-items-center gap-1 bg-light px-3 py-2 rounded-3 border">
+                        <input class="form-check-input ms-0 mt-0" type="checkbox" id="myTestsFilterToggle">
+                        <label class="form-check-label small fw-semibold text-dark mb-0" for="myTestsFilterToggle"><i class="bi bi-person-check text-primary me-1"></i>Bài tôi đã chấm</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table Card -->
+        <div class="card card-modern border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Mã Lịch</th>
+                                <th>Học Viên / Phụ Huynh</th>
+                                <th>Tiêu Đề / Cơ Sở</th>
+                                <th>Thời Gian Test</th>
+                                <th>Giáo Viên Chuyên Môn</th>
+                                <th>Điểm Số / Trình Độ</th>
+                                <th>Trạng Thái</th>
+                                <th class="text-end">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="placementTestTableBody">
+                            <!-- Dynamic Rows Rendered via placement-test.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Container -->
+    <div id="footer-container"></div>
+
+    <!-- MODAL 1: Đăng ký lịch kiểm tra mới (CreatePlacementScheduleRequest) -->
+    <div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-gradient text-white" style="background: linear-gradient(135deg, #1e3a8a, #2563eb);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2"></i>Đăng Ký Kiểm Tra Năng Khiếu (Backend API)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="createPlacementTestForm">
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Họ và tên học viên <span class="text-danger">*</span></label>
+                                <input type="text" id="createStudentName" class="form-control" placeholder="Ví dụ: Nguyễn Minh Anh" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Tiêu đề ca thi <span class="text-danger">*</span></label>
+                                <input type="text" id="createTitle" class="form-control" placeholder="Ví dụ: Đánh Giá Năng Khiếu Piano Đầu Vào" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Cơ sở đào tạo <span class="text-danger">*</span></label>
+                                <select id="createBranch" class="form-select" required>
+                                    <option value="Cơ sở 1 - Cầu Giấy">Cơ sở 1 - Cầu Giấy, Hà Nội</option>
+                                    <option value="Cơ sở 2 - Đống Đa">Cơ sở 2 - Đống Đa, Hà Nội</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Tên phòng học <span class="text-danger">*</span></label>
+                                <input type="text" id="createRoomName" class="form-control" placeholder="Ví dụ: Phòng Piano 101" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Ngày hẹn test <span class="text-danger">*</span></label>
+                                <input type="date" id="createTestDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Giờ hẹn <span class="text-danger">*</span></label>
+                                <input type="time" id="createTestTime" class="form-control" value="09:30" required>
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold text-dark">Ghi chú ban đầu (note)</label>
+                                <textarea id="createNote" class="form-control" rows="2" placeholder="Nhập ghi chú yêu cầu từ phụ huynh hoặc nguyện vọng học tập..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light px-4 py-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold"><i class="bi bi-check-lg me-1"></i>Đăng Ký Ca Test</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Chấm điểm tiêu chí & Đánh giá Backend (PlacementAssessmentRequest) -->
+    <div class="modal fade" id="evaluateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-dark text-white">
+                    <div>
+                        <h5 class="modal-title fw-bold text-warning"><i class="bi bi-award-fill me-2"></i>Chấm Điểm & Tư Vấn Trình Độ Backend</h5>
+                        <small id="evalCandidateMeta" class="text-white-50">Mã Lịch: #PT-1</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="evaluatePlacementTestForm">
+                    <div class="modal-body p-4">
+                        <div class="d-flex align-items-center justify-content-between p-3 bg-primary bg-opacity-10 rounded-3 mb-4 border border-primary border-opacity-25">
+                            <div>
+                                <span class="badge bg-primary text-white me-2" id="evalCandidateCode">#PT-1</span>
+                                <strong class="fs-5 text-dark" id="evalCandidateName">Học Viên</strong>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="text-end">
+                                    <small class="text-muted fw-semibold d-block">Điểm TB (0-10):</small>
+                                    <strong class="fs-4 text-primary" id="calculatedAvgScore">0.0</strong>
+                                </div>
+                                <div class="score-badge-circle">
+                                    <span class="fs-5 fw-bold" id="calculatedScore100">0 / 100đ</span>
+                                    <small style="font-size: 0.6rem;">Backend Score</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-sliders me-2 text-primary"></i>Chấm điểm 4 tiêu chí âm nhạc (Thang điểm 0 - 10)</h6>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="score-slider-card">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="fw-semibold text-dark small"><i class="bi bi-ear me-1 text-primary"></i>1. Cảm âm (Pitch)</label>
+                                        <span class="badge bg-primary px-2" id="val_pitch">7.5</span>
+                                    </div>
+                                    <input type="range" class="form-range" id="score_pitch" min="0" max="10" step="0.5" value="7.5">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="score-slider-card">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="fw-semibold text-dark small"><i class="bi bi-metronome me-1 text-warning"></i>2. Nhịp điệu (Rhythm)</label>
+                                        <span class="badge bg-warning text-dark px-2" id="val_rhythm">7.5</span>
+                                    </div>
+                                    <input type="range" class="form-range" id="score_rhythm" min="0" max="10" step="0.5" value="7.5">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="score-slider-card">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="fw-semibold text-dark small"><i class="bi bi-hand-index-thumb me-1 text-success"></i>3. Kỹ thuật ngón (Technique)</label>
+                                        <span class="badge bg-success px-2" id="val_technique">7.5</span>
+                                    </div>
+                                    <input type="range" class="form-range" id="score_technique" min="0" max="10" step="0.5" value="7.5">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="score-slider-card">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="fw-semibold text-dark small"><i class="bi bi-book me-1 text-info"></i>4. Đọc bản nhạc (Sight Reading)</label>
+                                        <span class="badge bg-info text-dark px-2" id="val_reading">7.5</span>
+                                    </div>
+                                    <input type="range" class="form-range" id="score_reading" min="0" max="10" step="0.5" value="7.5">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Trình độ gợi ý (recommendedLevel) <span class="text-danger">*</span></label>
+                                <select id="evalLevelSelect" class="form-select" required>
+                                    <option value="BEGINNER">BEGINNER (Sơ Cấp)</option>
+                                    <option value="INTERMEDIATE">INTERMEDIATE (Trung Cấp)</option>
+                                    <option value="ADVANCED">ADVANCED (Nâng Cao)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Tải lên file ghi âm / video đính kèm (`/api/placement-tests/upload`)</label>
+                                <input type="file" id="evalAttachmentFile" class="form-control" accept="audio/*,video/*,image/*">
+                                <div id="uploadStatusMessage" class="small mt-1"></div>
+                                <input type="hidden" id="evalMediaUrl">
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold text-dark">Nhận xét của giáo viên chuyên môn (teacherNote)</label>
+                                <textarea id="evalExaminerNotes" class="form-control" rows="3" placeholder="Nhận xét chi tiết về ưu điểm, điểm cần cải thiện và gợi ý lớp học..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light px-4 py-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold text-dark"><i class="bi bi-send-check me-1"></i>Lưu & Gửi Đánh Giá</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Xem chi tiết phiếu đánh giá -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-dark"><i class="bi bi-file-earmark-text text-primary me-2"></i>Chi Tiết Phiếu Đánh Giá Placement Test</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <small class="text-muted text-uppercase d-block fw-bold">Học viên & Phụ huynh</small>
+                                <div class="fs-5 fw-bold text-dark mt-1" id="detailStudentName">--</div>
+                                <div class="small text-muted" id="detailCandidateMeta">
+                                    Mã Lịch: <strong id="detailCode" class="text-primary">--</strong><br>
+                                    Phụ huynh: <span id="detailParentName">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <small class="text-muted text-uppercase d-block fw-bold">Thông tin ca thi</small>
+                                <div class="fs-6 fw-bold text-dark mt-1" id="detailTitle">--</div>
+                                <div class="small text-muted">
+                                    Cơ sở & Phòng: <span id="detailBranchRoom" class="fw-semibold">--</span><br>
+                                    Thời gian: <span id="detailTestDateTime">--</span><br>
+                                    Giáo viên đánh giá: <span id="detailExaminer">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Điểm số Backend (score: 0 - 100)</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <small class="fw-semibold text-muted d-flex justify-content-between">
+                                <span>Cảm âm (Pitch)</span>
+                                <strong id="val_detail_pitch" class="text-primary">0.0/10</strong>
+                            </small>
+                            <div class="progress mt-1" style="height: 8px;">
+                                <div id="bar_pitch" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="fw-semibold text-muted d-flex justify-content-between">
+                                <span>Nhịp điệu (Rhythm)</span>
+                                <strong id="val_detail_rhythm" class="text-warning">0.0/10</strong>
+                            </small>
+                            <div class="progress mt-1" style="height: 8px;">
+                                <div id="bar_rhythm" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="fw-semibold text-muted d-flex justify-content-between">
+                                <span>Kỹ thuật ngón (Technique)</span>
+                                <strong id="val_detail_technique" class="text-success">0.0/10</strong>
+                            </small>
+                            <div class="progress mt-1" style="height: 8px;">
+                                <div id="bar_technique" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="fw-semibold text-muted d-flex justify-content-between">
+                                <span>Đọc bản nhạc (Sight Reading)</span>
+                                <strong id="val_detail_reading" class="text-info">0.0/10</strong>
+                            </small>
+                            <div class="progress mt-1" style="height: 8px;">
+                                <div id="bar_reading" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong class="text-dark"><i class="bi bi-award me-1 text-warning"></i>Điểm Tổng Thể: <span id="detailTotalScore" class="fs-5 text-primary">--</span></strong>
+                        </div>
+                        <div><strong>Trình độ đề xuất (recommendedLevel):</strong> <span id="detailLevel" class="text-success fw-bold">--</span></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <strong class="text-dark small"><i class="bi bi-chat-square-quote me-1"></i>Nhận xét từ giáo viên (teacherNote):</strong>
+                        <p id="detailNotes" class="bg-light p-3 rounded-3 text-muted small mt-1 mb-0 border">Chưa có nhận xét.</p>
+                    </div>
+
+                    <div>
+                        <strong class="text-dark small mb-1 d-block"><i class="bi bi-paperclip me-1"></i>Tệp tin ghi âm / video đính kèm:</strong>
+                        <div id="detailMediaAttachment"></div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-outline-primary rounded-pill px-3" onclick="window.print()"><i class="bi bi-printer me-1"></i>In Phiếu Result</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/placement-test.js"></script>
+</body>
+</html>
