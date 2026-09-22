@@ -30,11 +30,14 @@
                         Chào mừng bạn đến với Cổng thông tin Điều phối & Vận hành Đào tạo Học viện Talent. Giám sát phòng học, điều phối đàn Piano biểu diễn, điểm danh chuyên cần và quản lý học vụ theo thời gian thực.
                     </p>
                     <div class="d-flex flex-wrap gap-2">
-                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-warning btn-sm px-3 py-2 fw-semibold rounded-pill shadow-sm">
-                            <i class="bi bi-calendar2-check me-1"></i> Quản Lý Nghỉ Học & Học Bù (JSP)
+                        <a href="<c:url value='/pages/course-enrollment.html'/>" class="btn btn-warning btn-sm px-3 py-2 fw-semibold rounded-pill shadow-sm">
+                            <i class="bi bi-journal-check me-1"></i> Đăng Ký & Duyệt Lớp (Course Enrollment)
                         </a>
-                        <a href="<c:url value='/swagger-ui.html'/>" target="_blank" class="btn btn-outline-light btn-sm px-3 py-2 rounded-pill">
-                            <i class="bi bi-code-slash me-1"></i> Swagger API Documentation
+                        <a href="<c:url value='/pages/branch-facility.html'/>" class="btn btn-warning btn-sm px-3 py-2 fw-semibold rounded-pill shadow-sm">
+                            <i class="bi bi-building me-1"></i> Quản Lý Cơ Sở & CSVC
+                        </a>
+                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-outline-light btn-sm px-3 py-2 rounded-pill">
+                            <i class="bi bi-calendar2-check me-1"></i> Xem Đơn Xin Nghỉ & Học Bù (JSP)
                         </a>
                     </div>
                 </div>
@@ -144,7 +147,7 @@
                         Quản lý hệ thống chi nhánh, danh mục phòng học, thiết bị đàn Grand Piano Yamaha C3X, đàn Upright U3H và tổ chức xếp lớp học viên.
                     </p>
                     <div class="pt-2 border-top">
-                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
+                        <a href="<c:url value='/pages/branch-facility.html'/>" class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
                             Xem Danh Sách Cơ Sở <i class="bi bi-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -184,7 +187,7 @@
                         Khảo sát năng khiếu đầu vào, ghi âm và lưu video thực hành phím đàn piano của học viên, chấm điểm tiêu chí và xây dựng lộ trình tài năng.
                     </p>
                     <div class="pt-2 border-top">
-                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-outline-warning btn-sm w-100 py-2 rounded-3 fw-semibold text-dark">
+                        <a href="<c:url value='/pages/placement-test.html'/>" class="btn btn-outline-warning btn-sm w-100 py-2 rounded-3 fw-semibold text-dark">
                             Khảo Sát Năng Khiếu <i class="bi bi-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -204,7 +207,7 @@
                         Quản lý hóa đơn thu học phí, xác định chính sách miễn giảm học phí, hỗ trợ nộp tiền mặt tại quầy thu ngân hoặc chuyển khoản nhanh qua mã VietQR.
                     </p>
                     <div class="pt-2 border-top">
-                        <a href="<c:url value='/pages/absence-makeup'/>" class="btn btn-outline-danger btn-sm w-100 py-2 rounded-3 fw-semibold">
+                        <a href="<c:url value='/pages/tuition-payment.html'/>" class="btn btn-outline-danger btn-sm w-100 py-2 rounded-3 fw-semibold">
                             Quản Lý Học Phí <i class="bi bi-arrow-right ms-1"></i>
                         </a>
                     </div>

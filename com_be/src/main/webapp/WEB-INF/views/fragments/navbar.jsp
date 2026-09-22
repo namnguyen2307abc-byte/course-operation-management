@@ -17,7 +17,17 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
                 <li class="nav-item">
                     <a class="nav-link" href="<c:url value='/'/>">
-                        <i class="bi bi-house-door me-1"></i>Trang Chủ
+                        <i class="bi bi-house me-1"></i>Trang Chủ
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<c:url value='/pages/branch-facility.html'/>">
+                        <i class="bi bi-building me-1"></i>Cơ Sở & CSVC
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<c:url value='/pages/course-enrollment.html'/>">
+                        <i class="bi bi-journal-check me-1"></i>Đăng Ký Lớp
                     </a>
                 </li>
                 <li class="nav-item">
@@ -26,8 +36,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<c:url value='/swagger-ui.html'/>" target="_blank">
-                        <i class="bi bi-code-slash me-1"></i>Swagger API
+                    <a class="nav-link" href="<c:url value='/pages/placement-test.html'/>">
+                        <i class="bi bi-music-note-beamed me-1"></i>Đánh Giá Năng Khiếu
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<c:url value='/pages/tuition-payment.html'/>">
+                        <i class="bi bi-credit-card me-1"></i>Học Phí
                     </a>
                 </li>
             </ul>
