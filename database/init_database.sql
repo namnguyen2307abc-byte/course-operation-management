@@ -1,4 +1,4 @@
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'course_operation_management')
+ÔªøIF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'course_operation_management')
 BEGIN
     CREATE DATABASE course_operation_management;
 END
@@ -197,7 +197,7 @@ CREATE TABLE makeup_registrations (
     absence_request_id BIGINT FOREIGN KEY REFERENCES absence_requests(id),
     student_id BIGINT NOT NULL FOREIGN KEY REFERENCES students(id),
     original_lesson_id BIGINT NOT NULL FOREIGN KEY REFERENCES lessons(id),
-    target_lesson_id BIGINT FOREIGN KEY REFERENCES lessons(id),
+    target_lesson_id BIGINT NULL FOREIGN KEY REFERENCES lessons(id),
     status VARCHAR(30) DEFAULT 'PENDING',
     note NVARCHAR(500),
     created_at DATETIME2 DEFAULT CURRENT_TIMESTAMP
@@ -356,16 +356,16 @@ INSERT INTO payments (invoice_id, payment_code, payment_method, amount, payment_
 (1, 'PAY-2026-001', 'CASH_AT_DESK', 3840000.00, CURRENT_TIMESTAMP, 4, N'Ph·ª• huynh Lan n·ªôp ti·ªÅn m·∫∑t tr·ª±c ti·∫øp t·∫°i qu·∫ßy thu ng√¢n c∆° s·ªü C·∫ßu Gi·∫•y', 'SUCCESS');
 GO
 INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES
-('teacher_ha', '.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'CÙ Tr?n Thu H‡ (GV Piano)', 'ha.tran@talentcenter.edu.vn', '0945678901', 'TEACHER', 'ACTIVE'),
+('teacher_ha', '.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'CÔøΩ Tr?n Thu HÔøΩ (GV Piano)', 'ha.tran@talentcenter.edu.vn', '0945678901', 'TEACHER', 'ACTIVE'),
 ('teacher_dung', '.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Th?y Nguy?n Van Dung (GV Guitar)', 'dung.nguyen@talentcenter.edu.vn', '0956789012', 'TEACHER', 'ACTIVE');
 
 INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, notes) VALUES
-(5, N'Nguy?n Tr?ng Anh', '2015-11-20', N'Nam', N'Ti?u h?c –o‡n Th? –i?m', N'H?c d?m h·t'),
-(5, N'Nguy?n H?i Y?n', '2017-02-14', N'N?', N'Ti?u h?c Kim LiÍn', N'H?c piano');
+(5, N'Nguy?n Tr?ng Anh', '2015-11-20', N'Nam', N'Ti?u h?c ÔøΩoÔøΩn Th? ÔøΩi?m', N'H?c d?m hÔøΩt'),
+(5, N'Nguy?n H?i Y?n', '2017-02-14', N'N?', N'Ti?u h?c Kim LiÔøΩn', N'H?c piano');
 
 INSERT INTO classes (course_id, branch_id, room_id, teacher_id, class_code, class_name, class_type, max_students, current_students, start_date, end_date, schedule_description, status) VALUES
 (1, 1, 1, (SELECT id FROM users WHERE username = 'teacher_ha'), 'CL-PIA-02', N'Piano So C?p 02', 'GROUP', 5, 2, '2026-10-01', '2027-01-31', N'Th? 3 & Th? 6 (18:00 - 19:30)', 'OPEN'),
-(2, 2, 3, (SELECT id FROM users WHERE username = 'teacher_dung'), 'CL-GUI-01', N'Guitar –?m H·t 01', 'GROUP', 8, 3, '2026-10-01', '2027-01-31', N'Th? 7 & CN (09:00 - 10:30)', 'OPEN');
+(2, 2, 3, (SELECT id FROM users WHERE username = 'teacher_dung'), 'CL-GUI-01', N'Guitar ÔøΩ?m HÔøΩt 01', 'GROUP', 8, 3, '2026-10-01', '2027-01-31', N'Th? 7 & CN (09:00 - 10:30)', 'OPEN');
 
 INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
 ((SELECT id FROM students WHERE full_name = N'Nguy?n Tr?ng Anh'), (SELECT id FROM classes WHERE class_code = 'CL-GUI-01'), 5, 'ENROLLED', N''),
@@ -376,3 +376,4 @@ INSERT INTO lessons (class_id, room_id, teacher_id, session_number, lesson_date,
 ((SELECT id FROM classes WHERE class_code = 'CL-PIA-02'), 1, (SELECT id FROM users WHERE username = 'teacher_ha'), 2, '2026-10-09', '18:00:00', '19:30:00', N'Bu?i 2', N'', 'SCHEDULED'),
 ((SELECT id FROM classes WHERE class_code = 'CL-GUI-01'), 3, (SELECT id FROM users WHERE username = 'teacher_dung'), 1, '2026-10-03', '09:00:00', '10:30:00', N'Bu?i 1', N'', 'SCHEDULED'),
 ((SELECT id FROM classes WHERE class_code = 'CL-GUI-01'), 3, (SELECT id FROM users WHERE username = 'teacher_dung'), 2, '2026-10-04', '09:00:00', '10:30:00', N'Bu?i 2', N'', 'SCHEDULED');
+

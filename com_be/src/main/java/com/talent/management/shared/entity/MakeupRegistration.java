@@ -32,7 +32,7 @@ public class MakeupRegistration {
     private Lesson originalLesson;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "target_lesson_id")
+    @JoinColumn(name = "target_lesson_id", nullable = true)
     private Lesson targetLesson;
 
     @Enumerated(EnumType.STRING)
