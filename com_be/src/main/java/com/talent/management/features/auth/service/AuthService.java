@@ -19,8 +19,6 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
     public AuthResponse login(LoginRequest request) {
@@ -45,24 +43,6 @@ public class AuthService {
                 fullName = "Quản Trị Viên";
                 role = Role.ADMIN;
             }
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
-        if (user.getStatus() != UserStatus.ACTIVE
-                || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadCredentialsException("Invalid credentials");
-        }
-
-        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPassword())
-                .authorities("ROLE_" + user.getRole().name())
-                .build();
-        String token = jwtService.generateToken(
-                userDetails,
-                user.getId(),
-                user.getRole().name(),
-                user.getFullName()
-        );
 
             User newU = User.builder()
                     .username(username)
@@ -70,26 +50,21 @@ public class AuthService {
                     .fullName(fullName)
                     .email(username + "@talent.com")
                     .role(role)
-                    .status(com.talent.management.shared.enums.UserStatus.ACTIVE)
+                    .status(UserStatus.ACTIVE)
                     .build();
             return userRepository.save(newU);
         });
 
-        org.springframework.security.core.userdetails.UserDetails userDetails =
-                org.springframework.security.core.userdetails.User.builder()
-                        .username(user.getUsername())
-                        .password(user.getPassword() != null ? user.getPassword() : "123456")
-                        .authorities(java.util.Collections.singletonList(
-                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
-                        .build();
-        return AuthResponse.builder()
-                .userId(user.getId())
+        if (user.getStatus() != null && user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadCredentialsException("Tài khoản đã bị vô hiệu hóa");
+        }
+
+        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
-                .fullName(user.getFullName())
-                .role(user.getRole())
-                .token(token)
+                .password(user.getPassword() != null ? user.getPassword() : "123456")
+                .authorities(java.util.Collections.singletonList(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
                 .build();
-    }
 
         String token = jwtService.generateToken(userDetails, user.getId(), user.getRole().name(), user.getFullName());
 

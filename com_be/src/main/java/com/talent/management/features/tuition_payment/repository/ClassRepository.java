@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-@Repository
+@Repository("tuitionPaymentClassRepository")
 public interface ClassRepository extends JpaRepository<ClassEntity, Long> {
 
     List<ClassEntity> findByBranchId(Long branchId);
