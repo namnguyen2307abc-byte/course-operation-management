@@ -76,7 +76,10 @@ function updateNavbarUser() {
             if (roleName === "ADMIN") roleBadge = "bg-danger";
             else if (roleName === "TEACHER") roleBadge = "bg-warning text-dark";
             else if (roleName === "PARENT") roleBadge = "bg-success";
-            else if (roleName === "STAFF") roleBadge = "bg-info text-dark";
+            else if (roleName === "STAFF" || roleName === "CASHIER") {
+                roleBadge = "bg-info text-dark";
+                roleName = "THU NGÂN";
+            }
 
             displayEl.innerHTML = `
                 <div class="d-flex align-items-center gap-2">
@@ -93,6 +96,23 @@ function updateNavbarUser() {
                     🔑 Đăng nhập
                 </a>
             `;
+        }
+    }
+
+    // Phân quyền hiển thị Menu "Học Phí":
+    // Chỉ Quản trị viên (ADMIN) và Thu ngân (STAFF / CASHIER / cashier_mai) mới được hiện!
+    const tuitionNavItem = document.getElementById("navItemTuitionPayment");
+    if (tuitionNavItem) {
+        const role = user ? (user.role || "").toUpperCase() : "";
+        const username = user ? (user.username || "").toLowerCase() : "";
+        const isAuthorized = role === "ADMIN" || role === "STAFF" || role === "CASHIER" || username.includes("cashier") || username.includes("admin");
+
+        if (isAuthorized) {
+            tuitionNavItem.style.display = "";
+            tuitionNavItem.classList.remove("d-none");
+        } else {
+            tuitionNavItem.style.display = "none";
+            tuitionNavItem.classList.add("d-none");
         }
     }
 }
