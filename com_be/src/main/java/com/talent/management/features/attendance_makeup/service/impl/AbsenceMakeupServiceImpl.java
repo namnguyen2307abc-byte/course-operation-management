@@ -190,6 +190,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
 
+        validateTeacherClassPermission(currentUser, ar);
+
         if (ar.getStatus() != AbsenceStatus.PENDING) {
             throw new AttendanceMakeupException("Đơn xin nghỉ này đã được xử lý trước đó (Trạng thái hiện tại: " + ar.getStatus() + ")");
         }
@@ -242,6 +244,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
 
+        validateTeacherClassPermission(currentUser, ar);
+
         if (ar.getStatus() != AbsenceStatus.PENDING) {
             throw new AttendanceMakeupException("Đơn xin nghỉ này đã được xử lý trước đó (Trạng thái hiện tại: " + ar.getStatus() + ")");
         }
@@ -287,6 +291,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
 
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
+
+        validateTeacherClassPermission(currentUser, ar);
 
         if (ar.getStatus() != AbsenceStatus.PENDING) {
             throw new AttendanceMakeupException("Đơn xin nghỉ này đã được xử lý trước đó (Trạng thái hiện tại: " + ar.getStatus() + ")");
@@ -591,6 +597,17 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     private void validateReviewPermission(User user) {
         if (user.getRole() == Role.PARENT || user.getRole() == Role.STUDENT) {
             throw new AttendanceMakeupException("Tài khoản phụ huynh/học viên không có quyền thực hiện thao tác xét duyệt hoặc điều phối học bù!");
+        }
+    }
+
+    private void validateTeacherClassPermission(User user, AbsenceRequest ar) {
+        if (user.getRole() == Role.TEACHER) {
+            Lesson lesson = ar.getLesson();
+            if (lesson != null && lesson.getClassEntity() != null && lesson.getClassEntity().getTeacher() != null) {
+                if (!lesson.getClassEntity().getTeacher().getId().equals(user.getId())) {
+                    throw new AttendanceMakeupException("Giáo viên chỉ được phép duyệt đơn xin nghỉ của lớp mình được phân công!");
+                }
+            }
         }
     }
 }
