@@ -213,7 +213,7 @@
     <script src="../js/auth.js"></script>
     <script>
         fetch('../components/navbar.html').then(r => r.text()).then(h => {
-            document.getElementById('navbar-container').innerHTML = h;
+            document.getElementById('navbar-container').innerHTML = h.replace(/href="\.\/pages\//g, 'href="./').replace(/href="\.\/index\.html"/g, 'href="../index.html"');
             updateNavbarUser();
         });
         fetch('../components/footer.html').then(r => r.text()).then(h => document.getElementById('footer-container').innerHTML = h);

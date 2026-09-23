@@ -254,7 +254,7 @@
         fetch('../components/navbar.html')
             .then(response => response.text())
             .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
+                document.getElementById('navbar-container').innerHTML = html.replace(/href="\.\/pages\//g, 'href="./').replace(/href="\.\/index\.html"/g, 'href="../index.html"');
                 updateNavbarUser();
             });
         fetch('../components/footer.html')
