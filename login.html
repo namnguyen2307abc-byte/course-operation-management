@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html
+    lang="en"
+>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Sign in | Training Center</title>
+        <link href="/css/bootstrap.min.css" rel="stylesheet" />
+        <link href="/css/app.css" rel="stylesheet" />
+        <script defer src="/js/lucide.min.js"></script>
+        <script defer src="/js/app.js"></script>
+    </head>
+    <body>
+        <header class="site-header">
+            <a class="skip-link" href="#main-content">Skip to content</a>
+            <nav class="nav-shell" aria-label="Main navigation">
+                <a class="brand" href="/">
+                    <span class="brand-mark"><i data-lucide="graduation-cap" aria-hidden="true"></i></span>
+                    <span>
+                        Training Center
+                        <small>LEARNING &amp; COMMUNITY</small>
+                    </span>
+                </a>
+                <button
+                    class="icon-button menu-toggle"
+                    type="button"
+                    aria-controls="mainNavbar"
+                    aria-expanded="false"
+                    aria-label="Open navigation"
+                    title="Open navigation"
+                >
+                    <i data-lucide="menu" aria-hidden="true"></i>
+                </button>
+                <div class="nav-content" id="mainNavbar">
+                    <div class="nav-links">
+                        <a class="nav-link" data-nav="/" href="/">
+                            <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+                            Overview
+                        </a>
+                        
+                        
+                        
+                        
+                    </div>
+                    <div class="nav-account">
+                        <a
+                            class="nav-link"
+                            data-nav="/login"
+                            href="/login"
+                        >
+                            Sign in
+                        </a>
+                        <a
+                            class="btn btn-primary btn-sm"
+                            href="/register"
+                        >
+                            Create account
+                            <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+                        </a>
+                        
+                        
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <main id="main-content" class="page-shell auth-shell">
+            <div class="auth-heading">
+                <span class="auth-symbol"><i data-lucide="graduation-cap" aria-hidden="true"></i></span>
+                <p class="eyebrow">YOUR TRAINING CENTER ACCOUNT</p>
+                <h1>Welcome back.</h1>
+                <p class="page-description">A new day. Something new to learn.</p>
+            </div>
+            <section class="auth-panel">
+                <div class="messages" aria-live="polite">
+            
+            
+            
+            
+        </div>
+                <form action="/login" method="post"><input type="hidden" name="_csrf" value="QW3cV4kyuwX2ZMDdM6AAMnFprJNOGGsrX13aHmqAKw_8yq8Lc17qY-pUjDDbAPG_V400A0hbgap9K18GOj7uKl3kSG3L-8o6"/>
+                    <div class="mb-4">
+                        <label for="username" class="form-label">Email address</label>
+                        <input
+                            id="username"
+                            name="username"
+                            type="email"
+                            class="form-control"
+                            placeholder="you@example.com"
+                            autocomplete="username"
+                            required
+                        />
+                    </div>
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Password</label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            class="form-control"
+                            autocomplete="current-password"
+                            required
+                        />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        Sign in
+                        <i data-lucide="arrow-right" aria-hidden="true"></i>
+                    </button>
+                </form>
+                <p class="auth-switch">
+                    New to the community?
+                    <a href="/register">Create an account</a>
+                </p>
+            </section>
+            <div class="auth-footnote">
+                <i data-lucide="shield-check" aria-hidden="true"></i>
+                Your personal learning space.
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-shell">
+                <span class="footer-brand">
+                    Training Center
+                    <span class="footer-dot"></span>
+                    Learning starts here.
+                </span>
+                <span>
+                    &copy;
+                    <span>2026</span>
+                    Training Center
+                </span>
+            </div>
+        </footer>
+    </body>
+</html>

@@ -38,6 +38,7 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/tuition-payment/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/branches/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers(
