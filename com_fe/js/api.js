@@ -1,4 +1,5 @@
-const BASE_URL = window.location.port === "8080" ? "" : "http://localhost:8080";
+const isDev = window.location.port !== "8080" && window.location.port !== "";
+const BASE_URL = isDev ? `http://${window.location.hostname}:8080` : "";
 
 async function callApi(endpoint, method = "GET", body = null, isFormData = false) {
     const token = localStorage.getItem("token");
