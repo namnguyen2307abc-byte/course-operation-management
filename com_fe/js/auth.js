@@ -52,7 +52,7 @@ function updateNavbarUser() {
             `;
         } else {
             displayEl.innerHTML = `
-                <a href="/login.html" class="btn btn-outline-warning btn-sm px-3 rounded-pill py-1" style="font-size: 0.8rem;">
+                <a href="javascript:void(0)" onclick="window.location.href = window.location.pathname.includes('/com_fe/') ? '/com_fe/login.html' : '/login.html'" class="btn btn-outline-warning btn-sm px-3 rounded-pill py-1" style="font-size: 0.8rem;">
                     🔑 Đăng nhập
                 </a>
             `;
@@ -63,7 +63,7 @@ function updateNavbarUser() {
 function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    window.location.href = "/login.html";
+    window.location.href = window.location.pathname.includes('/com_fe/') ? '/com_fe/login.html' : '/login.html';
 }
 
 document.addEventListener("DOMContentLoaded", () => {

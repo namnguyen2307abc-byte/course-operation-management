@@ -24,7 +24,7 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
         if (response.status === 401) {
             alert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại!");
             localStorage.removeItem("token");
-            window.location.href = window.location.port === "8080" ? "/login" : "/login.html";
+            window.location.href = window.location.port === "8080" ? "/login" : (window.location.pathname.includes("/com_fe/") ? "/com_fe/login.html" : "/login.html");
             return null;
         }
 

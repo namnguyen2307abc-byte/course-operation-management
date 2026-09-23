@@ -6,7 +6,7 @@
     <title>Đăng Ký Lớp Học - Talent Academy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
     <style>
         .workflow-bar {
             background: #ffffff;
@@ -66,7 +66,7 @@
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb small mb-1">
-                        <li class="breadcrumb-item"><a href="/index.html" class="text-decoration-none">Trang Chủ</a></li>
+                        <li class="breadcrumb-item"><a href="../index.html" class="text-decoration-none">Trang Chủ</a></li>
                         <li class="breadcrumb-item active">Đăng Ký Lớp Học</li>
                     </ol>
                 </nav>
@@ -238,8 +238,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/auth.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script>
         checkAuth();
 
@@ -251,13 +251,13 @@
         let pendingRequestMap = new Map();
         let availableClassMap = new Map();
 
-        fetch('/components/navbar.html')
+        fetch('../components/navbar.html')
             .then(response => response.text())
             .then(html => {
                 document.getElementById('navbar-container').innerHTML = html;
                 updateNavbarUser();
             });
-        fetch('/components/footer.html')
+        fetch('../components/footer.html')
             .then(response => response.text())
             .then(html => document.getElementById('footer-container').innerHTML = html);
 
