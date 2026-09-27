@@ -38,6 +38,23 @@
         }
         .class-row { cursor: pointer; }
         .class-row:has(input:checked) { background: #eff6ff; }
+        .class-row-recommended { background: #f0fdf4; }
+        .recommendation-strip {
+            border: 1px solid #bfdbfe;
+            border-left: 4px solid #2563eb;
+            background: #eff6ff;
+            padding: 0.9rem 1rem;
+        }
+        .recommendation-strip.is-available {
+            border-color: #bbf7d0;
+            border-left-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .recommendation-strip.is-unavailable {
+            border-color: #e2e8f0;
+            border-left-color: #64748b;
+            background: #f8fafc;
+        }
         .facility-preview-btn {
             width: 32px;
             height: 32px;
@@ -52,6 +69,7 @@
             text-transform: uppercase;
         }
         .empty-state { padding: 3rem 1rem; text-align: center; color: #64748b; }
+        .class-selection-table { min-width: 900px; }
         .table > :not(caption) > * > * { vertical-align: middle; }
         @media (max-width: 767.98px) {
             .workflow-step { min-width: 100%; }
@@ -108,8 +126,10 @@
                         </div>
                     </div>
 
+                    <div id="recommendationPanel" class="recommendation-strip d-none mb-3" aria-live="polite"></div>
+
                     <div class="table-responsive border rounded mb-3">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0 class-selection-table">
                             <thead class="table-light small text-secondary">
                                 <tr>
                                     <th style="width: 48px;"></th>
@@ -250,6 +270,7 @@
         let selectedRequest = null;
         let pendingRequestMap = new Map();
         let availableClassMap = new Map();
+        let recommendedClassIds = new Set();
 
         fetch('/components/navbar.html')
             .then(response => response.text())
@@ -265,6 +286,7 @@
             decisionModal = new bootstrap.Modal(document.getElementById('decisionModal'));
             facilityModal = new bootstrap.Modal(document.getElementById('facilityModal'));
             document.getElementById('refreshBtn').addEventListener('click', loadPageData);
+            document.getElementById('childSelect').addEventListener('change', loadClassRecommendations);
             document.getElementById('courseSelect').addEventListener('change', loadClasses);
             document.getElementById('requestForm').addEventListener('submit', submitRequest);
             document.getElementById('confirmDecisionBtn').addEventListener('click', confirmDecision);
@@ -303,7 +325,7 @@
                 renderChildren(children || []);
                 renderCourses(courses || []);
                 renderMyRequests(requests || []);
-                await loadClasses();
+                await loadClassRecommendations();
             } catch (error) {
                 showNotice(error.message, 'danger');
             }
@@ -323,6 +345,79 @@
                 : '<option value="">Chưa có khóa học</option>';
         }
 
+        async function loadClassRecommendations() {
+            const childId = document.getElementById('childSelect').value;
+            const panel = document.getElementById('recommendationPanel');
+            recommendedClassIds = new Set();
+
+            if (!childId) {
+                panel.className = 'recommendation-strip d-none mb-3';
+                await loadClasses();
+                return;
+            }
+
+            panel.className = 'recommendation-strip mb-3';
+            panel.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang kiểm tra kết quả Placement Test...';
+
+            try {
+                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations`);
+                if (document.getElementById('childSelect').value !== childId) return;
+
+                recommendedClassIds = new Set((recommendation.recommendedClasses || []).map(item => item.id));
+                renderRecommendation(recommendation);
+
+                if (recommendation.recommendationAvailable && recommendation.recommendedCourseId) {
+                    const courseSelect = document.getElementById('courseSelect');
+                    const recommendedCourseId = String(recommendation.recommendedCourseId);
+                    if ([...courseSelect.options].some(option => option.value === recommendedCourseId)) {
+                        courseSelect.value = recommendedCourseId;
+                    }
+                }
+            } catch (error) {
+                panel.className = 'recommendation-strip is-unavailable mb-3';
+                panel.innerHTML = `
+                    <div class="fw-semibold"><i class="bi bi-exclamation-circle me-2"></i>Chưa tải được gợi ý xếp lớp</div>
+                    <div class="text-muted small mt-1">${escapeHtml(error.message)}. Bạn vẫn có thể chọn khóa học thủ công.</div>`;
+            }
+
+            await loadClasses();
+        }
+
+        function renderRecommendation(recommendation) {
+            const panel = document.getElementById('recommendationPanel');
+            if (!recommendation.recommendationAvailable) {
+                panel.className = 'recommendation-strip is-unavailable mb-3';
+                panel.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-info-circle text-secondary mt-1"></i>
+                        <div>
+                            <div class="fw-semibold">Chưa có kết quả Placement Test</div>
+                            <div class="text-muted small">Học viên vẫn có thể xem và đăng ký các lớp đang mở bên dưới.</div>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            const scoreText = recommendation.placementScore == null
+                ? 'Chưa cập nhật điểm'
+                : `${recommendation.placementScore}/10`;
+            panel.className = 'recommendation-strip is-available mb-3';
+            panel.innerHTML = `
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-2">
+                    <div>
+                        <div class="fw-bold text-success"><i class="bi bi-stars me-2"></i>Gợi ý lớp từ kết quả Placement Test</div>
+                        <div class="mt-1">
+                            <span class="fw-semibold">${escapeHtml(recommendation.recommendedCourseName)}</span>
+                            <span class="text-muted small ms-2">Trình độ: ${escapeHtml(recommendation.recommendedLevel || 'Chưa cập nhật')} · Điểm: ${scoreText}</span>
+                        </div>
+                        ${recommendation.teacherNote ? `<div class="text-muted small mt-1">Nhận xét: ${escapeHtml(recommendation.teacherNote)}</div>` : ''}
+                    </div>
+                    <div class="align-self-lg-start">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">${recommendedClassIds.size} lớp phù hợp còn chỗ</span>
+                    </div>
+                </div>`;
+        }
+
         async function loadClasses() {
             const courseId = document.getElementById('courseSelect').value;
             const body = document.getElementById('classTableBody');
@@ -340,10 +435,16 @@
                     return;
                 }
                 availableClassMap = new Map(classes.map(item => [item.id, item]));
-                body.innerHTML = classes.map((item, index) => `
-                    <tr class="class-row" onclick="document.getElementById('class-${item.id}').click()">
+                body.innerHTML = classes.map((item, index) => {
+                    const isRecommended = recommendedClassIds.has(item.id);
+                    return `
+                    <tr class="class-row ${isRecommended ? 'class-row-recommended' : ''}" onclick="document.getElementById('class-${item.id}').click()">
                         <td><input class="form-check-input" type="radio" name="classId" id="class-${item.id}" value="${item.id}" ${index === 0 ? 'checked' : ''} onclick="event.stopPropagation()"></td>
-                        <td><div class="fw-semibold">${escapeHtml(item.className)}</div><code>${escapeHtml(item.classCode)}</code></td>
+                        <td>
+                            <div class="fw-semibold">${escapeHtml(item.className)}</div>
+                            <code>${escapeHtml(item.classCode)}</code>
+                            ${isRecommended ? '<span class="badge bg-success-subtle text-success border border-success-subtle ms-2"><i class="bi bi-stars me-1"></i>Đề xuất</span>' : ''}
+                        </td>
                         <td>
                             <div>${escapeHtml(item.branchName)}</div>
                             <span class="text-muted small">${escapeHtml(item.roomName || 'Chưa xếp phòng')}</span>
@@ -356,7 +457,8 @@
                         <td><div>${escapeHtml(item.scheduleDescription || 'Đang cập nhật')}</div><span class="text-muted small">Từ ${formatDate(item.startDate)}</span></td>
                         <td>${escapeHtml(item.teacherName || 'Chưa phân công')}</td>
                         <td><span class="badge bg-success-subtle text-success border border-success-subtle">${item.availableSeats}/${item.maxStudents} chỗ</span></td>
-                    </tr>`).join('');
+                    </tr>`;
+                }).join('');
             } catch (error) {
                 body.innerHTML = `<tr><td colspan="6" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
             }

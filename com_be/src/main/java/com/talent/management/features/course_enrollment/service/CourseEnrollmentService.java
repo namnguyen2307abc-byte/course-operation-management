@@ -5,6 +5,7 @@ import com.talent.management.features.course_enrollment.dto.request.EnrollmentDe
 import com.talent.management.features.course_enrollment.dto.request.EnrollmentRequestCreateRequest;
 import com.talent.management.features.course_enrollment.dto.response.ChildResponse;
 import com.talent.management.features.course_enrollment.dto.response.ClassResponse;
+import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
 import com.talent.management.features.course_enrollment.entity.EnrollmentRequest;
@@ -22,6 +23,8 @@ import com.talent.management.shared.entity.User;
 import com.talent.management.shared.enums.ClassStatus;
 import com.talent.management.shared.enums.EnrollmentStatus;
 import com.talent.management.shared.service.CurrentUserService;
+import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
+import com.talent.management.features.placement_test.service.PlacementTestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +50,7 @@ public class CourseEnrollmentService {
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentRequestRepository requestRepository;
     private final CourseEnrollmentMapper mapper;
+    private final PlacementTestService placementTestService;
 
     @Transactional(readOnly = true)
     public List<ChildResponse> getMyChildren() {
@@ -72,6 +77,44 @@ public class CourseEnrollmentService {
                 .filter(this::hasAvailableSeat)
                 .map(mapper::toClassResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ClassRecommendationResponse getClassRecommendations(Long childId) {
+        User parent = currentUserService.getCurrentUser();
+        Student child = studentRepository.findByIdAndParentId(childId, parent.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy học viên thuộc tài khoản của bạn"
+                ));
+
+        PlacementRecommendationResponse placement = placementTestService.getLatestRecommendation(childId);
+        List<ClassResponse> openClasses = classRepository
+                .findByStatusOrderByStartDateAsc(ClassStatus.OPEN)
+                .stream()
+                .filter(this::hasAvailableSeat)
+                .map(mapper::toClassResponse)
+                .toList();
+
+        List<ClassResponse> recommendedClasses = placement.recommendationAvailable()
+                ? openClasses.stream()
+                        .filter(item -> Objects.equals(item.courseId(), placement.recommendedCourseId()))
+                        .toList()
+                : List.of();
+
+        return new ClassRecommendationResponse(
+                child.getId(),
+                child.getFullName(),
+                placement.placementStatus(),
+                placement.recommendationAvailable(),
+                placement.score(),
+                placement.recommendedLevel(),
+                placement.recommendedCourseId(),
+                placement.recommendedCourseName(),
+                placement.teacherNote(),
+                recommendedClasses,
+                openClasses
+        );
     }
 
     @Transactional

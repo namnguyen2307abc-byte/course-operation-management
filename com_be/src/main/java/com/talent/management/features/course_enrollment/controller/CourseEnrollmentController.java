@@ -4,6 +4,7 @@ import com.talent.management.features.course_enrollment.dto.request.EnrollmentDe
 import com.talent.management.features.course_enrollment.dto.request.EnrollmentRequestCreateRequest;
 import com.talent.management.features.course_enrollment.dto.response.ChildResponse;
 import com.talent.management.features.course_enrollment.dto.response.ClassResponse;
+import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
 import com.talent.management.features.course_enrollment.service.CourseEnrollmentService;
@@ -45,6 +46,15 @@ public class CourseEnrollmentController {
     @Operation(summary = "Lấy các lớp còn chỗ của khóa học")
     public ResponseEntity<List<ClassResponse>> getOpenClasses(@PathVariable Long courseId) {
         return ResponseEntity.ok(service.getOpenClasses(courseId));
+    }
+
+    @GetMapping("/children/{childId}/class-recommendations")
+    @PreAuthorize("hasRole('PARENT')")
+    @Operation(summary = "Lấy lớp được đề xuất và toàn bộ lớp đang mở của học viên")
+    public ResponseEntity<ClassRecommendationResponse> getClassRecommendations(
+            @PathVariable Long childId
+    ) {
+        return ResponseEntity.ok(service.getClassRecommendations(childId));
     }
 
     @PostMapping("/requests")

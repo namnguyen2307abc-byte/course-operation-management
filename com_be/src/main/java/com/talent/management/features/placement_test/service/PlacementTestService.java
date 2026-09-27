@@ -3,6 +3,7 @@ package com.talent.management.features.placement_test.service;
 import com.talent.management.features.placement_test.dto.request.CreatePlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
+import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 
 import java.util.List;
 
@@ -17,4 +18,6 @@ public interface PlacementTestService {
     PlacementScheduleResponse saveAssessment(Long scheduleId, PlacementAssessmentRequest request, String teacherUsername);
 
     PlacementScheduleResponse createSchedule(CreatePlacementScheduleRequest request, String parentUsername);
+
+    PlacementRecommendationResponse getLatestRecommendation(Long studentId);
 }
