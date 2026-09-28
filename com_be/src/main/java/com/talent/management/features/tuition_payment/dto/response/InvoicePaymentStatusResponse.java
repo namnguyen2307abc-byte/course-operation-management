@@ -1,5 +1,6 @@
 package com.talent.management.features.tuition_payment.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +16,15 @@ public class InvoicePaymentStatusResponse {
     private Long invoiceId;
     private String invoiceCode;
     private String status; // "PAID", "UNPAID"
+
+    @JsonProperty("isPaid")
     private boolean isPaid;
+
     private BigDecimal finalAmount;
     private PaymentReceiptResponse receipt;
+
+    @JsonProperty("paid")
+    public boolean getPaid() {
+        return isPaid;
+    }
 }

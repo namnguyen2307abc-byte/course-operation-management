@@ -5,12 +5,9 @@ import com.talent.management.features.auth.repository.UserRepository;
 import com.talent.management.features.tuition_payment.dto.request.ApplyDiscountRequest;
 import com.talent.management.features.tuition_payment.dto.request.CreateReservationRequest;
 import com.talent.management.features.tuition_payment.dto.request.ProcessPaymentRequest;
-import com.talent.management.features.tuition_payment.dto.response.CashierDashboardStatsResponse;
-import com.talent.management.features.tuition_payment.dto.response.InvoicePaymentStatusResponse;
-import com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse;
-import com.talent.management.features.tuition_payment.dto.response.PendingInvoiceResponse;
-import com.talent.management.features.tuition_payment.dto.response.VietQrResponse;
+import com.talent.management.features.tuition_payment.dto.response.*;
 import com.talent.management.features.tuition_payment.exception.TuitionPaymentException;
+import com.talent.management.features.tuition_payment.gateway.PayOSGateway;
 import com.talent.management.features.tuition_payment.mapper.TuitionPaymentMapper;
 import com.talent.management.features.tuition_payment.repository.ClassRepository;
 import com.talent.management.features.tuition_payment.repository.EnrollmentRepository;
@@ -23,6 +20,7 @@ import com.talent.management.shared.enums.EnrollmentStatus;
 import com.talent.management.shared.enums.InvoiceStatus;
 import com.talent.management.shared.enums.PaymentMethod;
 import com.talent.management.shared.enums.PaymentStatus;
+import com.talent.management.shared.enums.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.annotation.PostConstruct;
@@ -35,9 +33,11 @@ import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.temporal.TemporalAdjusters;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +51,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
     private final TuitionPaymentMapper tuitionPaymentMapper;
+    private final PayOSGateway payOSGateway;
     private final JdbcTemplate jdbcTemplate;
 
     private static final String ACADEMY_BANK_ID = "970405";
@@ -228,6 +229,9 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
                 throw new TuitionPaymentException("Số tiền khách đưa không đủ để thanh toán học phí!");
             }
             changeAmount = cashGiven.subtract(finalAmount);
+        } else {
+            cashGiven = finalAmount;
+            changeAmount = BigDecimal.ZERO;
         }
 
         // 3. Tạo bản ghi Payment
@@ -237,6 +241,8 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
                 .paymentCode(paymentCode)
                 .paymentMethod(request.getPaymentMethod())
                 .amount(finalAmount)
+                .cashGiven(cashGiven)
+                .changeAmount(changeAmount)
                 .paymentDate(LocalDateTime.now())
                 .cashier(cashier)
                 .bankTransactionId(request.getBankTransactionId())
@@ -341,18 +347,18 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
         Course course = classEntity.getCourse();
         BigDecimal tuitionFee = course != null ? course.getTuitionFee() : BigDecimal.valueOf(3600000);
 
-        // Tạo Enrollment trạng thái PENDING_PAYMENT (giữ chỗ 24h)
+        // Tạo Enrollment trạng thái PENDING_PAYMENT (hóa đơn chờ đóng học phí)
         Enrollment enrollment = Enrollment.builder()
                 .student(student)
                 .classEntity(classEntity)
                 .registeredByUser(registeredByUser)
                 .enrollmentDate(LocalDateTime.now())
                 .status(EnrollmentStatus.PENDING_PAYMENT)
-                .notes(request.getNotes() != null ? request.getNotes() : "Phiếu giữ chỗ tạm thời tại quầy")
+                .notes(request.getNotes() != null ? request.getNotes() : "Đăng ký khóa học - Chờ nộp học phí")
                 .build();
         enrollmentRepository.save(enrollment);
 
-        // Tạo Invoice trạng thái UNPAID
+        // Tạo Invoice trạng thái UNPAID (không giới hạn 24h)
         String invoiceCode = "INV-" + LocalDate.now().getYear() + "-" + String.format("%04d", (int) (Math.random() * 9000 + 1000));
         Invoice invoice = Invoice.builder()
                 .invoiceCode(invoiceCode)
@@ -363,13 +369,13 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
                 .discountAmount(BigDecimal.ZERO)
                 .finalAmount(tuitionFee)
                 .status(InvoiceStatus.UNPAID)
-                .dueDate(LocalDate.now().plusDays(1)) // 24h
-                .notes("Hóa đơn học phí phiếu giữ chỗ lớp " + classEntity.getClassName())
+                .dueDate(LocalDate.now().plusMonths(1))
+                .notes("Hóa đơn học phí lớp " + classEntity.getClassName())
                 .createdAt(LocalDateTime.now())
                 .build();
         invoiceRepository.save(invoice);
 
-        log.info("Tạo mới phiếu giữ chỗ tạm thời thành công: {}, học sinh: {}, lớp: {}", 
+        log.info("Tạo mới hóa đơn chờ thanh toán thành công: {}, học sinh: {}, lớp: {}", 
                 invoiceCode, student.getFullName(), classEntity.getClassName());
 
         return tuitionPaymentMapper.toPendingInvoiceResponse(invoice);
@@ -404,6 +410,309 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
             }).toList();
         }
         return responses;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentHistoryReportResponse getPaymentHistoryReport(
+            String timeRange,
+            LocalDate startDate,
+            LocalDate endDate,
+            String cashierUsername,
+            String keyword
+    ) {
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+        LocalDate today = LocalDate.now();
+
+        if ("TODAY".equalsIgnoreCase(timeRange)) {
+            startDateTime = today.atStartOfDay();
+            endDateTime = today.atTime(23, 59, 59);
+        } else if ("THIS_WEEK".equalsIgnoreCase(timeRange) || "WEEK".equalsIgnoreCase(timeRange)) {
+            LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            LocalDate sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            startDateTime = monday.atStartOfDay();
+            endDateTime = sunday.atTime(23, 59, 59);
+        } else if ("THIS_MONTH".equalsIgnoreCase(timeRange) || "MONTH".equalsIgnoreCase(timeRange)) {
+            LocalDate firstDay = today.with(TemporalAdjusters.firstDayOfMonth());
+            LocalDate lastDay = today.with(TemporalAdjusters.lastDayOfMonth());
+            startDateTime = firstDay.atStartOfDay();
+            endDateTime = lastDay.atTime(23, 59, 59);
+        } else if ("CUSTOM".equalsIgnoreCase(timeRange)) {
+            if (startDate != null) {
+                startDateTime = startDate.atStartOfDay();
+            }
+            if (endDate != null) {
+                endDateTime = endDate.atTime(23, 59, 59);
+            }
+        }
+
+        String filterCashier = (cashierUsername != null && !cashierUsername.isBlank() && !"ALL".equalsIgnoreCase(cashierUsername))
+                ? cashierUsername.trim() : null;
+
+        List<Payment> payments = paymentRepository.findPaymentsWithFilters(startDateTime, endDateTime, filterCashier);
+
+        List<PaymentReceiptResponse> receiptResponses = payments.stream()
+                .map(p -> tuitionPaymentMapper.toPaymentReceiptResponse(p, null, null))
+                .toList();
+
+        if (keyword != null && !keyword.isBlank()) {
+            String lower = keyword.trim().toLowerCase();
+            String cleanLower = removeAccents(lower);
+            receiptResponses = receiptResponses.stream().filter(r -> {
+                String pCode = r.getPaymentCode() != null ? r.getPaymentCode().toLowerCase() : "";
+                String invCode = r.getInvoiceCode() != null ? r.getInvoiceCode().toLowerCase() : "";
+                String studentName = r.getStudentName() != null ? r.getStudentName().toLowerCase() : "";
+                String parentPhone = r.getParentPhone() != null ? r.getParentPhone().toLowerCase() : "";
+                String parentName = r.getParentName() != null ? r.getParentName().toLowerCase() : "";
+                String className = r.getClassName() != null ? r.getClassName().toLowerCase() : "";
+                String cashier = r.getCashierName() != null ? r.getCashierName().toLowerCase() : "";
+
+                boolean exactMatch = pCode.contains(lower) || invCode.contains(lower) || studentName.contains(lower)
+                        || parentPhone.contains(lower) || parentName.contains(lower) || className.contains(lower)
+                        || cashier.contains(lower);
+                if (exactMatch) return true;
+
+                return removeAccents(studentName).contains(cleanLower)
+                        || removeAccents(parentName).contains(cleanLower)
+                        || removeAccents(className).contains(cleanLower)
+                        || removeAccents(cashier).contains(cleanLower);
+            }).toList();
+        }
+
+        BigDecimal totalCash = BigDecimal.ZERO;
+        long cashCount = 0;
+        BigDecimal totalBank = BigDecimal.ZERO;
+        long bankCount = 0;
+
+        for (PaymentReceiptResponse item : receiptResponses) {
+            BigDecimal amt = item.getFinalAmount() != null ? item.getFinalAmount() : BigDecimal.ZERO;
+            String method = item.getPaymentMethod();
+            if ("CASH_AT_DESK".equalsIgnoreCase(method)) {
+                totalCash = totalCash.add(amt);
+                cashCount++;
+            } else {
+                totalBank = totalBank.add(amt);
+                bankCount++;
+            }
+        }
+
+        BigDecimal totalRevenue = totalCash.add(totalBank);
+
+        PaymentSummaryResponse summary = PaymentSummaryResponse.builder()
+                .totalCashAmount(totalCash)
+                .totalCashCount(cashCount)
+                .totalBankAmount(totalBank)
+                .totalBankCount(bankCount)
+                .totalRevenue(totalRevenue)
+                .totalTransactions(receiptResponses.size())
+                .build();
+
+        return PaymentHistoryReportResponse.builder()
+                .summary(summary)
+                .payments(receiptResponses)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CashierOptionResponse> getCashierList() {
+        List<User> users = userRepository.findAll();
+        return users.stream()
+                .filter(u -> u.getRole() == Role.ADMIN || u.getRole() == Role.STAFF || u.getRole() == Role.BRANCH_MANAGER || "cashier_mai".equals(u.getUsername()))
+                .map(u -> CashierOptionResponse.builder()
+                        .username(u.getUsername())
+                        .fullName(u.getFullName())
+                        .role(u.getRole() != null ? u.getRole().name() : "STAFF")
+                        .build())
+                .sorted(Comparator.comparing(CashierOptionResponse::getFullName))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public PayOSPaymentLinkResponse createPayOSPaymentLink(Long invoiceId, BigDecimal customAmount) {
+        return createPayOSPaymentLink(invoiceId, customAmount, null, null, null);
+    }
+
+    @Override
+    @Transactional
+    public PayOSPaymentLinkResponse createPayOSPaymentLink(
+            Long invoiceId,
+            BigDecimal customAmount,
+            String discountTypeStr,
+            BigDecimal discountAmount,
+            String discountReason
+    ) {
+        Invoice invoice = invoiceRepository.findByIdWithDetails(invoiceId)
+                .orElseThrow(() -> new TuitionPaymentException("Không tìm thấy hóa đơn với ID: " + invoiceId));
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new TuitionPaymentException("Hóa đơn " + invoice.getInvoiceCode() + " đã được thanh toán hoàn tất!");
+        }
+
+        BigDecimal originalAmount = invoice.getOriginalAmount() != null ? invoice.getOriginalAmount() : customAmount;
+
+        // Lưu trước các thông tin giảm học phí & lý do vào hóa đơn
+        if (customAmount != null) {
+            invoice.setFinalAmount(customAmount);
+        }
+        if (discountAmount != null && discountAmount.compareTo(BigDecimal.ZERO) > 0) {
+            invoice.setDiscountAmount(discountAmount);
+        } else if (customAmount != null && originalAmount != null && customAmount.compareTo(originalAmount) < 0) {
+            invoice.setDiscountAmount(originalAmount.subtract(customAmount));
+        }
+
+        if (discountTypeStr != null && !discountTypeStr.isBlank()) {
+            try {
+                invoice.setDiscountType(DiscountType.valueOf(discountTypeStr));
+            } catch (Exception e) {
+                invoice.setDiscountType(DiscountType.PARTIAL_DISCOUNT);
+            }
+        } else if (invoice.getDiscountAmount() != null && invoice.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
+            invoice.setDiscountType(DiscountType.PARTIAL_DISCOUNT);
+        }
+
+        if (discountReason != null && !discountReason.isBlank()) {
+            invoice.setDiscountReason(discountReason.trim());
+        } else if (invoice.getDiscountAmount() != null && invoice.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0
+                && (invoice.getDiscountReason() == null || invoice.getDiscountReason().isBlank())) {
+            invoice.setDiscountReason("Ưu đãi giảm học phí");
+        }
+
+        invoiceRepository.save(invoice);
+        return payOSGateway.createPaymentLink(invoice, customAmount);
+    }
+
+    @Override
+    @Transactional
+    public PaymentReceiptResponse processPayOSWebhook(Map<String, Object> payload) {
+        log.info("Nhận Webhook từ PayOS: {}", payload);
+        if (!payOSGateway.verifyWebhookSignature(payload)) {
+            log.error("PayOS Webhook: Chữ ký không hợp lệ!");
+            throw new TuitionPaymentException("Chữ ký Webhook PayOS không hợp lệ!");
+        }
+
+        Object dataObj = payload.get("data");
+        if (!(dataObj instanceof Map<?, ?> dataMap)) {
+            throw new TuitionPaymentException("Dữ liệu webhook PayOS không đúng định dạng!");
+        }
+
+        // 1. Phản hồi thành công ngay lập tức nếu là ping test xác thực Webhook (/confirm-webhook) từ PayOS
+        Object testRef = dataMap.get("reference");
+        Object testOrder = dataMap.get("orderCode");
+        Object testDesc = dataMap.get("description");
+        if ("TF230204212323".equals(String.valueOf(testRef))
+                || "123".equals(String.valueOf(testOrder))
+                || (testDesc != null && String.valueOf(testDesc).contains("VQRIO123"))) {
+            log.info("Xác thực Webhook thành công qua Ping kiểm tra của PayOS: ref={}, orderCode={}", testRef, testOrder);
+            return PaymentReceiptResponse.builder()
+                    .paymentId(0L)
+                    .invoiceCode("TEST-PAYOS")
+                    .paymentCode("CONFIRMED-WEBHOOK")
+                    .bankTransactionId(testRef != null ? String.valueOf(testRef) : "CONFIRMED")
+                    .studentName("PayOS Ping Test")
+                    .finalAmount(BigDecimal.valueOf(3000))
+                    .paymentMethod("BANK_TRANSFER")
+                    .message("Xác nhận kết nối Webhook PayOS thành công 100%!")
+                    .build();
+        }
+
+        String description = String.valueOf(dataMap.get("description"));
+        Object amountObj = dataMap.get("amount");
+        BigDecimal amount = null;
+        if (amountObj != null) {
+            try {
+                amount = new BigDecimal(String.valueOf(amountObj));
+            } catch (Exception ignored) {}
+        }
+        String reference = String.valueOf(dataMap.get("reference"));
+        if (reference == null || reference.isBlank() || "null".equals(reference)) {
+            reference = "PAYOS-" + dataMap.get("orderCode");
+        }
+
+        Invoice invoice = null;
+        if (description != null && !description.isBlank() && !"null".equalsIgnoreCase(description)) {
+            invoice = invoiceRepository.findByInvoiceCode(description.trim()).orElse(null);
+            if (invoice == null) {
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("(INV-\\d{4}-\\d+)");
+                java.util.regex.Matcher m = p.matcher(description);
+                if (m.find()) {
+                    invoice = invoiceRepository.findByInvoiceCode(m.group(1)).orElse(null);
+                }
+            }
+            if (invoice == null) {
+                // Hỗ trợ trường hợp PayOS bỏ ký tự đặc biệt: INV2026011 -> INV-2026-011
+                java.util.regex.Pattern p2 = java.util.regex.Pattern.compile("INV(\\d{4})(\\d+)");
+                java.util.regex.Matcher m2 = p2.matcher(description);
+                if (m2.find()) {
+                    String formattedCode = "INV-" + m2.group(1) + "-" + m2.group(2);
+                    invoice = invoiceRepository.findByInvoiceCode(formattedCode).orElse(null);
+                }
+            }
+        }
+
+        if (invoice == null) {
+            Object orderCodeObj = dataMap.get("orderCode");
+            if (orderCodeObj != null) {
+                try {
+                    long orderCode = Long.parseLong(String.valueOf(orderCodeObj));
+                    long invoiceId = orderCode % 100_000L;
+                    invoice = invoiceRepository.findByIdWithDetails(invoiceId).orElse(null);
+                } catch (Exception ignored) {}
+            }
+        }
+
+        if (invoice == null) {
+            log.error("Không tìm thấy hóa đơn phù hợp cho webhook PayOS: {}", dataMap);
+            throw new TuitionPaymentException("Không tìm thấy hóa đơn tương ứng với giao dịch PayOS!");
+        }
+
+        // Đảm bảo fetch đầy đủ quan hệ để xử lý và sinh receipt
+        Invoice detailedInvoice = invoiceRepository.findByIdWithDetails(invoice.getId()).orElse(invoice);
+
+        if (detailedInvoice.getStatus() == InvoiceStatus.PAID) {
+            log.info("Hóa đơn {} đã được thanh toán trước đó.", detailedInvoice.getInvoiceCode());
+            Payment payment = paymentRepository.findFirstByInvoiceIdOrderByIdDesc(detailedInvoice.getId()).orElse(null);
+            if (payment != null) {
+                return tuitionPaymentMapper.toPaymentReceiptResponse(payment, null, null);
+            }
+        }
+
+        BigDecimal finalAmount = amount != null ? amount : detailedInvoice.getFinalAmount();
+        BigDecimal discountAmount = detailedInvoice.getDiscountAmount();
+        DiscountType discountType = detailedInvoice.getDiscountType();
+        String discountReason = detailedInvoice.getDiscountReason();
+
+        if (finalAmount.compareTo(BigDecimal.ZERO) == 0) {
+            discountType = DiscountType.FULL_FREE;
+            discountAmount = detailedInvoice.getOriginalAmount();
+            if (discountReason == null || discountReason.isBlank()) {
+                discountReason = "Học bổng tài năng âm nhạc 100%";
+            }
+        } else if (detailedInvoice.getOriginalAmount() != null && finalAmount.compareTo(detailedInvoice.getOriginalAmount()) < 0) {
+            if (discountAmount == null || discountAmount.compareTo(BigDecimal.ZERO) == 0) {
+                discountAmount = detailedInvoice.getOriginalAmount().subtract(finalAmount);
+                if (discountType == null || discountType == DiscountType.NONE) {
+                    discountType = DiscountType.PARTIAL_DISCOUNT;
+                }
+                if (discountReason == null || discountReason.isBlank()) {
+                    discountReason = "Ưu đãi giảm trực tiếp khi thanh toán";
+                }
+            }
+        }
+
+        ProcessPaymentRequest request = ProcessPaymentRequest.builder()
+                .invoiceId(detailedInvoice.getId())
+                .paymentMethod(PaymentMethod.VIET_QR)
+                .discountType(discountType != null ? discountType : DiscountType.NONE)
+                .discountAmount(discountAmount != null ? discountAmount : BigDecimal.ZERO)
+                .discountReason(discountReason)
+                .finalAmount(finalAmount)
+                .bankTransactionId(reference)
+                .note("Thanh toán trực tuyến PayOS Webhook tự động (orderCode: " + dataMap.get("orderCode") + ")")
+                .build();
+
+        return processPayment(request, "PAYOS_GATEWAY");
     }
 
     @Override

@@ -35,6 +35,12 @@ public class Payment {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(precision = 12, scale = 2)
+    private BigDecimal cashGiven;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal changeAmount;
+
     @Builder.Default
     private LocalDateTime paymentDate = LocalDateTime.now();
 

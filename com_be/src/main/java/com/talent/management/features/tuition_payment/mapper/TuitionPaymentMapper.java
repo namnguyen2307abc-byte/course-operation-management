@@ -26,12 +26,8 @@ public class TuitionPaymentMapper {
         Branch branch = classEntity != null ? classEntity.getBranch() : null;
         Room room = classEntity != null ? classEntity.getRoom() : null;
 
-        // Tính thời gian giữ chỗ 24h
+        // Không còn giới hạn giữ chỗ 24h cứng nhắc - cho phép linh hoạt theo phản hồi thực tế
         LocalDateTime createdAt = invoice.getCreatedAt() != null ? invoice.getCreatedAt() : LocalDateTime.now();
-        LocalDateTime expiresAt = createdAt.plusHours(24);
-        LocalDateTime now = LocalDateTime.now();
-        long hoursLeft = Duration.between(now, expiresAt).toHours();
-        boolean expired = now.isAfter(expiresAt);
 
         return PendingInvoiceResponse.builder()
                 .invoiceId(invoice.getId())
@@ -57,9 +53,10 @@ public class TuitionPaymentMapper {
                 .status(invoice.getStatus() != null ? invoice.getStatus().name() : "UNPAID")
                 .createdAt(invoice.getCreatedAt())
                 .dueDate(invoice.getDueDate())
-                .hoursLeft(Math.max(0, hoursLeft))
-                .expired(expired)
+                .hoursLeft(null)
+                .expired(false)
                 .build();
+
     }
 
     public PaymentReceiptResponse toPaymentReceiptResponse(Payment payment, BigDecimal cashGiven, BigDecimal changeAmount) {
@@ -76,8 +73,14 @@ public class TuitionPaymentMapper {
         Branch branch = classEntity != null ? classEntity.getBranch() : null;
         User cashier = payment.getCashier();
 
-        BigDecimal actualCashGiven = (payment.getPaymentMethod() == PaymentMethod.CASH_AT_DESK) ? cashGiven : null;
-        BigDecimal actualChangeAmount = (payment.getPaymentMethod() == PaymentMethod.CASH_AT_DESK) ? changeAmount : null;
+        BigDecimal actualCashGiven = payment.getCashGiven() != null ? payment.getCashGiven() : cashGiven;
+        BigDecimal actualChangeAmount = payment.getChangeAmount() != null ? payment.getChangeAmount() : changeAmount;
+        if (actualCashGiven == null) {
+            actualCashGiven = payment.getAmount();
+        }
+        if (actualChangeAmount == null) {
+            actualChangeAmount = BigDecimal.ZERO;
+        }
 
         return PaymentReceiptResponse.builder()
                 .paymentId(payment.getId())
@@ -94,6 +97,7 @@ public class TuitionPaymentMapper {
                 .originalAmount(invoice != null ? invoice.getOriginalAmount() : payment.getAmount())
                 .discountAmount(invoice != null && invoice.getDiscountAmount() != null ? invoice.getDiscountAmount() : BigDecimal.ZERO)
                 .discountReason(invoice != null ? invoice.getDiscountReason() : null)
+                .discountType(invoice != null && invoice.getDiscountType() != null ? invoice.getDiscountType().name() : "NONE")
                 .finalAmount(payment.getAmount())
                 .cashGiven(actualCashGiven)
                 .changeAmount(actualChangeAmount)

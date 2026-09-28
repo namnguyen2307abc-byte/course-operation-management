@@ -371,13 +371,38 @@ INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, 
 
 -- Hóa đơn 2: Chờ thu ngân xử lý (Bé Bông - Mai Chi, con mẹ Lan 0987654321)
 INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, discount_type, discount_amount, discount_reason, final_amount, status, due_date, notes) VALUES
-('INV-2026-002', 2, 2, 3600000.00, 'NONE', 0.00, NULL, 3600000.00, 'UNPAID', DATEADD(day, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Phiếu giữ chỗ 24h - Piano Mầm Non');
+('INV-2026-002', 2, 2, 3600000.00, 'NONE', 0.00, NULL, 3600000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Hóa đơn học phí lớp Piano Mầm Non Sáng Thứ 7');
 
 -- Hóa đơn 3: Chờ thu ngân xử lý (Bé Tí - Hoàng Long, con bố Hưng 0977889900)
 INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, discount_type, discount_amount, discount_reason, final_amount, status, due_date, notes) VALUES
-('INV-2026-003', 3, 3, 4800000.00, 'NONE', 0.00, NULL, 4800000.00, 'UNPAID', DATEADD(day, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Phiếu giữ chỗ 24h - Piano 1-1');
+('INV-2026-003', 3, 3, 4800000.00, 'NONE', 0.00, NULL, 4800000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Hóa đơn học phí lớp Piano 1-1 Bé Hoàng Long');
+
+-- Thêm các phụ huynh và học viên mới chờ thu phí
+INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES
+('parent_bich', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Phạm Thị Bích (Phụ Huynh)', 'bich.pham@gmail.com', '0912889911', 'PARENT', 'ACTIVE'),
+('parent_nam', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Vũ Văn Nam (Phụ Huynh)', 'nam.vu@gmail.com', '0988776655', 'PARENT', 'ACTIVE'),
+('parent_trang', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Hoàng Thu Trang (Phụ Huynh)', 'trang.hoang@gmail.com', '0936112233', 'PARENT', 'ACTIVE');
+
+INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, notes) VALUES
+(7, N'Đỗ Minh Khang (Bé Bon)', '2019-09-12', N'Nam', N'Mầm non Sasuke Cầu Giấy', N'Bé nhanh nhẹn, thích học đàn Piano mầm non'),
+(8, N'Vũ Quỳnh Anh (Bé Bống)', '2018-04-25', N'Nữ', N'Tiểu học Kim Đồng', N'Đã qua kiểm tra đầu vào năng khiếu Piano Grade 1'),
+(9, N'Lê Tuấn Kiệt (Bé Ken)', '2017-11-08', N'Nam', N'Tiểu học Dịch Vọng A', N'Học làm quen phím đàn và xướng âm'),
+(5, N'Phạm Gia Huy (Bé Tom)', '2018-06-18', N'Nam', N'Tiểu học Nghĩa Tân', N'Đăng ký khóa học Piano 1-1 rèn luyện kỹ năng');
+
+INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
+(4, 2, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ đóng học phí tại quầy'),
+(5, 1, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ quét mã PayOS VietQR tự động'),
+(6, 2, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ phụ huynh hoàn tất nộp phí'),
+(7, 1, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ nộp tiền mặt tại quầy hoặc PayOS');
+
+INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, discount_type, discount_amount, discount_reason, final_amount, status, due_date, notes) VALUES
+('INV-2026-011', 4, 4, 3600000.00, 'NONE', 0.00, NULL, 3600000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí khóa Piano Mầm Non Nhóm Sáng Thứ 7'),
+('INV-2026-012', 5, 5, 4800000.00, 'NONE', 0.00, NULL, 4800000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí khóa Piano Sơ Cấp (Grade 1)'),
+('INV-2026-013', 6, 6, 3600000.00, 'NONE', 0.00, NULL, 3600000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí lớp Piano Mầm Non Cảm Thụ Âm Nhạc'),
+('INV-2026-014', 7, 7, 4800000.00, 'NONE', 0.00, NULL, 4800000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí lớp Piano 1-1 Bé Tom');
 
 INSERT INTO payments (invoice_id, payment_code, payment_method, amount, payment_date, cashier_id, note, status) VALUES
 (1, 'PAY-2026-001', 'CASH_AT_DESK', 3840000.00, CURRENT_TIMESTAMP, 4, N'Phụ huynh Lan nộp tiền mặt trực tiếp tại quầy thu ngân cơ sở Cầu Giấy', 'SUCCESS');
 GO
+
 

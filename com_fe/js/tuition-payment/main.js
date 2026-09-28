@@ -1,20 +1,22 @@
-/**
- * Main Entry Point for Tuition Payment & Cashier POS Module
- * Talent Academy - Clean Architecture Refactoring
- */
-
-import { POS_TABS } from './constants.js';
-import { getDashboardStats, searchPendingInvoices, getPaymentHistory } from './service.js';
-import { renderDashboardStats, renderPendingTable, renderHistoryTable, renderReceiptModal, switchPosTab } from './ui.js';
-import { initPaymentModal, openPaymentModal } from './modal-payment.js';
+import { POS_TABS } from './constants.js?v=20260927_v3';
+import { getDashboardStats, searchPendingInvoices, getPaymentHistoryReport, getCashiers } from './service.js?v=20260927_v3';
+import { renderDashboardStats, renderPendingTable, renderHistoryDashboard, renderReceiptModal, switchPosTab, populateCashierDropdown } from './ui.js?v=20260927_v3';
+import { initPaymentModal, openPaymentModal } from './modal-payment.js?v=20260927_v3';
 
 // Application State
 let activeTab = POS_TABS.PENDING;
 let pendingList = [];
-let historyList = [];
+let historyReport = { summary: {}, payments: [] };
 let pendingPage = 1;
 let historyPage = 1;
 const PAGE_SIZE = 5;
+
+// Filter State cho Admin History Dashboard
+let currentTimeRange = 'TODAY';
+let currentStartDate = '';
+let currentEndDate = '';
+let currentCashier = 'ALL';
+let cashiersList = [];
 
 /**
  * Tải navbar và cập nhật quyền hiển thị
@@ -42,21 +44,21 @@ function updateSearchPlaceholder() {
     const input = document.getElementById('searchInput');
     if (!input) return;
     if (activeTab === POS_TABS.PENDING) {
-        input.placeholder = "Tra cứu phiếu chờ thu: Gõ SĐT phụ huynh, tên học sinh hoặc mã hóa đơn (INV-...)...";
+        input.placeholder = "Tra cứu hóa đơn chờ thu: Gõ SĐT phụ huynh, tên học sinh hoặc mã hóa đơn (INV-...)...";
     } else {
-        input.placeholder = "Tra cứu lịch sử đã thu: Gõ SĐT, tên học sinh, mã phiếu (PAY-...) hoặc mã HĐ...";
+        input.placeholder = "Tra cứu lịch sử đã thu: Gõ SĐT, tên học sinh, tên thu ngân, mã phiếu (PAY-...) hoặc mã HĐ...";
     }
 }
 
 /**
- * Tải dữ liệu danh sách phiếu giữ chỗ chờ thu
+ * Tải dữ liệu danh sách hóa đơn chờ thu
  */
 async function loadPendingData(keyword = '') {
     try {
         pendingList = await searchPendingInvoices(keyword) || [];
         renderPendingCurrentPage();
     } catch (err) {
-        console.error("Lỗi khi tải phiếu chờ thu:", err);
+        console.error("Lỗi khi tải hóa đơn chờ thu:", err);
     }
 }
 
@@ -74,20 +76,38 @@ function renderPendingCurrentPage() {
 }
 
 /**
- * Tải dữ liệu danh sách lịch sử đã thu tiền
+ * Tải danh sách thu ngân vào dropdown bộ lọc của Admin
+ */
+async function loadCashiersData() {
+    try {
+        cashiersList = await getCashiers() || [];
+        populateCashierDropdown(cashiersList);
+    } catch (err) {
+        console.error("Lỗi khi tải danh sách thu ngân:", err);
+    }
+}
+
+/**
+ * Tải dữ liệu báo cáo lịch sử và doanh thu Admin theo bộ lọc thời gian & thu ngân
  */
 async function loadHistoryData(keyword = '') {
     try {
-        historyList = await getPaymentHistory(keyword) || [];
+        historyReport = await getPaymentHistoryReport({
+            timeRange: currentTimeRange,
+            startDate: currentStartDate,
+            endDate: currentEndDate,
+            cashier: currentCashier,
+            keyword
+        }) || { summary: {}, payments: [] };
         renderHistoryCurrentPage();
     } catch (err) {
-        console.error("Lỗi khi tải lịch sử thu tiền:", err);
+        console.error("Lỗi khi tải báo cáo lịch sử thu tiền:", err);
     }
 }
 
 function renderHistoryCurrentPage() {
-    renderHistoryTable(
-        historyList,
+    renderHistoryDashboard(
+        historyReport,
         historyPage,
         PAGE_SIZE,
         renderReceiptModal,
@@ -103,7 +123,7 @@ function renderHistoryCurrentPage() {
  */
 export async function refreshData() {
     try {
-        // 1. Tải thống kê POS
+        // 1. Tải thống kê tổng quan ca trực
         const stats = await getDashboardStats();
         renderDashboardStats(stats);
 
@@ -213,6 +233,49 @@ async function bootstrapApp() {
         });
     });
 
+    // Gắn sự kiện các nút lọc kỳ báo cáo doanh thu (Hôm nay / Tuần này / Tháng này / Tùy chọn)
+    const periodBtns = [
+        document.getElementById('filterTodayBtn'),
+        document.getElementById('filterWeekBtn'),
+        document.getElementById('filterMonthBtn'),
+        document.getElementById('filterCustomBtn')
+    ];
+
+    periodBtns.forEach(btn => {
+        btn?.addEventListener('click', async () => {
+            periodBtns.forEach(b => b?.classList.remove('active'));
+            btn.classList.add('active');
+            const range = btn.getAttribute('data-range');
+            currentTimeRange = range;
+
+            const customRow = document.getElementById('customDateRangeRow');
+            if (range === 'CUSTOM') {
+                customRow?.classList.remove('d-none');
+            } else {
+                customRow?.classList.add('d-none');
+                currentStartDate = '';
+                currentEndDate = '';
+                historyPage = 1;
+                await loadHistoryData(document.getElementById('searchInput')?.value.trim() || '');
+            }
+        });
+    });
+
+    // Gắn sự kiện dropdown chọn Thu Ngân
+    document.getElementById('filterCashierSelect')?.addEventListener('change', async (e) => {
+        currentCashier = e.target.value;
+        historyPage = 1;
+        await loadHistoryData(document.getElementById('searchInput')?.value.trim() || '');
+    });
+
+    // Gắn sự kiện nút Áp dụng ngày tùy chọn
+    document.getElementById('btnApplyCustomDate')?.addEventListener('click', async () => {
+        currentStartDate = document.getElementById('filterStartDate')?.value || '';
+        currentEndDate = document.getElementById('filterEndDate')?.value || '';
+        historyPage = 1;
+        await loadHistoryData(document.getElementById('searchInput')?.value.trim() || '');
+    });
+
     // Gắn sự kiện chuyển tab (Không tự ý reset từ khóa nếu đang tìm kiếm)
     document.getElementById('tabPendingBtn')?.addEventListener('click', () => {
         switchPosTab(POS_TABS.PENDING, (tab) => {
@@ -230,7 +293,8 @@ async function bootstrapApp() {
 
     updateSearchPlaceholder();
 
-    // Tải dữ liệu ban đầu
+    // Tải danh sách thu ngân & dữ liệu ban đầu
+    await loadCashiersData();
     await refreshData();
 }
 

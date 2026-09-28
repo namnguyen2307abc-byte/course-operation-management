@@ -3,8 +3,8 @@
  * Talent Academy
  */
 
-import { formatCurrency, formatDateTime } from './utils.js';
-import { POS_TABS } from './constants.js';
+import { formatCurrency, formatDateTime } from './utils.js?v=20260927_v3';
+import { POS_TABS } from './constants.js?v=20260927_v3';
 
 /**
  * Cập nhật các thẻ thống kê tổng quan của ca trực POS
@@ -91,7 +91,7 @@ export function renderPaginationControls(listId, infoId, totalItems, currentPage
 }
 
 /**
- * Render bảng danh sách phiếu giữ chỗ chờ nộp học phí (kèm phân trang)
+ * Render bảng danh sách hóa đơn chờ nộp học phí (kèm phân trang, loại bỏ giới hạn 24h)
  */
 export function renderPendingTable(invoices, currentPage = 1, pageSize = 5, onPayClick, onPageChange) {
     const tbody = document.getElementById('pendingTableBody');
@@ -100,22 +100,22 @@ export function renderPendingTable(invoices, currentPage = 1, pageSize = 5, onPa
 
     const total = invoices ? invoices.length : 0;
     if (badgeCount) badgeCount.innerText = total;
-    if (resultBadge) resultBadge.innerText = `${total} Phiếu`;
+    if (resultBadge) resultBadge.innerText = `${total} Hóa đơn`;
 
     if (!tbody) return;
 
     if (!invoices || invoices.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-5">
+                <td colspan="7" class="text-center py-5">
                     <div class="text-muted">
                         <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
-                        Không tìm thấy phiếu giữ chỗ nào phù hợp.
+                        Không tìm thấy hóa đơn học phí nào cần thu.
                     </div>
                 </td>
             </tr>
         `;
-        renderPaginationControls('pendingPaginationList', 'pendingPaginationInfo', 0, 1, pageSize, 'phiếu', onPageChange);
+        renderPaginationControls('pendingPaginationList', 'pendingPaginationInfo', 0, 1, pageSize, 'hóa đơn', onPageChange);
         return;
     }
 
@@ -125,17 +125,7 @@ export function renderPendingTable(invoices, currentPage = 1, pageSize = 5, onPa
     const pagedInvoices = invoices.slice(startIdx, startIdx + pageSize);
 
     tbody.innerHTML = pagedInvoices.map(inv => {
-        const hoursLeft = inv.hoursLeft || 0;
-        const isExp = inv.expired;
-        let badgeClass = 'badge-reservation';
-        let badgeText = `Còn ${hoursLeft} giờ`;
-        if (isExp) {
-            badgeClass = 'badge-reservation danger';
-            badgeText = 'Hết hạn giữ chỗ';
-        } else if (hoursLeft <= 3) {
-            badgeClass = 'badge-reservation danger';
-            badgeText = `Gấp: Còn ${hoursLeft} giờ`;
-        }
+        const amountDisplay = inv.finalAmount != null ? inv.finalAmount : inv.originalAmount;
 
         return `
             <tr>
@@ -147,21 +137,21 @@ export function renderPendingTable(invoices, currentPage = 1, pageSize = 5, onPa
                     <div class="text-muted small">${inv.studentDob ? 'NS: ' + inv.studentDob : ''}</div>
                 </td>
                 <td>
-                    <div class="fw-semibold text-dark">${inv.parentName || 'Chưa cập nhật'}</div>
-                    <div class="small"><i class="bi bi-telephone text-primary me-1"></i><code>${inv.parentPhone || 'N/A'}</code></div>
+                    <div class="fw-semibold text-dark">${inv.parentName || 'Khách vãng lai'}</div>
+                    <div class="small"><i class="bi bi-telephone text-primary me-1"></i><code>${inv.parentPhone || 'Chưa có SĐT'}</code></div>
                 </td>
                 <td>
-                    <span class="fw-bold text-primary">${inv.className || ''}</span>
+                    <span class="fw-bold text-primary">${inv.className || 'Chưa xếp lớp'}</span>
                     <div class="text-muted small">${inv.branchName || ''} • ${inv.roomName || ''}</div>
                 </td>
                 <td>
-                    <strong class="text-dark">${formatCurrency(inv.originalAmount)}</strong>
+                    <strong class="text-dark fs-6">${formatCurrency(amountDisplay)}</strong>
+                    ${inv.discountAmount && inv.discountAmount > 0 ? `<div class="text-success small"><i class="bi bi-tag-fill me-1"></i>Đã giảm ${formatCurrency(inv.discountAmount)}</div>` : ''}
                 </td>
                 <td>
-                    <span class="${badgeClass}"><i class="bi bi-stopwatch me-1"></i>${badgeText}</span>
-                </td>
-                <td>
-                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Chờ nộp tiền</span>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">
+                        <i class="bi bi-clock me-1"></i>Chờ thu phí
+                    </span>
                 </td>
                 <td class="text-end pe-4">
                     <button class="btn-pay-action btn-sm" data-invoice-id="${inv.invoiceId}">
@@ -181,25 +171,69 @@ export function renderPendingTable(invoices, currentPage = 1, pageSize = 5, onPa
     });
 
     // Cập nhật điều hướng phân trang
-    renderPaginationControls('pendingPaginationList', 'pendingPaginationInfo', total, safePage, pageSize, 'phiếu', onPageChange);
+    renderPaginationControls('pendingPaginationList', 'pendingPaginationInfo', total, safePage, pageSize, 'hóa đơn', onPageChange);
 }
 
 /**
- * Render bảng lịch sử các giao dịch đã thu học phí (kèm phân trang)
+ * Đổ danh sách thu ngân vào dropdown bộ lọc của Admin
  */
-export function renderHistoryTable(history, currentPage = 1, pageSize = 5, onViewReceipt, onPageChange) {
-    const tbody = document.getElementById('historyTableBody');
+export function populateCashierDropdown(cashiers) {
+    const select = document.getElementById('filterCashierSelect');
+    if (!select) return;
+
+    const currentVal = select.value;
+    let html = '<option value="ALL">👤 Tất cả thu ngân</option>';
+
+    if (Array.isArray(cashiers)) {
+        cashiers.forEach(c => {
+            html += `<option value="${c.username}">${c.fullName} (${c.username})</option>`;
+        });
+    }
+
+    select.innerHTML = html;
+    if (currentVal) select.value = currentVal;
+}
+
+/**
+ * Render Dashboard Báo Cáo Lịch Sử Cho Admin:
+ * Cập nhật 3 Thẻ Tổng Doanh Thu (Tiền mặt, PayOS VietQR, Tổng) và Bảng Giao Dịch
+ */
+export function renderHistoryDashboard(report, currentPage = 1, pageSize = 5, onViewReceipt, onPageChange) {
+    if (!report) return;
+
+    const summary = report.summary || {};
+    const payments = report.payments || [];
+
+    // 1. Cập nhật 3 Thẻ Tổng KPI
+    const cashEl = document.getElementById('kpiCashAmount');
+    const cashCountEl = document.getElementById('kpiCashCount');
+    const bankEl = document.getElementById('kpiBankAmount');
+    const bankCountEl = document.getElementById('kpiBankCount');
+    const totalEl = document.getElementById('kpiTotalRevenue');
+    const totalCountEl = document.getElementById('kpiTotalTransactions');
+
+    if (cashEl) cashEl.innerText = formatCurrency(summary.totalCashAmount || 0);
+    if (cashCountEl) cashCountEl.innerText = `${summary.totalCashCount || 0} giao dịch tiền mặt`;
+
+    if (bankEl) bankEl.innerText = formatCurrency(summary.totalBankAmount || 0);
+    if (bankCountEl) bankCountEl.innerText = `${summary.totalBankCount || 0} giao dịch PayOS / VietQR`;
+
+    if (totalEl) totalEl.innerText = formatCurrency(summary.totalRevenue || 0);
+    if (totalCountEl) totalCountEl.innerText = `Tổng ${summary.totalTransactions || 0} giao dịch`;
+
+    // 2. Cập nhật Badges
     const badgeCount = document.getElementById('tabHistoryBadge');
     const countBadge = document.getElementById('historyCountBadge');
-
-    const total = history ? history.length : 0;
+    const total = payments.length;
     if (badgeCount) badgeCount.innerText = total;
     if (countBadge) countBadge.innerText = `${total} Giao dịch`;
 
+    // 3. Render Bảng Lịch Sử
+    const tbody = document.getElementById('historyTableBody');
     if (!tbody) return;
 
-    if (!history || history.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Không tìm thấy giao dịch nào phù hợp trong lịch sử.</td></tr>';
+    if (total === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-5"><i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>Không có giao dịch nào phù hợp với bộ lọc thời gian & thu ngân này.</td></tr>';
         renderPaginationControls('historyPaginationList', 'historyPaginationInfo', 0, 1, pageSize, 'giao dịch', onPageChange);
         return;
     }
@@ -207,17 +241,43 @@ export function renderHistoryTable(history, currentPage = 1, pageSize = 5, onVie
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const safePage = Math.min(Math.max(1, currentPage), totalPages);
     const startIdx = (safePage - 1) * pageSize;
-    const pagedHistory = history.slice(startIdx, startIdx + pageSize);
+    const pagedPayments = payments.slice(startIdx, startIdx + pageSize);
 
-    tbody.innerHTML = pagedHistory.map((p, idx) => {
+    tbody.innerHTML = pagedPayments.map((p, idx) => {
         let methodBadge = 'bg-secondary';
         let methodText = p.paymentMethod;
         if (p.paymentMethod === 'CASH_AT_DESK') {
             methodBadge = 'bg-success';
-            methodText = 'Tiền Mặt';
+            methodText = '💵 Tiền Mặt';
         } else if (p.paymentMethod === 'VIET_QR' || p.paymentMethod === 'BANK_TRANSFER') {
             methodBadge = 'bg-primary';
-            methodText = 'VietQR Agribank';
+            methodText = '📱 PayOS VietQR';
+        }
+
+        const isFree = (p.discountType === 'FULL_FREE') || (p.originalAmount > 0 && p.finalAmount === 0);
+        const hasDiscount = (p.discountAmount && p.discountAmount > 0) || isFree;
+
+        let discountBadgeHtml = '';
+        if (isFree) {
+            discountBadgeHtml = `
+                <span class="badge bg-danger text-white fw-bold mb-1 shadow-sm">
+                    <i class="bi bi-gift-fill me-1"></i>Miễn phí 100% (-${formatCurrency(p.discountAmount || p.originalAmount)})
+                </span>
+                <div class="small fw-semibold text-dark mt-1" style="max-width: 250px; line-height: 1.3;">
+                    <i class="bi bi-ticket-perforated text-danger me-1"></i>${p.discountReason || 'Học bổng tài năng 100%'}
+                </div>
+            `;
+        } else if (hasDiscount) {
+            discountBadgeHtml = `
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold mb-1">
+                    <i class="bi bi-tag-fill me-1"></i>Giảm -${formatCurrency(p.discountAmount)}
+                </span>
+                <div class="small fw-semibold text-dark mt-1" style="max-width: 250px; line-height: 1.3;">
+                    <i class="bi bi-ticket-perforated text-danger me-1"></i>${p.discountReason || 'Ưu đãi học phí'}
+                </div>
+            `;
+        } else {
+            discountBadgeHtml = `<span class="badge bg-light text-muted border">Không giảm giá</span>`;
         }
 
         return `
@@ -226,19 +286,27 @@ export function renderHistoryTable(history, currentPage = 1, pageSize = 5, onVie
                     <code class="fw-bold">${p.paymentCode || ''}</code>
                     <div class="text-muted small">${p.invoiceCode || ''}</div>
                 </td>
-                <td><strong class="text-dark">${p.studentName || ''}</strong></td>
                 <td>
-                    <div class="small">${p.parentName || ''}</div>
-                    <code class="small text-muted">${p.parentPhone || ''}</code>
+                    <strong class="text-dark d-block">${p.studentName || ''}</strong>
+                    <div class="small text-muted">${p.parentName || ''} • <code>${p.parentPhone || ''}</code></div>
                 </td>
                 <td><span class="text-primary small fw-bold">${p.className || ''}</span></td>
-                <td><strong class="text-success">${formatCurrency(p.finalAmount)}</strong></td>
-                <td><span class="badge ${methodBadge}">${methodText}</span></td>
-                <td class="small text-muted">${p.cashierName || 'Thu Ngân'}</td>
+                <td><span class="text-muted fw-semibold">${formatCurrency(p.originalAmount || p.finalAmount)}</span></td>
+                <td>${discountBadgeHtml}</td>
+                <td>
+                    <strong class="text-success fs-6">${formatCurrency(p.finalAmount)}</strong>
+                    ${p.paymentMethod === 'CASH_AT_DESK' ? `
+                        <div class="small text-muted" style="font-size:0.75rem">Đưa: ${formatCurrency(p.cashGiven || p.finalAmount)} | Thối: ${formatCurrency(p.changeAmount || 0)}</div>
+                    ` : `
+                        <div class="small text-muted" style="font-size:0.75rem">Thối: 0 đ (QR)</div>
+                    `}
+                </td>
+                <td><span class="badge ${methodBadge} px-2 py-1">${methodText}</span></td>
+                <td><span class="badge bg-light text-dark border">${p.cashierName || 'Thu Ngân'}</span></td>
                 <td class="small text-muted">${formatDateTime(p.paymentDate)}</td>
                 <td class="text-end pe-4">
-                    <button class="btn btn-outline-secondary btn-sm py-1 px-2 rounded-pill btn-view-receipt" data-index="${idx}">
-                        <i class="bi bi-eye"></i> Xem
+                    <button class="btn btn-outline-secondary btn-sm py-1 px-3 rounded-pill btn-view-receipt" data-index="${idx}">
+                        <i class="bi bi-eye me-1"></i> Xem
                     </button>
                 </td>
             </tr>
@@ -248,13 +316,12 @@ export function renderHistoryTable(history, currentPage = 1, pageSize = 5, onVie
     tbody.querySelectorAll('.btn-view-receipt').forEach(btn => {
         btn.addEventListener('click', () => {
             const index = parseInt(btn.getAttribute('data-index'));
-            if (onViewReceipt && pagedHistory[index]) {
-                onViewReceipt(pagedHistory[index]);
+            if (onViewReceipt && pagedPayments[index]) {
+                onViewReceipt(pagedPayments[index]);
             }
         });
     });
 
-    // Cập nhật điều hướng phân trang
     renderPaginationControls('historyPaginationList', 'historyPaginationInfo', total, safePage, pageSize, 'giao dịch', onPageChange);
 }
 
@@ -303,11 +370,26 @@ export function renderReceiptModal(receipt) {
     document.getElementById('rcOriginalAmount').innerText = formatCurrency(receipt.originalAmount);
 
     const discountRow = document.getElementById('rcDiscountRow');
-    if (receipt.discountAmount && receipt.discountAmount > 0) {
-        discountRow.style.display = 'flex';
-        document.getElementById('rcDiscountAmount').innerText = `- ${formatCurrency(receipt.discountAmount)}`;
+    const discountReasonText = document.getElementById('rcDiscountReasonText');
+    const isFree = (receipt.discountType === 'FULL_FREE') || (receipt.originalAmount > 0 && receipt.finalAmount === 0);
+    const discountAmount = receipt.discountAmount || (isFree ? receipt.originalAmount : 0);
+
+    if (discountAmount > 0 || isFree) {
+        discountRow?.classList.remove('d-none');
+        discountRow?.classList.add('d-flex');
+        if (document.getElementById('rcDiscountAmount')) {
+            if (isFree) {
+                document.getElementById('rcDiscountAmount').innerText = `Miễn 100% (-${formatCurrency(discountAmount)})`;
+            } else {
+                document.getElementById('rcDiscountAmount').innerText = `- ${formatCurrency(discountAmount)}`;
+            }
+        }
+        if (discountReasonText) {
+            discountReasonText.innerText = receipt.discountReason || (isFree ? 'Học bổng tài năng âm nhạc 100%' : 'Ưu đãi học phí');
+        }
     } else {
-        discountRow.style.display = 'none';
+        discountRow?.classList.add('d-none');
+        discountRow?.classList.remove('d-flex');
     }
 
     document.getElementById('rcFinalAmount').innerText = formatCurrency(receipt.finalAmount);
@@ -315,19 +397,35 @@ export function renderReceiptModal(receipt) {
     const isCash = receipt.paymentMethod === 'CASH_AT_DESK';
     const cashGivenRow = document.getElementById('rcCashGivenRow');
     const changeRow = document.getElementById('rcChangeRow');
-    if (isCash && receipt.cashGiven != null && receipt.cashGiven > 0) {
-        cashGivenRow.style.display = 'flex';
-        changeRow.style.display = 'flex';
-        document.getElementById('rcCashGiven').innerText = formatCurrency(receipt.cashGiven);
-        document.getElementById('rcChangeAmount').innerText = formatCurrency(receipt.changeAmount || 0);
+    const cashGivenLabel = document.getElementById('rcCashGivenLabel');
+    const cashGivenEl = document.getElementById('rcCashGiven');
+    const changeAmountEl = document.getElementById('rcChangeAmount');
+
+    cashGivenRow?.classList.remove('d-none');
+    cashGivenRow?.classList.add('d-flex');
+    changeRow?.classList.remove('d-none');
+    changeRow?.classList.add('d-flex');
+
+    if (isCash) {
+        if (cashGivenLabel) cashGivenLabel.innerText = 'Tiền khách đưa:';
+        if (cashGivenEl) cashGivenEl.innerText = formatCurrency(receipt.cashGiven || receipt.finalAmount);
+        if (changeAmountEl) changeAmountEl.innerText = formatCurrency(receipt.changeAmount || 0);
     } else {
-        cashGivenRow.style.display = 'none';
-        changeRow.style.display = 'none';
-        document.getElementById('rcCashGiven').innerText = '0 đ';
-        document.getElementById('rcChangeAmount').innerText = '0 đ';
+        if (cashGivenLabel) cashGivenLabel.innerText = 'Tiền chuyển khoản:';
+        if (cashGivenEl) cashGivenEl.innerText = formatCurrency(receipt.finalAmount);
+        if (changeAmountEl) changeAmountEl.innerText = '0 đ (Chuyển khoản chính xác)';
     }
 
-    document.getElementById('rcPaymentMethod').innerText = receipt.paymentMethod === 'CASH_AT_DESK' ? 'TIỀN MẶT' : 'QUÉT VIETQR AGRIBANK';
+    const methodEl = document.getElementById('rcPaymentMethod');
+    if (methodEl) {
+        if (isCash) {
+            methodEl.className = 'badge bg-success px-2 py-1';
+            methodEl.innerHTML = '<i class="bi bi-cash me-1"></i> TIỀN MẶT TẠI QUẦY';
+        } else {
+            methodEl.className = 'badge bg-primary px-2 py-1';
+            methodEl.innerHTML = '<i class="bi bi-qr-code me-1"></i> QUÉT MÃ VIETQR (PAYOS)';
+        }
+    }
 
     if (window.bootstrap) {
         const modalEl = document.getElementById('receiptModal');
