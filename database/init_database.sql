@@ -1,4 +1,4 @@
-﻿IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'course_operation_management')
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'course_operation_management')
 BEGIN
     CREATE DATABASE course_operation_management;
 END
@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS absence_requests;
 DROP TABLE IF EXISTS teacher_availabilities;
 DROP TABLE IF EXISTS attendances;
 DROP TABLE IF EXISTS lessons;
+DROP TABLE IF EXISTS enrollment_requests;
 DROP TABLE IF EXISTS enrollments;
 DROP TABLE IF EXISTS classes;
 DROP TABLE IF EXISTS courses;
@@ -137,6 +138,21 @@ CREATE TABLE enrollments (
     enrollment_date DATETIME2 DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(30) DEFAULT 'PENDING_PAYMENT',
     notes NVARCHAR(500)
+);
+GO
+
+CREATE TABLE enrollment_requests (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    student_id BIGINT NOT NULL FOREIGN KEY REFERENCES students(id),
+    class_id BIGINT NOT NULL FOREIGN KEY REFERENCES classes(id),
+    requested_by_user_id BIGINT NOT NULL FOREIGN KEY REFERENCES users(id),
+    reviewed_by_user_id BIGINT FOREIGN KEY REFERENCES users(id),
+    enrollment_id BIGINT FOREIGN KEY REFERENCES enrollments(id),
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    note NVARCHAR(500),
+    review_note NVARCHAR(500),
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME2
 );
 GO
 
@@ -281,11 +297,11 @@ CREATE TABLE payments (
 GO
 
 INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES
-('admin', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Quản Trị Viên Hệ Thống', 'admin@talentcenter.edu.vn', '0901234567', 'ADMIN', 'ACTIVE'),
-('teacher_huong', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Cô Vũ Thu Hương (GV Piano)', 'huong.vu@talentcenter.edu.vn', '0912345678', 'TEACHER', 'ACTIVE'),
-('teacher_tuan', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Thầy Trần Anh Tuấn (GV Guitar)', 'tuan.tran@talentcenter.edu.vn', '0923456789', 'TEACHER', 'ACTIVE'),
-('cashier_mai', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Nguyễn Thanh Mai (Thu Ngân)', 'mai.nguyen@talentcenter.edu.vn', '0934567890', 'STAFF', 'ACTIVE'),
-('parent_lan', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Phụ Huynh Lê Thị Lan', 'lan.le@gmail.com', '0987654321', 'PARENT', 'ACTIVE');
+('admin', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Quản Trị Viên Hệ Thống', 'admin@talentcenter.edu.vn', '0901234567', 'ADMIN', 'ACTIVE'),
+('teacher_huong', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Cô Vũ Thu Hương (GV Piano)', 'huong.vu@talentcenter.edu.vn', '0912345678', 'TEACHER', 'ACTIVE'),
+('teacher_tuan', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Thầy Trần Anh Tuấn (GV Guitar)', 'tuan.tran@talentcenter.edu.vn', '0923456789', 'TEACHER', 'ACTIVE'),
+('cashier_mai', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Nguyễn Thanh Mai (Thu Ngân)', 'mai.nguyen@talentcenter.edu.vn', '0934567890', 'STAFF', 'ACTIVE'),
+('parent_lan', '$2a$10$Os4DiltWhuUOg06C.uqvOujXvqJ4.UD5LQbNM4.yBXHB4hHkv/zii', N'Phụ Huynh Lê Thị Lan', 'lan.le@gmail.com', '0987654321', 'PARENT', 'ACTIVE');
 
 INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, notes) VALUES
 (5, N'Nguyễn Bảo Nam (Bé Bin)', '2016-05-12', N'Nam', N'Tiểu học Thực Nghiệm', N'Thích học đàn Piano cổ điển'),
@@ -316,11 +332,30 @@ INSERT INTO courses (program_id, code, name, level, duration_weeks, total_sessio
 (1, 'PIA-PRE', N'Piano Mầm Non (Cảm thụ âm nhạc)', N'Khởi động', 12, 24, 3600000.00, N'Dành cho bé từ 4-6 tuổi làm quen phím đàn'),
 (1, 'PIA-G1', N'Piano Sơ Cấp (Grade 1)', N'Grade 1', 16, 32, 4800000.00, N'Học tư thế ngón, nhịp phách, thị tấu và ghép 2 tay');
 
-INSERT INTO classes (course_id, branch_id, room_id, teacher_id, class_code, class_name, class_type, max_students, current_students, start_date, end_date, schedule_description, status) VALUES
-(2, 1, 1, 2, 'CL-PIA-01', N'Piano 1-1 Bé Bảo Nam', 'ONE_ON_ONE', 1, 1, '2026-10-01', '2027-01-31', N'Thứ 2 & Thứ 5 (18:00 - 19:00)', 'OPEN');
+INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES
+('parent_hung', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Phụ Huynh Trần Văn Hưng', 'hung.tran@gmail.com', '0977889900', 'PARENT', 'ACTIVE');
 
+INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, notes) VALUES
+(6, N'Trần Hoàng Long (Bé Tí)', '2017-03-15', N'Nam', N'Tiểu học Dịch Vọng B', N'Đăng ký học Guitar đệm hát thiếu nhi');
+
+INSERT INTO classes (course_id, branch_id, room_id, teacher_id, class_code, class_name, class_type, max_students, current_students, start_date, end_date, schedule_description, status) VALUES
+(2, 1, 1, 2, 'CL-PIA-01', N'Piano 1-1 Bé Bảo Nam', 'ONE_ON_ONE', 1, 1, '2026-10-01', '2027-01-31', N'Thứ 2 & Thứ 5 (18:00 - 19:00)', 'OPEN'),
+(1, 1, 2, 2, 'CL-PIA-PRE-G01', N'Piano Mầm Non - Nhóm Sáng', 'GROUP', 8, 0, '2026-10-15', '2027-01-15', N'Thứ 7 (09:00 - 10:30)', 'OPEN'),
+(2, 2, 4, 2, 'CL-PIA-G1-G02', N'Piano Grade 1 - Nhóm Tối', 'GROUP', 8, 0, '2026-10-20', '2027-02-20', N'Thứ 3 & Thứ 6 (18:30 - 19:30)', 'OPEN');
+(2, 1, 1, 2, 'CL-PIA-01', N'Piano 1-1 Bé Bảo Nam', 'ONE_ON_ONE', 1, 1, '2026-10-01', '2027-01-31', N'Thứ 2 & Thứ 5 (18:00 - 19:00)', 'OPEN'),
+(1, 1, 2, 2, 'CL-PIA-PRE-01', N'Piano Mầm Non Nhóm Sáng Thứ 7', 'GROUP', 6, 0, '2026-10-10', '2027-01-10', N'Thứ 7 (09:00 - 10:30)', 'OPEN');
+
+-- Ghi danh 1: Đã hoàn tất đóng tiền
 INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
 (1, 1, 5, 'ENROLLED', N'Đã hoàn tất học phí, xếp lớp thành công');
+
+-- Ghi danh 2: Phiếu giữ chỗ tạm thời trong vòng 24h của Bé Bông (Nguyễn Mai Chi)
+INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
+(2, 2, 5, 'PENDING_PAYMENT', N'Phiếu giữ chỗ tạm thời 24h - Lớp Piano Mầm Non');
+
+-- Ghi danh 3: Phiếu giữ chỗ tạm thời trong vòng 24h của Bé Tí (Trần Hoàng Long)
+INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
+(3, 1, 6, 'PENDING_PAYMENT', N'Phiếu giữ chỗ tạm thời 24h - Lớp Piano 1-1');
 
 INSERT INTO lessons (class_id, room_id, teacher_id, session_number, lesson_date, start_time, end_time, title, lesson_note, status) VALUES
 (1, 1, 2, 1, '2026-10-05', '18:00:00', '19:00:00', N'Buổi 1: Ôn thế tay C Major', N'Bé giữ phom tay tốt', 'SCHEDULED'),
@@ -349,8 +384,41 @@ INSERT INTO test_attachments (placement_test_id, file_name, file_url, media_type
 INSERT INTO learning_roadmaps (student_id, placement_test_id, target_goal, current_level, target_level, estimated_duration_months, milestones, notes) VALUES
 (1, 1, N'Đạt chứng chỉ quốc tế ABRSM Piano Grade 1', N'Sơ cấp cơ bản', N'Grade 1 Quốc Tế', 6, N'Giai đoạn 1: Thị tấu và nhạc lý căn bản; Giai đoạn 2: Luyện tác phẩm dự thi ABRSM', N'Lộ trình đào tạo năng khiếu chuyên sâu');
 
+-- Hóa đơn 1: Đã thanh toán (Bé Nam)
 INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, discount_type, discount_amount, discount_reason, final_amount, status, due_date, notes) VALUES
 ('INV-2026-001', 1, 1, 4800000.00, 'PARTIAL_DISCOUNT', 960000.00, N'Ưu đãi đăng ký sớm giảm 20%', 3840000.00, 'PAID', '2026-10-01', N'Hóa đơn học phí khóa Piano Grade 1');
+
+-- Hóa đơn 2: Chờ thu ngân xử lý (Bé Bông - Mai Chi, con mẹ Lan 0987654321)
+INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, discount_type, discount_amount, discount_reason, final_amount, status, due_date, notes) VALUES
+('INV-2026-002', 2, 2, 3600000.00, 'NONE', 0.00, NULL, 3600000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Hóa đơn học phí lớp Piano Mầm Non Sáng Thứ 7');
+
+-- Hóa đơn 3: Chờ thu ngân xử lý (Bé Tí - Hoàng Long, con bố Hưng 0977889900)
+INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, discount_type, discount_amount, discount_reason, final_amount, status, due_date, notes) VALUES
+('INV-2026-003', 3, 3, 4800000.00, 'NONE', 0.00, NULL, 4800000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Hóa đơn học phí lớp Piano 1-1 Bé Hoàng Long');
+
+-- Thêm các phụ huynh và học viên mới chờ thu phí
+INSERT INTO users (username, password, full_name, email, phone, role, status) VALUES
+('parent_bich', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Phạm Thị Bích (Phụ Huynh)', 'bich.pham@gmail.com', '0912889911', 'PARENT', 'ACTIVE'),
+('parent_nam', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Vũ Văn Nam (Phụ Huynh)', 'nam.vu@gmail.com', '0988776655', 'PARENT', 'ACTIVE'),
+('parent_trang', '$2a$10$7EqJtq98hPqEX7fNZaFWoO.oW.x2FfUePcm81wO8Xm1N6B2W.x.lG', N'Hoàng Thu Trang (Phụ Huynh)', 'trang.hoang@gmail.com', '0936112233', 'PARENT', 'ACTIVE');
+
+INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, notes) VALUES
+(7, N'Đỗ Minh Khang (Bé Bon)', '2019-09-12', N'Nam', N'Mầm non Sasuke Cầu Giấy', N'Bé nhanh nhẹn, thích học đàn Piano mầm non'),
+(8, N'Vũ Quỳnh Anh (Bé Bống)', '2018-04-25', N'Nữ', N'Tiểu học Kim Đồng', N'Đã qua kiểm tra đầu vào năng khiếu Piano Grade 1'),
+(9, N'Lê Tuấn Kiệt (Bé Ken)', '2017-11-08', N'Nam', N'Tiểu học Dịch Vọng A', N'Học làm quen phím đàn và xướng âm'),
+(5, N'Phạm Gia Huy (Bé Tom)', '2018-06-18', N'Nam', N'Tiểu học Nghĩa Tân', N'Đăng ký khóa học Piano 1-1 rèn luyện kỹ năng');
+
+INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
+(4, 2, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ đóng học phí tại quầy'),
+(5, 1, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ quét mã PayOS VietQR tự động'),
+(6, 2, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ phụ huynh hoàn tất nộp phí'),
+(7, 1, 4, 'PENDING_PAYMENT', N'Đăng ký học viên mới - Chờ nộp tiền mặt tại quầy hoặc PayOS');
+
+INSERT INTO invoices (invoice_code, student_id, enrollment_id, original_amount, discount_type, discount_amount, discount_reason, final_amount, status, due_date, notes) VALUES
+('INV-2026-011', 4, 4, 3600000.00, 'NONE', 0.00, NULL, 3600000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí khóa Piano Mầm Non Nhóm Sáng Thứ 7'),
+('INV-2026-012', 5, 5, 4800000.00, 'NONE', 0.00, NULL, 4800000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí khóa Piano Sơ Cấp (Grade 1)'),
+('INV-2026-013', 6, 6, 3600000.00, 'NONE', 0.00, NULL, 3600000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí lớp Piano Mầm Non Cảm Thụ Âm Nhạc'),
+('INV-2026-014', 7, 7, 4800000.00, 'NONE', 0.00, NULL, 4800000.00, 'UNPAID', DATEADD(month, 1, CAST(CURRENT_TIMESTAMP AS DATE)), N'Học phí lớp Piano 1-1 Bé Tom');
 
 INSERT INTO payments (invoice_id, payment_code, payment_method, amount, payment_date, cashier_id, note, status) VALUES
 (1, 'PAY-2026-001', 'CASH_AT_DESK', 3840000.00, CURRENT_TIMESTAMP, 4, N'Phụ huynh Lan nộp tiền mặt trực tiếp tại quầy thu ngân cơ sở Cầu Giấy', 'SUCCESS');
@@ -376,4 +444,6 @@ INSERT INTO lessons (class_id, room_id, teacher_id, session_number, lesson_date,
 ((SELECT id FROM classes WHERE class_code = 'CL-PIA-02'), 1, (SELECT id FROM users WHERE username = 'teacher_ha'), 2, '2026-10-09', '18:00:00', '19:30:00', N'Bu?i 2', N'', 'SCHEDULED'),
 ((SELECT id FROM classes WHERE class_code = 'CL-GUI-01'), 3, (SELECT id FROM users WHERE username = 'teacher_dung'), 1, '2026-10-03', '09:00:00', '10:30:00', N'Bu?i 1', N'', 'SCHEDULED'),
 ((SELECT id FROM classes WHERE class_code = 'CL-GUI-01'), 3, (SELECT id FROM users WHERE username = 'teacher_dung'), 2, '2026-10-04', '09:00:00', '10:30:00', N'Bu?i 2', N'', 'SCHEDULED');
+
+
 
