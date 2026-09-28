@@ -7,29 +7,25 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * DTO tạo đơn xin nghỉ học.
+ * Đã xóa enrollmentId (field thừa, không được dùng trong service).
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AbsenceRequestCreateRequest {
 
-    /**
-     * ID học viên (bắt buộc chọn)
-     */
+    /** ID học viên (bắt buộc) */
     @NotNull(message = "Vui lòng chọn học viên xin nghỉ")
     private Long studentId;
 
-    /**
-     * ID buổi học xin nghỉ (bắt buộc chọn)
-     */
+    /** ID buổi học xin nghỉ (bắt buộc) */
     @NotNull(message = "Vui lòng chọn buổi học muốn nghỉ")
     private Long lessonId;
 
-    /**
-     * Lý do xin nghỉ học (bắt buộc nhập)
-     */
+    /** Lý do xin nghỉ học (bắt buộc) */
     @NotBlank(message = "Vui lòng nhập lý do xin nghỉ học")
     private String reason;
-
-    private Long enrollmentId;
 }

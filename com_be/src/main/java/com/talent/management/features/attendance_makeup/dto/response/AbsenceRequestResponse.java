@@ -43,6 +43,7 @@ public class AbsenceRequestResponse {
     private AbsenceStatus status;
     private String reviewNote;
     private String approvedByTeacherName;
+    private LocalDateTime reviewedAt;
     private LocalDateTime createdAt;
 
     // Thông tin học bù liên quan (nếu có)

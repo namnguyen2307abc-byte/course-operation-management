@@ -46,6 +46,9 @@ public class AbsenceRequest {
     @Column(length = 500)
     private String reviewNote;
 
+    /** Thời điểm giáo viên xét duyệt (mới) */
+    private LocalDateTime reviewedAt;
+
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }

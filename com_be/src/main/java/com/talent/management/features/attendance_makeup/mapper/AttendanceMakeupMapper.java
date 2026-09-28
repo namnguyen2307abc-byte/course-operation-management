@@ -59,6 +59,7 @@ public class AttendanceMakeupMapper {
                 .status(ar.getStatus())
                 .reviewNote(ar.getReviewNote())
                 .approvedByTeacherName(ar.getApprovedByTeacher() != null ? ar.getApprovedByTeacher().getFullName() : null)
+                .reviewedAt(ar.getReviewedAt())
                 .createdAt(ar.getCreatedAt())
                 .makeupRegistrationId(mr != null ? mr.getId() : null)
                 .makeupStatus(mr != null ? mr.getStatus() : null)

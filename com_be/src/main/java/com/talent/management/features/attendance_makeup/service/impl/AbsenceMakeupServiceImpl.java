@@ -2,7 +2,9 @@ package com.talent.management.features.attendance_makeup.service.impl;
 
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceRequestCreateRequest;
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest;
+import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest.ReviewDecision;
 import com.talent.management.features.attendance_makeup.dto.request.AttendanceMarkRequest;
+import com.talent.management.features.attendance_makeup.dto.request.MakeupCancelRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupScheduleRequest;
 import com.talent.management.features.attendance_makeup.dto.response.AbsenceRequestResponse;
 import com.talent.management.features.attendance_makeup.dto.response.LessonOptionResponse;
@@ -30,11 +32,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Hiện thực nghiệp vụ Phân hệ Nghỉ học & Học bù (Attendance & Makeup Module)
- * Thiết kế chặt chẽ, sạch sẽ, phân quyền chuẩn và mang tính nhân văn trong xử lý học vụ.
+ * Implementation nghiệp vụ Phân hệ Nghỉ học & Học bù — Luồng Mới (4 giai đoạn).
+ *
+ * Các cải tiến so với luồng cũ:
+ *  1. Gộp 3 endpoint (approve/special-approve/reject) → 1 method reviewAbsenceRequest()
+ *  2. Thêm trạng thái EXCUSED (nghỉ có lý do chính đáng, không cần học bù)
+ *  3. Fix N+1 query trong getAbsenceRequests() bằng batch fetch
+ *  4. Xóa Teacher fallback nguy hiểm (load toàn bộ dữ liệu)
+ *  5. Thêm cancelMakeup() — nhân viên/admin hủy ca bù
+ *  6. Phân quyền chính xác: TEACHER duyệt, STAFF xếp lịch
  */
 @Slf4j
 @Service
@@ -51,43 +63,48 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     private final CurrentUserService currentUserService;
 
     // =========================================================================
-    // LUỒNG 1: TẠO VÀ QUẢN LÝ YÊU CẦU NGHỈ HỌC
+    // GIAI ĐOẠN 1: TẠO VÀ QUẢN LÝ YÊU CẦU NGHỈ HỌC
     // =========================================================================
 
     /**
-     * Chức năng 1: Tạo yêu cầu nghỉ học
-     * Phụ huynh (hoặc Giáo viên tạo hộ) gửi đơn xin nghỉ kèm lý do.
+     * Tạo yêu cầu nghỉ học — Giai đoạn 1.
+     * Phụ huynh (hoặc Giáo viên/Staff tạo hộ) gửi đơn xin nghỉ kèm lý do.
+     * Validation: nếu PARENT, học viên phải là con của mình.
      */
     @Override
     @Transactional
     public AbsenceRequestResponse createAbsenceRequest(AbsenceRequestCreateRequest request) {
         User currentUser = currentUserService.getCurrentUser();
 
-        // 1. Kiểm tra học viên tồn tại
+        // 1. Học viên tồn tại
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy thông tin học viên với ID: " + request.getStudentId()));
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Không tìm thấy học viên với ID: " + request.getStudentId()));
 
-        // 2. Nếu là PHỤ HUYNH, xác thực học viên phải là con của phụ huynh đang đăng nhập
+        // 2. Nếu PARENT, học viên phải là con mình
         if (currentUser.getRole() == Role.PARENT) {
             if (student.getParent() == null || !student.getParent().getId().equals(currentUser.getId())) {
                 throw new AttendanceMakeupException("Bạn chỉ có thể gửi đơn xin nghỉ học cho con của mình!");
             }
         }
 
-        // 3. Kiểm tra buổi học tồn tại
+        // 3. Buổi học tồn tại
         Lesson lesson = attendanceLessonRepository.findById(request.getLessonId())
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy buổi học với ID: " + request.getLessonId()));
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Không tìm thấy buổi học với ID: " + request.getLessonId()));
 
-        // 4. Chống trùng lặp đơn: Nếu đã có đơn xin nghỉ đang PENDING hoặc APPROVED cho buổi này
-        Optional<AbsenceRequest> existing = absenceRequestRepository.findByStudentIdAndLessonId(student.getId(), lesson.getId());
+        // 4. Chống trùng lặp đơn — Không cho tạo đơn mới khi đã có PENDING hoặc APPROVED cho cùng buổi
+        Optional<AbsenceRequest> existing = absenceRequestRepository
+                .findByStudentIdAndLessonId(student.getId(), lesson.getId());
         if (existing.isPresent()) {
             AbsenceStatus existingStatus = existing.get().getStatus();
-            if (existingStatus == AbsenceStatus.PENDING || existingStatus == AbsenceStatus.APPROVED || existingStatus == AbsenceStatus.SPECIAL_APPROVED) {
-                throw new AttendanceMakeupException("Buổi học này đã có đơn xin nghỉ đang chờ duyệt hoặc đã được phê duyệt!");
+            if (existingStatus == AbsenceStatus.PENDING || existingStatus == AbsenceStatus.APPROVED) {
+                throw new AttendanceMakeupException(
+                        "Buổi học này đã có đơn xin nghỉ đang chờ duyệt hoặc đã được phê duyệt!");
             }
         }
 
-        // 5. Khởi tạo đơn xin nghỉ ở trạng thái PENDING
+        // 5. Tạo đơn mới ở trạng thái PENDING
         AbsenceRequest absenceRequest = AbsenceRequest.builder()
                 .student(student)
                 .lesson(lesson)
@@ -98,73 +115,81 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 .build();
 
         AbsenceRequest saved = absenceRequestRepository.save(absenceRequest);
-        log.info("Đã tạo đơn xin nghỉ học mới #{} cho học viên [{}] bởi người dùng [{}]", 
+        log.info("Đơn xin nghỉ mới #{} cho học viên [{}] bởi [{}]",
                 saved.getId(), student.getFullName(), currentUser.getUsername());
 
         return attendanceMakeupMapper.toAbsenceResponse(saved, null);
     }
 
     /**
-     * Chức năng 2: Danh sách yêu cầu nghỉ học
-     * Tự động lọc theo Role: Phụ huynh chỉ xem con mình, Giáo viên xem lớp mình, Admin xem tất cả.
+     * Danh sách yêu cầu nghỉ học — Phân quyền theo Role.
+     *
+     * FIX N+1: Dùng batch fetch (findByAbsenceRequestIdIn) thay vì gọi DB trong loop.
+     * FIX TEACHER FALLBACK: TEACHER chỉ xem đơn thuộc lớp mình, không fallback load toàn bộ.
      */
     @Override
     public List<AbsenceRequestResponse> getAbsenceRequests(AbsenceStatus status, Long studentId, Long classId) {
         User currentUser = currentUserService.getCurrentUser();
         List<AbsenceRequest> list;
 
-        if (currentUser.getRole() == Role.PARENT) {
-            // Phụ huynh xem đơn của con mình
-            if (status != null) {
-                list = absenceRequestRepository.findByStudentParentIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status);
-            } else {
-                list = absenceRequestRepository.findByStudentParentIdOrderByCreatedAtDesc(currentUser.getId());
+        switch (currentUser.getRole()) {
+            case PARENT -> {
+                // Phụ huynh chỉ xem đơn của các con mình
+                list = (status != null)
+                        ? absenceRequestRepository.findByStudentParentIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
+                        : absenceRequestRepository.findByStudentParentIdOrderByCreatedAtDesc(currentUser.getId());
             }
-        } else if (currentUser.getRole() == Role.TEACHER) {
-            // Giáo viên xem đơn thuộc các buổi học do mình phụ trách
-            if (status != null) {
-                list = absenceRequestRepository.findByLessonTeacherIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status);
-            } else {
-                list = absenceRequestRepository.findByLessonTeacherIdOrderByCreatedAtDesc(currentUser.getId());
+            case TEACHER -> {
+                // TEACHER chỉ xem đơn thuộc các buổi học do mình phụ trách
+                // KHÔNG FALLBACK — nếu không có đơn → trả về list rỗng, UI hiện thông báo
+                list = (status != null)
+                        ? absenceRequestRepository.findByLessonTeacherIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
+                        : absenceRequestRepository.findByLessonTeacherIdOrderByCreatedAtDesc(currentUser.getId());
             }
-            // Nếu chưa có đơn lớp mình phụ trách, hỗ trợ xem thêm các đơn theo bộ lọc để giáo viên linh hoạt hỗ trợ đồng nghiệp
-            if (list.isEmpty()) {
+            default -> {
+                // ADMIN, STAFF, BRANCH_MANAGER: xem toàn bộ hệ thống
                 list = (status != null)
                         ? absenceRequestRepository.findByStatusOrderByCreatedAtDesc(status)
                         : absenceRequestRepository.findAllByOrderByCreatedAtDesc();
             }
-        } else {
-            // Admin, Branch Manager, Staff: Xem toàn bộ hệ thống
-            if (status != null) {
-                list = absenceRequestRepository.findByStatusOrderByCreatedAtDesc(status);
-            } else {
-                list = absenceRequestRepository.findAllByOrderByCreatedAtDesc();
-            }
         }
 
         // Áp dụng bộ lọc bổ sung theo học viên hoặc lớp nếu có
-        return list.stream()
+        List<AbsenceRequest> filtered = list.stream()
                 .filter(ar -> studentId == null || (ar.getStudent() != null && ar.getStudent().getId().equals(studentId)))
-                .filter(ar -> classId == null || (ar.getLesson() != null && ar.getLesson().getClassEntity() != null && ar.getLesson().getClassEntity().getId().equals(classId)))
-                .map(ar -> {
-                    MakeupRegistration mr = makeupRegistrationRepository.findByAbsenceRequestId(ar.getId()).orElse(null);
-                    return attendanceMakeupMapper.toAbsenceResponse(ar, mr);
-                })
+                .filter(ar -> classId == null || (ar.getLesson() != null
+                        && ar.getLesson().getClassEntity() != null
+                        && ar.getLesson().getClassEntity().getId().equals(classId)))
+                .toList();
+
+        if (filtered.isEmpty()) {
+            return List.of();
+        }
+
+        // BATCH FETCH — Fix N+1: 1 query lấy toàn bộ MakeupRegistration liên quan
+        List<Long> arIds = filtered.stream().map(AbsenceRequest::getId).toList();
+        Map<Long, MakeupRegistration> makeupMap = makeupRegistrationRepository
+                .findByAbsenceRequestIdIn(arIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        mr -> mr.getAbsenceRequest().getId(),
+                        Function.identity()));
+
+        return filtered.stream()
+                .map(ar -> attendanceMakeupMapper.toAbsenceResponse(ar, makeupMap.get(ar.getId())))
                 .toList();
     }
 
-    /**
-     * Chức năng 9: Xem chi tiết yêu cầu nghỉ học
-     */
+    /** Chi tiết yêu cầu nghỉ học — Phụ huynh chỉ xem đơn của con mình */
     @Override
     public AbsenceRequestResponse getAbsenceRequestById(Long id) {
         User currentUser = currentUserService.getCurrentUser();
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
 
-        // Ràng buộc phụ huynh chỉ xem đơn của con mình
         if (currentUser.getRole() == Role.PARENT) {
-            if (ar.getStudent().getParent() == null || !ar.getStudent().getParent().getId().equals(currentUser.getId())) {
+            if (ar.getStudent().getParent() == null
+                    || !ar.getStudent().getParent().getId().equals(currentUser.getId())) {
                 throw new AttendanceMakeupException("Bạn không có quyền truy cập vào đơn xin nghỉ này!");
             }
         }
@@ -174,167 +199,103 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     }
 
     // =========================================================================
-    // LUỒNG 2: GIÁO VIÊN XỬ LÝ YÊU CẦU NGHỈ HỌC
+    // GIAI ĐOẠN 2: GIÁO VIÊN XÉT DUYỆT
     // =========================================================================
 
     /**
-     * Chức năng 3 & 6: Duyệt đơn xin nghỉ học thông thường (Approve)
-     * Đổi trạng thái sang APPROVED + Tự động sinh bản ghi học bù (PENDING)
+     * Xét duyệt đơn nghỉ học — Giai đoạn 2 (TEACHER / ADMIN).
+     *
+     * Gộp 3 endpoint cũ (approve/special-approve/reject) thành 1 method sạch hơn.
+     *
+     * APPROVED → Tạo MakeupRegistration{PENDING} tự động
+     * EXCUSED  → KHÔNG tạo ca bù, luồng kết thúc
+     * REJECTED → KHÔNG tạo ca bù, bắt buộc reviewNote (gửi lý do tới phụ huynh)
      */
     @Override
     @Transactional
-    public AbsenceRequestResponse approveAbsenceRequest(Long id, AbsenceReviewRequest request) {
+    public AbsenceRequestResponse reviewAbsenceRequest(Long id, AbsenceReviewRequest request) {
         User currentUser = currentUserService.getCurrentUser();
-        validateReviewPermission(currentUser);
+        validateTeacherOrAdmin(currentUser);
 
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
 
-        validateTeacherClassPermission(currentUser, ar);
-
+        // Guard: chỉ xử lý đơn PENDING
         if (ar.getStatus() != AbsenceStatus.PENDING) {
-            throw new AttendanceMakeupException("Đơn xin nghỉ này đã được xử lý trước đó (Trạng thái hiện tại: " + ar.getStatus() + ")");
+            throw new AttendanceMakeupException(
+                    "Đơn đã được xử lý trước đó (trạng thái hiện tại: " + ar.getStatus() + ")");
         }
 
-        // Cập nhật trạng thái duyệt
-        ar.setStatus(AbsenceStatus.APPROVED);
+        // Validate reviewNote theo decision
+        ReviewDecision decision = request.getDecision();
+        boolean noteIsBlank = request.getReviewNote() == null || request.getReviewNote().isBlank();
+
+        if (decision == ReviewDecision.EXCUSED && noteIsBlank) {
+            throw new AttendanceMakeupException("Vui lòng nhập lý do miễn học bù (reviewNote) khi chọn EXCUSED.");
+        }
+        if (decision == ReviewDecision.REJECTED && noteIsBlank) {
+            throw new AttendanceMakeupException("Vui lòng nhập lý do từ chối (reviewNote) để thông báo rõ ràng tới phụ huynh.");
+        }
+
+        // Cập nhật đơn
+        ar.setStatus(mapDecisionToStatus(decision));
         ar.setApprovedByTeacher(currentUser);
-        if (request != null && request.getReviewNote() != null && !request.getReviewNote().isBlank()) {
-            ar.setReviewNote(request.getReviewNote().trim());
+        ar.setReviewNote(request.getReviewNote() != null ? request.getReviewNote().trim() : null);
+        ar.setReviewedAt(LocalDateTime.now());
+        AbsenceRequest saved = absenceRequestRepository.save(ar);
+
+        // Chỉ tạo MakeupRegistration khi APPROVED
+        MakeupRegistration mr = null;
+        if (decision == ReviewDecision.APPROVED) {
+            mr = makeupRegistrationRepository.findByAbsenceRequestId(saved.getId())
+                    .orElseGet(() -> MakeupRegistration.builder()
+                            .absenceRequest(saved)
+                            .student(saved.getStudent())
+                            .originalLesson(saved.getLesson())
+                            .targetLesson(null)
+                            .status(MakeupStatus.PENDING)
+                            .note("Tự động tạo ca học bù sau khi giáo viên phê duyệt đơn nghỉ #" + saved.getId())
+                            .createdAt(LocalDateTime.now())
+                            .build());
+            mr = makeupRegistrationRepository.save(mr);
+            log.info("Giáo viên [{}] APPROVED đơn #{} của [{}] → Ca bù #{} tạo mới",
+                    currentUser.getUsername(), saved.getId(), saved.getStudent().getFullName(), mr.getId());
         } else {
-            ar.setReviewNote("Giáo viên đã phê duyệt đơn xin nghỉ học hợp lệ.");
+            log.info("Giáo viên [{}] {} đơn #{} của [{}] — Ghi chú: {}",
+                    currentUser.getUsername(), decision, saved.getId(),
+                    saved.getStudent().getFullName(), saved.getReviewNote());
         }
-        AbsenceRequest updatedAr = absenceRequestRepository.save(ar);
 
-        // Chức năng 6: Tự động tạo yêu cầu học bù ở trạng thái PENDING (Chờ xếp lịch)
-        MakeupRegistration mr = makeupRegistrationRepository.findByAbsenceRequestId(updatedAr.getId())
-                .orElseGet(() -> MakeupRegistration.builder()
-                        .absenceRequest(updatedAr)
-                        .student(updatedAr.getStudent())
-                        .originalLesson(updatedAr.getLesson())
-                        .targetLesson(null)
-                        .status(MakeupStatus.PENDING)
-                        .note("Tự động tạo ca học bù sau khi giáo viên phê duyệt đơn nghỉ học")
-                        .createdAt(LocalDateTime.now())
-                        .build());
-        mr = makeupRegistrationRepository.save(mr);
-
-        log.info("Giáo viên [{}] đã phê duyệt đơn nghỉ #{} của học viên [{}] -> Tạo ca bù #{}", 
-                currentUser.getUsername(), updatedAr.getId(), updatedAr.getStudent().getFullName(), mr.getId());
-
-        return attendanceMakeupMapper.toAbsenceResponse(updatedAr, mr);
+        return attendanceMakeupMapper.toAbsenceResponse(saved, mr);
     }
 
-    /**
-     * Chức năng 4 & 6: Duyệt đặc biệt (Special Approve)
-     * Dành cho các trường hợp nghỉ đột xuất, ốm đau có hoàn cảnh đặc biệt mang tính nhân văn.
-     * Bắt buộc phải có ghi chú xét duyệt (reviewNote).
-     */
-    @Override
-    @Transactional
-    public AbsenceRequestResponse specialApproveAbsenceRequest(Long id, AbsenceReviewRequest request) {
-        User currentUser = currentUserService.getCurrentUser();
-        validateReviewPermission(currentUser);
-
-        // Validate bắt buộc ghi chú xét duyệt
-        if (request == null || request.getReviewNote() == null || request.getReviewNote().trim().isEmpty()) {
-            throw new AttendanceMakeupException("Duyệt đặc biệt mang tính nhân văn và cần căn cứ cụ thể, vui lòng nhập ghi chú xét duyệt (reviewNote)!");
-        }
-
-        AbsenceRequest ar = absenceRequestRepository.findById(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
-
-        validateTeacherClassPermission(currentUser, ar);
-
-        if (ar.getStatus() != AbsenceStatus.PENDING) {
-            throw new AttendanceMakeupException("Đơn xin nghỉ này đã được xử lý trước đó (Trạng thái hiện tại: " + ar.getStatus() + ")");
-        }
-
-        ar.setStatus(AbsenceStatus.SPECIAL_APPROVED);
-        ar.setApprovedByTeacher(currentUser);
-        ar.setReviewNote(request.getReviewNote().trim());
-        AbsenceRequest updatedAr = absenceRequestRepository.save(ar);
-
-        // Chức năng 6: Tự động tạo ca học bù ở trạng thái PENDING
-        MakeupRegistration mr = makeupRegistrationRepository.findByAbsenceRequestId(updatedAr.getId())
-                .orElseGet(() -> MakeupRegistration.builder()
-                        .absenceRequest(updatedAr)
-                        .student(updatedAr.getStudent())
-                        .originalLesson(updatedAr.getLesson())
-                        .targetLesson(null)
-                        .status(MakeupStatus.PENDING)
-                        .note("Ca học bù diện duyệt đặc biệt: " + updatedAr.getReviewNote())
-                        .createdAt(LocalDateTime.now())
-                        .build());
-        mr = makeupRegistrationRepository.save(mr);
-
-        log.info("Giáo viên [{}] duyệt đặc biệt đơn nghỉ #{} của học viên [{}] với ghi chú: {}", 
-                currentUser.getUsername(), updatedAr.getId(), updatedAr.getStudent().getFullName(), updatedAr.getReviewNote());
-
-        return attendanceMakeupMapper.toAbsenceResponse(updatedAr, mr);
-    }
-
-    /**
-     * Chức năng 5: Từ chối đơn xin nghỉ (Reject)
-     * Bắt buộc nhập lý do từ chối để thông báo lịch sự, rõ ràng tới phụ huynh.
-     */
-    @Override
-    @Transactional
-    public AbsenceRequestResponse rejectAbsenceRequest(Long id, AbsenceReviewRequest request) {
-        User currentUser = currentUserService.getCurrentUser();
-        validateReviewPermission(currentUser);
-
-        // Validate bắt buộc lý do từ chối
-        if (request == null || request.getReviewNote() == null || request.getReviewNote().trim().isEmpty()) {
-            throw new AttendanceMakeupException("Từ chối đơn xin nghỉ cần giải thích rõ ràng và lịch sự với phụ huynh, vui lòng nhập lý do từ chối (reviewNote)!");
-        }
-
-        AbsenceRequest ar = absenceRequestRepository.findById(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
-
-        validateTeacherClassPermission(currentUser, ar);
-
-        if (ar.getStatus() != AbsenceStatus.PENDING) {
-            throw new AttendanceMakeupException("Đơn xin nghỉ này đã được xử lý trước đó (Trạng thái hiện tại: " + ar.getStatus() + ")");
-        }
-
-        ar.setStatus(AbsenceStatus.REJECTED);
-        ar.setApprovedByTeacher(currentUser);
-        ar.setReviewNote(request.getReviewNote().trim());
-        AbsenceRequest updatedAr = absenceRequestRepository.save(ar);
-
-        log.info("Giáo viên [{}] đã từ chối đơn nghỉ #{} của học viên [{}] - Lý do: {}", 
-                currentUser.getUsername(), updatedAr.getId(), updatedAr.getStudent().getFullName(), updatedAr.getReviewNote());
-
-        return attendanceMakeupMapper.toAbsenceResponse(updatedAr, null);
+    /** Ánh xạ ReviewDecision → AbsenceStatus */
+    private AbsenceStatus mapDecisionToStatus(ReviewDecision decision) {
+        return switch (decision) {
+            case APPROVED -> AbsenceStatus.APPROVED;
+            case EXCUSED  -> AbsenceStatus.EXCUSED;
+            case REJECTED -> AbsenceStatus.REJECTED;
+        };
     }
 
     // =========================================================================
-    // LUỒNG 3: XẾP LỊCH HỌC BÙ
+    // GIAI ĐOẠN 3: NHÂN VIÊN/ADMIN XẾP LỊCH BÙ
     // =========================================================================
 
-    /**
-     * Danh sách yêu cầu học bù theo bộ lọc trạng thái và học viên
-     */
+    /** Danh sách yêu cầu học bù — Phân quyền theo Role */
     @Override
     public List<MakeupRegistrationResponse> getMakeupRegistrations(MakeupStatus status, Long studentId) {
         User currentUser = currentUserService.getCurrentUser();
         List<MakeupRegistration> list;
 
         if (currentUser.getRole() == Role.PARENT) {
-            // Phụ huynh xem lịch bù của các con
-            if (status != null) {
-                list = makeupRegistrationRepository.findByStudentParentIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status);
-            } else {
-                list = makeupRegistrationRepository.findByStudentParentIdOrderByCreatedAtDesc(currentUser.getId());
-            }
+            list = (status != null)
+                    ? makeupRegistrationRepository.findByStudentParentIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
+                    : makeupRegistrationRepository.findByStudentParentIdOrderByCreatedAtDesc(currentUser.getId());
         } else {
-            // Giáo viên và Ban Quản Lý
-            if (status != null) {
-                list = makeupRegistrationRepository.findByStatusOrderByCreatedAtDesc(status);
-            } else {
-                list = makeupRegistrationRepository.findAllByOrderByCreatedAtDesc();
-            }
+            list = (status != null)
+                    ? makeupRegistrationRepository.findByStatusOrderByCreatedAtDesc(status)
+                    : makeupRegistrationRepository.findAllByOrderByCreatedAtDesc();
         }
 
         return list.stream()
@@ -343,18 +304,17 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 .toList();
     }
 
-    /**
-     * Chức năng 9: Xem chi tiết yêu cầu học bù
-     */
+    /** Chi tiết yêu cầu học bù — Phụ huynh chỉ xem ca bù của con mình */
     @Override
     public MakeupRegistrationResponse getMakeupRegistrationById(Long id) {
         User currentUser = currentUserService.getCurrentUser();
         MakeupRegistration mr = makeupRegistrationRepository.findById(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy thông tin ca học bù với ID: " + id));
+                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
 
         if (currentUser.getRole() == Role.PARENT) {
-            if (mr.getStudent().getParent() == null || !mr.getStudent().getParent().getId().equals(currentUser.getId())) {
-                throw new AttendanceMakeupException("Bạn không có quyền truy cập vào thông tin ca học bù này!");
+            if (mr.getStudent().getParent() == null
+                    || !mr.getStudent().getParent().getId().equals(currentUser.getId())) {
+                throw new AttendanceMakeupException("Bạn không có quyền truy cập vào ca học bù này!");
             }
         }
 
@@ -362,30 +322,30 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     }
 
     /**
-     * Chức năng 7: Xếp lịch học bù
-     * Giáo viên/Admin chọn buổi học bù mục tiêu (targetLessonId) và chuyển trạng thái sang SCHEDULED.
+     * Xếp lịch học bù — Giai đoạn 3 (STAFF / ADMIN).
+     * Chọn targetLesson → chuyển trạng thái sang SCHEDULED.
      */
     @Override
     @Transactional
     public MakeupRegistrationResponse scheduleMakeup(Long id, MakeupScheduleRequest request) {
         User currentUser = currentUserService.getCurrentUser();
-        validateReviewPermission(currentUser);
+        validateStaffOrAdmin(currentUser);
 
         MakeupRegistration mr = makeupRegistrationRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
 
         if (mr.getStatus() == MakeupStatus.COMPLETED) {
-            throw new AttendanceMakeupException("Ca học bù này đã hoàn thành, không thể xếp lại lịch!");
+            throw new AttendanceMakeupException("Ca học bù đã hoàn thành, không thể xếp lại lịch!");
         }
         if (mr.getStatus() == MakeupStatus.CANCELLED) {
-            throw new AttendanceMakeupException("Ca học bù này đã bị hủy!");
+            throw new AttendanceMakeupException("Ca học bù đã bị hủy, không thể xếp lịch!");
         }
 
-        // Buổi học bù được chọn
         Lesson targetLesson = attendanceLessonRepository.findById(request.getTargetLessonId())
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù mục tiêu với ID: " + request.getTargetLessonId()));
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Không tìm thấy buổi học với ID: " + request.getTargetLessonId()));
 
-        // Chặn xếp lịch trùng với chính buổi đã xin nghỉ
+        // Không cho xếp lịch bù trùng chính buổi đã xin nghỉ
         if (mr.getOriginalLesson() != null && mr.getOriginalLesson().getId().equals(targetLesson.getId())) {
             throw new AttendanceMakeupException("Buổi học bù không được trùng với chính buổi học đã xin nghỉ!");
         }
@@ -397,131 +357,156 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         }
         MakeupRegistration saved = makeupRegistrationRepository.save(mr);
 
-        log.info("Đã xếp lịch học bù #{} cho học viên [{}] vào buổi học [{}] ngày {}", 
-                saved.getId(), saved.getStudent().getFullName(), targetLesson.getTitle(), targetLesson.getLessonDate());
+        log.info("Ca bù #{} xếp lịch → buổi [{}] ngày {} bởi [{}]",
+                saved.getId(), targetLesson.getTitle(), targetLesson.getLessonDate(), currentUser.getUsername());
 
         return attendanceMakeupMapper.toMakeupResponse(saved);
     }
 
-    // =========================================================================
-    // LUỒNG 4: HOÀN THÀNH HỌC BÙ & ĐIỂM DANH
-    // =========================================================================
-
     /**
-     * Chức năng 8: Hoàn thành học bù trực tiếp qua ID ca học bù
-     * Cập nhật trạng thái sang COMPLETED và ghi nhận bản ghi điểm danh PRESENT.
+     * Hủy ca học bù — Giai đoạn 3 (STAFF / ADMIN).
+     * Chỉ hủy được ca PENDING hoặc SCHEDULED, không hủy ca COMPLETED.
      */
     @Override
     @Transactional
-    public MakeupRegistrationResponse completeMakeup(Long id) {
+    public MakeupRegistrationResponse cancelMakeup(Long id, MakeupCancelRequest request) {
         User currentUser = currentUserService.getCurrentUser();
-        validateReviewPermission(currentUser);
+        validateStaffOrAdmin(currentUser);
 
-        MakeupRegistration mr = makeupRegistrationRepository.findById(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
+        MakeupRegistration mr = makeupRegistrationRepository
+                .findByIdAndStatusIn(id, List.of(MakeupStatus.PENDING, MakeupStatus.SCHEDULED, MakeupStatus.REGISTERED))
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Không tìm thấy ca học bù có thể hủy với ID: " + id
+                        + " (Chỉ hủy được ca ở trạng thái PENDING, SCHEDULED hoặc REGISTERED)"));
 
-        if (mr.getStatus() != MakeupStatus.SCHEDULED && mr.getStatus() != MakeupStatus.REGISTERED) {
-            throw new AttendanceMakeupException("Chỉ có thể hoàn thành ca học bù đã được xếp lịch cụ thể (Hiện tại: " + mr.getStatus() + ")");
-        }
-
-        if (mr.getTargetLesson() == null) {
-            throw new AttendanceMakeupException("Ca học bù này chưa có thông tin buổi học bù cụ thể!");
-        }
-
-        mr.setStatus(MakeupStatus.COMPLETED);
+        mr.setStatus(MakeupStatus.CANCELLED);
+        String cancelNote = (request != null && request.getReason() != null && !request.getReason().isBlank())
+                ? "HỦY: " + request.getReason().trim()
+                : "Hủy bởi " + currentUser.getUsername();
+        mr.setNote(cancelNote);
         MakeupRegistration saved = makeupRegistrationRepository.save(mr);
 
-        // Lưu vết điểm danh PRESENT vào bảng attendances
-        Attendance attendance = attendanceRecordRepository.findByLessonIdAndStudentId(mr.getTargetLesson().getId(), mr.getStudent().getId())
-                .orElse(Attendance.builder()
-                        .lesson(mr.getTargetLesson())
-                        .student(mr.getStudent())
-                        .build());
-
-        attendance.setStatus(AttendanceStatus.PRESENT);
-        attendance.setMarkedAt(LocalDateTime.now());
-        attendance.setNote("Điểm danh học viên tham gia học bù hoàn thành (Ca bù #" + mr.getId() + ")");
-        attendanceRecordRepository.save(attendance);
-
-        log.info("Ca học bù #{} của học viên [{}] đã hoàn thành thành công!", saved.getId(), saved.getStudent().getFullName());
+        log.info("Ca bù #{} của học viên [{}] đã bị hủy bởi [{}] — Lý do: {}",
+                saved.getId(), saved.getStudent().getFullName(), currentUser.getUsername(), cancelNote);
 
         return attendanceMakeupMapper.toMakeupResponse(saved);
     }
 
+    // =========================================================================
+    // GIAI ĐOẠN 4: GIÁO VIÊN ĐIỂM DANH & HOÀN THÀNH
+    // =========================================================================
+
     /**
-     * Điểm danh buổi học và tự động cập nhật trạng thái học bù liên quan nếu học viên có mặt
+     * Điểm danh buổi học — Giai đoạn 4 (TEACHER / STAFF / ADMIN).
+     * Nếu status = PRESENT và có MakeupRegistration{SCHEDULED} trỏ vào lesson này → auto COMPLETED.
      */
     @Override
     @Transactional
     public void markAttendance(AttendanceMarkRequest request) {
         User currentUser = currentUserService.getCurrentUser();
-        validateReviewPermission(currentUser);
+        validateMarkPermission(currentUser);
 
         Lesson lesson = attendanceLessonRepository.findById(request.getLessonId())
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy buổi học với ID: " + request.getLessonId()));
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Không tìm thấy buổi học với ID: " + request.getLessonId()));
 
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy học viên với ID: " + request.getStudentId()));
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Không tìm thấy học viên với ID: " + request.getStudentId()));
 
-        AttendanceStatus status = AttendanceStatus.PRESENT;
+        // Parse AttendanceStatus (mặc định PRESENT nếu không hợp lệ)
+        AttendanceStatus attendanceStatus = AttendanceStatus.PRESENT;
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             try {
-                status = AttendanceStatus.valueOf(request.getStatus().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                status = AttendanceStatus.PRESENT;
+                attendanceStatus = AttendanceStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // Giữ PRESENT mặc định
             }
         }
 
-        // Lưu vết điểm danh
-        Attendance attendance = attendanceRecordRepository.findByLessonIdAndStudentId(lesson.getId(), student.getId())
-                .orElse(Attendance.builder()
-                        .lesson(lesson)
-                        .student(student)
-                        .build());
+        // Lưu bản ghi điểm danh (tạo mới hoặc cập nhật)
+        Attendance attendance = attendanceRecordRepository
+                .findByLessonIdAndStudentId(lesson.getId(), student.getId())
+                .orElse(Attendance.builder().lesson(lesson).student(student).build());
 
-        attendance.setStatus(status);
+        attendance.setStatus(attendanceStatus);
         attendance.setMarkedAt(LocalDateTime.now());
         if (request.getNote() != null && !request.getNote().isBlank()) {
             attendance.setNote(request.getNote().trim());
         }
         attendanceRecordRepository.save(attendance);
 
-        // Nếu điểm danh CÓ MẶT và đây là buổi học bù của học viên -> cập nhật ca bù sang COMPLETED
-        if (status == AttendanceStatus.PRESENT) {
-            Optional<MakeupRegistration> mrOpt = makeupRegistrationRepository
-                    .findFirstByTargetLessonIdAndStudentIdAndStatus(lesson.getId(), student.getId(), MakeupStatus.SCHEDULED);
-
-            if (mrOpt.isPresent()) {
-                MakeupRegistration mr = mrOpt.get();
-                mr.setStatus(MakeupStatus.COMPLETED);
-                if (request.getNote() != null && !request.getNote().isBlank()) {
-                    mr.setNote(request.getNote().trim());
-                }
-                makeupRegistrationRepository.save(mr);
-                log.info("Tự động chuyển ca học bù #{} sang COMPLETED khi điểm danh có mặt", mr.getId());
-            }
+        // Nếu PRESENT → kiểm tra và tự động hoàn thành ca học bù liên quan
+        if (attendanceStatus == AttendanceStatus.PRESENT) {
+            makeupRegistrationRepository
+                    .findFirstByTargetLessonIdAndStudentIdAndStatus(
+                            lesson.getId(), student.getId(), MakeupStatus.SCHEDULED)
+                    .ifPresent(mr -> {
+                        mr.setStatus(MakeupStatus.COMPLETED);
+                        if (request.getNote() != null && !request.getNote().isBlank()) {
+                            mr.setNote(request.getNote().trim());
+                        }
+                        makeupRegistrationRepository.save(mr);
+                        log.info("Ca học bù #{} tự động COMPLETED sau điểm danh PRESENT của học viên [{}]",
+                                mr.getId(), student.getFullName());
+                    });
         }
+    }
+
+    /**
+     * Hoàn thành ca học bù thủ công qua ID — Giai đoạn 4 (TEACHER / STAFF / ADMIN).
+     * Dùng khi không cần điểm danh tự động.
+     */
+    @Override
+    @Transactional
+    public MakeupRegistrationResponse completeMakeup(Long id) {
+        User currentUser = currentUserService.getCurrentUser();
+        validateMarkPermission(currentUser);
+
+        MakeupRegistration mr = makeupRegistrationRepository.findById(id)
+                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
+
+        if (mr.getStatus() != MakeupStatus.SCHEDULED) {
+            throw new AttendanceMakeupException(
+                    "Chỉ có thể hoàn thành ca học bù đã được xếp lịch (SCHEDULED). Trạng thái hiện tại: " + mr.getStatus());
+        }
+
+        if (mr.getTargetLesson() == null) {
+            throw new AttendanceMakeupException("Ca học bù này chưa có buổi học bù cụ thể!");
+        }
+
+        mr.setStatus(MakeupStatus.COMPLETED);
+        MakeupRegistration saved = makeupRegistrationRepository.save(mr);
+
+        // Lưu bản ghi điểm danh PRESENT
+        Attendance attendance = attendanceRecordRepository
+                .findByLessonIdAndStudentId(mr.getTargetLesson().getId(), mr.getStudent().getId())
+                .orElse(Attendance.builder()
+                        .lesson(mr.getTargetLesson())
+                        .student(mr.getStudent())
+                        .build());
+        attendance.setStatus(AttendanceStatus.PRESENT);
+        attendance.setMarkedAt(LocalDateTime.now());
+        attendance.setNote("Hoàn thành học bù thủ công (Ca bù #" + mr.getId() + ")");
+        attendanceRecordRepository.save(attendance);
+
+        log.info("Ca học bù #{} của học viên [{}] hoàn thành thủ công bởi [{}]",
+                saved.getId(), saved.getStudent().getFullName(), currentUser.getUsername());
+
+        return attendanceMakeupMapper.toMakeupResponse(saved);
     }
 
     // =========================================================================
     // HELPER APIs HỖ TRỢ GIAO DIỆN
     // =========================================================================
 
-    /**
-     * Lấy danh sách học viên có thể chọn xin nghỉ
-     * Phụ huynh: Chỉ hiển thị các con của mình
-     * Giáo viên / Quản trị viên: Hiển thị học viên kèm tên lớp đang theo học
-     */
+    /** Danh sách học viên — PARENT lấy con mình, các role khác lấy tất cả */
     @Override
     public List<StudentOptionResponse> getSelectableStudents() {
         User currentUser = currentUserService.getCurrentUser();
-        List<Student> students;
-
-        if (currentUser.getRole() == Role.PARENT) {
-            students = studentRepository.findByParentId(currentUser.getId());
-        } else {
-            students = studentRepository.findAll();
-        }
+        List<Student> students = (currentUser.getRole() == Role.PARENT)
+                ? studentRepository.findByParentId(currentUser.getId())
+                : studentRepository.findAll();
 
         return students.stream().map(s -> {
             List<String> classNames = attendanceLessonRepository.findClassNamesByStudentId(s.getId());
@@ -530,9 +515,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         }).toList();
     }
 
-    /**
-     * Lấy danh sách các buổi học của học viên để người dùng chọn buổi xin nghỉ
-     */
+    /** Danh sách buổi học của học viên — Phụ huynh chỉ xem con mình */
     @Override
     public List<LessonOptionResponse> getLessonsForAbsenceRequest(Long studentId) {
         User currentUser = currentUserService.getCurrentUser();
@@ -545,24 +528,24 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             }
         }
 
-        List<Lesson> lessons = attendanceLessonRepository.findLessonsByStudentId(studentId);
-        return lessons.stream()
+        return attendanceLessonRepository.findLessonsByStudentId(studentId)
+                .stream()
                 .map(attendanceMakeupMapper::toLessonOption)
                 .toList();
     }
 
     /**
-     * Lấy danh sách các ca học khả dụng để giáo viên chọn xếp lịch học bù
-     * Ưu tiên các ca học cùng khóa học, diễn ra từ hôm nay trở đi.
+     * Danh sách ca học khả dụng để xếp lịch bù.
+     * Ưu tiên ca cùng khóa đào tạo, loại trừ buổi gốc đã xin nghỉ.
      */
     @Override
     public List<LessonOptionResponse> getAvailableLessonsForMakeup(Long makeupId) {
         MakeupRegistration mr = makeupRegistrationRepository.findById(makeupId)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy thông tin ca học bù với ID: " + makeupId));
+                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + makeupId));
 
         Long courseId = null;
-        if (mr.getOriginalLesson() != null 
-                && mr.getOriginalLesson().getClassEntity() != null 
+        if (mr.getOriginalLesson() != null
+                && mr.getOriginalLesson().getClassEntity() != null
                 && mr.getOriginalLesson().getClassEntity().getCourse() != null) {
             courseId = mr.getOriginalLesson().getClassEntity().getCourse().getId();
         }
@@ -576,12 +559,11 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             availableLessons = List.of();
         }
 
-        // Nếu chưa có buổi học cùng khóa phù hợp, lấy tất cả ca học sắp tới của trung tâm để giáo viên linh hoạt xếp
+        // Fallback: nếu không có ca cùng khóa → lấy tất cả ca sắp tới
         if (availableLessons.isEmpty()) {
             availableLessons = attendanceLessonRepository.findAvailableUpcomingLessons(today);
         }
 
-        // Loại trừ chính buổi học đã xin nghỉ
         Long origLessonId = mr.getOriginalLesson() != null ? mr.getOriginalLesson().getId() : null;
 
         return availableLessons.stream()
@@ -594,20 +576,28 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     // HÀM TIỆN ÍCH KIỂM TRA PHÂN QUYỀN
     // =========================================================================
 
-    private void validateReviewPermission(User user) {
-        if (user.getRole() == Role.PARENT || user.getRole() == Role.STUDENT) {
-            throw new AttendanceMakeupException("Tài khoản phụ huynh/học viên không có quyền thực hiện thao tác xét duyệt hoặc điều phối học bù!");
+    /** Chỉ TEACHER và ADMIN được duyệt đơn nghỉ */
+    private void validateTeacherOrAdmin(User user) {
+        if (user.getRole() != Role.TEACHER && user.getRole() != Role.ADMIN) {
+            throw new AttendanceMakeupException(
+                    "Chỉ Giáo viên hoặc Admin mới có quyền xét duyệt đơn xin nghỉ học!");
         }
     }
 
-    private void validateTeacherClassPermission(User user, AbsenceRequest ar) {
-        if (user.getRole() == Role.TEACHER) {
-            Lesson lesson = ar.getLesson();
-            if (lesson != null && lesson.getClassEntity() != null && lesson.getClassEntity().getTeacher() != null) {
-                if (!lesson.getClassEntity().getTeacher().getId().equals(user.getId())) {
-                    throw new AttendanceMakeupException("Giáo viên chỉ được phép duyệt đơn xin nghỉ của lớp mình được phân công!");
-                }
-            }
+    /** STAFF và ADMIN được xếp/hủy lịch bù */
+    private void validateStaffOrAdmin(User user) {
+        if (user.getRole() == Role.PARENT || user.getRole() == Role.STUDENT
+                || user.getRole() == Role.TEACHER) {
+            throw new AttendanceMakeupException(
+                    "Chỉ Nhân viên (STAFF) hoặc Admin mới có quyền xếp/hủy lịch học bù!");
+        }
+    }
+
+    /** TEACHER, STAFF và ADMIN được điểm danh */
+    private void validateMarkPermission(User user) {
+        if (user.getRole() == Role.PARENT || user.getRole() == Role.STUDENT) {
+            throw new AttendanceMakeupException(
+                    "Tài khoản Phụ huynh/Học viên không có quyền điểm danh!");
         }
     }
 }

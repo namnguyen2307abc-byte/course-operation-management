@@ -33,7 +33,7 @@ public class MakeupRegistration {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "target_lesson_id", nullable = true)
-    private Lesson targetLesson;
+    private Lesson targetLesson; 
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)

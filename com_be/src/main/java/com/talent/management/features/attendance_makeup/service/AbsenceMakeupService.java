@@ -3,6 +3,7 @@ package com.talent.management.features.attendance_makeup.service;
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceRequestCreateRequest;
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest;
 import com.talent.management.features.attendance_makeup.dto.request.AttendanceMarkRequest;
+import com.talent.management.features.attendance_makeup.dto.request.MakeupCancelRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupScheduleRequest;
 import com.talent.management.features.attendance_makeup.dto.response.AbsenceRequestResponse;
 import com.talent.management.features.attendance_makeup.dto.response.LessonOptionResponse;
@@ -14,98 +15,81 @@ import com.talent.management.shared.enums.MakeupStatus;
 import java.util.List;
 
 /**
- * Service xử lý toàn bộ nghiệp vụ Nghỉ học & Học bù (Bản Base)
- * Bao gồm 4 luồng nghiệp vụ và 9 chức năng cốt lõi.
+ * Service xử lý toàn bộ nghiệp vụ Phân hệ Nghỉ học & Học bù — Luồng Mới (4 giai đoạn).
+ *
+ * Giai đoạn 1: Phụ huynh gửi đơn
+ * Giai đoạn 2: Giáo viên xét duyệt (1 endpoint /review, 3 quyết định: APPROVED/EXCUSED/REJECTED)
+ * Giai đoạn 3: Nhân viên/Admin xếp lịch bù (Schedule / Cancel)
+ * Giai đoạn 4: Giáo viên điểm danh & hoàn thành
  */
 public interface AbsenceMakeupService {
 
     // ==========================================
-    // LUỒNG 1: TẠO VÀ QUẢN LÝ YÊU CẦU NGHỈ HỌC
+    // GIAI ĐOẠN 1: TẠO VÀ QUẢN LÝ YÊU CẦU NGHỈ HỌC
     // ==========================================
 
-    /**
-     * Chức năng 1: Tạo yêu cầu nghỉ học (Phụ huynh hoặc giáo viên tạo)
-     */
+    /** Tạo yêu cầu nghỉ học — Phụ huynh, Giáo viên, Staff, Admin */
     AbsenceRequestResponse createAbsenceRequest(AbsenceRequestCreateRequest request);
 
-    /**
-     * Chức năng 2: Danh sách yêu cầu nghỉ học (Hỗ trợ lọc theo trạng thái, học viên)
-     */
+    /** Danh sách yêu cầu nghỉ học — Phân quyền theo Role (PARENT/TEACHER/STAFF/ADMIN) */
     List<AbsenceRequestResponse> getAbsenceRequests(AbsenceStatus status, Long studentId, Long classId);
 
-    /**
-     * Chức năng 9: Xem chi tiết yêu cầu nghỉ học
-     */
+    /** Chi tiết yêu cầu nghỉ học theo ID */
     AbsenceRequestResponse getAbsenceRequestById(Long id);
 
     // ==========================================
-    // LUỒNG 2: GIÁO VIÊN XỬ LÝ YÊU CẦU NGHỈ HỌC
+    // GIAI ĐOẠN 2: GIÁO VIÊN XÉT DUYỆT
     // ==========================================
 
     /**
-     * Chức năng 3 & 6: Duyệt đơn nghỉ học -> APPROVED + Tự động tạo ca học bù (PENDING)
+     * Xét duyệt đơn nghỉ — 1 endpoint duy nhất thay thế 3 endpoint cũ (approve/special-approve/reject).
+     *
+     * APPROVED  → Tự động tạo MakeupRegistration{PENDING}
+     * EXCUSED   → Đóng luồng, KHÔNG tạo ca bù
+     * REJECTED  → Đóng luồng, bắt buộc reviewNote
      */
-    AbsenceRequestResponse approveAbsenceRequest(Long id, AbsenceReviewRequest request);
-
-    /**
-     * Chức năng 4 & 6: Duyệt đặc biệt -> SPECIAL_APPROVED (Bắt buộc ghi chú) + Tự động tạo ca học bù (PENDING)
-     */
-    AbsenceRequestResponse specialApproveAbsenceRequest(Long id, AbsenceReviewRequest request);
-
-    /**
-     * Chức năng 5: Từ chối đơn nghỉ học -> REJECTED (Bắt buộc nhập lý do từ chối)
-     */
-    AbsenceRequestResponse rejectAbsenceRequest(Long id, AbsenceReviewRequest request);
+    AbsenceRequestResponse reviewAbsenceRequest(Long id, AbsenceReviewRequest request);
 
     // ==========================================
-    // LUỒNG 3: XẾP LỊCH HỌC BÙ
+    // GIAI ĐOẠN 3: NHÂN VIÊN/ADMIN XẾP LỊCH BÙ
     // ==========================================
 
-    /**
-     * Danh sách các yêu cầu học bù (Lọc theo PENDING, SCHEDULED, COMPLETED, CANCELLED)
-     */
+    /** Danh sách yêu cầu học bù — Lọc theo trạng thái và học viên */
     List<MakeupRegistrationResponse> getMakeupRegistrations(MakeupStatus status, Long studentId);
 
-    /**
-     * Chức năng 9: Xem chi tiết yêu cầu học bù
-     */
+    /** Chi tiết yêu cầu học bù theo ID */
     MakeupRegistrationResponse getMakeupRegistrationById(Long id);
 
-    /**
-     * Chức năng 7: Xếp lịch học bù -> Chọn buổi học bù và đổi trạng thái sang SCHEDULED
-     */
+    /** Xếp lịch học bù — Nhân viên/Admin chọn targetLesson → SCHEDULED */
     MakeupRegistrationResponse scheduleMakeup(Long id, MakeupScheduleRequest request);
 
+    /** Hủy ca học bù — Nhân viên/Admin hủy ca PENDING hoặc SCHEDULED → CANCELLED */
+    MakeupRegistrationResponse cancelMakeup(Long id, MakeupCancelRequest request);
+
     // ==========================================
-    // LUỒNG 4: HOÀN THÀNH HỌC BÙ & ĐIỂM DANH
+    // GIAI ĐOẠN 4: GIÁO VIÊN ĐIỂM DANH & HOÀN THÀNH
     // ==========================================
 
     /**
-     * Chức năng 8: Hoàn thành học bù (Điểm danh có mặt tại buổi bù -> COMPLETED)
-     */
-    MakeupRegistrationResponse completeMakeup(Long id);
-
-    /**
-     * Điểm danh buổi học và tự động cập nhật trạng thái học bù liên quan
+     * Điểm danh buổi học bù — Nếu PRESENT và có MakeupRegistration{SCHEDULED} → auto COMPLETED.
      */
     void markAttendance(AttendanceMarkRequest request);
+
+    /**
+     * Hoàn thành ca học bù thủ công qua ID (khi không dùng điểm danh tự động).
+     */
+    MakeupRegistrationResponse completeMakeup(Long id);
 
     // ==========================================
     // HELPER APIs HỖ TRỢ GIAO DIỆN
     // ==========================================
 
-    /**
-     * Lấy danh sách học viên có thể chọn (Phụ huynh lấy con mình, GV/Admin lấy học viên)
-     */
+    /** Lấy danh sách học viên để chọn — Phụ huynh lấy con mình, GV/Admin lấy tất cả */
     List<StudentOptionResponse> getSelectableStudents();
 
-    /**
-     * Lấy danh sách các buổi học của học viên để phụ huynh chọn buổi xin nghỉ
-     */
+    /** Lấy danh sách buổi học của học viên để phụ huynh chọn xin nghỉ */
     List<LessonOptionResponse> getLessonsForAbsenceRequest(Long studentId);
 
-    /**
-     * Lấy danh sách các ca học khả dụng để giáo viên chọn xếp học bù
-     */
+    /** Lấy danh sách ca học khả dụng để nhân viên xếp lịch học bù */
     List<LessonOptionResponse> getAvailableLessonsForMakeup(Long makeupId);
 }
