@@ -63,14 +63,21 @@ public class CourseEnrollmentMapper {
     }
 
     public EnrollmentRequestResponse toRequestResponse(EnrollmentRequest request) {
+        ClassEntity assignedClass = request.getClassEntity();
+        Course preferredCourse = request.getPreferredCourse() != null
+                ? request.getPreferredCourse()
+                : assignedClass == null ? null : assignedClass.getCourse();
         return new EnrollmentRequestResponse(
                 request.getId(),
                 request.getStudent().getId(),
                 request.getStudent().getFullName(),
-                request.getClassEntity().getId(),
-                request.getClassEntity().getClassCode(),
-                request.getClassEntity().getClassName(),
-                request.getClassEntity().getCourse().getName(),
+                preferredCourse == null ? null : preferredCourse.getId(),
+                preferredCourse == null ? null : preferredCourse.getName(),
+                request.isPlacementRequested(),
+                assignedClass == null ? null : assignedClass.getId(),
+                assignedClass == null ? null : assignedClass.getClassCode(),
+                assignedClass == null ? null : assignedClass.getClassName(),
+                assignedClass == null ? null : assignedClass.getCourse().getName(),
                 request.getStatus(),
                 request.getNote(),
                 request.getReviewNote(),

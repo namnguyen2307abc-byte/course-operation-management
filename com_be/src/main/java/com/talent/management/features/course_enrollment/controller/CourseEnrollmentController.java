@@ -35,14 +35,14 @@ public class CourseEnrollmentController {
     }
 
     @GetMapping("/courses")
-    @PreAuthorize("hasRole('PARENT')")
+    @PreAuthorize("hasAnyRole('PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN')")
     @Operation(summary = "Lấy danh sách khóa học")
     public ResponseEntity<List<CourseResponse>> getCourses() {
         return ResponseEntity.ok(service.getCourses());
     }
 
     @GetMapping("/courses/{courseId}/classes")
-    @PreAuthorize("hasRole('PARENT')")
+    @PreAuthorize("hasAnyRole('PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN')")
     @Operation(summary = "Lấy các lớp còn chỗ của khóa học")
     public ResponseEntity<List<ClassResponse>> getOpenClasses(@PathVariable Long courseId) {
         return ResponseEntity.ok(service.getOpenClasses(courseId));
@@ -78,6 +78,13 @@ public class CourseEnrollmentController {
     @Operation(summary = "Lấy các yêu cầu đang chờ duyệt")
     public ResponseEntity<List<EnrollmentRequestResponse>> getPendingRequests() {
         return ResponseEntity.ok(service.getPendingRequests());
+    }
+
+    @PatchMapping("/staff/requests/{requestId}/refresh-placement")
+    @PreAuthorize("hasAnyRole('STAFF', 'BRANCH_MANAGER', 'ADMIN')")
+    @Operation(summary = "Kiểm tra lại kết quả Placement Test của yêu cầu")
+    public ResponseEntity<EnrollmentRequestResponse> refreshPlacement(@PathVariable Long requestId) {
+        return ResponseEntity.ok(service.refreshPlacement(requestId));
     }
 
     @PatchMapping("/staff/requests/{requestId}/decision")
