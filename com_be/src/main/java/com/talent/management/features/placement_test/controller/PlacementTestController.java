@@ -43,11 +43,13 @@ public class PlacementTestController {
     @GetMapping
     @Operation(summary = "Lấy danh sách tất cả các lịch thi xếp lớp / đánh giá năng khiếu")
     public ResponseEntity<List<PlacementScheduleResponse>> getAllSchedules(
-            @RequestParam(required = false) String parentEmail) {
+            @RequestParam(required = false) String parentEmail,
+            Authentication authentication) {
+        String currentUsername = authentication != null ? authentication.getName() : null;
         if (parentEmail != null && !parentEmail.isBlank()) {
-            return ResponseEntity.ok(placementTestService.getSchedulesForParent(parentEmail));
+            return ResponseEntity.ok(placementTestService.getSchedulesForParent(parentEmail, currentUsername));
         }
-        return ResponseEntity.ok(placementTestService.getAllSchedules());
+        return ResponseEntity.ok(placementTestService.getAllSchedules(currentUsername));
     }
 
     @GetMapping("/{id}")

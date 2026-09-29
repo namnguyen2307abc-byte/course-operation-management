@@ -10,7 +10,11 @@ public interface PlacementTestService {
 
     List<PlacementScheduleResponse> getAllSchedules();
 
+    List<PlacementScheduleResponse> getAllSchedules(String currentUsername);
+
     List<PlacementScheduleResponse> getSchedulesForParent(String parentEmail);
+
+    List<PlacementScheduleResponse> getSchedulesForParent(String parentEmail, String currentUsername);
 
     PlacementScheduleResponse getScheduleById(Long id);
 

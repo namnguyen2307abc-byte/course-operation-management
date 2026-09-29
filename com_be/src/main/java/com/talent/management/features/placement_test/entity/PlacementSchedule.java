@@ -38,6 +38,9 @@ public class PlacementSchedule {
     @Column(name = "test_date", nullable = false)
     private LocalDateTime testDate;
 
+    @Column(name = "subject", length = 50)
+    private String subject;
+
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String note;
 

@@ -29,6 +29,24 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     @Override
     @Transactional(readOnly = true)
     public List<PlacementScheduleResponse> getAllSchedules() {
+        return getAllSchedules(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlacementScheduleResponse> getAllSchedules(String currentUsername) {
+        if (currentUsername != null && !currentUsername.isBlank()) {
+            var userOpt = userRepository.findByUsername(currentUsername);
+            if (userOpt.isPresent() && userOpt.get().getRole() == com.talent.management.shared.enums.Role.TEACHER) {
+                String teacherSubject = userOpt.get().getSubject();
+                if (teacherSubject != null && !teacherSubject.isBlank()) {
+                    return scheduleRepository.findBySubjectIgnoreCaseOrderByTestDateDesc(teacherSubject.trim())
+                            .stream()
+                            .map(scheduleMapper::toResponse)
+                            .collect(Collectors.toList());
+                }
+            }
+        }
         return scheduleRepository.findAllByOrderByTestDateDesc()
                 .stream()
                 .map(scheduleMapper::toResponse)
@@ -38,10 +56,31 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     @Override
     @Transactional(readOnly = true)
     public List<PlacementScheduleResponse> getSchedulesForParent(String parentEmail) {
+        return getSchedulesForParent(parentEmail, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlacementScheduleResponse> getSchedulesForParent(String parentEmail, String currentUsername) {
         if (parentEmail == null || parentEmail.isBlank()) {
-            return getAllSchedules();
+            return getAllSchedules(currentUsername);
         }
-        return scheduleRepository.findByParentEmailOrderByTestDateAsc(parentEmail.trim().toLowerCase())
+
+        String normalizedEmail = parentEmail.trim().toLowerCase();
+        if (currentUsername != null && !currentUsername.isBlank()) {
+            var userOpt = userRepository.findByUsername(currentUsername);
+            if (userOpt.isPresent() && userOpt.get().getRole() == com.talent.management.shared.enums.Role.TEACHER) {
+                String teacherSubject = userOpt.get().getSubject();
+                if (teacherSubject != null && !teacherSubject.isBlank()) {
+                    return scheduleRepository.findBySubjectIgnoreCaseAndParentEmailOrderByTestDateAsc(teacherSubject.trim(), normalizedEmail)
+                            .stream()
+                            .map(scheduleMapper::toResponse)
+                            .collect(Collectors.toList());
+                }
+            }
+        }
+
+        return scheduleRepository.findByParentEmailOrderByTestDateAsc(normalizedEmail)
                 .stream()
                 .map(scheduleMapper::toResponse)
                 .collect(Collectors.toList());
@@ -62,7 +101,22 @@ public class PlacementTestServiceImpl implements PlacementTestService {
                 .orElseThrow(() -> new BusinessException("Lịch thi xếp lớp không tồn tại với ID: " + scheduleId));
 
         if (teacherUsername != null && !teacherUsername.isBlank()) {
-            userRepository.findByUsername(teacherUsername).ifPresent(schedule::setEvaluatedBy);
+            var teacherOpt = userRepository.findByUsername(teacherUsername);
+            if (teacherOpt.isPresent()) {
+                var teacher = teacherOpt.get();
+                if (teacher.getRole() == com.talent.management.shared.enums.Role.TEACHER) {
+                    String teacherSubject = teacher.getSubject();
+                    String scheduleSubject = schedule.getSubject() != null ? schedule.getSubject() : scheduleMapper.inferSubject(schedule.getTitle());
+                    if (teacherSubject != null && !teacherSubject.isBlank() && scheduleSubject != null && !scheduleSubject.isBlank()) {
+                        String normTeacher = scheduleMapper.normalizeSubject(teacherSubject);
+                        String normSchedule = scheduleMapper.normalizeSubject(scheduleSubject);
+                        if (!normTeacher.equalsIgnoreCase(normSchedule)) {
+                            throw new BusinessException("Bạn là giáo viên bộ môn " + teacherSubject + ", không có quyền chấm bài thi xếp lớp thuộc bộ môn " + scheduleSubject + "!");
+                        }
+                    }
+                }
+                schedule.setEvaluatedBy(teacher);
+            }
         }
 
         schedule.setScore(request.getScore());
@@ -82,6 +136,13 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     @Override
     @Transactional
     public PlacementScheduleResponse createSchedule(CreatePlacementScheduleRequest request, String parentUsername) {
+        if (request.getTestDate() == null) {
+            throw new BusinessException("Thời gian hẹn test không được để trống!");
+        }
+        if (request.getTestDate().isBefore(LocalDateTime.now())) {
+            throw new BusinessException("Thời gian hẹn test không được ở trong quá khứ tính từ thời điểm hiện tại! Vui lòng chọn thời gian từ hiện tại trở đi.");
+        }
+
         PlacementSchedule schedule = scheduleMapper.toEntity(request);
         if (parentUsername != null && !parentUsername.isBlank()) {
             userRepository.findByUsername(parentUsername).ifPresent(schedule::setParent);

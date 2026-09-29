@@ -19,6 +19,7 @@ public class PlacementScheduleResponse {
     private String roomName;
     private String branch;
     private LocalDateTime testDate;
+    private String subject;
     private String note;
     private PlacementScheduleStatus status;
     private Integer score;

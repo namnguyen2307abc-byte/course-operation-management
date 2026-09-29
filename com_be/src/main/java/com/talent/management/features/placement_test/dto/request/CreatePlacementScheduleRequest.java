@@ -27,5 +27,7 @@ public class CreatePlacementScheduleRequest {
     @NotNull(message = "Ngày thi không được để trống")
     private LocalDateTime testDate;
 
+    private String subject;
+
     private String note;
 }

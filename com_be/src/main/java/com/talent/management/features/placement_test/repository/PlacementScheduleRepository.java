@@ -11,7 +11,11 @@ public interface PlacementScheduleRepository extends JpaRepository<PlacementSche
 
     List<PlacementSchedule> findAllByOrderByTestDateDesc();
 
+    List<PlacementSchedule> findBySubjectIgnoreCaseOrderByTestDateDesc(String subject);
+
     List<PlacementSchedule> findByParentIdOrderByTestDateAsc(Long parentId);
 
     List<PlacementSchedule> findByParentEmailOrderByTestDateAsc(String parentEmail);
+
+    List<PlacementSchedule> findBySubjectIgnoreCaseAndParentEmailOrderByTestDateAsc(String subject, String parentEmail);
 }

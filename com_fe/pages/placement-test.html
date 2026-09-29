@@ -104,9 +104,6 @@
             </div>
         </div>
 
-        <!-- Role Permission Warning Banner (Populated via placement-test.js if user is PARENT) -->
-        <div id="rolePermissionBanner" class="d-none"></div>
-
         <!-- Metric Stat Cards -->
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
@@ -165,16 +162,15 @@
                 <div class="col-12 col-md-4">
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                        <input type="text" id="searchInput" class="form-control bg-light border-start-0 ps-0" placeholder="Tìm theo Mã #PT, Tên học viên, Tiêu đề...">
+                        <input type="text" id="searchInput" class="form-control bg-light border-start-0 ps-0" placeholder="Tìm theo Mã #PT, Tên học viên, Tiêu đề bài test...">
                     </div>
                 </div>
                 <div class="col-6 col-md-2">
                     <select id="subjectFilter" class="form-select bg-light">
                         <option value="">-- Tất cả Bộ Môn --</option>
-                        <option value="PIANO">Piano & Phím Đàn</option>
-                        <option value="GUITAR">Guitar</option>
-                        <option value="DANCE">Múa & Ballet</option>
-                        <option value="MARTIAL_ARTS">Võ Thuật & Tự Vệ</option>
+                        <option value="DAN">🎹 Bộ Môn Đàn</option>
+                        <option value="MUA">🩰 Bộ Môn Múa</option>
+                        <option value="VO">🥋 Bộ Môn Võ</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
@@ -196,7 +192,7 @@
                 <div class="col-6 col-md-2 text-md-end">
                     <div class="form-check form-switch d-inline-flex align-items-center gap-1 bg-light px-3 py-2 rounded-3 border">
                         <input class="form-check-input ms-0 mt-0" type="checkbox" id="myTestsFilterToggle">
-                        <label class="form-check-label small fw-semibold text-dark mb-0" for="myTestsFilterToggle"><i class="bi bi-person-check text-primary me-1"></i>Bài tôi chấm</label>
+                        <label class="form-check-label small fw-semibold text-dark mb-0" for="myTestsFilterToggle"><i class="bi bi-person-check text-primary me-1"></i>Đã chấm</label>
                     </div>
                 </div>
             </div>
@@ -212,7 +208,7 @@
                                 <th>Mã Lịch</th>
                                 <th>Học Viên / Phụ Huynh</th>
                                 <th>Bộ Môn / Tiêu Đề</th>
-                                <th>Cơ Sở & Phòng</th>
+                                <th>Cơ Sở / Phòng</th>
                                 <th>Thời Gian Test</th>
                                 <th>Giáo Viên Chuyên Môn</th>
                                 <th>Điểm Số / Trình Độ</th>
@@ -237,29 +233,32 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header bg-gradient text-white" style="background: linear-gradient(135deg, #1e3a8a, #2563eb);">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2"></i>Đăng Ký Kiểm Tra Năng Khiếu Đầu Vào</h5>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2"></i>Đăng Ký Kiểm Tra Năng Khiếu (Placement Test)</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="createPlacementTestForm">
                     <div class="modal-body p-4">
+                        <div class="alert alert-primary bg-primary-subtle border-primary-subtle text-primary-emphasis py-2 px-3 small rounded-3 mb-3 d-flex align-items-center">
+                            <i class="bi bi-info-circle-fill me-2 fs-6"></i>
+                            <div><strong>Lưu ý:</strong> Thời gian hẹn test phải từ thời điểm hiện tại trở đi (không được chọn thời gian trong quá khứ).</div>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Họ và tên học viên <span class="text-danger">*</span></label>
-                                <input type="text" id="createStudentName" class="form-control" placeholder="Ví dụ: Đỗ Ngọc Hân" required>
+                                <input type="text" id="createStudentName" class="form-control" placeholder="Ví dụ: Nguyễn Minh Anh" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold text-dark">Bộ môn khảo sát <span class="text-danger">*</span></label>
-                                <select id="createSubject" class="form-select" required onchange="onSubjectChangeInCreateModal()">
-                                    <option value="DANCE">💃 Múa & Ballet Nghệ Thuật</option>
-                                    <option value="MARTIAL_ARTS">🥋 Võ Thuật & Tự Vệ</option>
-                                    <option value="PIANO" selected>🎹 Đàn Piano</option>
-                                    <option value="GUITAR">🎸 Đàn Guitar</option>
+                                <label class="form-label fw-semibold text-dark">Bộ môn kiểm tra (Subject) <span class="text-danger">*</span></label>
+                                <select id="createSubject" class="form-select" required>
+                                    <option value="DAN">🎹 Bộ Môn Đàn</option>
+                                    <option value="MUA">🩰 Bộ Môn Múa</option>
+                                    <option value="VO">🥋 Bộ Môn Võ</option>
                                 </select>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <label class="form-label fw-semibold text-dark">Tiêu đề ca thi <span class="text-danger">*</span></label>
-                                <input type="text" id="createTitle" class="form-control" placeholder="Ví dụ: Đánh Giá Năng Khiếu Múa & Ballet Đầu Vào" required>
+                                <input type="text" id="createTitle" class="form-control" placeholder="Ví dụ: Đánh Giá Năng Khiếu Đàn / Múa / Võ" required>
                             </div>
 
                             <div class="col-md-6">
@@ -271,21 +270,22 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Tên phòng học <span class="text-danger">*</span></label>
-                                <input type="text" id="createRoomName" class="form-control" placeholder="Ví dụ: Phòng Tập Múa & Ballet 103" required>
+                                <input type="text" id="createRoomName" class="form-control" placeholder="Ví dụ: Phòng Đàn 101, Phòng Múa 202, Võ Đường 203" required>
                             </div>
 
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Ngày hẹn test <span class="text-danger">*</span></label>
                                 <input type="date" id="createTestDate" class="form-control" required>
+                                <div class="form-text text-muted small"><i class="bi bi-clock-history me-1"></i>Hệ thống tự động khóa các ngày trong quá khứ.</div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Giờ hẹn <span class="text-danger">*</span></label>
                                 <input type="time" id="createTestTime" class="form-control" value="09:30" required>
                             </div>
 
                             <div class="col-md-12">
                                 <label class="form-label fw-semibold text-dark">Ghi chú ban đầu (note)</label>
-                                <textarea id="createNote" class="form-control" rows="2" placeholder="Nhập ghi chú yêu cầu từ phụ huynh, tình trạng sức khỏe hoặc năng khiếu của bé..."></textarea>
+                                <textarea id="createNote" class="form-control" rows="2" placeholder="Nhập ghi chú yêu cầu từ phụ huynh hoặc nguyện vọng học tập..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -298,13 +298,13 @@
         </div>
     </div>
 
-    <!-- MODAL 2: Chấm điểm tiêu chí riêng cho từng Bộ môn (Piano/Guitar - Múa - Võ) -->
+    <!-- MODAL 2: Chấm điểm tiêu chí & Đánh giá Backend (PlacementAssessmentRequest) -->
     <div class="modal fade" id="evaluateModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header bg-dark text-white">
                     <div>
-                        <h5 class="modal-title fw-bold text-warning"><i class="bi bi-award-fill me-2"></i>Chấm Điểm & Tư Vấn Trình Độ Chuyên Môn</h5>
+                        <h5 class="modal-title fw-bold text-warning"><i class="bi bi-award-fill me-2"></i>Chấm Điểm & Tư Vấn Trình Độ Backend</h5>
                         <small id="evalCandidateMeta" class="text-white-50">Mã Lịch: #PT-1</small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -315,7 +315,6 @@
                             <div>
                                 <span class="badge bg-primary text-white me-2" id="evalCandidateCode">#PT-1</span>
                                 <strong class="fs-5 text-dark" id="evalCandidateName">Học Viên</strong>
-                                <span class="badge bg-dark ms-2" id="evalSubjectBadge">Bộ Môn</span>
                             </div>
                             <div class="d-flex align-items-center gap-3">
                                 <div class="text-end">
@@ -324,43 +323,34 @@
                                 </div>
                                 <div class="score-badge-circle">
                                     <span class="fs-5 fw-bold" id="calculatedScore100">0 / 100đ</span>
-                                    <small style="font-size: 0.6rem;">Điểm Hệ Thống</small>
+                                    <small style="font-size: 0.6rem;">Backend Score</small>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="fw-bold text-dark mb-0" id="evalCriteriaHeader">
-                                <i class="bi bi-sliders me-2 text-primary"></i>Tiêu chí chấm điểm chuyên môn (Thang điểm 0 - 10)
-                            </h6>
-                            <span class="badge bg-light text-secondary border" id="evalSubjectNotice">Tiêu chí riêng theo bộ môn</span>
-                        </div>
-                        
-                        <!-- Dynamic 4 Criteria Sliders rendered based on subject (Piano/Guitar, Múa, Võ) -->
-                        <div class="row g-3 mb-4" id="evalCriteriaContainer">
-                            <!-- Injected dynamically via placement-test.js -->
-                        </div>
+                        <!-- Dynamic Subject Evaluation Criteria Sliders Container -->
+                        <div id="evalCriteriaContainer"></div>
 
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Trình độ gợi ý (recommendedLevel) <span class="text-danger">*</span></label>
                                 <select id="evalLevelSelect" class="form-select" required>
-                                    <option value="BEGINNER">BEGINNER (Sơ Cấp / Khởi Động)</option>
+                                    <option value="BEGINNER">BEGINNER (Sơ Cấp)</option>
                                     <option value="INTERMEDIATE">INTERMEDIATE (Trung Cấp)</option>
-                                    <option value="ADVANCED">ADVANCED (Nâng Cao / Biểu Diễn)</option>
+                                    <option value="ADVANCED">ADVANCED (Nâng Cao)</option>
                                 </select>
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold text-dark">Tải lên video / ghi âm bài test (`/api/placement-tests/upload`)</label>
+                                <label class="form-label fw-semibold text-dark">Tải lên file ghi âm / video đính kèm (`/api/placement-tests/upload`)</label>
                                 <input type="file" id="evalAttachmentFile" class="form-control" accept="audio/*,video/*,image/*">
                                 <div id="uploadStatusMessage" class="small mt-1"></div>
                                 <input type="hidden" id="evalMediaUrl">
                             </div>
 
                             <div class="col-md-12">
-                                <label class="form-label fw-semibold text-dark">Nhận xét & Lộ trình đề xuất từ giáo viên (teacherNote)</label>
-                                <textarea id="evalExaminerNotes" class="form-control" rows="3" placeholder="Nhận xét chi tiết về ưu điểm, độ dẻo/thể lực/cảm âm, điểm cần cải thiện và gợi ý lớp học..."></textarea>
+                                <label class="form-label fw-semibold text-dark">Nhận xét của giáo viên chuyên môn (teacherNote)</label>
+                                <textarea id="evalExaminerNotes" class="form-control" rows="3" placeholder="Nhận xét chi tiết về ưu điểm, điểm cần cải thiện và gợi ý lớp học..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -373,7 +363,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: Xem chi tiết phiếu đánh giá theo từng bộ môn -->
+    <!-- MODAL 3: Xem chi tiết phiếu đánh giá -->
     <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
@@ -398,7 +388,6 @@
                                 <small class="text-muted text-uppercase d-block fw-bold">Thông tin ca thi</small>
                                 <div class="fs-6 fw-bold text-dark mt-1" id="detailTitle">--</div>
                                 <div class="small text-muted">
-                                    Bộ Môn: <span id="detailSubjectBadge" class="badge bg-primary">--</span><br>
                                     Cơ sở & Phòng: <span id="detailBranchRoom" class="fw-semibold">--</span><br>
                                     Thời gian: <span id="detailTestDateTime">--</span><br>
                                     Giáo viên đánh giá: <span id="detailExaminer">--</span>
@@ -407,12 +396,8 @@
                         </div>
                     </div>
 
-                    <h6 class="fw-bold text-dark mb-3" id="detailCriteriaHeader"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Kết Quả Điểm Số Chi Tiết Theo Tiêu Chí</h6>
-                    
-                    <!-- Dynamic criteria bars rendered based on subject -->
-                    <div class="row g-3 mb-4" id="detailCriteriaContainer">
-                        <!-- Injected dynamically via placement-test.js -->
-                    </div>
+                    <!-- Dynamic Subject Detail Progress Bars Container -->
+                    <div id="detailCriteriaContainer"></div>
 
                     <div class="p-3 bg-warning bg-opacity-10 border border-warning rounded-3 mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -427,7 +412,7 @@
                     </div>
 
                     <div>
-                        <strong class="text-dark small mb-1 d-block"><i class="bi bi-paperclip me-1"></i>Tệp tin video / ghi âm đính kèm:</strong>
+                        <strong class="text-dark small mb-1 d-block"><i class="bi bi-paperclip me-1"></i>Tệp tin ghi âm / video đính kèm:</strong>
                         <div id="detailMediaAttachment"></div>
                     </div>
                 </div>
@@ -435,7 +420,6 @@
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
                     <button type="button" class="btn btn-outline-primary rounded-pill px-3" onclick="window.print()"><i class="bi bi-printer me-1"></i>In Phiếu Result</button>
                 </div>
-
             </div>
         </div>
     </div>

@@ -24,12 +24,24 @@ public class AuthService {
             String lower = username.toLowerCase();
             String fullName;
             Role role;
+            String subject = null;
             if (lower.contains("parent") || lower.contains("phuhuynh")) {
                 fullName = "Phụ huynh (" + username + ")";
                 role = Role.PARENT;
             } else if (lower.contains("teacher") || lower.contains("giaovien") || lower.contains("gv") || lower.contains("hung") || lower.contains("huong") || lower.contains("tuan")) {
-                fullName = "Giáo viên (" + username + ")";
-                role = Role.TEACHER;
+                if (lower.contains("tuan") || lower.contains("guitar")) {
+                    fullName = "Thầy Trần Anh Tuấn (GV Guitar)";
+                    role = Role.TEACHER;
+                    subject = "GUITAR";
+                } else if (lower.contains("huong")) {
+                    fullName = "Cô Vũ Thu Hương (GV Piano)";
+                    role = Role.TEACHER;
+                    subject = "PIANO";
+                } else {
+                    fullName = "Giáo viên (" + username + ")";
+                    role = Role.TEACHER;
+                    subject = "PIANO";
+                }
             } else if (lower.contains("student") || lower.contains("hocvien") || lower.contains("hv")) {
                 fullName = "Học viên (" + username + ")";
                 role = Role.STUDENT;
@@ -47,6 +59,7 @@ public class AuthService {
                     .fullName(fullName)
                     .email(username + "@talent.com")
                     .role(role)
+                    .subject(subject)
                     .status(com.talent.management.shared.enums.UserStatus.ACTIVE)
                     .build();
             return userRepository.save(newU);
@@ -67,6 +80,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .fullName(user.getFullName())
                 .role(user.getRole())
+                .subject(user.getSubject())
                 .token(token)
                 .build();
     }
@@ -100,6 +114,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .fullName(user.getFullName())
                 .role(user.getRole())
+                .subject(user.getSubject())
                 .token(token)
                 .build();
     }
