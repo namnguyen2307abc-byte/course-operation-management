@@ -1,0 +1,149 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< com.talent:talent-management >--------------------
+[INFO] Building talent-management 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.3.4:run (default-cli) > test-compile @ talent-management >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ talent-management ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 30 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ talent-management ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ talent-management ---
+[INFO] skip non existing resourceDirectory D:\Ky_7\SBA301\Apartment_management\course-operation-management\com_be\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ talent-management ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.3.4:run (default-cli) < test-compile @ talent-management <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.3.4:run (default-cli) @ talent-management ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-10-01T05:21:36.019+07:00  INFO 6372 --- [talent-management] [  restartedMain] c.t.m.TalentManagementApplication        : Starting TalentManagementApplication using Java 25.0.1 with PID 6372 (D:\Ky_7\SBA301\Apartment_management\course-operation-management\com_be\target\classes started by Admin in D:\Ky_7\SBA301\Apartment_management\course-operation-management\com_be)
+2026-10-01T05:21:36.021+07:00  INFO 6372 --- [talent-management] [  restartedMain] c.t.m.TalentManagementApplication        : No active profile set, falling back to 1 default profile: "default"
+2026-10-01T05:21:36.073+07:00  INFO 6372 --- [talent-management] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2026-10-01T05:21:36.073+07:00  INFO 6372 --- [talent-management] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2026-10-01T05:21:36.635+07:00  INFO 6372 --- [talent-management] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-10-01T05:21:36.723+07:00  INFO 6372 --- [talent-management] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 82 ms. Found 19 JPA repository interfaces.
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.apache.tomcat.jni.Library in an unnamed module (file:/C:/Users/Admin/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.30/tomcat-embed-core-10.1.30.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+2026-10-01T05:21:37.215+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-10-01T05:21:37.228+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-01T05:21:37.228+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.30]
+2026-10-01T05:21:37.272+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-01T05:21:37.273+07:00  INFO 6372 --- [talent-management] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1200 ms
+2026-10-01T05:21:37.321+07:00  INFO 6372 --- [talent-management] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-01T05:21:37.670+07:00  INFO 6372 --- [talent-management] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection ConnectionID:1 ClientConnectionId: b9ab3587-d6e1-4c20-baa7-bdc8fbccb202
+2026-10-01T05:21:37.673+07:00  INFO 6372 --- [talent-management] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-01T05:21:37.685+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.s.b.a.h2.H2ConsoleAutoConfiguration    : H2 console available at '/h2-console'. Database available at 'jdbc:sqlserver://localhost:1433;connectRetryInterval=10;connectRetryCount=1;maxResultBuffer=-1;sendTemporalDataTypesAsStringForBulkCopy=true;delayLoadingLobs=true;useFmtOnly=false;useBulkCopyForBatchInsert=false;cancelQueryTimeout=-1;sslProtocol=TLS;calcBigDecimalPrecision=false;useDefaultJaasConfig=false;jaasConfigurationName=SQLJDBCDriver;statementPoolingCacheSize=0;serverPreparedStatementDiscardThreshold=10;enablePrepareOnFirstPreparedStatementCall=false;fips=false;socketTimeout=0;authentication=NotSpecified;authenticationScheme=nativeAuthentication;xopenStates=false;datetimeParameterType=datetime2;sendTimeAsDatetime=true;replication=false;trustStoreType=JKS;trustServerCertificate=true;TransparentNetworkIPResolution=true;iPAddressPreference=IPv4First;serverNameAsACE=false;sendStringParametersAsUnicode=true;selectMethod=direct;responseBuffering=adaptive;queryTimeout=-1;packetSize=8000;multiSubnetFailover=false;loginTimeout=30;lockTimeout=-1;lastUpdateCount=true;useDefaultGSSCredential=false;prepareMethod=prepexec;encrypt=true;disableStatementPooling=true;databaseName=course_operation_management;columnEncryptionSetting=Disabled;applicationName=Microsoft JDBC Driver for SQL Server;applicationIntent=readwrite;'
+2026-10-01T05:21:37.823+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-10-01T05:21:37.867+07:00  INFO 6372 --- [talent-management] [  restartedMain] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-10-01T05:21:37.899+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-10-01T05:21:38.101+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-10-01T05:21:39.170+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-10-01T05:21:52.341+07:00  INFO 6372 --- [talent-management] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-10-01T05:21:52.648+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-10-01T05:21:54.320+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
+2026-10-01T05:21:54.341+07:00  INFO 6372 --- [talent-management] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-10-01T05:21:54.346+07:00  INFO 6372 --- [talent-management] [  restartedMain] c.t.m.TalentManagementApplication        : Started TalentManagementApplication in 18.69 seconds (process running for 19.155)
+2026-10-01T05:21:55.467+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-01T05:21:55.467+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-01T05:21:55.468+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-10-01T05:21:59.550+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-5] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Nhận Webhook từ PayOS: {code=00, desc=success, success=true, data={accountNumber=0777560391, amount=2000, description=HP INV20268471 Piano Test, reference=FT26274186665420, transactionDateTime=2026-10-01 05:17:56, virtualAccountNumber=, counterAccountBankId=01204001, counterAccountBankName=, counterAccountName=HOANG DUC THUAN, counterAccountNumber=3511205288130, virtualAccountName=, currency=VND, orderCode=179080663400011, paymentLinkId=33f79308ce2f40df9ce676f1f1eff442, code=00, desc=success}, signature=ed65345739a38d328f29e6efd109d7cb2f24bf896844b3cf3e8a139b36759723}
+2026-10-01T05:21:59.644+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-5] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Lớp học Guitar Nhập Môn Chiều Thứ 7 đã tăng sĩ số lên: 2/8
+2026-10-01T05:21:59.644+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-5] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Xử lý thanh toán thành công cho hóa đơn: INV-2026-8471, mã giao dịch: PAY-1790806919620, thu ngân: cashier_mai
+2026-10-01T05:22:01.707+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''
+2026-10-01T05:22:02.388+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''
+2026-10-01T05:22:02.446+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-9] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.method.annotation.MethodArgumentTypeMismatchException: Failed to convert value of type 'java.lang.String' to required type 'java.lang.Long'; For input string: "invoices"]
+2026-10-01T05:22:02.576+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [org.springframework.web.servlet.resource.NoResourceFoundException: No static resource api/attendance-makeup/makeup-classes.]
+2026-10-01T05:23:42.228+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''
+2026-10-01T05:23:47.701+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080702700012, amount=3200000
+2026-10-01T05:23:48.815+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/057df4f0d40c42768e9e07f703a87b1f
+2026-10-01T05:23:49.259+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-6] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080702900012, amount=3200000
+2026-10-01T05:23:49.259+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-5] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080702900012, amount=3200000
+2026-10-01T05:23:49.445+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-6] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:23:49.743+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-5] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/92b6a290083a4f2ebe090b2c370fb007
+2026-10-01T05:23:50.425+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703000012, amount=2700000
+2026-10-01T05:23:50.425+07:00  INFO 6372 --- [talent-management] [io-8080-exec-10] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703000012, amount=2700000
+2026-10-01T05:23:50.614+07:00  WARN 6372 --- [talent-management] [io-8080-exec-10] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:23:50.907+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/6288e3ccdaa9471b972631e6bf7a46e6
+2026-10-01T05:23:51.266+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703100012, amount=2700000
+2026-10-01T05:23:51.708+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/ff1fbf040b6341529b6b9c9c18050cae
+2026-10-01T05:23:52.309+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703200012, amount=2700000
+2026-10-01T05:23:52.796+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/49b04d903bb84200b4066c045eff1329
+2026-10-01T05:23:52.890+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703200012, amount=2700000
+2026-10-01T05:23:52.996+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:23:53.071+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703300012, amount=2700000
+2026-10-01T05:23:53.458+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-6] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703300012, amount=2700000
+2026-10-01T05:23:53.564+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-6] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:23:53.567+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/43a5b268a2cc4e68b1dc55460397eb34
+2026-10-01T05:23:57.422+07:00  INFO 6372 --- [talent-management] [io-8080-exec-10] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703700012, amount=2700000
+2026-10-01T05:23:57.582+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703700012, amount=2700000
+2026-10-01T05:23:57.686+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:23:57.933+07:00  INFO 6372 --- [talent-management] [io-8080-exec-10] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/4f3e45f0bd564b1397b48f768cbb148b
+2026-10-01T05:23:58.279+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703800012, amount=3199997
+2026-10-01T05:23:58.775+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/0f62c2e527d64631baadf10dd115e345
+2026-10-01T05:23:59.262+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703900012, amount=3199997
+2026-10-01T05:23:59.706+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/2da8cd79de834e15b824b9aae6459118
+2026-10-01T05:23:59.816+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-5] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080703900012, amount=3199997
+2026-10-01T05:23:59.919+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-5] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:24:00.431+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-7] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704000012, amount=3199997
+2026-10-01T05:24:00.915+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-7] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/4cf08b6bb49746d09f69dfd77068e5ec
+2026-10-01T05:24:02.025+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704200012, amount=3199997
+2026-10-01T05:24:02.584+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/2e90d24ceff94fa38aa9d3f709d1b082
+2026-10-01T05:24:03.200+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704300012, amount=3199997
+2026-10-01T05:24:03.880+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/5698c9598f204604b09440557c28da57
+2026-10-01T05:24:04.216+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704400012, amount=3199997
+2026-10-01T05:24:04.216+07:00  INFO 6372 --- [talent-management] [io-8080-exec-10] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704400012, amount=3199997
+2026-10-01T05:24:04.425+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:24:04.735+07:00  INFO 6372 --- [talent-management] [io-8080-exec-10] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/cb04014f6e0c4efab47add2b1206ec4c
+2026-10-01T05:24:06.566+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704600012, amount=3199997
+2026-10-01T05:24:07.103+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/75dcc452d24a47e0903607f3d6038e35
+2026-10-01T05:24:07.242+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-7] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704700012, amount=10000
+2026-10-01T05:24:07.814+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-7] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/002e8e37296246f6bf87e53f0d05a476
+2026-10-01T05:24:09.868+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080704900012, amount=10000
+2026-10-01T05:24:10.438+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/530ab190ae6943ecb8b4c8f44a08ba0a
+2026-10-01T05:24:17.241+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080705700012, amount=10000
+2026-10-01T05:24:17.855+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/2da1e66c5de24a8582d31a321c7cba9f
+2026-10-01T05:24:18.101+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-7] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080705800012, amount=2881000
+2026-10-01T05:24:18.671+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-7] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/5a10f7caa8d940eabac0ea29ada34415
+2026-10-01T05:24:18.891+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080705800012, amount=3200000
+2026-10-01T05:24:18.891+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080705800012, amount=2000
+2026-10-01T05:24:18.998+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:24:19.001+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.gateway.PayOSGateway           : PayOS phản hồi mã lỗi: code=231, desc=Đơn thanh toán đã tồn tại. Chuyển sang fallback Simulator.
+2026-10-01T05:24:38.702+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080707800012, amount=2881000
+2026-10-01T05:24:39.228+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-9] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/78c24644a32046828b1aa274fdccd5c0
+2026-10-01T05:24:39.279+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : Gọi API PayOS tạo payment-request cho hóa đơn INV-2026-2539: orderCode=179080707900012, amount=3000
+2026-10-01T05:24:39.826+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.gateway.PayOSGateway           : PayOS tạo liên kết thanh toán thành công cho hóa đơn INV-2026-2539: checkoutUrl=https://pay.payos.vn/web/c18948bddf574fa29d8099f544e527bb
+2026-10-01T05:24:54.099+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Nhận Webhook từ PayOS: {code=00, desc=success, success=true, data={accountNumber=0777560391, amount=3000, description=HP INV20262539 Be Tom, reference=FT26274078934906, transactionDateTime=2026-10-01 05:24:52, virtualAccountNumber=, counterAccountBankId=01204001, counterAccountBankName=, counterAccountName=HOANG DUC THUAN, counterAccountNumber=3511205288130, virtualAccountName=, currency=VND, orderCode=179080707900012, paymentLinkId=c18948bddf574fa29d8099f544e527bb, code=00, desc=success}, signature=278738deb5af19961394b5217e594a8f2ec26010476c2f82f6ce0570f8cb7b90}
+2026-10-01T05:24:54.189+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Lớp học Guitar Nhập Môn Chiều Thứ 7 đã tăng sĩ số lên: 3/8
+2026-10-01T05:24:54.189+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-1] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Xử lý thanh toán thành công cho hóa đơn: INV-2026-2539, mã giao dịch: PAY-1790807094161, thu ngân: cashier_mai
+2026-10-01T05:24:56.013+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-3] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''
+2026-10-01T05:27:01.742+07:00  WARN 6372 --- [talent-management] [io-8080-exec-10] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.talent.management.features.attendance_makeup.exception.AttendanceMakeupException: Buổi học này đã có đơn xin nghỉ đang chờ duyệt hoặc đã được phê duyệt!]
+2026-10-01T05:27:07.347+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-9] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.talent.management.features.attendance_makeup.exception.AttendanceMakeupException: Buổi học này đã có đơn xin nghỉ đang chờ duyệt hoặc đã được phê duyệt!]
+2026-10-01T05:27:10.092+07:00  WARN 6372 --- [talent-management] [nio-8080-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.talent.management.features.attendance_makeup.exception.AttendanceMakeupException: Buổi học này đã có đơn xin nghỉ đang chờ duyệt hoặc đã được phê duyệt!]
+2026-10-01T05:27:22.737+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.a.s.i.AbsenceMakeupServiceImpl   : Đơn xin nghỉ mới #8 cho học viên [Nguyễn Hải Yến] bởi [parent_lan]
+2026-10-01T05:28:03.600+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.a.s.i.AbsenceMakeupServiceImpl   : Giáo viên [teacher_huong] APPROVED đơn #8 của [Nguyễn Hải Yến] → Ca bù #3 tạo mới
+2026-10-01T05:28:30.765+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-8] c.t.m.f.a.s.i.AbsenceMakeupServiceImpl   : Ca bù #3 xếp lịch → buổi [Buổi 1: Nhịp 4/4 và Gam Đô Trưởng] ngày 2026-10-06 bởi [cashier_mai]
+2026-10-01T05:29:40.307+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''
+2026-10-01T05:29:55.311+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Xử lý thanh toán thành công cho hóa đơn: INV-2026-008, mã giao dịch: PAY-1790807395289, thu ngân: cashier_mai
+2026-10-01T05:29:55.437+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''

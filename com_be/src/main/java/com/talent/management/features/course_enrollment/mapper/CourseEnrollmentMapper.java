@@ -63,6 +63,10 @@ public class CourseEnrollmentMapper {
     }
 
     public EnrollmentRequestResponse toRequestResponse(EnrollmentRequest request) {
+        return toRequestResponse(request, null, null);
+    }
+
+    public EnrollmentRequestResponse toRequestResponse(EnrollmentRequest request, Long invoiceId, String invoiceCode) {
         ClassEntity assignedClass = request.getClassEntity();
         Course preferredCourse = request.getPreferredCourse() != null
                 ? request.getPreferredCourse()
@@ -85,7 +89,9 @@ public class CourseEnrollmentMapper {
                 request.getReviewedAt(),
                 request.getEnrollment() == null ? null : request.getEnrollment().getId(),
                 request.getRequestedBy().getFullName(),
-                request.getReviewedBy() == null ? null : request.getReviewedBy().getFullName()
+                request.getReviewedBy() == null ? null : request.getReviewedBy().getFullName(),
+                invoiceId,
+                invoiceCode
         );
     }
 }

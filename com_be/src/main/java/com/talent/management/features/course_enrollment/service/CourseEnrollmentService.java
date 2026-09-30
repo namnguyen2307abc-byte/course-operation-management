@@ -285,12 +285,12 @@ public class CourseEnrollmentService {
                 .notes("Hóa đơn học phí lớp " + classEntity.getClassName() + " từ yêu cầu đăng ký #" + request.getId())
                 .createdAt(LocalDateTime.now())
                 .build();
-        invoiceRepository.save(invoice);
+        Invoice savedInvoice = invoiceRepository.save(invoice);
 
         request.setClassEntity(classEntity);
         request.setEnrollment(enrollment);
         request.setStatus(EnrollmentRequestStatus.PENDING_PAYMENT);
-        return mapper.toRequestResponse(requestRepository.save(request));
+        return mapper.toRequestResponse(requestRepository.save(request), savedInvoice.getId(), savedInvoice.getInvoiceCode());
     }
 
     private EnrollmentRequest getRequestOrThrow(Long requestId) {
