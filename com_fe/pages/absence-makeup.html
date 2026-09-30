@@ -203,6 +203,7 @@
                             <option value="">Tất Cả Trạng Thái</option>
                             <option value="PENDING" selected>Chờ Duyệt (PENDING)</option>
                             <option value="APPROVED">Đã Duyệt (APPROVED)</option>
+                            <option value="EXCUSED">Miễn Học Bù (EXCUSED)</option>
                             <option value="SPECIAL_APPROVED">Duyệt Đặc Biệt (SPECIAL_APPROVED)</option>
                             <option value="REJECTED">Từ Chối (REJECTED)</option>
                         </select>
@@ -329,8 +330,7 @@
                             </p>
                             <ul class="small text-secondary ps-3 mb-0">
                                 <li class="mb-1"><strong>Thời gian báo trước:</strong> Quý phụ huynh vui lòng gửi đơn trước buổi học ít nhất 12 - 24 giờ.</li>
-                                <li class="mb-1"><strong>Duyệt đặc biệt:</strong> Với các tình huống đột xuất (ốm sốt, việc tang gia, hoàn cảnh gia đình), giáo viên sẽ áp dụng chính sách <em>Duyệt đặc biệt</em> để đảm bảo quyền lợi học bù cho học viên.</li>
-                                <li class="mb-1"><strong>Tự động bảo lưu ca bù:</strong> Khi đơn nghỉ được duyệt, hệ thống tự động sinh ca học bù tương đương về môn và trình độ.</li>
+                                <li class="mb-1"><strong>Duyệt đơn:</strong> Giáo viên, Nhân viên hoặc Quản trị viên tiếp nhận và xét duyệt đơn xin nghỉ học của phụ huynh.</li>
                                 <li><strong>Hạn xếp lịch bù:</strong> Ca bù nên được xếp trong vòng 30 ngày kể từ ngày nghỉ.</li>
                             </ul>
                         </div>
@@ -797,6 +797,8 @@
                     statusBadge = '<span class="badge-status bg-warning text-dark"><i class="bi bi-clock-history"></i>Chờ Duyệt</span>';
                 } else if (item.status === 'APPROVED') {
                     statusBadge = '<span class="badge-status bg-success text-white"><i class="bi bi-check-circle"></i>Đã Duyệt</span>';
+                } else if (item.status === 'EXCUSED') {
+                    statusBadge = '<span class="badge-status bg-info text-dark"><i class="bi bi-heart-fill text-danger"></i>Miễn Học Bù</span>';
                 } else if (item.status === 'SPECIAL_APPROVED') {
                     statusBadge = '<span class="badge-status bg-info text-dark"><i class="bi bi-heart-fill text-danger"></i>Duyệt Đặc Biệt</span>';
                 } else if (item.status === 'REJECTED') {
@@ -886,8 +888,8 @@
             if (!activeReviewId) return;
             const note = document.getElementById('approveNoteInput').value;
             try {
-                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/approve`, 'PUT', {
-                    action: 'APPROVE',
+                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/review`, 'PATCH', {
+                    decision: 'APPROVED',
                     reviewNote: note
                 });
                 modalApproveObj.hide();
@@ -915,12 +917,12 @@
             }
 
             try {
-                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/special-approve`, 'PUT', {
-                    action: 'SPECIAL_APPROVE',
+                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/review`, 'PATCH', {
+                    decision: 'EXCUSED',
                     reviewNote: note
                 });
                 modalSpecialApproveObj.hide();
-                showToast('success', 'Đã duyệt đặc biệt đơn xin nghỉ kèm ghi chú nhân văn!');
+                showToast('success', 'Đã duyệt đặc biệt (Miễn học bù) đơn xin nghỉ kèm ghi chú!');
                 await reloadData();
             } catch (err) {
                 showToast('danger', 'Lỗi duyệt đặc biệt: ' + err.message);
@@ -944,8 +946,8 @@
             }
 
             try {
-                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/reject`, 'PUT', {
-                    action: 'REJECT',
+                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/review`, 'PATCH', {
+                    decision: 'REJECTED',
                     reviewNote: note
                 });
                 modalRejectObj.hide();
@@ -1108,6 +1110,7 @@
             }
 
             const isStaffOrTeacher = currentUser && (currentUser.role === 'TEACHER' || currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
+            const isStaffOrAdmin = currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
 
             tbody.innerHTML = filtered.map(item => {
                 // Status badge
@@ -1149,20 +1152,32 @@
                     </button>
                 `;
 
-                if (isStaffOrTeacher) {
-                    if (item.status === 'PENDING') {
+                if (item.status === 'PENDING') {
+                    if (isStaffOrAdmin) {
                         actionButtons += `
                             <button class="btn btn-sm btn-warning rounded-pill px-2 py-1 ms-1 text-dark fw-semibold" title="Xếp ca học bù" onclick="openScheduleModal(${item.id})">
                                 <i class="bi bi-calendar-plus me-1"></i> Xếp Lịch
                             </button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 ms-1" title="Hủy ca học bù" onclick="confirmCancelMakeup(${item.id})">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
                         `;
-                    } else if (item.status === 'SCHEDULED' || item.status === 'REGISTERED') {
+                    }
+                } else if (item.status === 'SCHEDULED' || item.status === 'REGISTERED') {
+                    if (isStaffOrTeacher) {
                         actionButtons += `
                             <button class="btn btn-sm btn-success rounded-pill px-2 py-1 ms-1" title="Điểm danh có mặt (Hoàn thành ca bù)" onclick="confirmCompleteMakeup(${item.id})">
                                 <i class="bi bi-check2-all me-1"></i> Có Mặt
                             </button>
+                        `;
+                    }
+                    if (isStaffOrAdmin) {
+                        actionButtons += `
                             <button class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1 ms-1" title="Đổi ca học bù khác" onclick="openScheduleModal(${item.id})">
                                 <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 ms-1" title="Hủy ca học bù" onclick="confirmCancelMakeup(${item.id})">
+                                <i class="bi bi-x-circle"></i>
                             </button>
                         `;
                     }
@@ -1269,6 +1284,20 @@
                 await reloadData();
             } catch (err) {
                 showToast('danger', 'Lỗi hoàn thành học bù: ' + err.message);
+            }
+        }
+
+        async function confirmCancelMakeup(makeupId) {
+            const reason = prompt("Nhập lý do hủy ca học bù:");
+            if (reason === null) return;
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
+                    reason: reason.trim()
+                });
+                showToast('warning', 'Đã hủy ca học bù thành công.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi hủy ca bù: ' + err.message);
             }
         }
 
