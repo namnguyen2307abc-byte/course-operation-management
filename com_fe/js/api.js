@@ -1,4 +1,3 @@
-const BASE_URL = "http://localhost:8080";
 const isDev = window.location.port !== "8080" && window.location.port !== "";
 const BASE_URL = isDev ? `http://${window.location.hostname}:8080` : "";
 
