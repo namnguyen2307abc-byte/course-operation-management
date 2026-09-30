@@ -3,6 +3,7 @@ package com.talent.management.features.placement_test.controller;
 import com.talent.management.features.placement_test.dto.request.CreatePlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
+import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,6 +55,14 @@ public class PlacementTestController {
     @Operation(summary = "Xem chi tiết một lịch thi xếp lớp theo ID")
     public ResponseEntity<PlacementScheduleResponse> getScheduleById(@PathVariable Long id) {
         return ResponseEntity.ok(placementTestService.getScheduleById(id));
+    }
+
+    @GetMapping("/students/{studentId}/latest-result")
+    @Operation(summary = "Lấy kết quả và khóa học đề xuất mới nhất của học viên")
+    public ResponseEntity<PlacementRecommendationResponse> getLatestRecommendation(
+            @PathVariable Long studentId
+    ) {
+        return ResponseEntity.ok(placementTestService.getLatestRecommendation(studentId));
     }
 
     @PostMapping

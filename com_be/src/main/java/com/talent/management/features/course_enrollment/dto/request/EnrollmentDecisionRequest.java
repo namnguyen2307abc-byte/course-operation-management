@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public record EnrollmentDecisionRequest(
         @NotNull(message = "Vui lòng chọn quyết định") EnrollmentDecision decision,
+        Long classId,
         @Size(max = 500, message = "Ghi chú duyệt không được vượt quá 500 ký tự") String reviewNote
 ) {
 }

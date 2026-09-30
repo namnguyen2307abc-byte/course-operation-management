@@ -4,6 +4,7 @@ import com.talent.management.features.course_enrollment.entity.EnrollmentRequest
 import com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface EnrollmentRequestRepository extends JpaRepository<EnrollmentRequest, Long> {
@@ -16,4 +17,11 @@ public interface EnrollmentRequestRepository extends JpaRepository<EnrollmentReq
     List<EnrollmentRequest> findByRequestedByIdOrderByCreatedAtDesc(Long requestedById);
 
     List<EnrollmentRequest> findByStatusOrderByCreatedAtAsc(EnrollmentRequestStatus status);
+
+    List<EnrollmentRequest> findByStatusInOrderByCreatedAtAsc(Collection<EnrollmentRequestStatus> statuses);
+
+    boolean existsByStudentIdAndStatusIn(
+            Long studentId,
+            Collection<EnrollmentRequestStatus> statuses
+    );
 }

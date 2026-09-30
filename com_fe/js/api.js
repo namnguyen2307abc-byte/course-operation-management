@@ -1,4 +1,5 @@
-const BASE_URL = "http://localhost:8080";
+const isDev = window.location.port !== "8080" && window.location.port !== "";
+const BASE_URL = isDev ? `http://${window.location.hostname}:8080` : "";
 
 async function callApi(endpoint, method = "GET", body = null, isFormData = false) {
     const token = localStorage.getItem("token");
@@ -23,7 +24,7 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
         if (response.status === 401) {
             alert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại!");
             localStorage.removeItem("token");
-            window.location.href = "/login.html";
+            window.location.href = window.location.port === "8080" ? "/login" : (window.location.pathname.includes("/com_fe/") ? "/com_fe/login.html" : "/login.html");
             return null;
         }
 
@@ -43,10 +44,12 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
             throw new Error(errData.message || `Lỗi yêu cầu: ${response.status}`);
         }
 
+        
         const text = await response.text();
         return text ? JSON.parse(text) : null;
     } catch (error) {
         console.error("API Error:", error);
+        alert(error.message);
         throw error;
     }
 }

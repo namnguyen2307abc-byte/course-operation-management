@@ -11,4 +11,6 @@ import java.util.List;
 @Repository("courseEnrollmentClassRepository")
 public interface ClassRepository extends JpaRepository<ClassEntity, Long> {
     List<ClassEntity> findByCourseIdAndStatusOrderByStartDateAsc(Long courseId, ClassStatus status);
+
+    List<ClassEntity> findByStatusOrderByStartDateAsc(ClassStatus status);
 }

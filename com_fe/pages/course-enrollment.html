@@ -6,6 +6,7 @@
     <title>Đăng Ký Lớp Học - Talent Academy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="/css/style.css">
     <style>
         .workflow-bar {
@@ -36,8 +37,22 @@
             border: 1px solid #e2e8f0;
             border-radius: 8px;
         }
-        .class-row { cursor: pointer; }
-        .class-row:has(input:checked) { background: #eff6ff; }
+        .recommendation-strip {
+            border: 1px solid #bfdbfe;
+            border-left: 4px solid #2563eb;
+            background: #eff6ff;
+            padding: 0.9rem 1rem;
+        }
+        .recommendation-strip.is-available {
+            border-color: #bbf7d0;
+            border-left-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .recommendation-strip.is-unavailable {
+            border-color: #e2e8f0;
+            border-left-color: #64748b;
+            background: #f8fafc;
+        }
         .facility-preview-btn {
             width: 32px;
             height: 32px;
@@ -66,12 +81,11 @@
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb small mb-1">
-                        <li class="breadcrumb-item"><a href="/index.html" class="text-decoration-none">Trang Chủ</a></li>
                         <li class="breadcrumb-item active">Đăng Ký Lớp Học</li>
                     </ol>
                 </nav>
                 <h3 class="fw-bold text-dark mb-1" id="pageTitle">Đăng Ký Lớp Học</h3>
-                <p class="text-muted small mb-0" id="pageSubtitle">Chọn khóa học, lớp còn chỗ và theo dõi kết quả xét duyệt.</p>
+                <p class="text-muted small mb-0" id="pageSubtitle">Gửi nhu cầu học để phòng đào tạo tư vấn và xếp lớp phù hợp.</p>
             </div>
             <button class="btn btn-outline-secondary btn-sm px-3" id="refreshBtn">
                 <i class="bi bi-arrow-clockwise me-1"></i>Làm mới
@@ -82,54 +96,46 @@
 
         <section id="parentSection" class="d-none">
             <div class="workflow-bar p-3 mb-4 d-flex flex-wrap gap-3 justify-content-between">
-                <div class="workflow-step"><span class="step-number">1</span><span class="small fw-semibold">Chọn học viên và khóa học</span></div>
-                <div class="workflow-step"><span class="step-number">2</span><span class="small fw-semibold">Chọn lớp còn chỗ</span></div>
-                <div class="workflow-step"><span class="step-number">3</span><span class="small fw-semibold">Gửi yêu cầu chờ duyệt</span></div>
-                <div class="workflow-step"><span class="step-number">4</span><span class="small fw-semibold">Theo dõi kết quả</span></div>
+                <div class="workflow-step"><span class="step-number">1</span><span class="small fw-semibold">Chọn học viên</span></div>
+                <div class="workflow-step"><span class="step-number">2</span><span class="small fw-semibold">Chọn Placement Test hoặc khóa học</span></div>
+                <div class="workflow-step"><span class="step-number">3</span><span class="small fw-semibold">Staff tư vấn và xếp lớp</span></div>
+                <div class="workflow-step"><span class="step-number">4</span><span class="small fw-semibold">Thanh toán và ghi danh</span></div>
             </div>
 
             <div class="section-panel p-3 p-md-4 mb-4">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <div>
                         <h5 class="fw-bold mb-1"><i class="bi bi-journal-plus text-primary me-2"></i>Tạo yêu cầu đăng ký</h5>
-                        <div class="text-muted small">Danh sách lớp được lọc theo khóa học và chỉ hiển thị lớp còn chỗ.</div>
+                        <div class="text-muted small">Phụ huynh gửi nhu cầu; lớp học cuối cùng do phòng đào tạo sắp xếp.</div>
                     </div>
                 </div>
 
                 <form id="requestForm">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-5">
+                        <div class="col-md-6" id="childField">
                             <label for="childSelect" class="form-label small fw-semibold">Học viên</label>
                             <select class="form-select" id="childSelect" required></select>
                         </div>
-                        <div class="col-md-7">
-                            <label for="courseSelect" class="form-label small fw-semibold">Khóa học</label>
+                        <div class="col-md-6" id="coursePreferenceField">
+                            <label for="courseSelect" class="form-label small fw-semibold">Khóa học mong muốn</label>
                             <select class="form-select" id="courseSelect" required></select>
                         </div>
                     </div>
 
-                    <div class="table-responsive border rounded mb-3">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light small text-secondary">
-                                <tr>
-                                    <th style="width: 48px;"></th>
-                                    <th>Lớp học</th>
-                                    <th>Cơ sở / Phòng</th>
-                                    <th>Lịch học</th>
-                                    <th>Giảng viên</th>
-                                    <th>Còn trống</th>
-                                </tr>
-                            </thead>
-                            <tbody id="classTableBody">
-                                <tr><td colspan="6" class="empty-state">Chọn khóa học để xem lớp phù hợp.</td></tr>
-                            </tbody>
-                        </table>
+                    <div class="border rounded p-3 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="placementRequested">
+                            <label class="form-check-label fw-semibold" for="placementRequested">Đăng ký Placement Test trước khi xếp lớp</label>
+                        </div>
+                        <div class="text-muted small mt-1">Nếu bật, khóa học sẽ được xác định theo kết quả và đề xuất của giáo viên. Nếu tắt, staff sẽ xếp lớp theo khóa học mong muốn.</div>
                     </div>
+
+                    <div id="recommendationPanel" class="recommendation-strip d-none mb-3" aria-live="polite"></div>
 
                     <div class="row g-3 align-items-end">
                         <div class="col-md-9">
-                            <label for="requestNote" class="form-label small fw-semibold">Ghi chú cho phòng đào tạo</label>
-                            <input class="form-control" id="requestNote" maxlength="500" placeholder="Ví dụ: Gia đình ưu tiên lớp cuối tuần">
+                            <label for="requestNote" class="form-label small fw-semibold">Nhu cầu về lịch học hoặc cơ sở</label>
+                            <input class="form-control" id="requestNote" maxlength="500" placeholder="Ví dụ: Gia đình ưu tiên cuối tuần tại cơ sở Cầu Giấy">
                         </div>
                         <div class="col-md-3 d-grid">
                             <button class="btn btn-primary" id="submitRequestBtn" type="submit">
@@ -167,7 +173,7 @@
                 </div>
                 <div class="col-md-8 d-flex align-items-center">
                     <div class="alert alert-primary mb-0 w-100">
-                        <i class="bi bi-info-circle me-2"></i>Kiểm tra học viên và lớp đã chọn, sau đó phê duyệt hoặc từ chối. Khi duyệt, hệ thống sẽ ghi danh và cập nhật sĩ số lớp.
+                        <i class="bi bi-info-circle me-2"></i>Kiểm tra nhu cầu và kết quả Placement Test, sau đó chọn lớp còn chỗ. Xếp lớp xong, hồ sơ sẽ chuyển sang chờ thanh toán.
                     </div>
                 </div>
             </div>
@@ -180,7 +186,7 @@
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead class="table-light small text-secondary">
-                            <tr><th>Học viên / Phụ huynh</th><th>Khóa học / Lớp</th><th>Ngày gửi</th><th>Ghi chú</th><th class="text-end">Xử lý</th></tr>
+                            <tr><th>Học viên / Phụ huynh</th><th>Nhu cầu học</th><th>Ngày gửi</th><th>Ghi chú</th><th class="text-end">Xử lý</th></tr>
                         </thead>
                         <tbody id="pendingTableBody"></tbody>
                     </table>
@@ -206,6 +212,11 @@
                 </div>
                 <div class="modal-body">
                     <div class="small text-muted mb-3" id="decisionSummary"></div>
+                    <div id="assignmentFields" class="mb-3 d-none">
+                        <label for="assignedClassSelect" class="form-label small fw-semibold">Lớp còn chỗ</label>
+                        <select class="form-select" id="assignedClassSelect"></select>
+                        <div class="form-text">Danh sách chỉ gồm các lớp đang mở thuộc khóa học đã chọn hoặc được đề xuất.</div>
+                    </div>
                     <label for="reviewNote" class="form-label small fw-semibold">Ghi chú phản hồi</label>
                     <textarea class="form-control" id="reviewNote" rows="3" maxlength="500" placeholder="Nhập lý do hoặc thông tin phản hồi"></textarea>
                 </div>
@@ -238,8 +249,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/auth.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script>
         checkAuth();
 
@@ -250,14 +261,15 @@
         let selectedRequest = null;
         let pendingRequestMap = new Map();
         let availableClassMap = new Map();
+        let recommendedClassIds = new Set();
 
-        fetch('/components/navbar.html')
+        fetch('../components/navbar.html')
             .then(response => response.text())
             .then(html => {
                 document.getElementById('navbar-container').innerHTML = html;
                 updateNavbarUser();
             });
-        fetch('/components/footer.html')
+        fetch('../components/footer.html')
             .then(response => response.text())
             .then(html => document.getElementById('footer-container').innerHTML = html);
 
@@ -265,7 +277,8 @@
             decisionModal = new bootstrap.Modal(document.getElementById('decisionModal'));
             facilityModal = new bootstrap.Modal(document.getElementById('facilityModal'));
             document.getElementById('refreshBtn').addEventListener('click', loadPageData);
-            document.getElementById('courseSelect').addEventListener('change', loadClasses);
+            document.getElementById('childSelect').addEventListener('change', updatePlacementMode);
+            document.getElementById('placementRequested').addEventListener('change', updatePlacementMode);
             document.getElementById('requestForm').addEventListener('submit', submitRequest);
             document.getElementById('confirmDecisionBtn').addEventListener('click', confirmDecision);
             configureRoleView();
@@ -280,8 +293,8 @@
             }
             if (['STAFF', 'BRANCH_MANAGER', 'ADMIN'].includes(currentUser.role)) {
                 document.getElementById('staffSection').classList.remove('d-none');
-                document.getElementById('pageTitle').innerText = 'Duyệt Yêu Cầu Đăng Ký Lớp';
-                document.getElementById('pageSubtitle').innerText = 'Tiếp nhận và xử lý yêu cầu đăng ký từ phụ huynh.';
+                document.getElementById('pageTitle').innerText = 'Tư Vấn Và Xếp Lớp';
+                document.getElementById('pageSubtitle').innerText = 'Tiếp nhận nhu cầu, kiểm tra Placement Test và chọn lớp phù hợp.';
                 loadPendingRequests();
                 return;
             }
@@ -303,7 +316,7 @@
                 renderChildren(children || []);
                 renderCourses(courses || []);
                 renderMyRequests(requests || []);
-                await loadClasses();
+                await updatePlacementMode();
             } catch (error) {
                 showNotice(error.message, 'danger');
             }
@@ -323,43 +336,105 @@
                 : '<option value="">Chưa có khóa học</option>';
         }
 
-        async function loadClasses() {
-            const courseId = document.getElementById('courseSelect').value;
-            const body = document.getElementById('classTableBody');
-            if (!courseId) {
-                availableClassMap = new Map();
-                body.innerHTML = '<tr><td colspan="6" class="empty-state">Chưa có khóa học để lựa chọn.</td></tr>';
+        async function updatePlacementMode() {
+            const placementRequested = document.getElementById('placementRequested').checked;
+            const courseSelect = document.getElementById('courseSelect');
+            const coursePreferenceField = document.getElementById('coursePreferenceField');
+            const childField = document.getElementById('childField');
+            const panel = document.getElementById('recommendationPanel');
+            courseSelect.disabled = placementRequested;
+            courseSelect.required = !placementRequested;
+            coursePreferenceField.classList.toggle('d-none', placementRequested);
+            childField.classList.toggle('col-md-6', !placementRequested);
+            childField.classList.toggle('col-md-12', placementRequested);
+
+            if (!placementRequested) {
+                panel.className = 'recommendation-strip d-none mb-3';
                 return;
             }
-            body.innerHTML = '<tr><td colspan="6" class="empty-state"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải lớp học...</td></tr>';
-            try {
-                const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`);
-                if (!classes || classes.length === 0) {
-                    availableClassMap = new Map();
-                    body.innerHTML = '<tr><td colspan="6" class="empty-state">Khóa học này hiện chưa có lớp còn chỗ.</td></tr>';
-                    return;
-                }
-                availableClassMap = new Map(classes.map(item => [item.id, item]));
-                body.innerHTML = classes.map((item, index) => `
-                    <tr class="class-row" onclick="document.getElementById('class-${item.id}').click()">
-                        <td><input class="form-check-input" type="radio" name="classId" id="class-${item.id}" value="${item.id}" ${index === 0 ? 'checked' : ''} onclick="event.stopPropagation()"></td>
-                        <td><div class="fw-semibold">${escapeHtml(item.className)}</div><code>${escapeHtml(item.classCode)}</code></td>
-                        <td>
-                            <div>${escapeHtml(item.branchName)}</div>
-                            <span class="text-muted small">${escapeHtml(item.roomName || 'Chưa xếp phòng')}</span>
-                            <div>
-                                <button type="button" class="btn btn-outline-primary btn-sm facility-preview-btn mt-2" title="Xem cơ sở vật chất" aria-label="Xem cơ sở vật chất" onclick="event.stopPropagation(); openFacilityPreview(${item.id})">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td><div>${escapeHtml(item.scheduleDescription || 'Đang cập nhật')}</div><span class="text-muted small">Từ ${formatDate(item.startDate)}</span></td>
-                        <td>${escapeHtml(item.teacherName || 'Chưa phân công')}</td>
-                        <td><span class="badge bg-success-subtle text-success border border-success-subtle">${item.availableSeats}/${item.maxStudents} chỗ</span></td>
-                    </tr>`).join('');
-            } catch (error) {
-                body.innerHTML = `<tr><td colspan="6" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
+            await loadClassRecommendations();
+        }
+
+        async function loadClassRecommendations() {
+            const childId = document.getElementById('childSelect').value;
+            const panel = document.getElementById('recommendationPanel');
+            recommendedClassIds = new Set();
+
+            if (!childId) {
+                panel.className = 'recommendation-strip d-none mb-3';
+                return;
             }
+
+            panel.className = 'recommendation-strip mb-3';
+            panel.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang kiểm tra kết quả Placement Test...';
+
+            try {
+                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations`);
+                if (document.getElementById('childSelect').value !== childId) return;
+
+                recommendedClassIds = new Set((recommendation.recommendedClasses || []).map(item => item.id));
+                renderRecommendation(recommendation);
+
+                if (recommendation.recommendationAvailable && recommendation.recommendedCourseId) {
+                    const courseSelect = document.getElementById('courseSelect');
+                    const recommendedCourseId = String(recommendation.recommendedCourseId);
+                    if ([...courseSelect.options].some(option => option.value === recommendedCourseId)) {
+                        courseSelect.value = recommendedCourseId;
+                    }
+                }
+            } catch (error) {
+                panel.className = 'recommendation-strip is-unavailable mb-3';
+                panel.innerHTML = `
+                    <div class="fw-semibold"><i class="bi bi-exclamation-circle me-2"></i>Chưa tải được gợi ý xếp lớp</div>
+                    <div class="text-muted small mt-1">${escapeHtml(error.message)}. Yêu cầu vẫn có thể được gửi để staff kiểm tra sau.</div>`;
+            }
+
+        }
+
+        function renderRecommendation(recommendation) {
+            const panel = document.getElementById('recommendationPanel');
+            if (!recommendation.recommendationAvailable) {
+                panel.className = 'recommendation-strip is-unavailable mb-3';
+                panel.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-info-circle text-secondary mt-1"></i>
+                        <div>
+                            <div class="fw-semibold">Chưa có kết quả Placement Test</div>
+                            <div class="text-muted small">Yêu cầu sẽ chờ kết quả. Staff chỉ có thể xếp lớp sau khi giáo viên đã đề xuất khóa học phù hợp.</div>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            const scoreText = recommendation.placementScore == null
+                ? 'Chưa cập nhật điểm'
+                : `${recommendation.placementScore}/10`;
+            panel.className = 'recommendation-strip is-available mb-3';
+            panel.innerHTML = `
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-2">
+                    <div>
+                        <div class="fw-bold text-success"><i class="bi bi-stars me-2"></i>Đã có kết quả Placement Test</div>
+                        <div class="mt-1">
+                            <span class="fw-semibold">${escapeHtml(recommendation.recommendedCourseName)}</span>
+                            <span class="text-muted small ms-2">Trình độ: ${escapeHtml(recommendation.recommendedLevel || 'Chưa cập nhật')} · Điểm: ${scoreText}</span>
+                        </div>
+                        ${recommendation.teacherNote ? `<div class="text-muted small mt-1">Nhận xét: ${escapeHtml(recommendation.teacherNote)}</div>` : ''}
+                    </div>
+                    <div class="align-self-lg-start">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Sẵn sàng để staff xếp lớp</span>
+                    </div>
+                </div>`;
+        }
+
+        async function loadAssignableClasses(courseId) {
+            const select = document.getElementById('assignedClassSelect');
+            select.innerHTML = '<option value="">Đang tải lớp còn chỗ...</option>';
+            const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`);
+            availableClassMap = new Map((classes || []).map(item => [item.id, item]));
+            select.innerHTML = classes && classes.length
+                ? classes.map(item => `<option value="${item.id}">${escapeHtml(item.className)} (${escapeHtml(item.classCode)}) - ${escapeHtml(item.scheduleDescription || 'Chưa có lịch')} - còn ${item.availableSeats} chỗ</option>`).join('')
+                : '<option value="">Không có lớp đang mở còn chỗ</option>';
+            return classes || [];
         }
 
         async function openFacilityPreview(classId) {
@@ -455,21 +530,20 @@
 
         async function submitRequest(event) {
             event.preventDefault();
-            const classInput = document.querySelector('input[name="classId"]:checked');
-            if (!classInput) {
-                showNotice('Vui lòng chọn một lớp còn chỗ.', 'warning');
-                return;
-            }
+            const placementRequested = document.getElementById('placementRequested').checked;
             const button = document.getElementById('submitRequestBtn');
             button.disabled = true;
             try {
                 await callApi('/api/course-enrollment/requests', 'POST', {
                     childId: Number(document.getElementById('childSelect').value),
-                    classId: Number(classInput.value),
+                    preferredCourseId: placementRequested
+                        ? null
+                        : Number(document.getElementById('courseSelect').value),
+                    placementRequested,
                     note: document.getElementById('requestNote').value.trim() || null
                 });
                 document.getElementById('requestNote').value = '';
-                showNotice('Đã gửi yêu cầu đăng ký. Phòng đào tạo sẽ xem xét và phản hồi.', 'success');
+                showNotice('Đã gửi nhu cầu học. Phòng đào tạo sẽ kiểm tra và xếp lớp phù hợp.', 'success');
                 const requests = await callApi('/api/course-enrollment/requests/my');
                 renderMyRequests(requests || []);
             } catch (error) {
@@ -488,10 +562,13 @@
             body.innerHTML = requests.map(item => `
                 <tr>
                     <td class="fw-semibold">${escapeHtml(item.childName)}</td>
-                    <td><div>${escapeHtml(item.courseName)}</div><span class="text-muted small">${escapeHtml(item.className)} (${escapeHtml(item.classCode)})</span></td>
+                    <td>
+                        <div>${escapeHtml(item.preferredCourseName || (item.placementRequested ? 'Theo kết quả Placement Test' : 'Chưa xác định'))}</div>
+                        <span class="text-muted small">${item.className ? `${escapeHtml(item.className)} (${escapeHtml(item.classCode)})` : 'Staff chưa xếp lớp'}</span>
+                    </td>
                     <td>${formatDateTime(item.requestedAt)}</td>
                     <td>${statusBadge(item.status)}</td>
-                    <td class="small">${escapeHtml(item.reviewNote || (item.status === 'PENDING' ? 'Đang chờ phòng đào tạo xử lý' : 'Không có ghi chú'))}</td>
+                    <td class="small">${escapeHtml(item.reviewNote || requestStatusHint(item.status))}</td>
                 </tr>`).join('');
         }
 
@@ -510,11 +587,17 @@
                 body.innerHTML = requests.map(item => `
                     <tr>
                         <td><div class="fw-semibold">${escapeHtml(item.childName)}</div><span class="text-muted small">PH: ${escapeHtml(item.requestedBy)}</span></td>
-                        <td><div>${escapeHtml(item.courseName)}</div><span class="text-muted small">${escapeHtml(item.className)} (${escapeHtml(item.classCode)})</span></td>
+                        <td>
+                            <div>${escapeHtml(item.preferredCourseName || 'Chờ kết quả Placement Test')}</div>
+                            <span class="badge border ${item.placementRequested ? 'bg-info-subtle text-info-emphasis' : 'bg-light text-secondary'}">${item.placementRequested ? 'Có Placement Test' : 'Không Placement Test'}</span>
+                            <div class="mt-1">${statusBadge(item.status)}</div>
+                        </td>
                         <td>${formatDateTime(item.requestedAt)}</td>
                         <td class="small">${escapeHtml(item.note || 'Không có')}</td>
                         <td class="text-end text-nowrap">
-                            <button class="btn btn-success btn-sm me-1" onclick="openDecision(${item.id}, 'APPROVE')"><i class="bi bi-check-lg me-1"></i>Duyệt</button>
+                            ${item.status === 'WAITING_PLACEMENT'
+                                ? `<button class="btn btn-outline-primary btn-sm me-1" onclick="refreshPlacement(${item.id})"><i class="bi bi-arrow-clockwise me-1"></i>Kiểm tra KQ</button>`
+                                : `<button class="btn btn-success btn-sm me-1" onclick="openDecision(${item.id}, 'APPROVE')"><i class="bi bi-person-check me-1"></i>Xếp lớp</button>`}
                             <button class="btn btn-outline-danger btn-sm" onclick="openDecision(${item.id}, 'REJECT')"><i class="bi bi-x-lg me-1"></i>Từ chối</button>
                         </td>
                     </tr>`).join('');
@@ -523,18 +606,45 @@
             }
         }
 
-        function openDecision(requestId, decision) {
+        async function refreshPlacement(requestId) {
+            try {
+                const request = await callApi(`/api/course-enrollment/staff/requests/${requestId}/refresh-placement`, 'PATCH');
+                if (request.status === 'WAITING_PLACEMENT') {
+                    showNotice('Học viên vẫn chưa có kết quả Placement Test.', 'warning');
+                } else {
+                    showNotice('Đã nhận kết quả Placement Test. Yêu cầu sẵn sàng để xếp lớp.', 'success');
+                }
+                await loadPendingRequests();
+            } catch (error) {
+                showNotice(error.message, 'danger');
+            }
+        }
+
+        async function openDecision(requestId, decision) {
             selectedRequest = pendingRequestMap.get(requestId);
             if (!selectedRequest) return;
             selectedDecision = decision;
             const isApprove = decision === 'APPROVE';
-            document.getElementById('decisionModalTitle').innerText = isApprove ? 'Phê duyệt đăng ký' : 'Từ chối đăng ký';
-            document.getElementById('decisionSummary').innerHTML = `<strong>${escapeHtml(selectedRequest.childName)}</strong> - ${escapeHtml(selectedRequest.className)}`;
+            document.getElementById('decisionModalTitle').innerText = isApprove ? 'Xếp lớp cho học viên' : 'Từ chối yêu cầu';
+            document.getElementById('decisionSummary').innerHTML = `<strong>${escapeHtml(selectedRequest.childName)}</strong> - ${escapeHtml(selectedRequest.preferredCourseName || 'Chưa xác định khóa học')}`;
             document.getElementById('reviewNote').value = '';
+            const assignmentFields = document.getElementById('assignmentFields');
+            assignmentFields.classList.toggle('d-none', !isApprove);
             const button = document.getElementById('confirmDecisionBtn');
             button.className = `btn ${isApprove ? 'btn-success' : 'btn-danger'}`;
-            button.innerHTML = isApprove ? '<i class="bi bi-check-lg me-1"></i>Xác nhận duyệt' : '<i class="bi bi-x-lg me-1"></i>Xác nhận từ chối';
+            button.innerHTML = isApprove ? '<i class="bi bi-person-check me-1"></i>Xác nhận xếp lớp' : '<i class="bi bi-x-lg me-1"></i>Xác nhận từ chối';
+            button.disabled = false;
             decisionModal.show();
+            if (isApprove) {
+                button.disabled = true;
+                try {
+                    const classes = await loadAssignableClasses(selectedRequest.preferredCourseId);
+                    button.disabled = classes.length === 0;
+                } catch (error) {
+                    document.getElementById('assignedClassSelect').innerHTML = `<option value="">${escapeHtml(error.message)}</option>`;
+                    button.disabled = true;
+                }
+            }
         }
 
         async function confirmDecision() {
@@ -544,10 +654,13 @@
             try {
                 await callApi(`/api/course-enrollment/staff/requests/${selectedRequest.id}/decision`, 'PATCH', {
                     decision: selectedDecision,
+                    classId: selectedDecision === 'APPROVE'
+                        ? Number(document.getElementById('assignedClassSelect').value)
+                        : null,
                     reviewNote: document.getElementById('reviewNote').value.trim() || null
                 });
                 decisionModal.hide();
-                showNotice(selectedDecision === 'APPROVE' ? 'Đã duyệt và ghi danh học viên vào lớp.' : 'Đã từ chối yêu cầu đăng ký.', 'success');
+                showNotice(selectedDecision === 'APPROVE' ? 'Đã xếp lớp và chuyển hồ sơ sang chờ thanh toán.' : 'Đã từ chối yêu cầu đăng ký.', 'success');
                 await loadPendingRequests();
             } catch (error) {
                 showNotice(error.message, 'danger');
@@ -559,11 +672,26 @@
         function statusBadge(status) {
             const styles = {
                 PENDING: ['bg-warning-subtle text-dark border-warning-subtle', 'Chờ duyệt'],
+                WAITING_PLACEMENT: ['bg-info-subtle text-info-emphasis border-info-subtle', 'Chờ Placement Test'],
+                READY_FOR_ASSIGNMENT: ['bg-primary-subtle text-primary border-primary-subtle', 'Chờ xếp lớp'],
+                PENDING_PAYMENT: ['bg-warning-subtle text-dark border-warning-subtle', 'Chờ thanh toán'],
                 APPROVED: ['bg-success-subtle text-success border-success-subtle', 'Đã duyệt'],
                 REJECTED: ['bg-danger-subtle text-danger border-danger-subtle', 'Từ chối']
             };
             const value = styles[status] || ['bg-secondary-subtle text-secondary', status];
             return `<span class="badge border ${value[0]}">${value[1]}</span>`;
+        }
+
+        function requestStatusHint(status) {
+            const hints = {
+                PENDING: 'Đang chờ phòng đào tạo xử lý',
+                WAITING_PLACEMENT: 'Đang chờ học viên hoàn thành Placement Test',
+                READY_FOR_ASSIGNMENT: 'Phòng đào tạo đang chọn lớp phù hợp',
+                PENDING_PAYMENT: 'Đã xếp lớp, chờ hoàn tất thanh toán',
+                APPROVED: 'Đã được duyệt',
+                REJECTED: 'Yêu cầu đã bị từ chối'
+            };
+            return hints[status] || 'Đang cập nhật';
         }
 
         function showNotice(message, type) {

@@ -4,6 +4,7 @@ import com.talent.management.features.course_enrollment.dto.request.EnrollmentDe
 import com.talent.management.features.course_enrollment.dto.request.EnrollmentRequestCreateRequest;
 import com.talent.management.features.course_enrollment.dto.response.ChildResponse;
 import com.talent.management.features.course_enrollment.dto.response.ClassResponse;
+import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
 import com.talent.management.features.course_enrollment.service.CourseEnrollmentService;
@@ -34,17 +35,26 @@ public class CourseEnrollmentController {
     }
 
     @GetMapping("/courses")
-    @PreAuthorize("hasRole('PARENT')")
+    @PreAuthorize("hasAnyRole('PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN')")
     @Operation(summary = "Lấy danh sách khóa học")
     public ResponseEntity<List<CourseResponse>> getCourses() {
         return ResponseEntity.ok(service.getCourses());
     }
 
     @GetMapping("/courses/{courseId}/classes")
-    @PreAuthorize("hasRole('PARENT')")
+    @PreAuthorize("hasAnyRole('PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN')")
     @Operation(summary = "Lấy các lớp còn chỗ của khóa học")
     public ResponseEntity<List<ClassResponse>> getOpenClasses(@PathVariable Long courseId) {
         return ResponseEntity.ok(service.getOpenClasses(courseId));
+    }
+
+    @GetMapping("/children/{childId}/class-recommendations")
+    @PreAuthorize("hasRole('PARENT')")
+    @Operation(summary = "Lấy lớp được đề xuất và toàn bộ lớp đang mở của học viên")
+    public ResponseEntity<ClassRecommendationResponse> getClassRecommendations(
+            @PathVariable Long childId
+    ) {
+        return ResponseEntity.ok(service.getClassRecommendations(childId));
     }
 
     @PostMapping("/requests")
@@ -68,6 +78,13 @@ public class CourseEnrollmentController {
     @Operation(summary = "Lấy các yêu cầu đang chờ duyệt")
     public ResponseEntity<List<EnrollmentRequestResponse>> getPendingRequests() {
         return ResponseEntity.ok(service.getPendingRequests());
+    }
+
+    @PatchMapping("/staff/requests/{requestId}/refresh-placement")
+    @PreAuthorize("hasAnyRole('STAFF', 'BRANCH_MANAGER', 'ADMIN')")
+    @Operation(summary = "Kiểm tra lại kết quả Placement Test của yêu cầu")
+    public ResponseEntity<EnrollmentRequestResponse> refreshPlacement(@PathVariable Long requestId) {
+        return ResponseEntity.ok(service.refreshPlacement(requestId));
     }
 
     @PatchMapping("/staff/requests/{requestId}/decision")

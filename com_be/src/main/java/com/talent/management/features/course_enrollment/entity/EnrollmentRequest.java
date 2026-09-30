@@ -2,6 +2,7 @@ package com.talent.management.features.course_enrollment.entity;
 
 import com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus;
 import com.talent.management.shared.entity.ClassEntity;
+import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.Enrollment;
 import com.talent.management.shared.entity.Student;
 import com.talent.management.shared.entity.User;
@@ -28,8 +29,20 @@ public class EnrollmentRequest {
     private Student student;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_id", nullable = false)
+    @JoinColumn(name = "class_id")
     private ClassEntity classEntity;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preferred_course_id")
+    private Course preferredCourse;
+
+    @Column(name = "placement_requested")
+    @Builder.Default
+    private Boolean placementRequested = false;
+
+    public boolean isPlacementRequested() {
+        return Boolean.TRUE.equals(placementRequested);
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requested_by_user_id", nullable = false)
