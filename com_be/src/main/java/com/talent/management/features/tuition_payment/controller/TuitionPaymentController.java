@@ -3,16 +3,13 @@ package com.talent.management.features.tuition_payment.controller;
 import com.talent.management.features.tuition_payment.dto.request.ApplyDiscountRequest;
 import com.talent.management.features.tuition_payment.dto.request.CreateReservationRequest;
 import com.talent.management.features.tuition_payment.dto.request.ProcessPaymentRequest;
-import com.talent.management.features.tuition_payment.dto.response.CashierDashboardStatsResponse;
-import com.talent.management.features.tuition_payment.dto.response.InvoicePaymentStatusResponse;
-import com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse;
-import com.talent.management.features.tuition_payment.dto.response.PendingInvoiceResponse;
-import com.talent.management.features.tuition_payment.dto.response.VietQrResponse;
+import com.talent.management.features.tuition_payment.dto.response.*;
 import com.talent.management.features.tuition_payment.service.TuitionPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +17,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tuition-payment")
@@ -110,6 +109,42 @@ public class TuitionPaymentController {
     @Operation(summary = "Thống kê tổng quan quầy thu ngân (số phiếu chờ, đã thu, doanh thu)")
     public ResponseEntity<CashierDashboardStatsResponse> getDashboardStats() {
         return ResponseEntity.ok(tuitionPaymentService.getDashboardStats());
+    }
+
+    @PostMapping("/{invoiceId}/payos-link")
+    @Operation(summary = "Tạo link thanh toán trực tiếp qua Cổng thanh toán PayOS thật")
+    public ResponseEntity<PayOSPaymentLinkResponse> createPayOSPaymentLink(
+            @PathVariable Long invoiceId,
+            @RequestParam(required = false) BigDecimal amount,
+            @RequestParam(required = false) String discountType,
+            @RequestParam(required = false) BigDecimal discountAmount,
+            @RequestParam(required = false) String discountReason
+    ) {
+        return ResponseEntity.ok(tuitionPaymentService.createPayOSPaymentLink(invoiceId, amount, discountType, discountAmount, discountReason));
+    }
+
+    @PostMapping("/payos-webhook")
+    @Operation(summary = "Webhook tự động từ Cổng thanh toán PayOS (kèm xác thực chữ ký HMAC-SHA256)")
+    public ResponseEntity<PaymentReceiptResponse> handlePayOSWebhook(@RequestBody Map<String, Object> payload) {
+        return ResponseEntity.ok(tuitionPaymentService.processPayOSWebhook(payload));
+    }
+
+    @GetMapping("/history-report")
+    @Operation(summary = "Dashboard Báo cáo Lịch sử thu ngân cho Admin (bộ lọc Hôm nay/Tuần/Tháng, chọn Thu ngân, 3 thẻ tổng KPI)")
+    public ResponseEntity<PaymentHistoryReportResponse> getPaymentHistoryReport(
+            @RequestParam(required = false, defaultValue = "TODAY") String timeRange,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String cashier,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ResponseEntity.ok(tuitionPaymentService.getPaymentHistoryReport(timeRange, startDate, endDate, cashier, keyword));
+    }
+
+    @GetMapping("/cashiers")
+    @Operation(summary = "Lấy danh sách nhân viên thu ngân và admin để phục vụ bộ lọc báo cáo")
+    public ResponseEntity<List<CashierOptionResponse>> getCashierList() {
+        return ResponseEntity.ok(tuitionPaymentService.getCashierList());
     }
 
     @GetMapping("/fix-font")

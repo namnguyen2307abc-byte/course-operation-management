@@ -34,6 +34,7 @@ public class PaymentReceiptResponse {
     private BigDecimal originalAmount;
     private BigDecimal discountAmount;
     private String discountReason;
+    private String discountType;
     private BigDecimal finalAmount;
     
     // Thanh toán

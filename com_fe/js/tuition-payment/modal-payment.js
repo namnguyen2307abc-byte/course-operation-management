@@ -4,10 +4,10 @@
  * Talent Academy
  */
 
-import { AGRIBANK_CONFIG, DISCOUNT_TYPES, DISCOUNT_PRESETS, PAYMENT_METHODS } from './constants.js';
-import { formatCurrency, buildTransferContent, buildAgribankVietQrUrl, playPaymentSuccessChime } from './utils.js';
-import { getInvoiceDetail, executeProcessPayment } from './service.js';
-import { showToast, renderReceiptModal } from './ui.js';
+import { AGRIBANK_CONFIG, DISCOUNT_TYPES, DISCOUNT_PRESETS, PAYMENT_METHODS } from './constants.js?v=20260927_v3';
+import { formatCurrency, buildTransferContent, buildAgribankVietQrUrl, playPaymentSuccessChime } from './utils.js?v=20260927_v3';
+import { getInvoiceDetail, executeProcessPayment, createPayOSLink, checkInvoicePaymentStatus, triggerSimulateBankWebhook } from './service.js?v=20260927_v3';
+import { showToast, renderReceiptModal } from './ui.js?v=20260927_v3';
 
 // Module State
 let currentInvoice = null;
@@ -17,12 +17,19 @@ let currentDiscountReason = '';
 let currentFinalAmount = 0;
 let currentPaymentMethod = PAYMENT_METHODS.CASH_AT_DESK;
 let onPaymentCompletedCallback = null;
+let autoDetectInterval = null;
 
 /**
  * Khởi tạo lắng nghe sự kiện trên Modal Thu Tiền
  */
 export function initPaymentModal(onCompleted) {
     onPaymentCompletedCallback = onCompleted;
+
+    // Lắng nghe khi đóng modal thì dừng Polling
+    const paymentModalEl = document.getElementById('paymentModal');
+    paymentModalEl?.addEventListener('hidden.bs.modal', () => {
+        stopAutoDetectPolling();
+    });
 
     // Gắn sự kiện các radio / card discount
     document.getElementById('discountOptNone')?.addEventListener('click', () => setDiscountType(DISCOUNT_TYPES.NONE));
@@ -40,7 +47,7 @@ export function initPaymentModal(onCompleted) {
     document.getElementById('customDiscountReason')?.addEventListener('input', onCustomDiscountInput);
     document.getElementById('freeDiscountReason')?.addEventListener('input', onFreeDiscountInput);
 
-    // Chuyển phương thức Tiền Mặt vs VietQR
+    // Chuyển phương thức Tiền Mặt vs VietQR PayOS
     document.getElementById('payMethodCashBtn')?.addEventListener('click', () => setPaymentMethod(PAYMENT_METHODS.CASH_AT_DESK));
     document.getElementById('payMethodQrBtn')?.addEventListener('click', () => setPaymentMethod(PAYMENT_METHODS.VIET_QR));
 
@@ -175,17 +182,25 @@ export function applyPreset(presetKey) {
 
 function onCustomDiscountInput() {
     if (currentDiscountType !== DISCOUNT_TYPES.PARTIAL_DISCOUNT) return;
-    const val = parseFloat(document.getElementById('customDiscountValue')?.value) || 0;
-    const method = document.getElementById('customDiscountMethod')?.value || 'PERCENTAGE';
+    const valInput = document.getElementById('customDiscountValue');
+    const methodSelect = document.getElementById('customDiscountMethod');
+    let val = parseFloat(valInput?.value) || 0;
+    let method = methodSelect?.value || 'PERCENTAGE';
     const reason = document.getElementById('customDiscountReason')?.value.trim() || '';
     const orig = currentInvoice ? currentInvoice.originalAmount : 0;
+
+    // Tự động nhận diện nếu người dùng gõ số tiền lớn (> 100) mà đang để Phần trăm
+    if (val > 100 && method === 'PERCENTAGE') {
+        method = 'FIXED_AMOUNT';
+        if (methodSelect) methodSelect.value = 'FIXED_AMOUNT';
+    }
 
     if (method === 'PERCENTAGE') {
         currentDiscountAmount = Math.round(orig * (val / 100));
         currentDiscountReason = reason || `Giảm ${val}% học phí`;
     } else {
         currentDiscountAmount = val;
-        currentDiscountReason = reason || `Giảm tiền mặt ${formatCurrency(val)}`;
+        currentDiscountReason = reason || `Giảm ${formatCurrency(val)}`;
     }
 
     currentDiscountAmount = Math.min(orig, Math.max(0, currentDiscountAmount));
@@ -222,12 +237,12 @@ function updatePriceDisplay() {
     if (currentPaymentMethod === PAYMENT_METHODS.CASH_AT_DESK) {
         calculateChange();
     } else {
-        renderAgribankVietQr();
+        renderPayOSVietQr();
     }
 }
 
 /**
- * Chọn hình thức thanh toán (Tiền mặt hoặc Quét VietQR Agribank)
+ * Chọn hình thức thanh toán (Tiền mặt hoặc Quét PayOS VietQR)
  */
 export function setPaymentMethod(method) {
     currentPaymentMethod = method;
@@ -237,6 +252,7 @@ export function setPaymentMethod(method) {
     const qrView = document.getElementById('qrPaymentView');
 
     if (method === PAYMENT_METHODS.CASH_AT_DESK) {
+        stopAutoDetectPolling();
         cashBtn?.classList.add('active');
         qrBtn?.classList.remove('active');
         cashView?.classList.remove('d-none');
@@ -247,7 +263,7 @@ export function setPaymentMethod(method) {
         cashBtn?.classList.remove('active');
         qrView?.classList.remove('d-none');
         cashView?.classList.add('d-none');
-        renderAgribankVietQr();
+        renderPayOSVietQr();
     }
 }
 
@@ -273,26 +289,158 @@ function quickFillCash(mode) {
 }
 
 /**
- * Sinh mã VietQR Agribank cố định kèm nội dung và số tiền thực thu
+ * Khởi động Polling tự động nhận diện thanh toán từ PayOS Webhook
  */
-function renderAgribankVietQr() {
-    if (!currentInvoice) return;
+function startAutoDetectPolling(invoiceId) {
+    stopAutoDetectPolling();
+    autoDetectInterval = setInterval(async () => {
+        try {
+            const statusRes = await checkInvoicePaymentStatus(invoiceId);
+            if (statusRes && (statusRes.isPaid || statusRes.paid || statusRes.status === 'PAID')) {
+                stopAutoDetectPolling();
+                handleAutoPaymentSuccess(statusRes.receipt || statusRes);
+            }
+        } catch (e) {
+            console.debug("Lỗi kiểm tra trạng thái PayOS:", e);
+        }
+    }, 2000);
+}
 
-    const transferContent = buildTransferContent(
-        currentInvoice.invoiceCode,
-        currentInvoice.studentName,
-        currentInvoice.className
+/**
+ * Dừng Polling nhận diện thanh toán
+ */
+function stopAutoDetectPolling() {
+    if (autoDetectInterval) {
+        clearInterval(autoDetectInterval);
+        autoDetectInterval = null;
+    }
+}
+
+/**
+ * Xử lý khi nhận diện thanh toán thành công tự động từ PayOS
+ */
+function handleAutoPaymentSuccess(receipt) {
+    playPaymentSuccessChime();
+
+    // Đóng modal thu tiền và mở biên lai
+    const paymentModalEl = document.getElementById('paymentModal');
+    let receiptShown = false;
+    const showReceiptOnce = () => {
+        if (!receiptShown) {
+            receiptShown = true;
+            renderReceiptModal(receipt);
+        }
+    };
+
+    if (window.bootstrap && paymentModalEl) {
+        const modalInstance = window.bootstrap.Modal.getInstance(paymentModalEl);
+        if (modalInstance) {
+            paymentModalEl.addEventListener('hidden.bs.modal', showReceiptOnce, { once: true });
+            setTimeout(showReceiptOnce, 450);
+            modalInstance.hide();
+        } else {
+            showReceiptOnce();
+        }
+    } else {
+        showReceiptOnce();
+    }
+
+    showToast(
+        "🎉 TING-TING! PAYOS THANH TOÁN THÀNH CÔNG!",
+        `Đã nhận tiền tự động cho hóa đơn <strong>${receipt.invoiceCode || currentInvoice?.invoiceCode}</strong>.<br><i class="bi bi-mortarboard-fill text-success me-1"></i>Học sinh <strong>${receipt.studentName || currentInvoice?.studentName}</strong> đã được xếp vào lớp thành công!`,
+        true
     );
 
-    const qrUrl = buildAgribankVietQrUrl(currentFinalAmount, transferContent);
+    if (onPaymentCompletedCallback) {
+        onPaymentCompletedCallback(receipt);
+    }
+}
 
+/**
+ * Sinh mã PayOS VietQR động từ Cổng thanh toán PayOS thật và kích hoạt Polling
+ */
+async function renderPayOSVietQr() {
+    if (!currentInvoice) return;
+
+    const spinner = document.getElementById('qrLoadingSpinner');
     const qrImg = document.getElementById('vietQrImage');
-    const amountEl = document.getElementById('qrAmountDisplay');
-    const contentEl = document.getElementById('qrTransferContent');
 
-    if (qrImg) qrImg.src = qrUrl;
-    if (amountEl) amountEl.innerText = formatCurrency(currentFinalAmount);
-    if (contentEl) contentEl.innerText = transferContent;
+    if (spinner) spinner.classList.remove('d-none');
+
+    try {
+        const payosData = await createPayOSLink(
+            currentInvoice.invoiceId, 
+            currentFinalAmount, 
+            currentDiscountType, 
+            currentDiscountAmount, 
+            currentDiscountReason
+        );
+        
+        let qrImgSrc = '';
+
+        // 1. PayOS trả về chuỗi text VietQR EMVCo (chuỗi "000201...").
+        // Dùng thư viện qrcode client-side để render trực tiếp thành Base64 PNG hiển thị ngay tại trang
+        if (payosData.qrCode && window.QRCode) {
+            try {
+                qrImgSrc = await window.QRCode.toDataURL(payosData.qrCode, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#0f172a',
+                        light: '#ffffff'
+                    },
+                    errorCorrectionLevel: 'M'
+                });
+            } catch (qrErr) {
+                console.warn("Lỗi vẽ QR bằng thư viện QRCode:", qrErr);
+            }
+        }
+
+        // 2. Các phương án dự phòng nếu chưa có src
+        if (!qrImgSrc) {
+            if (payosData.qrCode && payosData.qrCode.startsWith('http')) {
+                qrImgSrc = payosData.qrCode;
+            } else if (payosData.bin && payosData.accountNumber) {
+                qrImgSrc = `https://img.vietqr.io/image/${payosData.bin}-${payosData.accountNumber}-compact2.png?amount=${payosData.amount}&addInfo=${encodeURIComponent(payosData.transferContent)}&accountName=${encodeURIComponent(payosData.accountName)}`;
+            } else if (payosData.qrCode) {
+                qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(payosData.qrCode)}`;
+            }
+        }
+
+        if (qrImg && qrImgSrc) {
+            qrImg.src = qrImgSrc;
+        }
+
+        const amountEl = document.getElementById('qrAmountDisplay');
+        const contentEl = document.getElementById('qrTransferContent');
+        const accNameEl = document.getElementById('qrAccountNameDisplay');
+        const accNoEl = document.getElementById('qrAccountNoDisplay');
+
+        if (amountEl) amountEl.innerText = formatCurrency(currentFinalAmount);
+        if (contentEl) contentEl.innerText = payosData.transferContent || currentInvoice.invoiceCode;
+        if (accNameEl) accNameEl.innerText = payosData.accountName || AGRIBANK_CONFIG.accountName;
+        if (accNoEl) accNoEl.innerHTML = `${payosData.bin || 'VietQR'} - <code>${payosData.accountNumber || AGRIBANK_CONFIG.accountNo}</code>`;
+
+        const purposeEl = document.getElementById('qrPurposeDisplay');
+        if (purposeEl) {
+            purposeEl.innerText = `${currentInvoice.studentName || ''} • ${currentInvoice.className || ''}`;
+        }
+
+        // Kích hoạt Auto-Detect Polling mỗi 2 giây: Khách chuyển tiền thật -> Webhook -> Tự động hoàn tất
+        startAutoDetectPolling(currentInvoice.invoiceId);
+    } catch (err) {
+        console.error("Lỗi tạo link PayOS:", err);
+        const transferContent = buildTransferContent(
+            currentInvoice.invoiceCode,
+            currentInvoice.studentName,
+            currentInvoice.className
+        );
+        const fallbackQrUrl = buildAgribankVietQrUrl(currentFinalAmount, transferContent);
+        if (qrImg) qrImg.src = fallbackQrUrl;
+        startAutoDetectPolling(currentInvoice.invoiceId);
+    } finally {
+        if (spinner) spinner.classList.add('d-none');
+    }
 }
 
 function copyTransferContent() {

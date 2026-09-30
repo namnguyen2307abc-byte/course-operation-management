@@ -32,7 +32,7 @@
                     </ol>
                 </nav>
                 <h3 class="fw-bold text-dark mb-1">Quầy Thu Ngân - Tra Cứu & Thu Học Phí</h3>
-                <p class="text-muted small mb-0">Xử lý phiếu giữ chỗ 24h, áp dụng miễn giảm học phí, quét VietQR Agribank và kích hoạt học viên vào lớp.</p>
+                <p class="text-muted small mb-0">Tra cứu hóa đơn học phí, áp dụng chính sách miễn giảm, thanh toán PayOS VietQR tự động hoặc tiền mặt tại quầy và ghi danh học viên.</p>
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" id="btnReloadData">
@@ -47,12 +47,12 @@
                 <div class="stat-card">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="stat-icon-wrapper stat-icon-amber m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
-                            <i class="bi bi-clock-history"></i>
+                            <i class="bi bi-receipt-cutoff"></i>
                         </div>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Chờ thanh toán</span>
                     </div>
                     <div class="stat-value" id="statPendingCount">0 Phiếu</div>
-                    <div class="stat-label">Học viên giữ chỗ 24h</div>
+                    <div class="stat-label">Hóa đơn chờ nộp học phí</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
@@ -117,24 +117,25 @@
         </div>
 
         <!-- Tabs Chuyển Đổi: Phiếu Giữ Chỗ Chờ Thu vs Lịch Sử Đã Thu Tiền -->
+        <!-- Tabs Chuyển Đổi: Hóa Đơn Chờ Thu Phí vs Dashboard Báo Cáo Lịch Sử -->
         <ul class="nav nav-pills nav-pills-custom mb-3" id="posTabs">
             <li class="nav-item">
                 <button class="nav-link active" id="tabPendingBtn">
-                    <i class="bi bi-hourglass-split me-1"></i> Phiếu Giữ Chỗ Chờ Thu (<span id="tabPendingBadge">0</span>)
+                    <i class="bi bi-receipt-cutoff me-1"></i> Hóa Đơn Chờ Thu Phí (<span id="tabPendingBadge">0</span>)
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="tabHistoryBtn">
-                    <i class="bi bi-receipt me-1"></i> Lịch Sử Đã Thu Tiền (<span id="tabHistoryBadge">0</span>)
+                    <i class="bi bi-bar-chart-line-fill me-1"></i> Dashboard Báo Cáo Lịch Sử (<span id="tabHistoryBadge">0</span>)
                 </button>
             </li>
         </ul>
 
-        <!-- BẢNG 1: DANH SÁCH PHIẾU GIỮ CHỖ CHỜ THU -->
+        <!-- BẢNG 1: DANH SÁCH HÓA ĐƠN CHỜ THU PHÍ -->
         <div id="pendingTableView" class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
             <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
-                <span class="fw-bold text-dark fs-6" id="tableHeaderTitle">Danh Sách Học Sinh Giữ Chỗ Chờ Nộp Học Phí</span>
-                <span class="badge bg-warning-subtle text-warning border border-warning-subtle" id="resultCountBadge">0 Phiếu</span>
+                <span class="fw-bold text-dark fs-6" id="tableHeaderTitle">Danh Sách Học Sinh Có Hóa Đơn Chờ Nộp Học Phí</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle" id="resultCountBadge">0 Hóa đơn</span>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -144,64 +145,163 @@
                             <th>Học Viên</th>
                             <th>Phụ Huynh & SĐT</th>
                             <th>Lớp Học & Khóa</th>
-                            <th>Học Phí Gốc</th>
-                            <th>Thời Hạn Giữ Chỗ (24h)</th>
+                            <th>Học Phí Cần Thu</th>
                             <th>Trạng Thái</th>
                             <th class="text-end pe-4">Thao Tác</th>
                         </tr>
                     </thead>
                     <tbody id="pendingTableBody">
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">Đang tải dữ liệu phiếu giữ chỗ...</td>
+                            <td colspan="7" class="text-center text-muted py-4">Đang tải danh sách hóa đơn chờ thu...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <!-- Phân trang Phiếu Giữ Chỗ Chờ Thu -->
+            <!-- Phân trang Hóa Đơn Chờ Thu -->
             <div class="card-footer bg-white py-3 px-4 border-top d-flex flex-wrap justify-content-between align-items-center gap-2" id="pendingPaginationWrapper">
-                <span class="text-muted small" id="pendingPaginationInfo">Hiển thị 0 trong 0 phiếu</span>
-                <nav aria-label="Phân trang phiếu chờ thu">
+                <span class="text-muted small" id="pendingPaginationInfo">Hiển thị 0 trong 0 hóa đơn</span>
+                <nav aria-label="Phân trang hóa đơn chờ thu">
                     <ul class="pagination pagination-sm mb-0 gap-1" id="pendingPaginationList">
                     </ul>
                 </nav>
             </div>
         </div>
 
-        <!-- BẢNG 2: LỊCH SỬ ĐÃ THU TIỀN -->
-        <div id="historyTableView" class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 d-none">
-            <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
-                <span class="fw-bold text-dark fs-6">Lịch Sử Các Giao Dịch Đã Hoàn Tất Học Phí</span>
-                <span class="badge bg-success-subtle text-success border border-success-subtle" id="historyCountBadge">0 Giao dịch</span>
+        <!-- BẢNG 2: DASHBOARD BÁO CÁO LỊCH SỬ CHO ADMIN (3 THẺ TỔNG + BỘ LỌC THU NGÂN / THỜI GIAN) -->
+        <div id="historyTableView" class="d-none">
+            <!-- THANH BỘ LỌC ADMIN -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <!-- Nút chọn nhanh thời gian -->
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="small fw-bold text-dark me-1"><i class="bi bi-funnel-fill text-primary"></i> Thời gian:</span>
+                        <button type="button" class="btn btn-filter-period active" data-range="TODAY" id="filterTodayBtn">
+                            <i class="bi bi-calendar-check me-1"></i> Hôm nay
+                        </button>
+                        <button type="button" class="btn btn-filter-period" data-range="THIS_WEEK" id="filterWeekBtn">
+                            <i class="bi bi-calendar-week me-1"></i> Tuần này
+                        </button>
+                        <button type="button" class="btn btn-filter-period" data-range="THIS_MONTH" id="filterMonthBtn">
+                            <i class="bi bi-calendar3 me-1"></i> Tháng này
+                        </button>
+                        <button type="button" class="btn btn-filter-period" data-range="CUSTOM" id="filterCustomBtn">
+                            <i class="bi bi-calendar-range me-1"></i> Tùy chọn ngày
+                        </button>
+                    </div>
+
+                    <!-- Dropdown Lọc Theo Thu Ngân -->
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="filterCashierSelect" class="small fw-bold text-dark text-nowrap"><i class="bi bi-person-badge text-primary"></i> Thu ngân:</label>
+                        <select id="filterCashierSelect" class="form-select form-select-sm rounded-3 border-secondary-subtle fw-semibold" style="min-width: 200px;">
+                            <option value="ALL">👤 Tất cả thu ngân</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Hàng Chọn Ngày Tùy Chọn (Ẩn/Hiện) -->
+                <div id="customDateRangeRow" class="row g-2 align-items-center mt-2 pt-2 border-top d-none">
+                    <div class="col-auto">
+                        <label class="small text-muted fw-semibold">Từ ngày:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="date" id="filterStartDate" class="form-control form-control-sm rounded-2">
+                    </div>
+                    <div class="col-auto">
+                        <label class="small text-muted fw-semibold">Đến ngày:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="date" id="filterEndDate" class="form-control form-control-sm rounded-2">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold" id="btnApplyCustomDate">
+                            <i class="bi bi-check2"></i> Áp dụng ngày
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light text-secondary small text-uppercase">
-                        <tr>
-                            <th class="ps-4">Mã GD / HĐ</th>
-                            <th>Học Viên</th>
-                            <th>Phụ Huynh & SĐT</th>
-                            <th>Lớp Học</th>
-                            <th>Số Tiền Thực Thu</th>
-                            <th>Phương Thức</th>
-                            <th>Thu Ngân</th>
-                            <th>Ngày Thu</th>
-                            <th class="text-end pe-4">Biên Lai</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                        <tr>
-                            <td colspan="9" class="text-center text-muted py-4">Chưa có giao dịch nào được ghi nhận.</td>
-                        </tr>
-                    </tbody>
-                </table>
+
+            <!-- 3 THẺ TỔNG DOANH THU (ADMIN KPI CARDS) -->
+            <div class="row g-3 mb-4">
+                <!-- Thẻ 1: Tiền Mặt -->
+                <div class="col-12 col-md-4">
+                    <div class="kpi-card d-flex align-items-center gap-3">
+                        <div class="kpi-icon-cash flex-shrink-0">
+                            <i class="bi bi-cash-stack"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="kpi-label">Tiền Mặt Tại Quầy</div>
+                            <div class="kpi-value text-success" id="kpiCashAmount">0 đ</div>
+                            <small class="text-muted" id="kpiCashCount">0 giao dịch tiền mặt</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thẻ 2: Tiền Tài Khoản / PayOS VietQR -->
+                <div class="col-12 col-md-4">
+                    <div class="kpi-card d-flex align-items-center gap-3">
+                        <div class="kpi-icon-bank flex-shrink-0">
+                            <i class="bi bi-qr-code-scan"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="kpi-label">Chuyển Khoản / PayOS</div>
+                            <div class="kpi-value text-primary" id="kpiBankAmount">0 đ</div>
+                            <small class="text-muted" id="kpiBankCount">0 giao dịch VietQR</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thẻ 3: Tổng Doanh Thu -->
+                <div class="col-12 col-md-4">
+                    <div class="kpi-card d-flex align-items-center gap-3">
+                        <div class="kpi-icon-total flex-shrink-0">
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="kpi-label">Tổng Doanh Thu Thực Thu</div>
+                            <div class="kpi-value" style="color: #7c3aed;" id="kpiTotalRevenue">0 đ</div>
+                            <small class="text-muted" id="kpiTotalTransactions">Tổng 0 giao dịch</small>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <!-- Phân trang Lịch Sử Thu Tiền -->
-            <div class="card-footer bg-white py-3 px-4 border-top d-flex flex-wrap justify-content-between align-items-center gap-2" id="historyPaginationWrapper">
-                <span class="text-muted small" id="historyPaginationInfo">Hiển thị 0 trong 0 giao dịch</span>
-                <nav aria-label="Phân trang lịch sử">
-                    <ul class="pagination pagination-sm mb-0 gap-1" id="historyPaginationList">
-                    </ul>
-                </nav>
+
+            <!-- BẢNG LỊCH SỬ CÁC GIAO DỊCH THU TIỀN -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-dark fs-6" id="historyTableTitle">Lịch Sử Các Giao Dịch Đã Hoàn Tất Học Phí</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle" id="historyCountBadge">0 Giao dịch</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary small text-uppercase">
+                            <tr>
+                                <th class="ps-4">Mã GD / HĐ</th>
+                                <th>Học Viên & SĐT</th>
+                                <th>Lớp Học</th>
+                                <th>Học Phí Gốc</th>
+                                <th>Giảm Giá & Lý Do / Mã Ưu Đãi</th>
+                                <th>Số Tiền Thực Thu</th>
+                                <th>Phương Thức</th>
+                                <th>Thu Ngân</th>
+                                <th>Ngày Thu</th>
+                                <th class="text-end pe-4">Biên Lai</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-4">Chưa có giao dịch nào được ghi nhận.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Phân trang Lịch Sử Thu Tiền -->
+                <div class="card-footer bg-white py-3 px-4 border-top d-flex flex-wrap justify-content-between align-items-center gap-2" id="historyPaginationWrapper">
+                    <span class="text-muted small" id="historyPaginationInfo">Hiển thị 0 trong 0 giao dịch</span>
+                    <nav aria-label="Phân trang lịch sử">
+                        <ul class="pagination pagination-sm mb-0 gap-1" id="historyPaginationList">
+                        </ul>
+                    </nav>
+                </div>
             </div>
         </div>
     </main>
@@ -399,16 +499,22 @@
                                 </div>
                             </div>
 
-                            <!-- VIEW 2: QUÉT MÃ VIETQR AGRIBANK -->
+                            <!-- VIEW 2: QUÉT MÃ VIETQR / CỔNG THANH TOÁN PAYOS -->
                             <div id="qrPaymentView" class="p-3 bg-light rounded-3 border mb-3 d-none">
-                                <div class="qr-display-box mb-3">
+                                <div class="qr-display-box mb-3 text-center">
                                     <span class="badge bg-success mb-2 px-3 py-1">
-                                        <i class="bi bi-shield-check me-1"></i>VietQR Chuyển Khoản Trực Tiếp Agribank
+                                        <i class="bi bi-qr-code me-1"></i> Quét Mã VietQR Chuyển Khoản
                                     </span>
-                                    <div class="d-flex justify-content-center my-2">
-                                        <img id="vietQrImage" src="" alt="Mã VietQR Agribank" class="img-fluid rounded-3 shadow-sm" style="max-height: 250px; background: white; padding: 8px;">
+                                    <div class="d-flex justify-content-center my-2 position-relative">
+                                        <img id="vietQrImage" src="" alt="Mã PayOS VietQR" class="img-fluid rounded-3 shadow-sm border" style="width: 220px; height: 220px; background: white; padding: 6px; object-fit: contain;">
+                                        <div id="qrLoadingSpinner" class="position-absolute top-50 start-50 translate-middle d-none text-center bg-white p-3 rounded-3 shadow-sm">
+                                            <div class="spinner-border text-primary" role="status"></div>
+                                            <div class="small fw-semibold mt-2">Đang tạo mã VietQR...</div>
+                                        </div>
                                     </div>
-                                    <p class="text-muted small mb-0">Mở bất kỳ app ngân hàng nào quét mã để chuyển khoản tức thời.</p>
+                                    <div class="small text-muted mt-1">
+                                        <i class="bi bi-phone me-1"></i> Mở ứng dụng ngân hàng bất kỳ để quét mã
+                                    </div>
                                 </div>
 
                                 <div class="p-2 bg-white rounded-3 border small">
@@ -422,7 +528,11 @@
                                     </div>
                                     <div class="d-flex justify-content-between mb-1">
                                         <span class="text-muted">Số tiền chuyển:</span>
-                                        <strong class="text-success" id="qrAmountDisplay">0 đ</strong>
+                                        <strong class="text-success fs-6" id="qrAmountDisplay">0 đ</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">Mục đích thanh toán:</span>
+                                        <strong class="text-dark" id="qrPurposeDisplay">Học phí cho học viên</strong>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="text-muted">Nội dung chuyển khoản:</span>
@@ -435,14 +545,14 @@
                                     </div>
                                 </div>
 
-                                <div class="mt-2">
-                                    <label class="form-label small text-muted mb-1">Mã chuẩn chi / Mã giao dịch ngân hàng (nếu có):</label>
-                                    <input type="text" id="bankTransIdInput" class="form-control form-control-sm" placeholder="Nhập mã tham chiếu ngân hàng sau khi nhận tiền...">
+                                <div class="alert alert-primary py-2 px-3 mb-0 mt-2 small border-0 d-flex align-items-center gap-2">
+                                    <i class="bi bi-shield-check fs-5 text-primary flex-shrink-0"></i>
+                                    <div>Mã VietQR tự động điền đầy đủ <strong>Số tiền</strong> và <strong>Tên học sinh</strong>. Phụ huynh chỉ cần quét mã và xác nhận chuyển tiền.</div>
                                 </div>
 
-                                <!-- Hướng dẫn thu ngân -->
-                                <div class="alert alert-info py-2 px-3 mt-2 rounded-3 small mb-0 border-0 bg-info-subtle text-info-emphasis">
-                                    <i class="bi bi-info-circle-fill me-1"></i> Sau khi khách chuyển khoản xong, thu ngân kiểm tra biến động số dư rồi bấm nút <strong>XÁC NHẬN ĐÃ THU TIỀN & GHI DANH</strong> bên dưới để hoàn tất.
+                                <div class="mt-2">
+                                    <label class="form-label small text-muted mb-1">Mã tham chiếu ngân hàng (nếu có):</label>
+                                    <input type="text" id="bankTransIdInput" class="form-control form-control-sm" placeholder="Mã giao dịch ngân hàng...">
                                 </div>
                             </div>
 
@@ -533,26 +643,33 @@
                                 <span class="text-muted">Học phí niêm yết:</span>
                                 <span id="rcOriginalAmount">0 đ</span>
                             </div>
-                            <div class="d-flex justify-content-between mb-1 text-success" id="rcDiscountRow">
-                                <span>Miễn / Giảm học phí:</span>
-                                <span id="rcDiscountAmount">- 0 đ</span>
+                            <!-- Mục Miễn Giảm Học Phí & Lý Do / Mã Ưu Đãi Nổi Bật -->
+                            <div class="d-none flex-column mb-2 p-2 bg-danger-subtle border border-danger-subtle rounded-3 text-danger-emphasis" id="rcDiscountRow">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold"><i class="bi bi-tag-fill me-1"></i>Miễn / Giảm học phí:</span>
+                                    <span class="fw-bold fs-6 text-danger" id="rcDiscountAmount">- 0 đ</span>
+                                </div>
+                                <div class="mt-1 pt-1 border-top border-danger-subtle small d-flex align-items-start" id="rcDiscountReasonDisplay">
+                                    <i class="bi bi-ticket-perforated-fill text-danger me-1 flex-shrink-0 mt-1"></i>
+                                    <div><strong>Lý do / Mã ưu đãi:</strong> <span id="rcDiscountReasonText">...</span></div>
+                                </div>
                             </div>
                             <hr class="my-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <strong class="fs-6">SỐ TIỀN THỰC THU:</strong>
                                 <span class="fs-4 fw-bold text-primary" id="rcFinalAmount">0 đ</span>
                             </div>
-                            <div class="d-flex justify-content-between small text-muted mb-1" id="rcCashGivenRow" style="display: none;">
-                                <span>Tiền khách đưa:</span>
-                                <span id="rcCashGiven">0 đ</span>
+                            <div class="d-flex justify-content-between small text-muted mb-1" id="rcCashGivenRow">
+                                <span id="rcCashGivenLabel">Tiền khách đưa:</span>
+                                <span class="fw-semibold text-dark" id="rcCashGiven">0 đ</span>
                             </div>
-                            <div class="d-flex justify-content-between small text-danger fw-semibold mb-1" id="rcChangeRow" style="display: none;">
+                            <div class="d-flex justify-content-between small text-danger fw-semibold mb-1" id="rcChangeRow">
                                 <span>Tiền thối lại:</span>
-                                <span id="rcChangeAmount">0 đ</span>
+                                <span class="fw-bold" id="rcChangeAmount">0 đ</span>
                             </div>
-                            <div class="d-flex justify-content-between small text-muted">
+                            <div class="d-flex justify-content-between small text-muted align-items-center">
                                 <span>Phương thức:</span>
-                                <span class="badge bg-secondary" id="rcPaymentMethod">TIỀN MẶT</span>
+                                <span class="badge bg-primary px-2 py-1" id="rcPaymentMethod">QUÉT VIETQR</span>
                             </div>
                         </div>
 
@@ -600,10 +717,11 @@
 
     <!-- Scripts: Bootstrap & Core Auth -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/libs/qrcode.min.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/auth.js"></script>
 
     <!-- Modular Clean Architecture Main Entry Script -->
-    <script type="module" src="/js/tuition-payment/main.js"></script>
+    <script type="module" src="/js/tuition-payment/main.js?v=20260927_v3"></script>
 </body>
 </html>

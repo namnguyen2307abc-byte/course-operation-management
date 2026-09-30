@@ -236,3 +236,128 @@ body {
     border-color: #f1f5f9;
 }
 
+/* Admin History Dashboard & 3 KPI Cards */
+.kpi-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -3px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-icon-cash {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #ecfdf5;
+    color: #059669;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.kpi-icon-bank {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.kpi-icon-total {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #faf5ff;
+    color: #7c3aed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.kpi-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.kpi-label {
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* PayOS Waiting Ping Animation */
+.payos-pulse-box {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+}
+
+.ping-circle {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #22c55e;
+    position: relative;
+    display: inline-block;
+}
+
+.ping-circle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: #22c55e;
+    animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+    75%, 100% {
+        transform: scale(2.2);
+        opacity: 0;
+    }
+}
+
+/* Filter Period Button Group */
+.btn-filter-period {
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.45rem 1rem;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    transition: all 0.2s ease;
+}
+
+.btn-filter-period:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.btn-filter-period.active {
+    background: #1e3a8a;
+    border-color: #1e3a8a;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(30, 58, 138, 0.25);
+}
+

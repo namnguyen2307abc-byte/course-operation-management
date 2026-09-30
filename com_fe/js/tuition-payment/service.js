@@ -77,6 +77,44 @@ export async function getVietQr(invoiceId, amount) {
 }
 
 /**
+ * Gọi backend tạo liên kết thanh toán trực tiếp qua Cổng PayOS thật
+ */
+export async function createPayOSLink(invoiceId, amount, discountType = '', discountAmount = 0, discountReason = '') {
+    const params = new URLSearchParams();
+    if (amount) params.append('amount', amount);
+    if (discountType) params.append('discountType', discountType);
+    if (discountAmount) params.append('discountAmount', discountAmount);
+    if (discountReason) params.append('discountReason', discountReason);
+
+    const query = params.toString();
+    const url = query 
+        ? `/api/tuition-payment/${invoiceId}/payos-link?${query}`
+        : `/api/tuition-payment/${invoiceId}/payos-link`;
+    return await apiRequest(url, 'POST');
+}
+
+/**
+ * Lấy báo cáo lịch sử thu ngân kèm 3 thẻ KPI tổng hợp (Admin Dashboard)
+ */
+export async function getPaymentHistoryReport({ timeRange = 'TODAY', startDate = '', endDate = '', cashier = '', keyword = '' } = {}) {
+    const params = new URLSearchParams();
+    if (timeRange) params.append('timeRange', timeRange);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (cashier) params.append('cashier', cashier);
+    if (keyword) params.append('keyword', keyword);
+
+    return await apiRequest(`/api/tuition-payment/history-report?${params.toString()}`);
+}
+
+/**
+ * Lấy danh sách nhân viên thu ngân / admin phục vụ bộ lọc
+ */
+export async function getCashiers() {
+    return await apiRequest('/api/tuition-payment/cashiers');
+}
+
+/**
  * Kiểm tra trạng thái thanh toán hóa đơn phục vụ tự động nhận diện thanh toán Auto-Detect
  */
 export async function checkInvoicePaymentStatus(invoiceId) {
