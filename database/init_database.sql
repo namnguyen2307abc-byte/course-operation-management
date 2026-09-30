@@ -340,10 +340,9 @@ INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, 
 
 INSERT INTO classes (course_id, branch_id, room_id, teacher_id, class_code, class_name, class_type, max_students, current_students, start_date, end_date, schedule_description, status) VALUES
 (2, 1, 1, 2, 'CL-PIA-01', N'Piano 1-1 Bé Bảo Nam', 'ONE_ON_ONE', 1, 1, '2026-10-01', '2027-01-31', N'Thứ 2 & Thứ 5 (18:00 - 19:00)', 'OPEN'),
-(1, 1, 2, 2, 'CL-PIA-PRE-G01', N'Piano Mầm Non - Nhóm Sáng', 'GROUP', 8, 0, '2026-10-15', '2027-01-15', N'Thứ 7 (09:00 - 10:30)', 'OPEN'),
-(2, 2, 4, 2, 'CL-PIA-G1-G02', N'Piano Grade 1 - Nhóm Tối', 'GROUP', 8, 0, '2026-10-20', '2027-02-20', N'Thứ 3 & Thứ 6 (18:30 - 19:30)', 'OPEN');
-(2, 1, 1, 2, 'CL-PIA-01', N'Piano 1-1 Bé Bảo Nam', 'ONE_ON_ONE', 1, 1, '2026-10-01', '2027-01-31', N'Thứ 2 & Thứ 5 (18:00 - 19:00)', 'OPEN'),
-(1, 1, 2, 2, 'CL-PIA-PRE-01', N'Piano Mầm Non Nhóm Sáng Thứ 7', 'GROUP', 6, 0, '2026-10-10', '2027-01-10', N'Thứ 7 (09:00 - 10:30)', 'OPEN');
+(1, 1, 2, 2, 'CL-PIA-PRE-01', N'Piano Mầm Non Nhóm Sáng Thứ 7', 'GROUP', 6, 6, '2026-10-10', '2027-01-10', N'Thứ 7 (09:00 - 10:30)', 'OPEN'),
+(1, 1, 2, 2, 'CL-PIA-PRE-02', N'Piano Mầm Non Nhóm Chiều Chủ Nhật', 'GROUP', 8, 0, '2026-10-15', '2027-01-15', N'Chủ Nhật (15:00 - 16:30)', 'OPEN'),
+(2, 2, 4, 10, 'CL-PIA-G1-02', N'Piano Grade 1 Nhóm Tối Thứ 3 & 6', 'GROUP', 8, 0, '2026-10-20', '2027-02-20', N'Thứ 3 & Thứ 6 (18:30 - 19:30)', 'OPEN');
 
 -- Ghi danh 1: Đã hoàn tất đóng tiền
 INSERT INTO enrollments (student_id, class_id, registered_by_user_id, status, notes) VALUES
