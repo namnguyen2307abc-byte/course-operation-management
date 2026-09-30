@@ -139,15 +139,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                         ? absenceRequestRepository.findByStudentParentIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
                         : absenceRequestRepository.findByStudentParentIdOrderByCreatedAtDesc(currentUser.getId());
             }
-            case TEACHER -> {
-                // TEACHER chỉ xem đơn thuộc các buổi học do mình phụ trách
-                // KHÔNG FALLBACK — nếu không có đơn → trả về list rỗng, UI hiện thông báo
-                list = (status != null)
-                        ? absenceRequestRepository.findByLessonTeacherIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
-                        : absenceRequestRepository.findByLessonTeacherIdOrderByCreatedAtDesc(currentUser.getId());
-            }
             default -> {
-                // ADMIN, STAFF, BRANCH_MANAGER: xem toàn bộ hệ thống
+                // TEACHER, STAFF, ADMIN, BRANCH_MANAGER: đều nhìn thấy toàn bộ đơn xin nghỉ
                 list = (status != null)
                         ? absenceRequestRepository.findByStatusOrderByCreatedAtDesc(status)
                         : absenceRequestRepository.findAllByOrderByCreatedAtDesc();
@@ -215,7 +208,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     @Transactional
     public AbsenceRequestResponse reviewAbsenceRequest(Long id, AbsenceReviewRequest request) {
         User currentUser = currentUserService.getCurrentUser();
-        validateTeacherOrAdmin(currentUser);
+        validateReviewPermission(currentUser);
 
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
@@ -576,11 +569,11 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     // HÀM TIỆN ÍCH KIỂM TRA PHÂN QUYỀN
     // =========================================================================
 
-    /** Chỉ TEACHER và ADMIN được duyệt đơn nghỉ */
-    private void validateTeacherOrAdmin(User user) {
-        if (user.getRole() != Role.TEACHER && user.getRole() != Role.ADMIN) {
+    /** TEACHER, STAFF và ADMIN được duyệt đơn nghỉ */
+    private void validateReviewPermission(User user) {
+        if (user.getRole() == Role.PARENT || user.getRole() == Role.STUDENT) {
             throw new AttendanceMakeupException(
-                    "Chỉ Giáo viên hoặc Admin mới có quyền xét duyệt đơn xin nghỉ học!");
+                    "Tài khoản Phụ huynh/Học viên không có quyền xét duyệt đơn xin nghỉ học!");
         }
     }
 
