@@ -652,7 +652,7 @@
             const button = document.getElementById('confirmDecisionBtn');
             button.disabled = true;
             try {
-                await callApi(`/api/course-enrollment/staff/requests/${selectedRequest.id}/decision`, 'PATCH', {
+                const res = await callApi(`/api/course-enrollment/staff/requests/${selectedRequest.id}/decision`, 'PATCH', {
                     decision: selectedDecision,
                     classId: selectedDecision === 'APPROVE'
                         ? Number(document.getElementById('assignedClassSelect').value)
@@ -660,7 +660,18 @@
                     reviewNote: document.getElementById('reviewNote').value.trim() || null
                 });
                 decisionModal.hide();
-                showNotice(selectedDecision === 'APPROVE' ? 'Đã xếp lớp và chuyển hồ sơ sang chờ thanh toán.' : 'Đã từ chối yêu cầu đăng ký.', 'success');
+                if (selectedDecision === 'APPROVE') {
+                    const invoiceId = res && res.invoiceId ? res.invoiceId : '';
+                    const invoiceCode = res && res.invoiceCode ? res.invoiceCode : '';
+
+                    if (invoiceId) sessionStorage.setItem('autoOpenInvoiceId', String(invoiceId));
+                    if (invoiceCode) sessionStorage.setItem('autoOpenInvoiceCode', invoiceCode);
+
+                    // Điều hướng sang quầy thu phí học phí, tự động mở modal thu tiền như ảnh 2
+                    window.location.href = `/pages/tuition-payment?invoiceId=${invoiceId}&invoiceCode=${encodeURIComponent(invoiceCode)}`;
+                    return;
+                }
+                showNotice('Đã từ chối yêu cầu đăng ký.', 'success');
                 await loadPendingRequests();
             } catch (error) {
                 showNotice(error.message, 'danger');

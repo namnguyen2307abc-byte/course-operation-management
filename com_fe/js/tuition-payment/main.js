@@ -292,11 +292,49 @@ async function bootstrapApp() {
         });
     });
 
-    updateSearchPlaceholder();
-
     // Tải danh sách thu ngân & dữ liệu ban đầu
     await loadCashiersData();
     await refreshData();
+
+    // Tự động mở modal thu tiền nếu được điều hướng từ bước xếp lớp (ảnh 2)
+    const urlParams = new URLSearchParams(window.location.search);
+    const invoiceIdParam = urlParams.get('invoiceId') || sessionStorage.getItem('autoOpenInvoiceId');
+    const invoiceCodeParam = urlParams.get('invoiceCode') || sessionStorage.getItem('autoOpenInvoiceCode');
+
+    // Dọn dẹp sessionStorage ngay sau khi đọc
+    sessionStorage.removeItem('autoOpenInvoiceId');
+    sessionStorage.removeItem('autoOpenInvoiceCode');
+
+    if (invoiceIdParam || invoiceCodeParam) {
+        let targetId = invoiceIdParam ? Number(invoiceIdParam) : null;
+        if (!targetId && invoiceCodeParam) {
+            const found = pendingList.find(inv => inv.invoiceCode === invoiceCodeParam);
+            if (found) {
+                targetId = found.id;
+            } else {
+                try {
+                    const searchRes = await searchPendingInvoices(invoiceCodeParam);
+                    if (searchRes && searchRes.length > 0) {
+                        targetId = searchRes[0].id;
+                    }
+                } catch (e) {}
+            }
+        }
+
+        if (targetId) {
+            try {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } catch (e) {}
+
+            setTimeout(async () => {
+                try {
+                    await openPaymentModal(targetId);
+                } catch (err) {
+                    console.error("Lỗi khi tự động mở modal thu tiền:", err);
+                }
+            }, 100);
+        }
+    }
 }
 
 // Chạy ứng dụng khi DOM sẵn sàng (hỗ trợ cả DOMContentLoaded và readyState complete)

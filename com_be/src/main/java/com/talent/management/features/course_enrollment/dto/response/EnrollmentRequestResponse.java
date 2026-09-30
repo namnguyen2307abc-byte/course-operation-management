@@ -22,6 +22,8 @@ public record EnrollmentRequestResponse(
         LocalDateTime reviewedAt,
         Long enrollmentId,
         String requestedBy,
-        String reviewedBy
+        String reviewedBy,
+        Long invoiceId,
+        String invoiceCode
 ) {
 }

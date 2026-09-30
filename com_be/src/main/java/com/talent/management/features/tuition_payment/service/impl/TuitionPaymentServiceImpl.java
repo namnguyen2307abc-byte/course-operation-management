@@ -53,6 +53,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     private final TuitionPaymentMapper tuitionPaymentMapper;
     private final PayOSGateway payOSGateway;
     private final JdbcTemplate jdbcTemplate;
+    private final com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository enrollmentRequestRepository;
 
     private static final String ACADEMY_BANK_ID = "970405";
     private static final String ACADEMY_BANK_NAME = "Ngân hàng Nông nghiệp & PTNT (Agribank)";
@@ -257,6 +258,16 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
             enrollment.setStatus(EnrollmentStatus.ENROLLED);
             enrollment.setNotes("Đã nộp học phí qua mã phiếu: " + paymentCode);
             enrollmentRepository.save(enrollment);
+
+            // Cập nhật trạng thái yêu cầu đăng ký (nếu có) thành APPROVED
+            try {
+                enrollmentRequestRepository.findByEnrollmentId(enrollment.getId()).ifPresent(req -> {
+                    req.setStatus(com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus.APPROVED);
+                    enrollmentRequestRepository.save(req);
+                });
+            } catch (Exception ex) {
+                log.warn("Không thể cập nhật trạng thái EnrollmentRequest: {}", ex.getMessage());
+            }
 
             ClassEntity classEntity = enrollment.getClassEntity();
             if (classEntity != null) {
@@ -733,66 +744,8 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     }
 
     @Override
-    @PostConstruct
-    @Transactional
     public void fixVietnameseFontData() {
-        try {
-            log.info("Bắt đầu chuẩn hóa dữ liệu tiếng Việt (UTF-16) cho CSDL...");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Quản Trị Viên Hệ Thống", "admin");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Cô Vũ Thu Hương (GV Piano)", "teacher_huong");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Thầy Trần Anh Tuấn (GV Guitar)", "teacher_tuan");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Nguyễn Thanh Mai (Thu Ngân)", "cashier_mai");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Phụ Huynh Lê Thị Lan", "parent_lan");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Phụ Huynh Trần Văn Hưng", "parent_hung");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Phụ Huynh Hoàng Đức Thuận", "user_thuan_test");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Phụ Huynh Đỗ Phương Thảo", "parent_thao");
-            jdbcTemplate.update("UPDATE users SET full_name = ? WHERE username = ?", "Phụ Huynh Vũ Minh Tuấn", "parent_tuan");
-
-            jdbcTemplate.update("UPDATE branches SET name = ?, address = ? WHERE id = 1", "Cơ Sở 1 - Cầu Giấy", "Số 12 Khúc Thừa Dụ, Dịch Vọng, Cầu Giấy, Hà Nội");
-            jdbcTemplate.update("UPDATE branches SET name = ?, address = ? WHERE id = 2", "Cơ Sở 2 - Đống Đa", "Số 85 Hào Nam, Ô Chợ Dừa, Đống Đa, Hà Nội");
-
-            jdbcTemplate.update("UPDATE rooms SET room_name = ? WHERE id = 1", "Phòng Piano Biểu Diễn 1");
-            jdbcTemplate.update("UPDATE rooms SET room_name = ? WHERE id = 2", "Phòng Piano Nhóm 1");
-            jdbcTemplate.update("UPDATE rooms SET room_name = ? WHERE id = 3", "Phòng Guitar & Cảm Âm");
-            jdbcTemplate.update("UPDATE rooms SET room_name = ? WHERE id = 4", "Phòng Piano Thực Hành 2");
-
-            jdbcTemplate.update("UPDATE courses SET name = ?, description = ? WHERE id = 1", "Piano Mầm Non (Cảm thụ âm nhạc)", "Dành cho bé từ 4-6 tuổi làm quen phím đàn");
-            jdbcTemplate.update("UPDATE courses SET name = ?, description = ? WHERE id = 2", "Piano Sơ Cấp (Grade 1)", "Học tư thế ngón, nhịp phách, thị tấu và ghép 2 tay");
-
-            jdbcTemplate.update("UPDATE classes SET class_name = ?, schedule_description = ? WHERE id = 1", "Piano 1-1 Bé Bảo Nam", "Thứ 2 & Thứ 5 (18:00 - 19:00)");
-            jdbcTemplate.update("UPDATE classes SET class_name = ?, schedule_description = ? WHERE id = 2", "Piano Mầm Non Nhóm Sáng Thứ 7", "Thứ 7 (09:00 - 10:30)");
-
-            jdbcTemplate.update("UPDATE students SET full_name = ?, school_name = ?, notes = ? WHERE id = 1", "Nguyễn Bảo Nam (Bé Bin)", "Tiểu học Thực Nghiệm", "Thích học đàn Piano cổ điển");
-            jdbcTemplate.update("UPDATE students SET full_name = ?, school_name = ?, notes = ? WHERE id = 2", "Nguyễn Mai Chi (Bé Bông)", "Mầm non Vinschool", "Học làm quen phím đàn mầm non");
-            jdbcTemplate.update("UPDATE students SET full_name = ?, school_name = ?, notes = ? WHERE id = 3", "Trần Hoàng Long (Bé Tí)", "Tiểu học Dịch Vọng B", "Đăng ký học Piano cổ điển");
-            jdbcTemplate.update("UPDATE students SET full_name = ?, school_name = ?, notes = ? WHERE id = 4", "Hoàng Đức Thuận (Test 10k)", "Học Viện Âm Nhạc Talent", "Học viên test chuyển khoản VietQR 10k");
-            jdbcTemplate.update("UPDATE students SET full_name = ?, school_name = ?, notes = ? WHERE id = 5", "Đỗ Minh Khang (Bé Ken)", "Tiểu học Đoàn Thị Điểm", "Đăng ký khóa Piano mầm non");
-            jdbcTemplate.update("UPDATE students SET full_name = ?, school_name = ?, notes = ? WHERE id = 6", "Vũ Thùy Linh (Bé Su)", "Tiểu học Archimedes", "Đăng ký khóa Piano sơ cấp Grade 1");
-            jdbcTemplate.update("UPDATE students SET full_name = ?, school_name = ?, notes = ? WHERE id = 7", "Phạm Gia Huy (Bé Tom)", "Mầm non Ban Mai", "Đăng ký học Piano nhóm");
-
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 1", "Hóa đơn học phí khóa Piano Grade 1");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 2", "Phiếu giữ chỗ 24h - Piano Mầm Non");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 3", "Phiếu giữ chỗ 24h - Piano 1-1");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 4", "Phiếu học phí thử nghiệm chuyển khoản 10k");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 5", "Phiếu giữ chỗ 24h - Lớp Piano Mầm Non");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 6", "Phiếu giữ chỗ 24h - Lớp Piano 1-1");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 7", "Phiếu giữ chỗ 24h - Lớp Piano Mầm Non");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 8", "Phiếu giữ chỗ 24h - Lớp Piano Mầm Non");
-            jdbcTemplate.update("UPDATE invoices SET notes = ? WHERE id = 9", "Phiếu giữ chỗ 24h - Lớp Piano 1-1");
-
-            jdbcTemplate.update("UPDATE enrollments SET notes = ? WHERE id = 1", "Đã hoàn tất học phí, xếp lớp thành công");
-            jdbcTemplate.update("UPDATE enrollments SET notes = ? WHERE id = 2", "Phiếu giữ chỗ tạm thời 24h - Lớp Piano Mầm Non");
-            jdbcTemplate.update("UPDATE enrollments SET notes = ? WHERE id = 3", "Phiếu giữ chỗ tạm thời 24h - Lớp Piano 1-1");
-            jdbcTemplate.update("UPDATE enrollments SET notes = ? WHERE id = 5", "Phiếu giữ chỗ tạm thời 24h - Lớp Piano Mầm Non");
-            jdbcTemplate.update("UPDATE enrollments SET notes = ? WHERE id = 6", "Phiếu giữ chỗ tạm thời 24h - Lớp Piano 1-1");
-            jdbcTemplate.update("UPDATE enrollments SET notes = ? WHERE id = 7", "Phiếu giữ chỗ tạm thời 24h - Lớp Piano Mầm Non");
-
-            jdbcTemplate.update("UPDATE payments SET note = ? WHERE id = 9", "Thu tiền mặt tại quầy đợt đầu");
-            jdbcTemplate.update("UPDATE payments SET note = ? WHERE id = 10", "Quét VietQR Agribank chuyển khoản");
-            log.info("Chuẩn hóa dữ liệu tiếng Việt (UTF-16) cho CSDL hoàn tất thành công 100%!");
-        } catch (Exception e) {
-            log.warn("Lỗi khi cập nhật font tiếng Việt: {}", e.getMessage());
-        }
+        // Dữ liệu đã được nạp chuẩn Unicode N'...' từ file init_database.sql
     }
 
     public static String removeAccents(String s) {
