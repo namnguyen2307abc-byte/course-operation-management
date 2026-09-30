@@ -23,7 +23,8 @@ let cashiersList = [];
  */
 async function loadNavbar() {
     try {
-        const resp = await fetch('/components/navbar.html');
+        const navUrl = window.location.pathname.includes('/pages/') ? '../components/navbar.html' : './components/navbar.html';
+        const resp = await fetch(navUrl);
         const html = await resp.text();
         const navContainer = document.getElementById('navbar-container');
         if (navContainer) {

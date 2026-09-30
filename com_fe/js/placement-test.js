@@ -218,7 +218,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof fetch === 'function') {
         const navContainer = document.getElementById('navbar-container');
         if (navContainer && navContainer.children.length === 0) {
-            fetch('/components/navbar.html')
+            const navUrl = window.location.pathname.includes('/pages/') ? '../components/navbar.html' : './components/navbar.html';
+            fetch(navUrl)
                 .then(r => r.text())
                 .then(h => {
                     navContainer.innerHTML = h;

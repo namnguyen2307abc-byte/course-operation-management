@@ -54,5 +54,26 @@ BEGIN
         ALTER TABLE dbo.enrollment_requests
             ADD CONSTRAINT DF_enrollment_requests_placement_requested
             DEFAULT 0 FOR placement_requested;
+
+    -- Update check constraint on status column to support all workflow statuses
+    DECLARE @ConstraintName NVARCHAR(200);
+    SELECT @ConstraintName = cc.name
+    FROM sys.check_constraints cc
+    JOIN sys.tables t ON cc.parent_object_id = t.object_id
+    JOIN sys.columns c ON cc.parent_object_id = c.object_id AND cc.parent_column_id = c.column_id
+    WHERE t.name = 'enrollment_requests' AND c.name = 'status';
+
+    IF @ConstraintName IS NOT NULL
+    BEGIN
+        DECLARE @DropSql NVARCHAR(500) = 'ALTER TABLE dbo.enrollment_requests DROP CONSTRAINT ' + QUOTENAME(@ConstraintName);
+        EXEC sp_executesql @DropSql;
+    END
+
+    IF NOT EXISTS (
+        SELECT 1 FROM sys.check_constraints WHERE name = 'CK_enrollment_requests_status'
+    )
+        ALTER TABLE dbo.enrollment_requests
+            ADD CONSTRAINT CK_enrollment_requests_status
+            CHECK (status IN ('PENDING', 'WAITING_PLACEMENT', 'READY_FOR_ASSIGNMENT', 'PENDING_PAYMENT', 'APPROVED', 'REJECTED'));
 END
 GO

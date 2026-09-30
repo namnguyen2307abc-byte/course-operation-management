@@ -115,6 +115,34 @@ function updateNavbarUser() {
             tuitionNavItem.classList.add("d-none");
         }
     }
+
+    // Chuẩn hóa và sửa lỗi đường dẫn điều hướng trên Navbar (tránh bị lỗi /pages/pages/...)
+    fixNavbarLinks();
+}
+
+function fixNavbarLinks() {
+    const isComFe = window.location.pathname.startsWith('/com_fe');
+    const prefix = isComFe ? '/com_fe' : '';
+
+    const brand = document.querySelector('.navbar-brand');
+    if (brand) brand.setAttribute('href', prefix + '/index.html');
+
+    document.querySelectorAll('#mainNav a.nav-link, .navbar-nav a.nav-link').forEach(link => {
+        const href = link.getAttribute('href') || '';
+        if (href.includes('index.html')) {
+            link.setAttribute('href', prefix + '/index.html');
+        } else if (href.includes('branch-facility')) {
+            link.setAttribute('href', prefix + '/pages/branch-facility.html');
+        } else if (href.includes('course-enrollment')) {
+            link.setAttribute('href', prefix + '/pages/course-enrollment.html');
+        } else if (href.includes('absence-makeup')) {
+            link.setAttribute('href', prefix + '/pages/absence-makeup.html');
+        } else if (href.includes('placement-test')) {
+            link.setAttribute('href', prefix + '/pages/placement-test.html');
+        } else if (href.includes('tuition-payment')) {
+            link.setAttribute('href', prefix + '/pages/tuition-payment.html');
+        }
+    });
 }
 
 async function quickSwitchUserRole() {

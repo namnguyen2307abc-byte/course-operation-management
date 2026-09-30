@@ -26,12 +26,18 @@ import com.talent.management.shared.enums.EnrollmentStatus;
 import com.talent.management.shared.service.CurrentUserService;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
+import com.talent.management.features.tuition_payment.repository.InvoiceRepository;
+import com.talent.management.shared.entity.Invoice;
+import com.talent.management.shared.enums.DiscountType;
+import com.talent.management.shared.enums.InvoiceStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
@@ -65,6 +71,7 @@ public class CourseEnrollmentService {
     private final EnrollmentRequestRepository requestRepository;
     private final CourseEnrollmentMapper mapper;
     private final PlacementTestService placementTestService;
+    private final InvoiceRepository invoiceRepository;
 
     @Transactional(readOnly = true)
     public List<ChildResponse> getMyChildren() {
@@ -258,7 +265,27 @@ public class CourseEnrollmentService {
                 .status(EnrollmentStatus.PENDING_PAYMENT)
                 .notes("Chờ thanh toán từ yêu cầu đăng ký lớp #" + request.getId())
                 .build();
-        enrollmentRepository.save(enrollment);
+        enrollment = enrollmentRepository.save(enrollment);
+
+        // Tạo hóa đơn chuyển sang phân hệ thanh toán học phí (Tuition Payment)
+        BigDecimal tuitionFee = (classEntity.getCourse() != null && classEntity.getCourse().getTuitionFee() != null)
+                ? classEntity.getCourse().getTuitionFee()
+                : BigDecimal.valueOf(3600000);
+        String invCode = "INV-" + LocalDate.now().getYear() + "-" + String.format("%04d", (int) (Math.random() * 9000 + 1000));
+        Invoice invoice = Invoice.builder()
+                .invoiceCode(invCode)
+                .student(request.getStudent())
+                .enrollment(enrollment)
+                .originalAmount(tuitionFee)
+                .discountType(DiscountType.NONE)
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(tuitionFee)
+                .status(InvoiceStatus.UNPAID)
+                .dueDate(LocalDate.now().plusMonths(1))
+                .notes("Hóa đơn học phí lớp " + classEntity.getClassName() + " từ yêu cầu đăng ký #" + request.getId())
+                .createdAt(LocalDateTime.now())
+                .build();
+        invoiceRepository.save(invoice);
 
         request.setClassEntity(classEntity);
         request.setEnrollment(enrollment);

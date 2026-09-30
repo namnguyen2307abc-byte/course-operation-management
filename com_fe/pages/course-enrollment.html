@@ -249,8 +249,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/auth.js"></script>
     <script src="../js/api.js"></script>
     <script src="../js/auth.js"></script>
     <script>
@@ -265,15 +263,12 @@
         let availableClassMap = new Map();
         let recommendedClassIds = new Set();
 
-        fetch('/components/navbar.html')
         fetch('../components/navbar.html')
             .then(response => response.text())
             .then(html => {
                 document.getElementById('navbar-container').innerHTML = html;
-                document.getElementById('navbar-container').innerHTML = html.replace(/href="\.\/pages\//g, 'href="./').replace(/href="\.\/index\.html"/g, 'href="../index.html"');
                 updateNavbarUser();
             });
-        fetch('/components/footer.html')
         fetch('../components/footer.html')
             .then(response => response.text())
             .then(html => document.getElementById('footer-container').innerHTML = html);
