@@ -310,12 +310,12 @@ async function bootstrapApp() {
         if (!targetId && invoiceCodeParam) {
             const found = pendingList.find(inv => inv.invoiceCode === invoiceCodeParam);
             if (found) {
-                targetId = found.id;
+                targetId = found.invoiceId || found.id;
             } else {
                 try {
                     const searchRes = await searchPendingInvoices(invoiceCodeParam);
                     if (searchRes && searchRes.length > 0) {
-                        targetId = searchRes[0].id;
+                        targetId = searchRes[0].invoiceId || searchRes[0].id;
                     }
                 } catch (e) {}
             }
@@ -332,7 +332,7 @@ async function bootstrapApp() {
                 } catch (err) {
                     console.error("Lỗi khi tự động mở modal thu tiền:", err);
                 }
-            }, 100);
+            }, 300);
         }
     }
 }

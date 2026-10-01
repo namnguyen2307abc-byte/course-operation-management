@@ -147,3 +147,4 @@ WARNING: Restricted methods will be blocked in a future release unless native ac
 2026-10-01T05:29:40.307+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''
 2026-10-01T05:29:55.311+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Xử lý thanh toán thành công cho hóa đơn: INV-2026-008, mã giao dịch: PAY-1790807395289, thu ngân: cashier_mai
 2026-10-01T05:29:55.437+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-2] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''
+2026-10-01T05:40:31.494+07:00  INFO 6372 --- [talent-management] [nio-8080-exec-4] c.t.m.f.t.s.i.TuitionPaymentServiceImpl  : Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: ''

@@ -668,7 +668,10 @@
                     if (invoiceCode) sessionStorage.setItem('autoOpenInvoiceCode', invoiceCode);
 
                     // Điều hướng sang quầy thu phí học phí, tự động mở modal thu tiền như ảnh 2
-                    window.location.href = `/pages/tuition-payment?invoiceId=${invoiceId}&invoiceCode=${encodeURIComponent(invoiceCode)}`;
+                    const paymentPage = window.location.pathname.includes('/com_fe/') 
+                        ? '/com_fe/pages/tuition-payment.html' 
+                        : '/pages/tuition-payment.html';
+                    window.location.href = `${paymentPage}?invoiceId=${invoiceId}&invoiceCode=${encodeURIComponent(invoiceCode)}`;
                     return;
                 }
                 showNotice('Đã từ chối yêu cầu đăng ký.', 'success');
