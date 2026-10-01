@@ -11,12 +11,12 @@ function checkAuth() {
 }
 
 const DEMO_USERS = {
-    'teacher_huong': { username: 'teacher_huong', fullName: 'Cô Vũ Thu Hương (GV Piano)', role: 'TEACHER', email: 'huong.vu@talent.edu.vn' },
-    'teacher_tuan': { username: 'teacher_tuan', fullName: 'Thầy Trần Anh Tuấn (GV Guitar)', role: 'TEACHER', email: 'tuan.tran@talent.edu.vn' },
-    'teacher_hung': { username: 'teacher_hung', fullName: 'Giáo Viên Trần Văn Hùng (GV Piano)', role: 'TEACHER', email: 'hung.tran@talent.com' },
-    'admin': { username: 'admin', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN', email: 'admin@talent.edu.vn' },
-    'cashier_mai': { username: 'cashier_mai', fullName: 'Nguyễn Thanh Mai (Thu Ngân)', role: 'STAFF', email: 'mai.nguyen@talent.edu.vn' },
-    'parent_lan': { username: 'parent_lan', fullName: 'Phụ Huynh Lê Thị Lan', role: 'PARENT', email: 'lan.le@gmail.com' }
+    'teacher_huong': { username: 'teacher_huong', fullName: 'Cô Vũ Thu Hương (GV Đàn)', role: 'TEACHER', subject: 'DAN', email: 'huong.vu@talent.edu.vn' },
+    'teacher_tuan': { username: 'teacher_tuan', fullName: 'Thầy Trần Anh Tuấn (GV Võ)', role: 'TEACHER', subject: 'VO', email: 'tuan.tran@talent.edu.vn' },
+    'teacher_hung': { username: 'teacher_hung', fullName: 'Cô Nguyễn Mai Phương (GV Múa)', role: 'TEACHER', subject: 'MUA', email: 'phuong.nguyen@talent.com' },
+    'admin': { username: 'admin', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN', subject: null, email: 'admin@talent.edu.vn' },
+    'cashier_mai': { username: 'cashier_mai', fullName: 'Nguyễn Thanh Mai (Thu Ngân)', role: 'STAFF', subject: null, email: 'mai.nguyen@talent.edu.vn' },
+    'parent_lan': { username: 'parent_lan', fullName: 'Phụ Huynh Lê Thị Lan', role: 'PARENT', subject: null, email: 'lan.le@gmail.com' }
 };
 
 function sanitizeUserData(user) {
@@ -31,10 +31,14 @@ function sanitizeUserData(user) {
         const demo = DEMO_USERS[user.username];
         user.fullName = demo.fullName;
         user.role = demo.role;
+        user.subject = demo.subject;
         user.email = demo.email;
         localStorage.setItem("user", JSON.stringify(user));
     } else if (user.username && (user.username.toLowerCase().includes("teacher") || user.username.toLowerCase().includes("gv") || user.username.toLowerCase().includes("hung"))) {
         user.role = "TEACHER";
+        if (!user.subject) {
+            user.subject = user.username.toLowerCase().includes("tuan") ? "VO" : (user.username.toLowerCase().includes("hung") ? "MUA" : "DAN");
+        }
         localStorage.setItem("user", JSON.stringify(user));
     } else if (user.username && user.username.toLowerCase().includes("parent")) {
         user.role = "PARENT";
@@ -44,6 +48,7 @@ function sanitizeUserData(user) {
     // Default fallback if role is missing
     if (!user.role) {
         user.role = "TEACHER"; // Default fallback for development
+        user.subject = "DAN";
         localStorage.setItem("user", JSON.stringify(user));
     }
 
@@ -73,17 +78,19 @@ function updateNavbarUser() {
         if (user && user.fullName) {
             let roleBadge = "bg-danger";
             let roleName = user.role || "TEACHER";
+            let subjectText = "";
             if (roleName === "ADMIN") roleBadge = "bg-danger";
-            else if (roleName === "TEACHER") roleBadge = "bg-warning text-dark";
-            else if (roleName === "PARENT") roleBadge = "bg-success";
-            else if (roleName === "STAFF" || roleName === "CASHIER") {
-                roleBadge = "bg-info text-dark";
-                roleName = "THU NGÂN";
+            else if (roleName === "TEACHER") {
+                roleBadge = "bg-warning text-dark";
+                const subName = user.subject === "DAN" ? "Đàn" : (user.subject === "MUA" ? "Múa" : (user.subject === "VO" ? "Võ" : user.subject));
+                subjectText = user.subject ? ` - BM ${subName}` : "";
             }
+            else if (roleName === "PARENT") roleBadge = "bg-success";
+            else if (roleName === "STAFF") roleBadge = "bg-info text-dark";
 
             displayEl.innerHTML = `
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge ${roleBadge} px-2 py-1" style="font-size: 0.72rem;"><i class="bi bi-shield-check me-1"></i>${roleName}</span>
+                    <span class="badge ${roleBadge} px-2 py-1" style="font-size: 0.72rem;"><i class="bi bi-shield-check me-1"></i>${roleName}${subjectText}</span>
                     <span class="fw-bold text-white me-1">${user.fullName}</span>
                     <button class="btn btn-xs btn-outline-warning text-white rounded-pill px-2 py-0 ms-1" style="font-size: 0.72rem; line-height: 1.5;" onclick="quickSwitchUserRole()" title="Bấm để đổi nhanh tài khoản Giáo Viên / Phụ Huynh / Admin">
                         <i class="bi bi-arrow-repeat me-1"></i>Đổi tài khoản
@@ -98,7 +105,6 @@ function updateNavbarUser() {
             `;
         }
     }
-
     // Phân quyền hiển thị Menu "Học Phí":
     // Chỉ Quản trị viên (ADMIN) và Thu ngân (STAFF / CASHIER / cashier_mai) mới được hiện!
     const tuitionNavItem = document.getElementById("navItemTuitionPayment");
@@ -147,9 +153,9 @@ function fixNavbarLinks() {
 
 async function quickSwitchUserRole() {
     const choices = [
-        "1. Cô Vũ Thu Hương (Giáo Viên Piano - TEACHER)",
-        "2. Thầy Trần Anh Tuấn (Giáo Viên Guitar - TEACHER)",
-        "3. Giáo Viên Trần Văn Hùng (Giáo Viên Piano - TEACHER)",
+        "1. Cô Vũ Thu Hương (Giáo Viên Đàn - TEACHER)",
+        "2. Thầy Trần Anh Tuấn (Giáo Viên Võ - TEACHER)",
+        "3. Cô Nguyễn Mai Phương (Giáo Viên Múa - TEACHER)",
         "4. Quản Trị Viên Hệ Thống (ADMIN)",
         "5. Nguyễn Thanh Mai (Nhân Viên / Thu Ngân - STAFF)",
         "6. Phụ Huynh Lê Thị Lan (Phụ Huynh - PARENT)"

@@ -1,169 +1,71 @@
 /**
  * Placement Test Management JS
- * Strictly enforces that ONLY users with TEACHER role can grade/assess placement tests.
- * - Non-TEACHER roles cannot open evaluation modal or submit assessments.
- * - PARENT role is completely blocked from accessing page and redirected to /index.html.
- * - Supports Subject-specific grading rubrics for Piano/Guitar, Múa & Ballet, and Võ Thuật.
+ * Strictly enforces:
+ * 1. Role and Subject-based permissions:
+ *    - Only TEACHER role can grade/assess placement tests.
+ *    - Teacher of a subject (e.g. PIANO) can ONLY view and grade tests of that subject.
+ *    - Non-teachers / other subject tests cannot be viewed or graded.
+ * 2. Schedule Creation constraints:
+ *    - Test date cannot be in the past (e.g., cannot select yesterday).
+ *    - Test time cannot be in the past (validated in real-time from the moment of selection).
+ *    - Mandatory subject selection.
+ *    - If created test does not belong to current teacher's subject, it is IMMEDIATELY HIDDEN from their grading list without needing to refresh.
  */
-
-// Mapping of distinct grading criteria and icons for each subject / discipline
-const SUBJECT_CONFIG = {
-    PIANO: {
-        code: "PIANO",
-        name: "Đàn Piano",
-        icon: "bi-music-note-beamed",
-        badgeClass: "bg-primary",
-        defaultRoom: "Phòng Piano 101",
-        defaultTitle: "Đánh Giá Năng Khiếu Piano Đầu Vào",
-        criteria: [
-            { key: "c1", label: "1. Cảm âm (Ear Training / Pitch)", icon: "bi-ear", color: "primary", defaultVal: 8.5 },
-            { key: "c2", label: "2. Nhịp điệu & Tiết tấu (Rhythm)", icon: "bi-metronome", color: "warning", defaultVal: 8.0 },
-            { key: "c3", label: "3. Kỹ thuật ngón & Phom tay (Technique)", icon: "bi-hand-index-thumb", color: "success", defaultVal: 8.0 },
-            { key: "c4", label: "4. Thị tấu & Đọc bản nhạc (Sight Reading)", icon: "bi-book", color: "info", defaultVal: 7.5 }
-        ]
-    },
-    GUITAR: {
-        code: "GUITAR",
-        name: "Đàn Guitar",
-        icon: "bi-music-note",
-        badgeClass: "bg-info text-dark",
-        defaultRoom: "Phòng Hòa Tấu Guitar 201",
-        defaultTitle: "Đánh Giá Khả Năng Cảm Âm & Nhịp Điệu Guitar",
-        criteria: [
-            { key: "c1", label: "1. Cảm âm & Cung bậc (Ear Training)", icon: "bi-ear", color: "primary", defaultVal: 8.0 },
-            { key: "c2", label: "2. Nhịp phách & Quạt chả (Rhythm)", icon: "bi-metronome", color: "warning", defaultVal: 7.5 },
-            { key: "c3", label: "3. Bấm thế tay & Chuyển hợp âm (Technique)", icon: "bi-hand-index-thumb", color: "success", defaultVal: 8.0 },
-            { key: "c4", label: "4. Đọc Tab nhạc & Cảm thụ (Tab Reading)", icon: "bi-book", color: "info", defaultVal: 7.5 }
-        ]
-    },
-    DANCE: {
-        code: "DANCE",
-        name: "Múa & Ballet",
-        icon: "bi-person-arms-up",
-        badgeClass: "bg-danger",
-        defaultRoom: "Phòng Tập Múa & Ballet 103",
-        defaultTitle: "Khảo Sát Độ Dẻo & Cảm Thụ Âm Nhạc Múa Ballet",
-        criteria: [
-            { key: "c1", label: "1. Độ dẻo & Uyển chuyển (Flexibility)", icon: "bi-activity", color: "danger", defaultVal: 9.5 },
-            { key: "c2", label: "2. Cảm nhạc & Nhịp điệu (Musicality & Rhythm)", icon: "bi-music-note-beamed", color: "primary", defaultVal: 8.5 },
-            { key: "c3", label: "3. Phom dáng & Kỹ thuật thế múa (Posture & Form)", icon: "bi-person-standing", color: "success", defaultVal: 8.5 },
-            { key: "c4", label: "4. Thần thái & Biểu cảm sân khấu (Stage Expression)", icon: "bi-emoji-smile", color: "warning", defaultVal: 9.0 }
-        ]
-    },
-    MARTIAL_ARTS: {
-        code: "MARTIAL_ARTS",
-        name: "Võ Thuật & Tự Vệ",
-        icon: "bi-shield-shaded",
-        badgeClass: "bg-warning text-dark",
-        defaultRoom: "Võ Đường & Thể Lực 203",
-        defaultTitle: "Kiểm Tra Thể Lực, Tấn Pháp & Phản Xạ Võ Thuật",
-        criteria: [
-            { key: "c1", label: "1. Thể lực & Sức bền (Stamina & Power)", icon: "bi-lightning-charge", color: "warning", defaultVal: 9.0 },
-            { key: "c2", label: "2. Tấn pháp & Kỹ thuật đòn thế (Stance & Form)", icon: "bi-person-standing-dress", color: "primary", defaultVal: 8.5 },
-            { key: "c3", label: "3. Tốc độ & Phản xạ tự vệ (Speed & Reflexes)", icon: "bi-speedometer2", color: "danger", defaultVal: 8.5 },
-            { key: "c4", label: "4. Kỷ luật & Tinh thần võ đạo (Discipline & Spirit)", icon: "bi-award", color: "success", defaultVal: 9.5 }
-        ]
-    }
-};
 
 let placementTestsData = [
     {
         id: 1,
-        studentName: "Nguyễn Bảo Nam",
-        subject: "PIANO",
-        title: "Đánh Giá Năng Khiếu Piano Đầu Vào",
-        roomName: "Phòng Piano 101",
+        studentName: "Nguyễn Hoàng Anh",
+        subject: "DAN",
+        title: "Đánh Giá Năng Khiếu Đàn Đầu Vào",
+        roomName: "Phòng Đàn 101",
         branch: "Cơ sở 1 - Cầu Giấy",
-        testDate: "2026-09-20T09:30:00",
-        note: "Bé 8 tuổi, thích học đàn Piano cổ điển.",
-        status: "COMPLETED",
-        score: 85,
-        recommendedLevel: "BEGINNER",
-        teacherNote: "Tiêu chí Piano: Cảm âm (9.0), Nhịp phách (8.5), Kỹ thuật ngón (8.0), Thị tấu (8.5). Bé có năng khiếu cảm âm xuất sắc. Khuyên học ngay Piano Grade 1.",
-        audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        testDate: "2026-10-05T09:30:00",
+        note: "Học viên 10 tuổi, đã tự tập organ 6 tháng ở nhà.",
+        status: "SCHEDULED",
+        score: null,
+        recommendedLevel: null,
+        teacherNote: "",
+        audioUrl: "",
+        videoUrl: "",
         imageUrl: "",
         recordUrl: "",
-        evaluatedByName: "Cô Vũ Thu Hương (GV Piano)",
-        evaluatedAt: "2026-09-20T10:15:00",
-        parentName: "Phụ Huynh Lê Thị Lan",
+        evaluatedByName: null,
+        evaluatedAt: null,
+        parentName: "Phụ huynh Lê Thị Lan",
         parentEmail: "lan.le@gmail.com"
     },
     {
         id: 2,
-        studentName: "Đỗ Ngọc Hân (Bé Nhím)",
-        subject: "DANCE",
-        title: "Khảo Sát Độ Dẻo & Cảm Thụ Âm Nhạc Múa Ballet",
-        roomName: "Phòng Tập Múa & Ballet 103",
-        branch: "Cơ sở 1 - Cầu Giấy",
-        testDate: "2026-09-21T10:00:00",
-        note: "Bé 5 tuổi, cơ thể mềm dẻo tự nhiên, thích múa thiếu nhi.",
-        status: "COMPLETED",
-        score: 89,
-        recommendedLevel: "BEGINNER",
-        teacherNote: "Tiêu chí Múa: Độ dẻo & Uyển chuyển (9.5/10), Cảm thụ âm nhạc (8.5/10), Phom dáng & Tư thế (8.5/10), Thần thái biểu diễn (9.0/10). Khớp hông mở rất tốt, dẻo bẩm sinh (xoạc 180 độ), bắt nhịp nhạc nhanh. Khuyên xếp khóa Múa Thiếu Nhi & Ballet Căn Bản (DAN-KIDS).",
-        audioUrl: "",
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-        imageUrl: "",
-        recordUrl: "",
-        evaluatedByName: "Cô Phạm Khánh Linh (GV Múa)",
-        evaluatedAt: "2026-09-21T11:00:00",
-        parentName: "Phụ Huynh Đỗ Minh Hoàng",
-        parentEmail: "hoang.do@gmail.com"
-    },
-    {
-        id: 3,
-        studentName: "Vũ Tuấn Kiệt (Bé Ken)",
-        subject: "MARTIAL_ARTS",
-        title: "Kiểm Tra Thể Lực, Tấn Pháp & Phản Xạ Võ Thuật",
-        roomName: "Võ Đường & Thể Lực 203",
+        studentName: "Trần Bảo Ngọc",
+        subject: "MUA",
+        title: "Khảo Sát Thể Lực & Năng Khiếu Múa Nghệ Thuật",
+        roomName: "Phòng Múa Nghệ Thuật 202",
         branch: "Cơ sở 2 - Đống Đa",
-        testDate: "2026-09-22T16:30:00",
-        note: "Học viên 9 tuổi, muốn rèn luyện thể lực và phản xạ tự vệ.",
+        testDate: "2026-10-02T15:00:00",
+        note: "Độ dẻo dai cơ thể tốt, cảm thụ âm nhạc nhịp điệu nhanh.",
         status: "COMPLETED",
-        score: 89,
-        recommendedLevel: "BEGINNER",
-        teacherNote: "Tiêu chí Võ Thuật: Thể lực & Sức bền (9.0/10), Tấn pháp & Đòn thế (8.5/10), Tốc độ & Phản xạ (8.5/10), Kỷ luật & Tinh thần võ đạo (9.5/10). Thể lực sung mãn, tấn pháp trung bình tấn vững chãi, phản xạ nhanh, kỷ luật rất cao. Đề xuất lớp Võ Thuật Nhập Môn - Đai Trắng (MA-BASIC).",
+        score: 88,
+        recommendedLevel: "INTERMEDIATE",
+        teacherNote: "Độ mở khớp dẻo tốt (9/10), giữ thăng bằng vững. Khuyến nghị xếp lớp Múa Trung Cấp 1.",
         audioUrl: "",
-        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+        videoUrl: "https://example.com/recordings/test2.mp4",
         imageUrl: "",
         recordUrl: "",
-        evaluatedByName: "Thầy Hoàng Phi Long (GV Võ Thuật)",
-        evaluatedAt: "2026-09-22T17:30:00",
-        parentName: "Phụ Huynh Vũ Tiến Dũng",
-        parentEmail: "dung.vu@gmail.com"
-    },
-    {
-        id: 4,
-        studentName: "Nguyễn Mai Chi (Bé Bông)",
-        subject: "DANCE",
-        title: "Đánh Giá Năng Khiếu Múa & Cảm Xúc Hình Thể",
-        roomName: "Phòng Tập Múa & Ballet 103",
-        branch: "Cơ sở 1 - Cầu Giấy",
-        testDate: "2026-09-28T15:00:00",
-        note: "Bé 5 tuổi làm quen với múa đương đại thiếu nhi.",
-        status: "SCHEDULED",
-        score: null,
-        recommendedLevel: null,
-        teacherNote: "",
-        audioUrl: "",
-        videoUrl: "",
-        imageUrl: "",
-        recordUrl: "",
-        evaluatedByName: "Cô Phạm Khánh Linh (GV Múa)",
-        evaluatedAt: null,
-        parentName: "Phụ Huynh Lê Thị Lan",
+        evaluatedByName: "Cô Nguyễn Mai Phương (GV Múa)",
+        evaluatedAt: "2026-10-02T15:45:00",
+        parentName: "Phụ huynh Lê Thị Lan",
         parentEmail: "lan.le@gmail.com"
     },
     {
-        id: 5,
+        id: 3,
         studentName: "Phạm Minh Đức",
-        subject: "MARTIAL_ARTS",
-        title: "Khảo Sát Thể Lực & Phản Xạ Võ Tự Vệ",
+        subject: "VO",
+        title: "Khảo Sát Thể Lực & Phản Xạ Võ Thuật",
         roomName: "Võ Đường & Thể Lực 203",
-        branch: "Cơ sở 2 - Đống Đa",
-        testDate: "2026-09-29T17:30:00",
-        note: "Học viên mong muốn rèn luyện thể lực và tính kỷ luật.",
+        branch: "Cơ sở 1 - Cầu Giấy",
+        testDate: "2026-10-06T17:30:00",
+        note: "Quan tâm đến lớp Võ tự vệ và rèn luyện thể lực kỷ luật.",
         status: "SCHEDULED",
         score: null,
         recommendedLevel: null,
@@ -172,41 +74,36 @@ let placementTestsData = [
         videoUrl: "",
         imageUrl: "",
         recordUrl: "",
-        evaluatedByName: "Thầy Hoàng Phi Long (GV Võ Thuật)",
+        evaluatedByName: null,
         evaluatedAt: null,
         parentName: "Phạm Quốc Tuấn",
         parentEmail: "tuan.pham@gmail.com"
     },
     {
-        id: 6,
-        studentName: "Trần Hoàng Long (Bé Tí)",
-        subject: "GUITAR",
-        title: "Đánh Giá Khả Năng Cảm Âm & Nhịp Điệu Guitar",
-        roomName: "Phòng Hòa Tấu Guitar 201",
-        branch: "Cơ sở 1 - Cầu Giấy",
-        testDate: "2026-09-30T17:30:00",
-        note: "Quan tâm đến Guitar Acoustic thiếu nhi.",
-        status: "SCHEDULED",
-        score: null,
-        recommendedLevel: null,
-        teacherNote: "",
-        audioUrl: "",
-        videoUrl: "",
-        imageUrl: "",
-        recordUrl: "",
-        evaluatedByName: "Thầy Trần Anh Tuấn (GV Guitar)",
-        evaluatedAt: null,
-        parentName: "Phụ Huynh Trần Văn Hưng",
-        parentEmail: "hung.tran@gmail.com"
+        id: 4,
+        studentName: "Lê Hoàng Yến",
+        subject: "DAN",
+        title: "Kiểm Tra Trình Độ Phím Đàn Chuyên Sâu",
+        roomName: "Phòng Hòa Tấu & Phím Đàn 301",
+        branch: "Cơ sở 2 - Đống Đa",
+        testDate: "2026-10-01T10:00:00",
+        note: "Học viên 12 tuổi, có nhạc cảm tốt và đọc bản nhạc nhanh.",
+        status: "COMPLETED",
+        score: 92,
+        recommendedLevel: "ADVANCED",
+        teacherNote: "Kỹ thuật phím đàn vững vàng, thị tấu tốt. Khuyến nghị xếp lớp Đàn Nâng Cao (Advanced).",
+        evaluatedByName: "Cô Vũ Thu Hương (GV Đàn)",
+        evaluatedAt: "2026-10-01T11:00:00",
+        parentName: "Phụ huynh Lê Thị Lan",
+        parentEmail: "lan.le@gmail.com"
     }
 ];
 
 let currentEditingId = null;
-let currentEditingSubject = "PIANO";
 let uploadedFileUrl = "";
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Strict Permission Check: Block PARENT role completely
+    // 1. Strict Permission Check: Block PARENT & STUDENT roles completely
     const isAllowed = checkUserRolePermissions();
     if (!isAllowed) {
         const mainEl = document.querySelector("main");
@@ -214,7 +111,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // 2. Inject Components for Authorized Roles
+    // 2. Set min date and time for test creation (Prevent past dates & times in real-time)
+    initDateRestrictions();
+
+    // 3. Inject Navbar / Footer
     if (typeof fetch === 'function') {
         const navContainer = document.getElementById('navbar-container');
         if (navContainer && navContainer.children.length === 0) {
@@ -240,13 +140,101 @@ document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
 });
 
-function detectSubject(item) {
-    if (item.subject && SUBJECT_CONFIG[item.subject]) return item.subject;
-    const text = `${item.title || ''} ${item.roomName || ''} ${item.note || ''} ${item.teacherNote || ''}`.toLowerCase();
-    if (text.includes("múa") || text.includes("ballet") || text.includes("dance")) return "DANCE";
-    if (text.includes("võ") || text.includes("martial") || text.includes("taekwondo") || text.includes("tự vệ") || text.includes("thể lực")) return "MARTIAL_ARTS";
-    if (text.includes("guitar")) return "GUITAR";
-    return "PIANO";
+function getTodayDateString() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function initDateRestrictions() {
+    const testDateInput = document.getElementById("createTestDate");
+    const testTimeInput = document.getElementById("createTestTime");
+    if (!testDateInput) return;
+
+    const todayStr = getTodayDateString();
+    
+    // Set strict min date
+    testDateInput.min = todayStr;
+    testDateInput.setAttribute("min", todayStr);
+
+    if (!testDateInput.value || testDateInput.value < todayStr) {
+        testDateInput.value = todayStr;
+    }
+
+    updateTimeMinRestriction();
+
+    // Listeners for real-time past date/time validation
+    testDateInput.oninput = handleDateInputChange;
+    testDateInput.onchange = handleDateInputChange;
+
+    if (testTimeInput) {
+        testTimeInput.oninput = validateRealtimeDateTime;
+        testTimeInput.onchange = validateRealtimeDateTime;
+    }
+}
+
+function handleDateInputChange() {
+    const testDateInput = document.getElementById("createTestDate");
+    if (!testDateInput) return;
+
+    const todayStr = getTodayDateString();
+
+    // If user tries to pick yesterday or a date in the past
+    if (testDateInput.value && testDateInput.value < todayStr) {
+        showNotification(`Không được phép chọn ngày trong quá khứ! Hệ thống đã tự động đặt lại ngày hôm nay (${todayStr}).`, "warning");
+        testDateInput.value = todayStr;
+    }
+
+    updateTimeMinRestriction();
+}
+
+function updateTimeMinRestriction() {
+    const testDateInput = document.getElementById("createTestDate");
+    const testTimeInput = document.getElementById("createTestTime");
+    if (!testDateInput || !testTimeInput) return;
+
+    const now = new Date();
+    const todayStr = getTodayDateString();
+
+    if (testDateInput.value === todayStr) {
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        const currentTimeStr = `${currentHours}:${currentMinutes}`;
+        
+        testTimeInput.min = currentTimeStr;
+        testTimeInput.setAttribute("min", currentTimeStr);
+
+        // If currently chosen time is in the past, adjust it to 15 mins later
+        if (!testTimeInput.value || testTimeInput.value < currentTimeStr) {
+            const laterDate = new Date(now.getTime() + 15 * 60000);
+            testTimeInput.value = `${String(laterDate.getHours()).padStart(2, '0')}:${String(laterDate.getMinutes()).padStart(2, '0')}`;
+        }
+    } else if (testDateInput.value < todayStr) {
+        testDateInput.value = todayStr;
+        updateTimeMinRestriction();
+    } else {
+        testTimeInput.removeAttribute("min");
+    }
+}
+
+function validateRealtimeDateTime() {
+    const testDateInput = document.getElementById("createTestDate");
+    const testTimeInput = document.getElementById("createTestTime");
+    if (!testDateInput || !testTimeInput) return;
+
+    const testDateVal = testDateInput.value;
+    const testTimeVal = testTimeInput.value;
+    if (!testDateVal || !testTimeVal) return;
+
+    const selectedDateTime = new Date(`${testDateVal}T${testTimeVal}:00`);
+    const now = new Date();
+
+    if (selectedDateTime <= now) {
+        showNotification("Thời gian bạn vừa chọn đã ở trong quá khứ! Hệ thống đã tự động điều chỉnh lại thời gian hợp lệ.", "warning");
+        updateTimeMinRestriction();
+    }
 }
 
 function checkUserRolePermissions() {
@@ -272,57 +260,92 @@ function checkUserRolePermissions() {
     return true;
 }
 
+function normalizeSubject(subject) {
+    if (!subject) return "DAN";
+    const s = String(subject).toUpperCase().trim();
+    if (s === "DAN" || s === "PIANO" || s === "GUITAR" || s === "NHAC" || s === "MUSIC" || s === "VIOLIN" || s === "DRUMS" || s === "VOCAL" || s.includes("ĐÀN") || s.includes("NHẠC") || s.includes("PIANO") || s.includes("GUITAR")) return "DAN";
+    if (s === "MUA" || s === "DANCE" || s.includes("MÚA") || s.includes("BALLET") || s.includes("NHẢY")) return "MUA";
+    if (s === "VO" || s === "MARTIAL_ARTS" || s.includes("VÕ") || s.includes("TAEKWONDO") || s.includes("MARTIAL")) return "VO";
+    return s;
+}
+
+function getSubjectDisplayName(code) {
+    const norm = normalizeSubject(code);
+    if (norm === "DAN") return "Đàn";
+    if (norm === "MUA") return "Múa";
+    if (norm === "VO") return "Võ";
+    return code || "Năng khiếu";
+}
+
+const SUBJECT_EVALUATION_CONFIG = {
+    'DAN': {
+        subjectName: 'Bộ Môn Đàn',
+        badgeClass: 'bg-primary-subtle text-primary border border-primary-subtle',
+        headerIcon: 'bi-music-note-beamed text-primary',
+        headerTitle: 'Chấm điểm 4 tiêu chí Bộ Môn Đàn',
+        notePlaceholder: 'Nhận xét chi tiết về cảm âm, nhịp phách, kỹ thuật phím đàn, thị tấu và gợi ý lớp học phù hợp...',
+        criteria: [
+            { id: 'crit_1', label: '1. Cảm âm & Nhạc cảm (Pitch)', icon: 'bi-ear text-primary', badgeClass: 'bg-primary text-white' },
+            { id: 'crit_2', label: '2. Nhịp phách & Tiết tấu (Rhythm)', icon: 'bi-metronome text-warning', badgeClass: 'bg-warning text-dark' },
+            { id: 'crit_3', label: '3. Kỹ thuật ngón & Tư thế tay (Technique)', icon: 'bi-hand-index-thumb text-success', badgeClass: 'bg-success text-white' },
+            { id: 'crit_4', label: '4. Đọc bản nhạc & Thị tấu (Sight Reading)', icon: 'bi-book text-info', badgeClass: 'bg-info text-dark' }
+        ]
+    },
+    'MUA': {
+        subjectName: 'Bộ Môn Múa',
+        badgeClass: 'bg-danger-subtle text-danger border border-danger-subtle',
+        headerIcon: 'bi-heart-pulse-fill text-danger',
+        headerTitle: 'Chấm điểm 4 tiêu chí Bộ Môn Múa',
+        notePlaceholder: 'Nhận xét chi tiết về độ dẻo dai cơ thể, khả năng cảm thụ âm nhạc, phom dáng và gợi ý lớp múa phù hợp...',
+        criteria: [
+            { id: 'crit_1', label: '1. Độ dẻo & Uyển chuyển (Flexibility)', icon: 'bi-universal-access text-danger', badgeClass: 'bg-danger text-white' },
+            { id: 'crit_2', label: '2. Cảm thụ âm nhạc & Nhịp điệu (Musicality)', icon: 'bi-soundwave text-warning', badgeClass: 'bg-warning text-dark' },
+            { id: 'crit_3', label: '3. Phom dáng & Kỹ thuật động tác (Posture)', icon: 'bi-person-standing text-success', badgeClass: 'bg-success text-white' },
+            { id: 'crit_4', label: '4. Thần thái & Biểu cảm biểu diễn (Stage Presence)', icon: 'bi-stars text-info', badgeClass: 'bg-info text-dark' }
+        ]
+    },
+    'VO': {
+        subjectName: 'Bộ Môn Võ Thuật',
+        badgeClass: 'bg-warning-subtle text-warning-emphasis border border-warning-subtle',
+        headerIcon: 'bi-shield-fill-check text-warning',
+        headerTitle: 'Chấm điểm 4 tiêu chí Bộ Môn Võ Thuật',
+        notePlaceholder: 'Nhận xét chi tiết về thể lực, phản xạ, tấn pháp đòn thế, tinh thần kỷ luật võ đạo và gợi ý cấp đai xếp lớp...',
+        criteria: [
+            { id: 'crit_1', label: '1. Thể lực & Sức bền (Stamina & Strength)', icon: 'bi-lightning-charge-fill text-danger', badgeClass: 'bg-danger text-white' },
+            { id: 'crit_2', label: '2. Tốc độ & Phản xạ tự vệ (Reflexes & Speed)', icon: 'bi-speedometer2 text-warning', badgeClass: 'bg-warning text-dark' },
+            { id: 'crit_3', label: '3. Tấn pháp & Kỹ thuật đòn (Stances & Technique)', icon: 'bi-shield-check text-primary', badgeClass: 'bg-primary text-white' },
+            { id: 'crit_4', label: '4. Tác phong & Kỷ luật võ đạo (Martial Discipline)', icon: 'bi-award-fill text-success', badgeClass: 'bg-success text-white' }
+        ]
+    }
+};
+
+function getSubjectBadge(subject) {
+    const s = normalizeSubject(subject);
+    if (s === "DAN") {
+        return `<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-music-note me-1"></i>🎹 Đàn</span>`;
+    } else if (s === "MUA") {
+        return `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-heart-pulse-fill me-1"></i>🩰 Múa</span>`;
+    } else if (s === "VO") {
+        return `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="bi bi-shield-fill-check me-1"></i>🥋 Võ</span>`;
+    }
+    return `<span class="badge bg-light text-dark border px-2 py-1">${subject || 'Năng khiếu'}</span>`;
+}
+
+function inferSubject(title) {
+    if (!title) return "DAN";
+    const t = title.toLowerCase();
+    if (t.includes("võ") || t.includes("vo") || t.includes("taekwondo") || t.includes("martial") || t.includes("thể lực")) return "VO";
+    if (t.includes("múa") || t.includes("mua") || t.includes("dance") || t.includes("ballet") || t.includes("nhảy")) return "MUA";
+    if (t.includes("đàn") || t.includes("dan") || t.includes("piano") || t.includes("guitar") || t.includes("phím") || t.includes("nhạc") || t.includes("vocal") || t.includes("organ")) return "DAN";
+    return "DAN";
+}
+
 function renderRoleBanner() {
+    // Role banner is disabled per requirements
     const bannerEl = document.getElementById("rolePermissionBanner");
-    if (!bannerEl) return;
-
-    let currentUser = null;
-    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
-    if (!currentUser || !currentUser.role) return;
-
-    const roleUpper = String(currentUser.role).toUpperCase().replace("ROLE_", "");
-
-    bannerEl.classList.remove("d-none");
-    if (roleUpper === "TEACHER" || roleUpper === "ADMIN") {
-        const isAdm = roleUpper === "ADMIN";
-        bannerEl.innerHTML = `
-            <div class="alert alert-warning border-warning-subtle shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon-wrapper bg-warning text-dark m-0 rounded-circle" style="width: 44px; height: 44px; font-size: 1.3rem;">
-                        <i class="bi bi-person-workspace"></i>
-                    </div>
-                    <div>
-                        <div class="fw-bold text-dark fs-6 mb-1">
-                            <i class="bi bi-shield-check text-success me-1"></i>Chế Độ Quyền ${isAdm ? 'Quản Trị Viên' : 'Giáo Viên Chuyên Môn'} (Role: ${roleUpper})
-                        </div>
-                        <div class="text-secondary small">
-                            Tài khoản: <strong>${currentUser.fullName || currentUser.username}</strong> &bull; Bạn có toàn quyền truy cập, Đăng ký ca thi mới, Chấm điểm theo tiêu chí riêng của từng bộ môn (Piano/Guitar, Múa & Ballet, Võ Thuật) và Xếp lớp trình độ.
-                        </div>
-                    </div>
-                </div>
-                <span class="badge bg-dark text-warning px-3 py-2 rounded-pill fw-semibold small d-none d-md-inline-block">
-                    <i class="bi bi-check-circle-fill me-1 text-success"></i>Đã kích hoạt quyền chấm điểm & xếp lớp
-                </span>
-            </div>
-        `;
-    } else if (roleUpper === "STAFF" || roleUpper === "BRANCH_MANAGER") {
-        bannerEl.innerHTML = `
-            <div class="alert alert-info border-info-subtle shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon-wrapper bg-info text-dark m-0 rounded-circle" style="width: 44px; height: 44px; font-size: 1.3rem;">
-                        <i class="bi bi-info-circle-fill"></i>
-                    </div>
-                    <div>
-                        <div class="fw-bold text-dark fs-6 mb-1">
-                            Quyền Nhân Viên / Quản Lý (Role: ${roleUpper})
-                        </div>
-                        <div class="text-secondary small">
-                            Tài khoản: <strong>${currentUser.fullName || currentUser.username}</strong> &bull; Bạn có thể xem lịch test các bộ môn và Đăng ký ca mới. Chức năng chấm điểm chuyên môn dành cho tài khoản Giáo Viên.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+    if (bannerEl) {
+        bannerEl.innerHTML = "";
+        bannerEl.classList.add("d-none");
     }
 }
 
@@ -336,12 +359,38 @@ function isTeacher() {
     return roleUpper === "TEACHER" || roleUpper === "ADMIN";
 }
 
+function isTeacherAllowedForTest(item) {
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.role) return false;
+
+    const roleUpper = String(currentUser.role).toUpperCase().replace("ROLE_", "");
+    if (roleUpper === "ADMIN") return true;
+    if (roleUpper !== "TEACHER") return false;
+
+    const teacherSubject = normalizeSubject(currentUser.subject || "DAN");
+    const itemSubject = normalizeSubject(item.subject || inferSubject(item.title));
+
+    return teacherSubject === itemSubject;
+}
+
+function showTeacherSubjectMismatchAlert(teacherSub, testSub) {
+    const teacherDisplayName = getSubjectDisplayName(teacherSub);
+    const testDisplayName = getSubjectDisplayName(testSub);
+    const msg = `Quyền truy cập bị từ chối: Bạn là Giáo Viên bộ môn [${teacherDisplayName}], không được phép chấm bài kiểm tra đầu vào thuộc bộ môn [${testDisplayName}]! Theo quy định, mỗi giáo viên chỉ được chấm bài thuộc chuyên môn bộ môn của mình.`;
+    if (typeof showPermissionDeniedModal === 'function') {
+        showPermissionDeniedModal(msg, null);
+    } else {
+        alert(msg);
+    }
+}
+
 function showTeacherOnlyAlert() {
     let currentUser = null;
     if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
     const currentRoleName = currentUser ? (currentUser.role || 'Chưa xác định') : 'Khách';
 
-    const msg = `Quyền truy cập bị từ chối: Tài khoản của bạn hiện có vai trò là [${currentRoleName}]. Chỉ có tài khoản Giáo Viên (TEACHER) hoặc Quản Trị (ADMIN) mới được phép thực hiện chấm điểm & đánh giá bài thi Placement Test.`;
+    const msg = `Quyền truy cập bị từ chối: Tài khoản của bạn hiện có vai trò là [${currentRoleName}]. Chỉ có tài khoản Giáo Viên (TEACHER) đúng bộ môn hoặc Quản Trị (ADMIN) mới được phép thực hiện chấm điểm & đánh giá bài thi Placement Test.`;
     
     if (typeof showPermissionDeniedModal === 'function') {
         showPermissionDeniedModal(msg, null);
@@ -358,12 +407,8 @@ async function loadPlacementTests() {
                 return null;
             });
 
-            if (apiResult && Array.isArray(apiResult) && apiResult.length > 0) {
-                // Merge backend data with subject detection
-                placementTestsData = apiResult.map(item => ({
-                    ...item,
-                    subject: detectSubject(item)
-                }));
+            if (apiResult && Array.isArray(apiResult)) {
+                placementTestsData = apiResult;
             }
         }
     } catch (e) {
@@ -371,15 +416,17 @@ async function loadPlacementTests() {
     }
 
     renderStats();
-    renderTable(placementTestsData);
+    filterPlacementTests();
 }
 
 function renderStats() {
-    const total = placementTestsData.length;
-    const scheduled = placementTestsData.filter(item => item.status === 'SCHEDULED').length;
-    const completed = placementTestsData.filter(item => item.status === 'COMPLETED').length;
+    let visibleData = getTeacherFilteredData();
 
-    const scores = placementTestsData.filter(item => item.score != null).map(item => item.score);
+    const total = visibleData.length;
+    const scheduled = visibleData.filter(item => item.status === 'SCHEDULED').length;
+    const completed = visibleData.filter(item => item.status === 'COMPLETED').length;
+
+    const scores = visibleData.filter(item => item.score != null).map(item => item.score);
     const avgScore100 = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     const avgDisplay = (avgScore100 / 10).toFixed(1);
 
@@ -394,18 +441,44 @@ function renderStats() {
     if (statAvgScoreEl) statAvgScoreEl.innerText = `${avgDisplay} / 10`;
 }
 
+function getTeacherFilteredData() {
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
+
+    if (!currentUser || !currentUser.role) return placementTestsData;
+    const roleUpper = String(currentUser.role).toUpperCase().replace("ROLE_", "");
+
+    // STRICT RULE: If TEACHER, only tests of their subject are visible
+    if (roleUpper === "TEACHER") {
+        const teacherSubject = normalizeSubject(currentUser.subject || "DAN");
+        return placementTestsData.filter(item => {
+            const itemSubject = normalizeSubject(item.subject || inferSubject(item.title));
+            return itemSubject === teacherSubject;
+        });
+    }
+
+    return placementTestsData;
+}
+
 function renderTable(dataList) {
     const tbody = document.getElementById("placementTestTableBody");
     if (!tbody) return;
 
-    const canGrade = isTeacher();
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
+    const roleUpper = currentUser && currentUser.role ? String(currentUser.role).toUpperCase().replace("ROLE_", "") : "";
 
     if (!dataList || dataList.length === 0) {
+        const teacherSubjectName = getSubjectDisplayName(currentUser ? currentUser.subject : "DAN");
+        const teacherMsg = roleUpper === "TEACHER" 
+            ? `Không có ca thi đầu vào nào thuộc <strong>Bộ Môn ${teacherSubjectName}</strong> của bạn.`
+            : "Không tìm thấy lịch đánh giá năng khiếu nào phù hợp.";
+
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="text-center py-5 text-muted">
                     <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
-                    Không tìm thấy lịch đánh giá năng khiếu nào phù hợp.
+                    ${teacherMsg}
                 </td>
             </tr>
         `;
@@ -413,9 +486,6 @@ function renderTable(dataList) {
     }
 
     tbody.innerHTML = dataList.map(item => {
-        const subKey = detectSubject(item);
-        const subConfig = SUBJECT_CONFIG[subKey] || SUBJECT_CONFIG.PIANO;
-
         let statusBadge = "";
         if (item.status === 'SCHEDULED') {
             statusBadge = `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="bi bi-clock me-1"></i>Chờ Đánh Giá</span>`;
@@ -443,6 +513,8 @@ function renderTable(dataList) {
             : `<span class="text-muted small">--</span>`;
 
         const testDateFormatted = formatISOToDateTime(item.testDate);
+        const subjectBadge = getSubjectBadge(item.subject || inferSubject(item.title));
+        const canGradeThisItem = isTeacherAllowedForTest(item);
 
         return `
             <tr class="align-middle">
@@ -451,15 +523,15 @@ function renderTable(dataList) {
                 </td>
                 <td>
                     <div class="fw-bold text-dark">${item.studentName || 'Học viên'}</div>
-                    <small class="text-muted d-block"><i class="bi bi-person me-1"></i>${item.parentName || item.parentEmail || 'Phụ huynh'}</small>
+                    <small class="text-muted d-block"><i class="bi bi-person me-1"></i>${item.parentName || item.parentEmail || 'Chưa cập nhật'}</small>
                 </td>
                 <td>
-                    <span class="badge ${subConfig.badgeClass} mb-1"><i class="bi ${subConfig.icon} me-1"></i>${subConfig.name}</span>
-                    <div class="fw-semibold text-dark small text-truncate" style="max-width: 200px;" title="${item.title || ''}">${item.title || 'Đánh giá năng khiếu'}</div>
+                    <div class="mb-1">${subjectBadge}</div>
+                    <div class="fw-semibold text-dark small text-truncate" style="max-width: 220px;" title="${item.title || ''}">${item.title || 'Đánh giá năng khiếu'}</div>
                 </td>
                 <td>
-                    <div class="small fw-semibold text-dark">${item.branch || 'Cơ sở'}</div>
-                    <small class="text-muted d-block"><i class="bi bi-door-open me-1"></i>${item.roomName || 'Phòng học'}</small>
+                    <div class="small fw-semibold text-dark">${item.roomName || 'Phòng học'}</div>
+                    <small class="text-muted d-block"><i class="bi bi-geo-alt me-1 text-danger"></i>${item.branch || 'Cơ sở'}</small>
                 </td>
                 <td>
                     <div class="small fw-semibold text-dark"><i class="bi bi-calendar-event me-1 text-primary"></i>${testDateFormatted.date}</div>
@@ -475,15 +547,15 @@ function renderTable(dataList) {
                 <td>${statusBadge}</td>
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="openDetailModal(${item.id})" title="Xem Chi Tiết & Điểm Tiêu Chí">
+                        <button class="btn btn-outline-primary" onclick="openDetailModal(${item.id})" title="Xem Chi Tiết">
                             <i class="bi bi-eye"></i>
                         </button>
-                        ${canGrade ? `
-                            <button class="btn btn-warning text-dark fw-semibold" onclick="openEvaluateModal(${item.id})" title="Chấm Điểm (Giáo Viên)">
+                        ${canGradeThisItem ? `
+                            <button class="btn btn-warning text-dark fw-semibold" onclick="openEvaluateModal(${item.id})" title="Chấm Điểm (Giáo Viên Bộ Môn)">
                                 <i class="bi bi-pencil-square me-1"></i>${item.status === 'COMPLETED' ? 'Sửa' : 'Chấm'}
                             </button>
                         ` : `
-                            <button class="btn btn-outline-secondary opacity-50" onclick="showTeacherOnlyAlert()" title="Chỉ Giáo Viên mới có quyền chấm điểm">
+                            <button class="btn btn-outline-secondary opacity-50" onclick="showTeacherOnlyAlert()" title="Chỉ Giáo Viên bộ môn này mới có quyền chấm điểm">
                                 <i class="bi bi-lock-fill me-1"></i>Chấm
                             </button>
                         `}
@@ -543,6 +615,37 @@ function setupEventListeners() {
     if (evalForm) {
         evalForm.addEventListener("submit", handleSaveEvaluation);
     }
+
+    const createModalEl = document.getElementById('createModal');
+    if (createModalEl) {
+        createModalEl.addEventListener('show.bs.modal', () => {
+            initDateRestrictions();
+        });
+    }
+
+    const evalModalEl = document.getElementById('evaluateModal');
+    if (evalModalEl) {
+        evalModalEl.addEventListener('hidden.bs.modal', () => {
+            uploadedFileUrl = "";
+            currentEditingId = null;
+            const fileInput = document.getElementById("evalAttachmentFile");
+            if (fileInput) fileInput.value = "";
+            const mediaInput = document.getElementById("evalMediaUrl");
+            if (mediaInput) mediaInput.value = "";
+            const statusEl = document.getElementById("uploadStatusMessage");
+            if (statusEl) statusEl.innerHTML = "";
+        });
+    }
+
+    // Set default subject filter for teacher if element exists
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
+    if (currentUser && String(currentUser.role).toUpperCase().includes("TEACHER") && currentUser.subject) {
+        if (subjectFilter) {
+            subjectFilter.value = normalizeSubject(currentUser.subject);
+            subjectFilter.disabled = true; // Lock filter to teacher's subject
+        }
+    }
 }
 
 function filterPlacementTests() {
@@ -555,18 +658,21 @@ function filterPlacementTests() {
     let currentUser = null;
     if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
 
-    const filtered = placementTestsData.filter(item => {
-        const itemSubject = detectSubject(item);
-        const matchesSubject = !subject || itemSubject === subject;
+    // 1. Get base data with teacher subject isolation
+    let baseData = getTeacherFilteredData();
+
+    // 2. Apply additional filters
+    const filtered = baseData.filter(item => {
+        const itemSubject = normalizeSubject(item.subject || inferSubject(item.title));
 
         const matchesQuery = !query || 
             (item.studentName && item.studentName.toLowerCase().includes(query)) ||
             (item.title && item.title.toLowerCase().includes(query)) ||
             (item.parentName && item.parentName.toLowerCase().includes(query)) ||
             (item.parentEmail && item.parentEmail.toLowerCase().includes(query)) ||
-            (item.roomName && item.roomName.toLowerCase().includes(query)) ||
             `#PT-${item.id}`.toLowerCase().includes(query);
 
+        const matchesSubject = !subject || itemSubject === normalizeSubject(subject);
         const matchesLevel = !level || item.recommendedLevel === level;
         const matchesStatus = !status || item.status === status;
 
@@ -577,158 +683,22 @@ function filterPlacementTests() {
             matchesMine = evaluator.includes(teacherKey) || (currentUser.username && evaluator.includes(currentUser.username.toLowerCase()));
         }
 
-        return matchesSubject && matchesQuery && matchesLevel && matchesStatus && matchesMine;
+        return matchesQuery && matchesSubject && matchesLevel && matchesStatus && matchesMine;
     });
 
     renderTable(filtered);
 }
 
-function onSubjectChangeInCreateModal() {
-    const subKey = document.getElementById("createSubject")?.value || "PIANO";
-    const subCfg = SUBJECT_CONFIG[subKey] || SUBJECT_CONFIG.PIANO;
-    
-    const titleInput = document.getElementById("createTitle");
-    const roomInput = document.getElementById("createRoomName");
-    
-    if (titleInput) titleInput.value = subCfg.defaultTitle;
-    if (roomInput) roomInput.value = subCfg.defaultRoom;
-}
-
-function openCreateModal() {
-    const form = document.getElementById("createPlacementTestForm");
-    if (form) form.reset();
-
-    // Set default subject and suggested defaults
-    const subSelect = document.getElementById("createSubject");
-    if (subSelect) subSelect.value = "DANCE";
-    onSubjectChangeInCreateModal();
-
-    // Set default tomorrow date
-    const dateInput = document.getElementById("createTestDate");
-    if (dateInput) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        dateInput.value = tomorrow.toISOString().split("T")[0];
-    }
-
-    const modal = new bootstrap.Modal(document.getElementById('createModal'));
-    modal.show();
-}
-
-async function handleCreatePlacementTest(e) {
-    e.preventDefault();
-
-    const studentName = document.getElementById("createStudentName").value.trim();
-    const subject = document.getElementById("createSubject").value;
-    const title = document.getElementById("createTitle").value.trim();
-    const roomName = document.getElementById("createRoomName").value.trim();
-    const branch = document.getElementById("createBranch").value;
-    const testDateVal = document.getElementById("createTestDate").value;
-    const testTimeVal = document.getElementById("createTestTime").value;
-    const note = document.getElementById("createNote").value.trim();
-
-    const isoDateTime = `${testDateVal}T${testTimeVal}:00`;
-
-    const createPayload = {
-        studentName: studentName,
-        title: title,
-        roomName: roomName,
-        branch: branch,
-        testDate: isoDateTime,
-        note: note
-    };
-
-    const newTest = {
-        id: placementTestsData.length + 1,
-        studentName: studentName,
-        subject: subject,
-        title: title,
-        roomName: roomName,
-        branch: branch,
-        testDate: isoDateTime,
-        note: note,
-        status: "SCHEDULED",
-        score: null,
-        recommendedLevel: null,
-        teacherNote: "",
-        parentName: "Phụ huynh đăng ký",
-        createdAt: new Date().toISOString()
-    };
-
-    let createdResponse = null;
-    if (typeof callApi === 'function') {
-        createdResponse = await callApi('/api/placement-tests', "POST", createPayload).catch(err => {
-            console.warn("Create test fallback:", err);
-            return null;
-        });
-    }
-
-    if (createdResponse && createdResponse.id) {
-        createdResponse.subject = subject;
-        placementTestsData.unshift(createdResponse);
-    } else {
-        placementTestsData.unshift(newTest);
-    }
-
-    const modalEl = document.getElementById('createModal');
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
-
-    showNotification(`Đã đăng ký ca kiểm tra bộ môn ${SUBJECT_CONFIG[subject]?.name || ''} cho học viên ${studentName}!`, "success");
-    renderStats();
-    filterPlacementTests();
-}
-
-function renderEvaluationCriteriaSliders(subKey, baseScore10) {
-    const subCfg = SUBJECT_CONFIG[subKey] || SUBJECT_CONFIG.PIANO;
-    const container = document.getElementById("evalCriteriaContainer");
-    if (!container) return;
-
-    const noticeEl = document.getElementById("evalSubjectNotice");
-    if (noticeEl) {
-        noticeEl.innerHTML = `<i class="bi ${subCfg.icon} me-1"></i>Tiêu chí bộ môn: <strong>${subCfg.name}</strong>`;
-    }
-
-    container.innerHTML = subCfg.criteria.map(crit => {
-        const val = (baseScore10 != null ? baseScore10 : crit.defaultVal).toFixed(1);
-        return `
-            <div class="col-md-6">
-                <div class="score-slider-card">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <label class="fw-semibold text-dark small">
-                            <i class="bi ${crit.icon} me-1 text-${crit.color}"></i>${crit.label}
-                        </label>
-                        <span class="badge bg-${crit.color} text-${crit.color === 'warning' ? 'dark' : 'white'} px-2" id="val_${crit.key}">${val}</span>
-                    </div>
-                    <input type="range" class="form-range" id="score_${crit.key}" min="0" max="10" step="0.5" value="${val}" oninput="onCriteriaSliderInput('${crit.key}')">
-                </div>
-            </div>
-        `;
-    }).join("");
-
-    calculateDynamicAverageScore(subKey);
-}
-
-function onCriteriaSliderInput(key) {
-    const slider = document.getElementById(`score_${key}`);
-    const display = document.getElementById(`val_${key}`);
-    if (slider && display) {
-        display.innerText = parseFloat(slider.value).toFixed(1);
-    }
-    calculateDynamicAverageScore(currentEditingSubject);
-}
-
-function calculateDynamicAverageScore(subKey) {
-    const subCfg = SUBJECT_CONFIG[subKey] || SUBJECT_CONFIG.PIANO;
-    let sum = 0;
-    subCfg.criteria.forEach(crit => {
-        const slider = document.getElementById(`score_${crit.key}`);
-        if (slider) {
-            sum += parseFloat(slider.value || 0);
-        }
+function calculateAverageScore() {
+    const sliders = document.querySelectorAll(".eval-criteria-slider");
+    let total = 0;
+    let count = 0;
+    sliders.forEach(s => {
+        total += parseFloat(s.value || 0);
+        count++;
     });
 
-    const avg10 = sum / (subCfg.criteria.length || 4);
+    const avg10 = count > 0 ? (total / count) : 0;
     const score100 = Math.round(avg10 * 10);
 
     const avgDisplay = document.getElementById("calculatedAvgScore");
@@ -736,51 +706,6 @@ function calculateDynamicAverageScore(subKey) {
 
     if (avgDisplay) avgDisplay.innerText = avg10.toFixed(1);
     if (score100Display) score100Display.innerText = `${score100} / 100đ`;
-}
-
-function openEvaluateModal(id) {
-    // STRICT ROLE CHECK: ONLY TEACHER / ADMIN ALLOWED
-    if (!isTeacher()) {
-        showTeacherOnlyAlert();
-        return;
-    }
-
-    const item = placementTestsData.find(x => x.id === id);
-    if (!item) return;
-
-    let currentUser = null;
-    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
-
-    currentEditingId = id;
-    currentEditingSubject = detectSubject(item);
-    const subCfg = SUBJECT_CONFIG[currentEditingSubject] || SUBJECT_CONFIG.PIANO;
-
-    uploadedFileUrl = item.videoUrl || item.audioUrl || item.recordUrl || item.imageUrl || "";
-
-    document.getElementById("evalCandidateCode").innerText = `#PT-${item.id}`;
-    document.getElementById("evalCandidateName").innerText = item.studentName || "Học viên";
-    
-    const subjectBadge = document.getElementById("evalSubjectBadge");
-    if (subjectBadge) {
-        subjectBadge.className = `badge ${subCfg.badgeClass} ms-2`;
-        subjectBadge.innerHTML = `<i class="bi ${subCfg.icon} me-1"></i>${subCfg.name}`;
-    }
-
-    const examinerInfo = currentUser ? `${currentUser.fullName || currentUser.username}` : (item.evaluatedByName || 'Chưa phân công');
-    document.getElementById("evalCandidateMeta").innerText = `Tiêu đề: ${item.title || 'Test Năng Khiếu'} | Cơ sở: ${item.branch || 'Cơ sở 1'} | GV chấm: ${examinerInfo}`;
-
-    const baseScore10 = item.score != null ? (item.score / 10) : null;
-    renderEvaluationCriteriaSliders(currentEditingSubject, baseScore10);
-
-    document.getElementById("evalLevelSelect").value = item.recommendedLevel || "BEGINNER";
-    document.getElementById("evalExaminerNotes").value = item.teacherNote || "";
-    document.getElementById("evalMediaUrl").value = uploadedFileUrl;
-
-    const statusEl = document.getElementById("uploadStatusMessage");
-    if (statusEl) statusEl.innerHTML = uploadedFileUrl ? `<span class="text-info"><i class="bi bi-link-45deg me-1"></i>Đã có file: <a href="${uploadedFileUrl}" target="_blank" class="text-info text-decoration-underline">${uploadedFileUrl}</a></span>` : "";
-
-    const modal = new bootstrap.Modal(document.getElementById('evaluateModal'));
-    modal.show();
 }
 
 async function handleFileUpload(e) {
@@ -815,6 +740,9 @@ async function handleFileUpload(e) {
         }
 
         uploadedFileUrl = fileUrl;
+        const evalMediaInput = document.getElementById("evalMediaUrl");
+        if (evalMediaInput) evalMediaInput.value = fileUrl;
+
         if (statusEl) {
             statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Đã tải thành công: <a href="${fileUrl}" target="_blank" class="text-success text-decoration-underline">${file.name}</a></span>`;
         }
@@ -826,97 +754,317 @@ async function handleFileUpload(e) {
     }
 }
 
-async function handleSaveEvaluation(e) {
-    e.preventDefault();
+function openEvaluateModal(id) {
+    const item = placementTestsData.find(x => x.id === id);
+    if (!item) return;
 
-    // STRICT ROLE CHECK: ONLY TEACHER / ADMIN ALLOWED
+    // 1. STRICT ROLE & SUBJECT PERMISSION CHECK
     if (!isTeacher()) {
         showTeacherOnlyAlert();
         return;
     }
 
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
+    const roleUpper = currentUser && currentUser.role ? String(currentUser.role).toUpperCase().replace("ROLE_", "") : "";
+
+    if (roleUpper === "TEACHER") {
+        const teacherSubject = normalizeSubject(currentUser.subject || "DAN");
+        const itemSubject = normalizeSubject(item.subject || inferSubject(item.title));
+
+        if (teacherSubject !== itemSubject) {
+            showTeacherSubjectMismatchAlert(teacherSubject, itemSubject);
+            return;
+        }
+    }
+
+    currentEditingId = id;
+    uploadedFileUrl = item.videoUrl || item.audioUrl || item.recordUrl || item.imageUrl || "";
+
+    const fileInput = document.getElementById("evalAttachmentFile");
+    if (fileInput) fileInput.value = "";
+
+    document.getElementById("evalCandidateCode").innerText = `#PT-${item.id}`;
+    document.getElementById("evalCandidateName").innerText = item.studentName || "Học viên";
+
+    const normSubject = normalizeSubject(item.subject || inferSubject(item.title));
+    const cfg = SUBJECT_EVALUATION_CONFIG[normSubject] || SUBJECT_EVALUATION_CONFIG['DAN'];
+    const subjectName = cfg.subjectName;
+    const teacherDisplayName = currentUser ? (currentUser.subject ? `GV ${getSubjectDisplayName(currentUser.subject)}` : 'GV') : '';
+    const examinerInfo = currentUser ? `${currentUser.fullName || currentUser.username} (${teacherDisplayName})` : (item.evaluatedByName || 'Chưa phân công');
+    document.getElementById("evalCandidateMeta").innerText = `Bộ môn: ${subjectName} | Tiêu đề: ${item.title || 'Test Năng Khiếu'} | Cơ sở: ${item.branch || 'Cơ sở 1'} | GV chấm: ${examinerInfo}`;
+
+    const baseScore10 = item.score != null ? (item.score / 10) : 7.5;
+
+    // Render dynamic subject-specific criteria sliders
+    const evalContainer = document.getElementById("evalCriteriaContainer");
+    if (evalContainer) {
+        evalContainer.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>${cfg.headerTitle} (Thang điểm 0 - 10)</h6>
+                <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
+            </div>
+            <div class="row g-3 mb-4">
+                ${cfg.criteria.map(c => `
+                    <div class="col-md-6">
+                        <div class="score-slider-card">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="fw-semibold text-dark small"><i class="bi ${c.icon} me-1"></i>${c.label}</label>
+                                <span class="badge ${c.badgeClass} px-2" id="val_${c.id}">${baseScore10.toFixed(1)}</span>
+                            </div>
+                            <input type="range" class="form-range eval-criteria-slider" id="score_${c.id}" min="0" max="10" step="0.5" value="${baseScore10}" oninput="document.getElementById('val_${c.id}').innerText = parseFloat(this.value).toFixed(1); calculateAverageScore();">
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    calculateAverageScore();
+
+    document.getElementById("evalLevelSelect").value = item.recommendedLevel || "BEGINNER";
+    const notesEl = document.getElementById("evalExaminerNotes");
+    if (notesEl) {
+        notesEl.value = item.teacherNote || "";
+        notesEl.placeholder = cfg.notePlaceholder;
+    }
+    document.getElementById("evalMediaUrl").value = uploadedFileUrl;
+
+    const statusEl = document.getElementById("uploadStatusMessage");
+    if (statusEl) statusEl.innerHTML = uploadedFileUrl ? `<span class="text-info"><i class="bi bi-link-45deg me-1"></i>Đã có file: <a href="${uploadedFileUrl}" target="_blank" class="text-info text-decoration-underline">${uploadedFileUrl}</a></span>` : "";
+
+    const modal = new bootstrap.Modal(document.getElementById('evaluateModal'));
+    modal.show();
+}
+
+async function handleSaveEvaluation(e) {
+    e.preventDefault();
+
     if (!currentEditingId) return;
+    const item = placementTestsData.find(x => x.id === currentEditingId);
+    if (!item) return;
+
+    // STRICT ROLE & SUBJECT CHECK
+    if (!isTeacher()) {
+        showTeacherOnlyAlert();
+        return;
+    }
 
     let currentUser = null;
     if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
-    const evaluatorName = currentUser ? `${currentUser.fullName || currentUser.username} (${currentUser.role})` : 'Giáo Viên Chuyên Môn';
+    const roleUpper = currentUser && currentUser.role ? String(currentUser.role).toUpperCase().replace("ROLE_", "") : "";
 
-    const subCfg = SUBJECT_CONFIG[currentEditingSubject] || SUBJECT_CONFIG.PIANO;
-    let sum = 0;
-    const rubricScores = [];
-    subCfg.criteria.forEach(crit => {
-        const val = parseFloat(document.getElementById(`score_${crit.key}`)?.value || 0);
-        sum += val;
-        rubricScores.push(`${crit.label}: ${val}/10`);
+    if (roleUpper === "TEACHER") {
+        const teacherSubject = normalizeSubject(currentUser.subject || "DAN");
+        const itemSubject = normalizeSubject(item.subject || inferSubject(item.title));
+        if (teacherSubject !== itemSubject) {
+            showTeacherSubjectMismatchAlert(teacherSubject, itemSubject);
+            return;
+        }
+    }
+
+    const teacherDisplayName = currentUser ? (currentUser.subject ? `GV ${getSubjectDisplayName(currentUser.subject)}` : 'GV') : '';
+    const evaluatorName = currentUser ? `${currentUser.fullName || currentUser.username} (${teacherDisplayName})` : 'Giáo Viên Chuyên Môn';
+
+    const sliders = document.querySelectorAll(".eval-criteria-slider");
+    let total = 0;
+    let count = 0;
+    sliders.forEach(s => {
+        total += parseFloat(s.value || 0);
+        count++;
     });
-
-    const avg10 = sum / subCfg.criteria.length;
+    const avg10 = count > 0 ? (total / count) : 0;
     const score100 = Math.round(avg10 * 10);
 
     const recommendedLevel = document.getElementById("evalLevelSelect").value;
-    let teacherNote = document.getElementById("evalExaminerNotes").value.trim();
+    const teacherNote = document.getElementById("evalExaminerNotes").value;
     const mediaUrlInput = document.getElementById("evalMediaUrl").value.trim();
     const mediaUrl = mediaUrlInput || uploadedFileUrl;
 
-    // Prepend rubric details if not already in note
-    if (!teacherNote.includes(subCfg.name)) {
-        teacherNote = `[${subCfg.name}] Điểm tiêu chí: ${rubricScores.join(" | ")}. ${teacherNote}`;
-    }
+    const isAudio = /\.(mp3|wav|ogg|m4a)$/i.test(mediaUrl);
+    const isVideo = /\.(mp4|webm|mov|avi|mkv)$/i.test(mediaUrl);
+    const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(mediaUrl);
 
     const assessmentPayload = {
         score: score100,
         recommendedLevel: recommendedLevel,
         teacherNote: teacherNote,
-        audioUrl: mediaUrl.endsWith('.mp3') || mediaUrl.endsWith('.wav') ? mediaUrl : null,
-        videoUrl: mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.webm') ? mediaUrl : mediaUrl,
-        imageUrl: mediaUrl.endsWith('.png') || mediaUrl.endsWith('.jpg') ? mediaUrl : null,
-        recordUrl: mediaUrl
+        audioUrl: isAudio ? mediaUrl : null,
+        videoUrl: isVideo ? mediaUrl : null,
+        imageUrl: isImage ? mediaUrl : null,
+        recordUrl: mediaUrl || null
     };
 
-    const item = placementTestsData.find(x => x.id === currentEditingId);
-    if (item) {
+    let apiSavedResponse = null;
+    if (typeof callApi === 'function') {
+        try {
+            apiSavedResponse = await callApi(`/api/placement-tests/${currentEditingId}/assess`, "POST", assessmentPayload);
+        } catch (err) {
+            console.error("Lỗi khi lưu kết quả vào Database:", err);
+            showNotification(`Không thể lưu: ${err.message || "Lỗi phân quyền hoặc kết nối!"}`, "danger");
+            return;
+        }
+    }
+
+    if (apiSavedResponse) {
+        const itemIndex = placementTestsData.findIndex(x => x.id === currentEditingId);
+        if (itemIndex !== -1) {
+            placementTestsData[itemIndex] = apiSavedResponse;
+        }
+    } else {
         item.score = score100;
         item.recommendedLevel = recommendedLevel;
         item.teacherNote = teacherNote;
         item.status = "COMPLETED";
-        item.videoUrl = mediaUrl;
+        item.audioUrl = isAudio ? mediaUrl : "";
+        item.videoUrl = isVideo ? mediaUrl : "";
+        item.imageUrl = isImage ? mediaUrl : "";
+        item.recordUrl = mediaUrl || "";
         item.evaluatedByName = evaluatorName;
         item.evaluatedAt = new Date().toISOString();
-    }
-
-    if (typeof callApi === 'function') {
-        await callApi(`/api/placement-tests/${currentEditingId}/assess`, "POST", assessmentPayload).catch(err => {
-            console.warn("Backend assessment API fallback to local state update:", err);
-        });
     }
 
     const modalEl = document.getElementById('evaluateModal');
     const modal = bootstrap.Modal.getInstance(modalEl);
     if (modal) modal.hide();
 
-    showNotification(`Đã lưu kết quả chấm điểm môn ${subCfg.name} bởi ${evaluatorName}!`, "success");
+    showNotification(`Đã lưu thành công kết quả chấm điểm cho bài thi #PT-${currentEditingId}!`, "success");
     renderStats();
     filterPlacementTests();
+}
+
+function openCreateModal() {
+    const form = document.getElementById("createPlacementTestForm");
+    if (form) form.reset();
+
+    // Auto select teacher's subject if logged in as teacher
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
+    const subjectSelect = document.getElementById("createSubject");
+    if (subjectSelect && currentUser && currentUser.subject) {
+        subjectSelect.value = normalizeSubject(currentUser.subject);
+    }
+
+    initDateRestrictions();
+    const modal = new bootstrap.Modal(document.getElementById('createModal'));
+    modal.show();
+}
+
+async function handleCreatePlacementTest(e) {
+    e.preventDefault();
+
+    const studentName = document.getElementById("createStudentName").value.trim();
+    const subject = normalizeSubject(document.getElementById("createSubject")?.value || "DAN");
+    const title = document.getElementById("createTitle").value.trim();
+    const roomName = document.getElementById("createRoomName").value.trim();
+    const branch = document.getElementById("createBranch").value;
+    const testDateVal = document.getElementById("createTestDate").value;
+    const testTimeVal = document.getElementById("createTestTime").value;
+    const note = document.getElementById("createNote").value.trim();
+
+    // STRICT VALIDATION: Time cannot be in the past calculated at this exact moment
+    const todayStr = getTodayDateString();
+    if (testDateVal < todayStr) {
+        showNotification("Ngày hẹn test không được chọn trong quá khứ! Vui lòng chọn từ ngày hôm nay trở đi.", "danger");
+        document.getElementById("createTestDate").focus();
+        initDateRestrictions();
+        return;
+    }
+
+    const selectedDateTime = new Date(`${testDateVal}T${testTimeVal}:00`);
+    const now = new Date();
+
+    if (isNaN(selectedDateTime.getTime()) || selectedDateTime <= now) {
+        showNotification("Thời gian hẹn test không được ở trong quá khứ tính từ lúc đang chọn! Vui lòng chọn ngày và giờ từ hiện tại trở đi.", "danger");
+        document.getElementById("createTestDate").focus();
+        updateTimeMinRestriction();
+        return;
+    }
+
+    const isoDateTime = `${testDateVal}T${testTimeVal}:00`;
+
+    const createPayload = {
+        studentName: studentName,
+        subject: subject,
+        title: title,
+        roomName: roomName,
+        branch: branch,
+        testDate: isoDateTime,
+        note: note
+    };
+
+    const newTest = {
+        id: placementTestsData.length + 1,
+        studentName: studentName,
+        subject: subject,
+        title: title,
+        roomName: roomName,
+        branch: branch,
+        testDate: isoDateTime,
+        note: note,
+        status: "SCHEDULED",
+        score: null,
+        recommendedLevel: null,
+        teacherNote: "",
+        parentName: "Phụ huynh đăng ký",
+        createdAt: new Date().toISOString()
+    };
+
+    let createdResponse = null;
+    if (typeof callApi === 'function') {
+        try {
+            createdResponse = await callApi('/api/placement-tests', "POST", createPayload);
+        } catch (err) {
+            console.error("Create test error:", err);
+            showNotification(`Lỗi tạo đơn đăng ký: ${err.message || "Thời gian không hợp lệ"}`, "danger");
+            return;
+        }
+    }
+
+    const savedRecord = (createdResponse && createdResponse.id) ? createdResponse : newTest;
+    savedRecord.subject = normalizeSubject(savedRecord.subject || subject || inferSubject(savedRecord.title));
+
+    // Add to dataset
+    placementTestsData.unshift(savedRecord);
+
+    const modalEl = document.getElementById('createModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    // IMMEDIATELY re-filter and render UI without page refresh
+    renderStats();
+    filterPlacementTests();
+
+    // Check if the created test belongs to current teacher's subject
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
+    const roleUpper = currentUser && currentUser.role ? String(currentUser.role).toUpperCase().replace("ROLE_", "") : "";
+
+    if (roleUpper === "TEACHER") {
+        const teacherSubject = normalizeSubject(currentUser.subject || "DAN");
+        const testSubject = normalizeSubject(savedRecord.subject);
+
+        if (teacherSubject !== testSubject) {
+            const testDisplayName = getSubjectDisplayName(testSubject);
+            const teacherDisplayName = getSubjectDisplayName(teacherSubject);
+            showNotification(`Đã tạo đơn đăng ký ca test #PT-${savedRecord.id} (Bộ Môn: ${testDisplayName}) thành công! ⚠️ Vì ca test này thuộc Bộ môn [${testDisplayName}] khác bộ môn [${teacherDisplayName}] của bạn, ca thi đã TỰ ĐỘNG ẨN khỏi danh sách chấm của bạn.`, "warning");
+            return;
+        }
+    }
+
+    const testSubjectDisplayName = getSubjectDisplayName(savedRecord.subject);
+    showNotification(`Đã đăng ký lịch kiểm tra mới cho học viên ${studentName} (Bộ môn ${testSubjectDisplayName}) thành công!`, "success");
 }
 
 function openDetailModal(id) {
     const item = placementTestsData.find(x => x.id === id);
     if (!item) return;
 
-    const subKey = detectSubject(item);
-    const subCfg = SUBJECT_CONFIG[subKey] || SUBJECT_CONFIG.PIANO;
-
     document.getElementById("detailCode").innerText = `#PT-${item.id}`;
     document.getElementById("detailStudentName").innerText = item.studentName || "Học viên";
     document.getElementById("detailTitle").innerText = item.title || "Đánh giá xếp lớp";
     document.getElementById("detailParentName").innerText = item.parentName || item.parentEmail || "Không có thông tin";
     document.getElementById("detailBranchRoom").innerText = `${item.branch || 'Cơ sở'} - ${item.roomName || 'Phòng học'}`;
-
-    const detailSubjectBadge = document.getElementById("detailSubjectBadge");
-    if (detailSubjectBadge) {
-        detailSubjectBadge.className = `badge ${subCfg.badgeClass}`;
-        detailSubjectBadge.innerHTML = `<i class="bi ${subCfg.icon} me-1"></i>${subCfg.name}`;
-    }
 
     const formattedDT = formatISOToDateTime(item.testDate);
     document.getElementById("detailTestDateTime").innerText = `${formattedDT.date} lúc ${formattedDT.time}`;
@@ -928,37 +1076,38 @@ function openDetailModal(id) {
     }
 
     let levelText = "Chưa xếp trình độ";
-    if (item.recommendedLevel === 'BEGINNER') levelText = "Sơ Cấp (Beginner / Khởi động)";
+    if (item.recommendedLevel === 'BEGINNER') levelText = "Sơ Cấp (Beginner)";
     else if (item.recommendedLevel === 'INTERMEDIATE') levelText = "Trung Cấp (Intermediate)";
-    else if (item.recommendedLevel === 'ADVANCED') levelText = "Nâng Cao (Advanced / Biểu diễn)";
+    else if (item.recommendedLevel === 'ADVANCED') levelText = "Nâng Cao (Advanced)";
 
     document.getElementById("detailLevel").innerText = levelText;
     document.getElementById("detailNotes").innerText = item.teacherNote || item.note || "Chưa có ghi chú.";
 
-    // Render dynamic criteria bars in detail modal
-    const criteriaContainer = document.getElementById("detailCriteriaContainer");
-    if (criteriaContainer) {
-        const baseScore = item.score != null ? (item.score / 10) : 0;
-        criteriaContainer.innerHTML = subCfg.criteria.map((crit, idx) => {
-            // slight variation based on index if completed
-            let scoreVal = baseScore;
-            if (baseScore > 0) {
-                const offsets = [0.3, -0.2, 0.1, -0.1];
-                scoreVal = Math.min(10, Math.max(0, baseScore + (offsets[idx % 4] || 0)));
-            }
-            const pct = Math.min(Math.max(scoreVal * 10, 0), 100);
-            return `
-                <div class="col-md-6">
-                    <small class="fw-semibold text-muted d-flex justify-content-between">
-                        <span><i class="bi ${crit.icon} me-1 text-${crit.color}"></i>${crit.label}</span>
-                        <strong class="text-${crit.color}">${scoreVal.toFixed(1)}/10</strong>
-                    </small>
-                    <div class="progress mt-1" style="height: 8px;">
-                        <div class="progress-bar bg-${crit.color}" role="progressbar" style="width: ${pct}%"></div>
+    const baseScore = item.score != null ? item.score : 0;
+    const normSubject = normalizeSubject(item.subject || inferSubject(item.title));
+    const cfg = SUBJECT_EVALUATION_CONFIG[normSubject] || SUBJECT_EVALUATION_CONFIG['DAN'];
+
+    const detailCriteriaContainer = document.getElementById("detailCriteriaContainer");
+    if (detailCriteriaContainer) {
+        detailCriteriaContainer.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>Điểm số 4 tiêu chí [${cfg.subjectName}]</h6>
+                <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
+            </div>
+            <div class="row g-3 mb-4">
+                ${cfg.criteria.map(c => `
+                    <div class="col-md-6">
+                        <small class="fw-semibold text-muted d-flex justify-content-between">
+                            <span><i class="bi ${c.icon} me-1"></i>${c.label}</span>
+                            <strong class="text-dark">${(baseScore / 10).toFixed(1)}/10</strong>
+                        </small>
+                        <div class="progress mt-1" style="height: 8px;">
+                            <div class="progress-bar ${c.badgeClass.split(' ')[0]}" role="progressbar" style="width: ${baseScore}%"></div>
+                        </div>
                     </div>
-                </div>
-            `;
-        }).join("");
+                `).join('')}
+            </div>
+        `;
     }
 
     const mediaContainer = document.getElementById("detailMediaAttachment");
@@ -967,9 +1116,9 @@ function openDetailModal(id) {
         if (mediaUrl) {
             mediaContainer.innerHTML = `
                 <div class="alert alert-info py-2 px-3 small d-flex align-items-center justify-content-between mb-0">
-                    <span><i class="bi bi-file-earmark-play me-1"></i>File đính kèm bài test (${subCfg.name}):</span>
+                    <span><i class="bi bi-paperclip me-1"></i>File đính kèm bài thi / ghi âm:</span>
                     <a href="${mediaUrl}" target="_blank" class="btn btn-sm btn-info text-dark fw-bold rounded-pill">
-                        <i class="bi bi-play-circle me-1"></i>Xem Video / Nghe Ghi Âm
+                        <i class="bi bi-download me-1"></i>Xem / Tải file
                     </a>
                 </div>
             `;
@@ -982,23 +1131,43 @@ function openDetailModal(id) {
     modal.show();
 }
 
+function setProgressBar(barId, valId, score100) {
+    const bar = document.getElementById(barId);
+    const val = document.getElementById(valId);
+    const percent = Math.min(Math.max(score100, 0), 100);
+    if (bar) bar.style.width = `${percent}%`;
+    if (val) val.innerText = `${(score100 / 10).toFixed(1)}/10`;
+}
+
 function showNotification(msg, type = "info") {
     const toastContainer = document.getElementById("toastContainer");
     if (!toastContainer) return;
 
-    const bgClass = type === "success" ? "bg-success text-white" : "bg-primary text-white";
+    let bgClass = "bg-primary text-white";
+    let iconClass = "bi-info-circle-fill";
+    if (type === "success") {
+        bgClass = "bg-success text-white";
+        iconClass = "bi-check-circle-fill";
+    } else if (type === "danger") {
+        bgClass = "bg-danger text-white";
+        iconClass = "bi-exclamation-triangle-fill";
+    } else if (type === "warning") {
+        bgClass = "bg-warning text-dark";
+        iconClass = "bi-exclamation-diamond-fill";
+    }
+
     const toastHtml = `
         <div class="toast align-items-center ${bgClass} border-0 shadow-lg mb-2" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body font-medium">
-                    <i class="bi bi-check-circle-fill me-2"></i>${msg}
+                    <i class="bi ${iconClass} me-2"></i>${msg}
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <button type="button" class="btn-close ${type === 'warning' ? '' : 'btn-close-white'} me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     `;
     toastContainer.insertAdjacentHTML("beforeend", toastHtml);
     const lastToast = toastContainer.lastElementChild;
-    const bsToast = new bootstrap.Toast(lastToast, { delay: 3500 });
+    const bsToast = new bootstrap.Toast(lastToast, { delay: 5000 });
     bsToast.show();
 }

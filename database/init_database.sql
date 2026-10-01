@@ -54,6 +54,7 @@ CREATE TABLE users (
     phone VARCHAR(20),
     role VARCHAR(30) NOT NULL,
     status VARCHAR(30) DEFAULT 'ACTIVE',
+    subject VARCHAR(100),
     avatar_url NVARCHAR(500),
     created_at DATETIME2 DEFAULT CURRENT_TIMESTAMP
 );
@@ -291,6 +292,7 @@ CREATE TABLE placement_schedules (
     title NVARCHAR(150) NOT NULL,
     room_name NVARCHAR(100) NOT NULL,
     branch NVARCHAR(150),
+    subject VARCHAR(50),
     test_date DATETIME2 NOT NULL,
     note NVARCHAR(MAX),
     status VARCHAR(30) NOT NULL DEFAULT 'SCHEDULED',
