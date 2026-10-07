@@ -73,6 +73,13 @@ public class CourseEnrollmentController {
         return ResponseEntity.ok(service.getMyRequests());
     }
 
+    @PatchMapping("/requests/{requestId}/cancel")
+    @PreAuthorize("hasRole('PARENT')")
+    @Operation(summary = "Phụ huynh hủy yêu cầu trước khi xếp lớp hoặc xếp lịch Placement Test")
+    public ResponseEntity<EnrollmentRequestResponse> cancelRequest(@PathVariable Long requestId) {
+        return ResponseEntity.ok(service.cancelRequest(requestId));
+    }
+
     @GetMapping("/staff/requests")
     @PreAuthorize("hasAnyRole('STAFF', 'BRANCH_MANAGER', 'ADMIN')")
     @Operation(summary = "Lấy các yêu cầu đang chờ duyệt")

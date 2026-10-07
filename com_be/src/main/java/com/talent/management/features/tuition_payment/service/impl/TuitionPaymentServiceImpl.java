@@ -262,7 +262,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
             // Cập nhật trạng thái yêu cầu đăng ký (nếu có) thành APPROVED
             try {
                 enrollmentRequestRepository.findByEnrollmentId(enrollment.getId()).ifPresent(req -> {
-                    req.setStatus(com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus.APPROVED);
+                    req.setStatus(com.talent.management.shared.enums.EnrollmentRequestStatus.APPROVED);
                     enrollmentRequestRepository.save(req);
                 });
             } catch (Exception ex) {

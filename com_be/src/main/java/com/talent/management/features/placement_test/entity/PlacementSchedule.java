@@ -1,5 +1,6 @@
 package com.talent.management.features.placement_test.entity;
 
+import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.shared.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,6 +23,10 @@ public class PlacementSchedule {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User parent;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "enrollment_request_id")
+    private EnrollmentRequest enrollmentRequest;
 
     @Column(name = "student_name", columnDefinition = "NVARCHAR(100)")
     private String studentName;

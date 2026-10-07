@@ -4,7 +4,7 @@ import com.talent.management.features.course_enrollment.dto.response.ChildRespon
 import com.talent.management.features.course_enrollment.dto.response.ClassResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
-import com.talent.management.features.course_enrollment.entity.EnrollmentRequest;
+import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.shared.entity.ClassEntity;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.Student;
@@ -63,10 +63,18 @@ public class CourseEnrollmentMapper {
     }
 
     public EnrollmentRequestResponse toRequestResponse(EnrollmentRequest request) {
-        return toRequestResponse(request, null, null);
+        return toRequestResponse(request, null, null, false);
     }
 
     public EnrollmentRequestResponse toRequestResponse(EnrollmentRequest request, Long invoiceId, String invoiceCode) {
+        return toRequestResponse(request, invoiceId, invoiceCode, false);
+    }
+
+    public EnrollmentRequestResponse toRequestResponse(EnrollmentRequest request, boolean cancellable) {
+        return toRequestResponse(request, null, null, cancellable);
+    }
+
+    private EnrollmentRequestResponse toRequestResponse(EnrollmentRequest request, Long invoiceId, String invoiceCode, boolean cancellable) {
         ClassEntity assignedClass = request.getClassEntity();
         Course preferredCourse = request.getPreferredCourse() != null
                 ? request.getPreferredCourse()
@@ -91,7 +99,8 @@ public class CourseEnrollmentMapper {
                 request.getRequestedBy().getFullName(),
                 request.getReviewedBy() == null ? null : request.getReviewedBy().getFullName(),
                 invoiceId,
-                invoiceCode
+                invoiceCode,
+                cancellable
         );
     }
 }

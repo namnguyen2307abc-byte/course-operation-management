@@ -1,6 +1,9 @@
 package com.talent.management.features.placement_test.service.impl;
 
 import com.talent.management.features.auth.repository.UserRepository;
+import com.talent.management.shared.entity.EnrollmentRequest;
+import com.talent.management.shared.enums.EnrollmentRequestStatus;
+import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
 import com.talent.management.features.placement_test.dto.request.CreatePlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
@@ -18,6 +21,8 @@ import com.talent.management.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +37,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
     private final PlacementScheduleMapper scheduleMapper;
+    private final EnrollmentRequestRepository enrollmentRequestRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -151,7 +157,21 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         }
 
         PlacementSchedule schedule = scheduleMapper.toEntity(request);
-        if (parentUsername != null && !parentUsername.isBlank()) {
+        if (request.getEnrollmentRequestId() != null) {
+            EnrollmentRequest enrollmentRequest = enrollmentRequestRepository
+                    .findByIdForUpdate(request.getEnrollmentRequestId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký"));
+            if (!enrollmentRequest.isPlacementRequested()
+                    || enrollmentRequest.getStatus() != EnrollmentRequestStatus.WAITING_PLACEMENT) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu không còn chờ xếp lịch Placement Test");
+            }
+            if (scheduleRepository.existsByEnrollmentRequestId(enrollmentRequest.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu đã có lịch Placement Test");
+            }
+            schedule.setEnrollmentRequest(enrollmentRequest);
+            schedule.setStudentName(enrollmentRequest.getStudent().getFullName());
+            schedule.setParent(enrollmentRequest.getRequestedBy());
+        } else if (parentUsername != null && !parentUsername.isBlank()) {
             userRepository.findByUsername(parentUsername).ifPresent(schedule::setParent);
         }
         PlacementSchedule saved = scheduleRepository.save(schedule);

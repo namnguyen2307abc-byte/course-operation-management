@@ -708,6 +708,44 @@ function calculateAverageScore() {
     if (score100Display) score100Display.innerText = `${score100} / 100đ`;
 }
 
+let enrollmentRequestsForScheduling = [];
+
+function onEnrollmentRequestChange() {
+    const requestId = Number(document.getElementById('createEnrollmentRequest')?.value);
+    const selected = enrollmentRequestsForScheduling.find(request => request.id === requestId);
+    const nameInput = document.getElementById('createStudentName');
+    nameInput.value = selected ? selected.childName : '';
+    nameInput.readOnly = Boolean(selected);
+}
+
+async function loadEnrollmentRequestsForScheduling() {
+    const field = document.getElementById('createEnrollmentRequestField');
+    const select = document.getElementById('createEnrollmentRequest');
+    enrollmentRequestsForScheduling = [];
+    field.classList.add('d-none');
+    select.innerHTML = '<option value="">Lịch test độc lập</option>';
+    document.getElementById('createStudentName').readOnly = false;
+
+    const currentUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    const role = String(currentUser?.role || '').toUpperCase().replace('ROLE_', '');
+    if (!['STAFF', 'BRANCH_MANAGER', 'ADMIN'].includes(role)) return;
+
+    try {
+        const requests = await callApi('/api/course-enrollment/staff/requests');
+        enrollmentRequestsForScheduling = (requests || []).filter(request =>
+            request.placementRequested && request.status === 'WAITING_PLACEMENT');
+        for (const request of enrollmentRequestsForScheduling) {
+            const option = document.createElement('option');
+            option.value = String(request.id);
+            option.textContent = `#${request.id} - ${request.childName}`;
+            select.appendChild(option);
+        }
+        if (enrollmentRequestsForScheduling.length) field.classList.remove('d-none');
+    } catch (error) {
+        console.warn('Cannot load pending enrollment requests:', error);
+    }
+}
+
 async function handleFileUpload(e) {
     if (!isTeacher()) {
         showTeacherOnlyAlert();
@@ -933,7 +971,7 @@ async function handleSaveEvaluation(e) {
     filterPlacementTests();
 }
 
-function openCreateModal() {
+async function openCreateModal() {
     const form = document.getElementById("createPlacementTestForm");
     if (form) form.reset();
 
@@ -948,6 +986,7 @@ function openCreateModal() {
     initDateRestrictions();
     const modal = new bootstrap.Modal(document.getElementById('createModal'));
     modal.show();
+    await loadEnrollmentRequestsForScheduling();
 }
 
 async function handleCreatePlacementTest(e) {
@@ -961,6 +1000,7 @@ async function handleCreatePlacementTest(e) {
     const testDateVal = document.getElementById("createTestDate").value;
     const testTimeVal = document.getElementById("createTestTime").value;
     const note = document.getElementById("createNote").value.trim();
+    const enrollmentRequestId = Number(document.getElementById('createEnrollmentRequest')?.value) || null;
 
     // STRICT VALIDATION: Time cannot be in the past calculated at this exact moment
     const todayStr = getTodayDateString();
@@ -990,7 +1030,8 @@ async function handleCreatePlacementTest(e) {
         roomName: roomName,
         branch: branch,
         testDate: isoDateTime,
-        note: note
+        note: note,
+        enrollmentRequestId
     };
 
     const newTest = {
@@ -1011,6 +1052,10 @@ async function handleCreatePlacementTest(e) {
     };
 
     let createdResponse = null;
+    if (enrollmentRequestId && typeof callApi !== 'function') {
+        showNotification('Không thể kết nối để xếp lịch cho yêu cầu này.', 'danger');
+        return;
+    }
     if (typeof callApi === 'function') {
         try {
             createdResponse = await callApi('/api/placement-tests', "POST", createPayload);
@@ -1019,6 +1064,11 @@ async function handleCreatePlacementTest(e) {
             showNotification(`Lỗi tạo đơn đăng ký: ${err.message || "Thời gian không hợp lệ"}`, "danger");
             return;
         }
+    }
+
+    if (enrollmentRequestId && !createdResponse) {
+        showNotification('Không thể xếp lịch cho yêu cầu này. Hãy làm mới danh sách đơn.', 'danger');
+        return;
     }
 
     const savedRecord = (createdResponse && createdResponse.id) ? createdResponse : newTest;

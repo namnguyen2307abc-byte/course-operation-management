@@ -74,6 +74,6 @@ BEGIN
     )
         ALTER TABLE dbo.enrollment_requests
             ADD CONSTRAINT CK_enrollment_requests_status
-            CHECK (status IN ('PENDING', 'WAITING_PLACEMENT', 'READY_FOR_ASSIGNMENT', 'PENDING_PAYMENT', 'APPROVED', 'REJECTED'));
+            CHECK (status IN ('PENDING', 'WAITING_PLACEMENT', 'READY_FOR_ASSIGNMENT', 'PENDING_PAYMENT', 'APPROVED', 'REJECTED', 'CANCELLED'));
 END
 GO

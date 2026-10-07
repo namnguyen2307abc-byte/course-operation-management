@@ -1,11 +1,6 @@
-package com.talent.management.features.course_enrollment.entity;
+package com.talent.management.shared.entity;
 
-import com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus;
-import com.talent.management.shared.entity.ClassEntity;
-import com.talent.management.shared.entity.Course;
-import com.talent.management.shared.entity.Enrollment;
-import com.talent.management.shared.entity.Student;
-import com.talent.management.shared.entity.User;
+import com.talent.management.shared.enums.EnrollmentRequestStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

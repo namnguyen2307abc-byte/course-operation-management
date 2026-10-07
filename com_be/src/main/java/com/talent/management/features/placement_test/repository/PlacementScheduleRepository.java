@@ -9,6 +9,8 @@ import java.util.List;
 @Repository
 public interface PlacementScheduleRepository extends JpaRepository<PlacementSchedule, Long> {
 
+    boolean existsByEnrollmentRequestId(Long enrollmentRequestId);
+
     List<PlacementSchedule> findAllByOrderByTestDateDesc();
 
     List<PlacementSchedule> findBySubjectIgnoreCaseOrderByTestDateDesc(String subject);

@@ -16,6 +16,7 @@ public class PlacementScheduleMapper {
 
         return PlacementScheduleResponse.builder()
                 .id(schedule.getId())
+                .enrollmentRequestId(schedule.getEnrollmentRequest() == null ? null : schedule.getEnrollmentRequest().getId())
                 .studentName(schedule.getStudentName())
                 .title(schedule.getTitle())
                 .roomName(schedule.getRoomName())

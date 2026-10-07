@@ -243,6 +243,12 @@
                             <div><strong>Lưu ý:</strong> Thời gian hẹn test phải từ thời điểm hiện tại trở đi (không được chọn thời gian trong quá khứ).</div>
                         </div>
                         <div class="row g-3">
+                            <div class="col-md-12 d-none" id="createEnrollmentRequestField">
+                                <label for="createEnrollmentRequest" class="form-label fw-semibold text-dark">Yêu cầu đăng ký đang chờ Placement Test</label>
+                                <select id="createEnrollmentRequest" class="form-select" onchange="onEnrollmentRequestChange()">
+                                    <option value="">Lịch test độc lập</option>
+                                </select>
+                            </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Họ và tên học viên <span class="text-danger">*</span></label>
                                 <input type="text" id="createStudentName" class="form-control" placeholder="Ví dụ: Nguyễn Minh Anh" required>
