@@ -44,14 +44,16 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
     List<AbsenceRequest> findByStudentParentIdAndStatusOrderByCreatedAtDesc(Long parentId, AbsenceStatus status);
 
     /**
-     * Tìm yêu cầu nghỉ thuộc các lớp/buổi do giáo viên phụ trách
+     * Tìm yêu cầu nghỉ thuộc các lớp/buổi do giáo viên phụ trách (cả giáo viên buổi học hoặc giáo viên chủ nhiệm lớp)
      */
-    List<AbsenceRequest> findByLessonTeacherIdOrderByCreatedAtDesc(Long teacherId);
+    @Query("SELECT DISTINCT ar FROM AbsenceRequest ar WHERE (ar.lesson.teacher.id = :teacherId OR ar.lesson.classEntity.teacher.id = :teacherId) ORDER BY ar.createdAt DESC")
+    List<AbsenceRequest> findByTeacherIdOrderByCreatedAtDesc(@Param("teacherId") Long teacherId);
 
     /**
-     * Lọc yêu cầu nghỉ của giáo viên theo trạng thái
+     * Lọc yêu cầu nghỉ thuộc các lớp/buổi do giáo viên phụ trách theo trạng thái
      */
-    List<AbsenceRequest> findByLessonTeacherIdAndStatusOrderByCreatedAtDesc(Long teacherId, AbsenceStatus status);
+    @Query("SELECT DISTINCT ar FROM AbsenceRequest ar WHERE (ar.lesson.teacher.id = :teacherId OR ar.lesson.classEntity.teacher.id = :teacherId) AND ar.status = :status ORDER BY ar.createdAt DESC")
+    List<AbsenceRequest> findByTeacherIdAndStatusOrderByCreatedAtDesc(@Param("teacherId") Long teacherId, @Param("status") AbsenceStatus status);
 
     /**
      * Kiểm tra xem học viên đã có yêu cầu nghỉ cho buổi học này chưa

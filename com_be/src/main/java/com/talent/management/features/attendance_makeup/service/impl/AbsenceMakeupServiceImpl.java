@@ -139,8 +139,14 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                         ? absenceRequestRepository.findByStudentParentIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
                         : absenceRequestRepository.findByStudentParentIdOrderByCreatedAtDesc(currentUser.getId());
             }
+            case TEACHER -> {
+                // Giáo viên chỉ xem các đơn nghỉ thuộc môn và buổi học do chính mình phụ trách
+                list = (status != null)
+                        ? absenceRequestRepository.findByTeacherIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
+                        : absenceRequestRepository.findByTeacherIdOrderByCreatedAtDesc(currentUser.getId());
+            }
             default -> {
-                // TEACHER, STAFF, ADMIN, BRANCH_MANAGER: đều nhìn thấy toàn bộ đơn xin nghỉ
+                // STAFF, ADMIN, BRANCH_MANAGER: đều nhìn thấy toàn bộ đơn xin nghỉ
                 list = (status != null)
                         ? absenceRequestRepository.findByStatusOrderByCreatedAtDesc(status)
                         : absenceRequestRepository.findAllByOrderByCreatedAtDesc();
@@ -185,6 +191,10 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                     || !ar.getStudent().getParent().getId().equals(currentUser.getId())) {
                 throw new AttendanceMakeupException("Bạn không có quyền truy cập vào đơn xin nghỉ này!");
             }
+        } else if (currentUser.getRole() == Role.TEACHER) {
+            if (!isTeacherOfLesson(currentUser, ar.getLesson())) {
+                throw new AttendanceMakeupException("Chỉ giáo viên phụ trách môn và buổi học này mới có quyền xem đơn xin nghỉ!");
+            }
         }
 
         MakeupRegistration mr = makeupRegistrationRepository.findByAbsenceRequestId(ar.getId()).orElse(null);
@@ -212,6 +222,13 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
 
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
+
+        // Kiểm tra giáo viên: Chỉ giáo viên phụ trách môn và buổi học hôm đó mới được duyệt đơn
+        if (currentUser.getRole() == Role.TEACHER) {
+            if (!isTeacherOfLesson(currentUser, ar.getLesson())) {
+                throw new AttendanceMakeupException("Chỉ giáo viên phụ trách môn và buổi học hôm đó mới có quyền xét duyệt đơn xin nghỉ này!");
+            }
+        }
 
         // Guard: chỉ xử lý đơn PENDING
         if (ar.getStatus() != AbsenceStatus.PENDING) {
@@ -568,6 +585,26 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     // =========================================================================
     // HÀM TIỆN ÍCH KIỂM TRA PHÂN QUYỀN
     // =========================================================================
+
+    /**
+     * Kiểm tra xem user có phải là giáo viên phụ trách của buổi học (Lesson) hoặc lớp học (ClassEntity) chứa buổi học đó không.
+     */
+    private boolean isTeacherOfLesson(User teacher, Lesson lesson) {
+        if (teacher == null || lesson == null) {
+            return false;
+        }
+        Long teacherId = teacher.getId();
+        // 1. Kiểm tra giáo viên được phân công trực tiếp trên buổi học (Lesson)
+        if (lesson.getTeacher() != null && teacherId.equals(lesson.getTeacher().getId())) {
+            return true;
+        }
+        // 2. Kiểm tra giáo viên chủ nhiệm / phụ trách của lớp học (ClassEntity)
+        if (lesson.getClassEntity() != null && lesson.getClassEntity().getTeacher() != null
+                && teacherId.equals(lesson.getClassEntity().getTeacher().getId())) {
+            return true;
+        }
+        return false;
+    }
 
     /** TEACHER, STAFF và ADMIN được duyệt đơn nghỉ */
     private void validateReviewPermission(User user) {
