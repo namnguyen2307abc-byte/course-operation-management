@@ -15,6 +15,7 @@ import com.talent.management.features.placement_test.repository.PlacementSchedul
 import com.talent.management.features.placement_test.repository.PlacementTestRepository;
 import com.talent.management.features.placement_test.service.PlacementTestService;
 import com.talent.management.features.auth.repository.StudentRepository;
+import com.talent.management.features.course_enrollment.repository.CourseRepository;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.PlacementTest;
 import com.talent.management.shared.exception.BusinessException;
@@ -38,6 +39,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     private final UserRepository userRepository;
     private final PlacementScheduleMapper scheduleMapper;
     private final EnrollmentRequestRepository enrollmentRequestRepository;
+    private final CourseRepository courseRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -113,6 +115,14 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         PlacementSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException("Lịch thi xếp lớp không tồn tại với ID: " + scheduleId));
 
+        EnrollmentRequest enrollmentRequest = schedule.getEnrollmentRequest();
+        if (enrollmentRequest != null && request.getRecommendedCourseId() == null) {
+            throw new BusinessException("Vui lòng chọn khóa học đề xuất cho yêu cầu ghi danh");
+        }
+        Course recommendedCourse = request.getRecommendedCourseId() == null ? null : courseRepository
+                .findById(request.getRecommendedCourseId())
+                .orElseThrow(() -> new BusinessException("Khóa học đề xuất không tồn tại"));
+
         if (teacherUsername != null && !teacherUsername.isBlank()) {
             var teacherOpt = userRepository.findByUsername(teacherUsername);
             if (teacherOpt.isPresent()) {
@@ -134,6 +144,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
 
         schedule.setScore(request.getScore());
         schedule.setRecommendedLevel(request.getRecommendedLevel());
+        schedule.setRecommendedCourse(recommendedCourse);
         schedule.setTeacherNote(request.getTeacherNote());
         schedule.setAudioUrl(request.getAudioUrl());
         schedule.setVideoUrl(request.getVideoUrl());
@@ -143,6 +154,11 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         schedule.setStatus(PlacementScheduleStatus.COMPLETED);
 
         PlacementSchedule saved = scheduleRepository.save(schedule);
+        if (enrollmentRequest != null && enrollmentRequest.getStatus() == EnrollmentRequestStatus.WAITING_PLACEMENT) {
+            enrollmentRequest.setPreferredCourse(recommendedCourse);
+            enrollmentRequest.setStatus(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT);
+            enrollmentRequestRepository.save(enrollmentRequest);
+        }
         return scheduleMapper.toResponse(saved);
     }
 
@@ -185,9 +201,32 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             throw new BusinessException("Học viên không tồn tại với ID: " + studentId);
         }
 
+        var schedule = scheduleRepository.findFirstByEnrollmentRequestStudentIdOrderByTestDateDescIdDesc(studentId);
+        if (schedule.isPresent()) {
+            return toRecommendationResponse(schedule.get(), studentId);
+        }
+
         return placementTestRepository.findFirstByStudentIdOrderByTestDateDescCreatedAtDesc(studentId)
                 .map(this::toRecommendationResponse)
                 .orElseGet(() -> PlacementRecommendationResponse.notAvailable(studentId));
+    }
+
+    private PlacementRecommendationResponse toRecommendationResponse(PlacementSchedule schedule, Long studentId) {
+        if (schedule.getStatus() != PlacementScheduleStatus.COMPLETED) {
+            return PlacementRecommendationResponse.notAvailable(studentId);
+        }
+        Course course = schedule.getRecommendedCourse();
+        return new PlacementRecommendationResponse(
+                studentId,
+                "COMPLETED",
+                course != null,
+                schedule.getScore() == null ? null : schedule.getScore() / 10.0,
+                schedule.getRecommendedLevel() == null ? null : schedule.getRecommendedLevel().name(),
+                course == null ? null : course.getId(),
+                course == null ? null : course.getName(),
+                schedule.getTeacherNote(),
+                schedule.getEvaluatedAt()
+        );
     }
 
     private PlacementRecommendationResponse toRecommendationResponse(PlacementTest placementTest) {

@@ -27,6 +27,8 @@ public class PlacementScheduleMapper {
                 .status(schedule.getStatus())
                 .score(schedule.getScore())
                 .recommendedLevel(schedule.getRecommendedLevel())
+                .recommendedCourseId(schedule.getRecommendedCourse() == null ? null : schedule.getRecommendedCourse().getId())
+                .recommendedCourseName(schedule.getRecommendedCourse() == null ? null : schedule.getRecommendedCourse().getName())
                 .teacherNote(schedule.getTeacherNote())
                 .audioUrl(schedule.getAudioUrl())
                 .videoUrl(schedule.getVideoUrl())

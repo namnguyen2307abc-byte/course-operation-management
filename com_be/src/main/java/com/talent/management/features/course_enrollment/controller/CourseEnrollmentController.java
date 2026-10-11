@@ -35,7 +35,7 @@ public class CourseEnrollmentController {
     }
 
     @GetMapping("/courses")
-    @PreAuthorize("hasAnyRole('PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN', 'TEACHER')")
     @Operation(summary = "Lấy danh sách khóa học")
     public ResponseEntity<List<CourseResponse>> getCourses() {
         return ResponseEntity.ok(service.getCourses());

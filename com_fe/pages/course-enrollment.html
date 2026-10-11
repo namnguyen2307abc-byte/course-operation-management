@@ -460,13 +460,14 @@
         function renderRecommendation(recommendation) {
             const panel = document.getElementById('recommendationPanel');
             if (!recommendation.recommendationAvailable) {
+                const completed = recommendation.placementStatus === 'COMPLETED';
                 panel.className = 'recommendation-strip is-unavailable mb-3';
                 panel.innerHTML = `
                     <div class="d-flex align-items-start gap-2">
                         <i class="bi bi-info-circle text-secondary mt-1"></i>
                         <div>
-                            <div class="fw-semibold">Chưa có kết quả Placement Test</div>
-                            <div class="text-muted small">Yêu cầu sẽ chờ kết quả. Staff chỉ có thể xếp lớp sau khi giáo viên đã đề xuất khóa học phù hợp.</div>
+                            <div class="fw-semibold">${completed ? 'Đã chấm Placement Test, đang chờ khóa học đề xuất' : 'Chưa có kết quả Placement Test'}</div>
+                            <div class="text-muted small">${completed ? `Điểm: ${recommendation.placementScore == null ? 'Chưa cập nhật' : recommendation.placementScore + '/10'} · Trình độ: ${escapeHtml(recommendation.recommendedLevel || 'Chưa cập nhật')}. Giáo viên cần bổ sung khóa học để staff xếp lớp.` : 'Yêu cầu sẽ chờ kết quả. Staff chỉ có thể xếp lớp sau khi giáo viên đã đề xuất khóa học phù hợp.'}</div>
                         </div>
                     </div>`;
                 return;
@@ -677,6 +678,15 @@
                     body.innerHTML = '<tr><td colspan="5" class="empty-state">Không có yêu cầu nào đang chờ duyệt.</td></tr>';
                     return;
                 }
+                const placementResults = new Map(await Promise.all(requests
+                    .filter(item => item.placementRequested)
+                    .map(async item => {
+                        try {
+                            return [item.id, await callApi(`/api/placement-tests/students/${item.childId}/latest-result`)];
+                        } catch (error) {
+                            return [item.id, null];
+                        }
+                    })));
                 pendingRequestMap = new Map(requests.map(item => [item.id, item]));
                 body.innerHTML = requests.map(item => `
                     <tr>
@@ -685,6 +695,9 @@
                             <div>${escapeHtml(item.preferredCourseName || 'Chờ kết quả Placement Test')}</div>
                             <span class="badge border ${item.placementRequested ? 'bg-info-subtle text-info-emphasis' : 'bg-light text-secondary'}">${item.placementRequested ? 'Có Placement Test' : 'Không Placement Test'}</span>
                             <div class="mt-1">${statusBadge(item.status)}</div>
+                            ${placementResults.get(item.id)?.placementStatus === 'COMPLETED'
+                                ? `<div class="small text-muted mt-1">PT: ${placementResults.get(item.id).score ?? '—'}/10 · ${escapeHtml(placementResults.get(item.id).recommendedLevel || 'Chưa có trình độ')}${placementResults.get(item.id).recommendationAvailable ? '' : ' · Chờ giáo viên chọn khóa học'}</div>`
+                                : ''}
                         </td>
                         <td>${formatDateTime(item.requestedAt)}</td>
                         <td class="small">${escapeHtml(item.note || 'Không có')}</td>
@@ -704,7 +717,7 @@
             try {
                 const request = await callApi(`/api/course-enrollment/staff/requests/${requestId}/refresh-placement`, 'PATCH');
                 if (request.status === 'WAITING_PLACEMENT') {
-                    showNotice('Học viên vẫn chưa có kết quả Placement Test.', 'warning');
+                    showNotice('Yêu cầu đang chờ giáo viên hoàn tất kết quả và chọn khóa học đề xuất.', 'warning');
                 } else {
                     showNotice('Đã nhận kết quả Placement Test. Yêu cầu sẵn sàng để xếp lớp.', 'success');
                 }

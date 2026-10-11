@@ -2,6 +2,7 @@ package com.talent.management.features.placement_test.entity;
 
 import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.shared.entity.User;
+import com.talent.management.shared.entity.Course;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -60,6 +61,10 @@ public class PlacementSchedule {
     @Enumerated(EnumType.STRING)
     @Column(name = "recommended_level", length = 30)
     private PlacementLevel recommendedLevel;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recommended_course_id")
+    private Course recommendedCourse;
 
     @Column(name = "teacher_note", columnDefinition = "NVARCHAR(MAX)")
     private String teacherNote;

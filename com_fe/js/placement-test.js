@@ -102,6 +102,12 @@ let placementTestsData = [
 let currentEditingId = null;
 let uploadedFileUrl = "";
 
+function escapeCourseOption(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Strict Permission Check: Block PARENT & STUDENT roles completely
     const isAllowed = checkUserRolePermissions();
@@ -792,7 +798,7 @@ async function handleFileUpload(e) {
     }
 }
 
-function openEvaluateModal(id) {
+async function openEvaluateModal(id) {
     const item = placementTestsData.find(x => x.id === id);
     if (!item) return;
 
@@ -861,6 +867,19 @@ function openEvaluateModal(id) {
     calculateAverageScore();
 
     document.getElementById("evalLevelSelect").value = item.recommendedLevel || "BEGINNER";
+    const courseSelect = document.getElementById("evalCourseSelect");
+    courseSelect.required = item.enrollmentRequestId != null;
+    document.getElementById("evalCourseRequired").classList.toggle("d-none", !courseSelect.required);
+    courseSelect.innerHTML = '<option value="">Đang tải khóa học...</option>';
+    try {
+        const courses = await callApi('/api/course-enrollment/courses');
+        courseSelect.innerHTML = '<option value="">Chọn khóa học phù hợp</option>' +
+            (courses || []).map(course => `<option value="${course.id}">${escapeCourseOption(course.programName)} — ${escapeCourseOption(course.name)}</option>`).join('');
+        courseSelect.value = item.recommendedCourseId == null ? '' : String(item.recommendedCourseId);
+    } catch (error) {
+        courseSelect.innerHTML = '<option value="">Không tải được khóa học</option>';
+        showNotification(`Không tải được khóa học: ${error.message}`, 'danger');
+    }
     const notesEl = document.getElementById("evalExaminerNotes");
     if (notesEl) {
         notesEl.value = item.teacherNote || "";
@@ -915,6 +934,11 @@ async function handleSaveEvaluation(e) {
     const score100 = Math.round(avg10 * 10);
 
     const recommendedLevel = document.getElementById("evalLevelSelect").value;
+    const recommendedCourseId = document.getElementById("evalCourseSelect").value;
+    if (item.enrollmentRequestId != null && !recommendedCourseId) {
+        showNotification('Vui lòng chọn khóa học đề xuất trước khi gửi đánh giá.', 'warning');
+        return;
+    }
     const teacherNote = document.getElementById("evalExaminerNotes").value;
     const mediaUrlInput = document.getElementById("evalMediaUrl").value.trim();
     const mediaUrl = mediaUrlInput || uploadedFileUrl;
@@ -926,6 +950,7 @@ async function handleSaveEvaluation(e) {
     const assessmentPayload = {
         score: score100,
         recommendedLevel: recommendedLevel,
+        recommendedCourseId: recommendedCourseId ? Number(recommendedCourseId) : null,
         teacherNote: teacherNote,
         audioUrl: isAudio ? mediaUrl : null,
         videoUrl: isVideo ? mediaUrl : null,

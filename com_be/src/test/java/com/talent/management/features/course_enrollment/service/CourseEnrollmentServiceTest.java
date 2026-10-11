@@ -159,6 +159,42 @@ class CourseEnrollmentServiceTest {
     }
 
     @Test
+    void staffAndParentSeeAssessedRequestReadyForAssignment() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(50L).student(child)
+                .requestedBy(parent).placementRequested(true)
+                .preferredCourse(course).status(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT).build();
+        when(requestRepository.findByStatusInOrderByCreatedAtAsc(any())).thenReturn(List.of(request));
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(
+                new PlacementRecommendationResponse(20L, "COMPLETED", true, 3.8,
+                        "BEGINNER", 30L, "English A2", "Sơ cấp", LocalDateTime.now()));
+
+        assertThat(service.getPendingRequests()).hasSize(1);
+        assertThat(request.getStatus()).isEqualTo(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT);
+        ClassRecommendationResponse parentView = service.getClassRecommendations(20L);
+        assertThat(parentView.recommendationAvailable()).isTrue();
+        assertThat(parentView.placementScore()).isEqualTo(3.8);
+        assertThat(parentView.recommendedCourseId()).isEqualTo(30L);
+        assertThat(parentView.recommendedClasses()).containsExactly(recommendedClassResponse);
+    }
+
+    @Test
+    void staffCannotReadyLegacyAssessmentWithoutRecommendedCourse() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(22L).student(child)
+                .requestedBy(parent).placementRequested(true)
+                .status(EnrollmentRequestStatus.WAITING_PLACEMENT).build();
+        when(requestRepository.findByIdForUpdate(22L)).thenReturn(Optional.of(request));
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(
+                new PlacementRecommendationResponse(20L, "COMPLETED", false, 3.8,
+                        "BEGINNER", null, null, "Sơ cấp", LocalDateTime.now()));
+
+        service.refreshPlacement(22L);
+
+        assertThat(request.getStatus()).isEqualTo(EnrollmentRequestStatus.WAITING_PLACEMENT);
+        assertThat(request.getPreferredCourse()).isNull();
+        verify(requestRepository).save(request);
+    }
+
+    @Test
     void returnsAllOpenClassesWhenPlacementResultDoesNotExist() {
         when(placementTestService.getLatestRecommendation(20L))
                 .thenReturn(PlacementRecommendationResponse.notAvailable(20L));
