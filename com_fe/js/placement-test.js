@@ -154,7 +154,7 @@ function initDateRestrictions() {
     if (!testDateInput) return;
 
     const todayStr = getTodayDateString();
-    
+
     // Set strict min date
     testDateInput.min = todayStr;
     testDateInput.setAttribute("min", todayStr);
@@ -202,7 +202,7 @@ function updateTimeMinRestriction() {
         const currentHours = String(now.getHours()).padStart(2, '0');
         const currentMinutes = String(now.getMinutes()).padStart(2, '0');
         const currentTimeStr = `${currentHours}:${currentMinutes}`;
-        
+
         testTimeInput.min = currentTimeStr;
         testTimeInput.setAttribute("min", currentTimeStr);
 
@@ -356,7 +356,7 @@ function isTeacher() {
     }
     if (!currentUser || !currentUser.role) return false;
     const roleUpper = String(currentUser.role).toUpperCase().replace("ROLE_", "");
-    return roleUpper === "TEACHER" || roleUpper === "ADMIN";
+    return roleUpper === "TEACHER";
 }
 
 function isTeacherAllowedForTest(item) {
@@ -365,7 +365,6 @@ function isTeacherAllowedForTest(item) {
     if (!currentUser || !currentUser.role) return false;
 
     const roleUpper = String(currentUser.role).toUpperCase().replace("ROLE_", "");
-    if (roleUpper === "ADMIN") return true;
     if (roleUpper !== "TEACHER") return false;
 
     const teacherSubject = normalizeSubject(currentUser.subject || "DAN");
@@ -390,8 +389,8 @@ function showTeacherOnlyAlert() {
     if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
     const currentRoleName = currentUser ? (currentUser.role || 'Chưa xác định') : 'Khách';
 
-    const msg = `Quyền truy cập bị từ chối: Tài khoản của bạn hiện có vai trò là [${currentRoleName}]. Chỉ có tài khoản Giáo Viên (TEACHER) đúng bộ môn hoặc Quản Trị (ADMIN) mới được phép thực hiện chấm điểm & đánh giá bài thi Placement Test.`;
-    
+    const msg = `Quyền truy cập bị từ chối: Tài khoản của bạn hiện có vai trò là [${currentRoleName}]. Quản trị viên chỉ có quyền theo dõi danh sách; chỉ Giáo Viên (TEACHER) đúng bộ môn mới được phép thực hiện chấm điểm & đánh giá bài thi Placement Test.`;
+
     if (typeof showPermissionDeniedModal === 'function') {
         showPermissionDeniedModal(msg, null);
     } else {
@@ -470,7 +469,7 @@ function renderTable(dataList) {
 
     if (!dataList || dataList.length === 0) {
         const teacherSubjectName = getSubjectDisplayName(currentUser ? currentUser.subject : "DAN");
-        const teacherMsg = roleUpper === "TEACHER" 
+        const teacherMsg = roleUpper === "TEACHER"
             ? `Không có ca thi đầu vào nào thuộc <strong>Bộ Môn ${teacherSubjectName}</strong> của bạn.`
             : "Không tìm thấy lịch đánh giá năng khiếu nào phù hợp.";
 
@@ -508,7 +507,7 @@ function renderTable(dataList) {
             levelBadgeClass = "bg-warning text-dark";
         }
 
-        const scoreDisplay = item.score != null 
+        const scoreDisplay = item.score != null
             ? `<span class="fw-bold text-dark fs-6">${(item.score / 10).toFixed(1)}</span> <small class="text-muted">/10 (${item.score}đ)</small>`
             : `<span class="text-muted small">--</span>`;
 
@@ -665,7 +664,7 @@ function filterPlacementTests() {
     const filtered = baseData.filter(item => {
         const itemSubject = normalizeSubject(item.subject || inferSubject(item.title));
 
-        const matchesQuery = !query || 
+        const matchesQuery = !query ||
             (item.studentName && item.studentName.toLowerCase().includes(query)) ||
             (item.title && item.title.toLowerCase().includes(query)) ||
             (item.parentName && item.parentName.toLowerCase().includes(query)) ||
