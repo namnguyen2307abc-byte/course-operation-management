@@ -122,6 +122,12 @@ function updateNavbarUser() {
         }
     }
 
+    const classManagementNavItem = document.getElementById("navItemClassManagement");
+    if (classManagementNavItem) {
+        const role = String(user?.role || "").toUpperCase().replace("ROLE_", "");
+        classManagementNavItem.classList.toggle("d-none", !["STAFF", "ADMIN"].includes(role));
+    }
+
     // Chuẩn hóa và sửa lỗi đường dẫn điều hướng trên Navbar (tránh bị lỗi /pages/pages/...)
     fixNavbarLinks();
 }
@@ -141,6 +147,8 @@ function fixNavbarLinks() {
             link.setAttribute('href', prefix + '/pages/branch-facility.html');
         } else if (href.includes('course-enrollment')) {
             link.setAttribute('href', prefix + '/pages/course-enrollment.html');
+        } else if (href.includes('class-management')) {
+            link.setAttribute('href', prefix + '/pages/class-management.html');
         } else if (href.includes('absence-makeup')) {
             link.setAttribute('href', prefix + '/pages/absence-makeup.html');
         } else if (href.includes('placement-test')) {

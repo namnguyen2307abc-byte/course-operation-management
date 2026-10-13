@@ -31,6 +31,9 @@
                         <a href="/pages/course-enrollment.html" class="btn btn-warning btn-sm px-3 py-2 fw-semibold rounded-pill shadow-sm">
                             <i class="bi bi-journal-check me-1"></i> Đăng Ký & Duyệt Lớp
                         </a>
+                        <a id="homeClassManagement" href="./pages/class-management.html" class="btn btn-warning btn-sm px-3 py-2 fw-semibold rounded-pill shadow-sm d-none">
+                            <i class="bi bi-collection me-1"></i> Tạo & Quản Lý Lớp
+                        </a>
                         <a href="/pages/branch-facility.html" class="btn btn-warning btn-sm px-3 py-2 fw-semibold rounded-pill shadow-sm">
                             <i class="bi bi-building me-1"></i> Quản Lý Cơ Sở & CSVC
                         </a>
@@ -334,6 +337,8 @@
             if (user && user.fullName) {
                 document.getElementById('heroUserName').innerText = user.fullName;
             }
+            const role = String(user?.role || '').toUpperCase().replace('ROLE_', '');
+            document.getElementById('homeClassManagement').classList.toggle('d-none', !['STAFF', 'ADMIN'].includes(role));
         });
     </script>
 </body>

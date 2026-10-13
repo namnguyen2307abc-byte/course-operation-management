@@ -58,6 +58,11 @@ function updateNavbarUser() {
             `;
         }
     }
+    const classManagementNavItem = document.getElementById("navItemClassManagement");
+    if (classManagementNavItem) {
+        const role = String(user?.role || "").toUpperCase().replace("ROLE_", "");
+        classManagementNavItem.classList.toggle("d-none", !["STAFF", "ADMIN"].includes(role));
+    }
 }
 
 function logout() {
