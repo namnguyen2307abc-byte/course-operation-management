@@ -6,7 +6,8 @@
 function checkAuth() {
     const token = localStorage.getItem("token");
     if (!token && !window.location.pathname.endsWith("login.html")) {
-        window.location.href = "/login.html";
+        const isComFe = window.location.pathname.includes("/com_fe");
+        window.location.href = isComFe ? "/com_fe/login.html" : "/login.html";
     }
 }
 
@@ -141,6 +142,8 @@ function fixNavbarLinks() {
             link.setAttribute('href', prefix + '/pages/branch-facility.html');
         } else if (href.includes('course-enrollment')) {
             link.setAttribute('href', prefix + '/pages/course-enrollment.html');
+        } else if (href.includes('weekly-schedule')) {
+            link.setAttribute('href', prefix + '/pages/weekly-schedule.html');
         } else if (href.includes('absence-makeup')) {
             link.setAttribute('href', prefix + '/pages/absence-makeup.html');
         } else if (href.includes('placement-test')) {

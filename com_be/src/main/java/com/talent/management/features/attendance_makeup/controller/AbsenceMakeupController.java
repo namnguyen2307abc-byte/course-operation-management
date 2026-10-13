@@ -145,7 +145,7 @@ public class AbsenceMakeupController {
     // =========================================================================
 
     @Operation(summary = "Danh sách học viên để chọn xin nghỉ — PARENT lấy con mình")
-    @GetMapping("/students")
+    @GetMapping({"/students", "/students/my-children"})
     public ResponseEntity<List<StudentOptionResponse>> getSelectableStudents() {
         return ResponseEntity.ok(absenceMakeupService.getSelectableStudents());
     }

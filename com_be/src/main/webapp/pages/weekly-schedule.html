@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thời Khóa Biểu Tuần & Điểm Danh - Học Viện Talent</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .schedule-header-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 1.5rem 1.75rem;
+            box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .week-nav-btn {
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            font-size: 0.88rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+        }
+
+        /* Bảng thời khóa biểu dạng Grid Matrix */
+        .timetable-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+        }
+
+        .timetable-table {
+            width: 100%;
+            margin-bottom: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+
+        .timetable-table thead th {
+            background: #0f172a;
+            color: #f8fafc;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 1rem 0.75rem;
+            text-align: center;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .timetable-table thead th:last-child {
+            border-right: none;
+        }
+
+        .timetable-table thead th.col-slot {
+            width: 110px;
+            background: #1e293b;
+        }
+
+        .timetable-table thead th.today-header {
+            background: #2563eb;
+            color: #ffffff;
+            position: relative;
+        }
+
+        .timetable-table thead th.today-header::after {
+            content: 'Hôm Nay';
+            display: block;
+            font-size: 0.65rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: #1d4ed8;
+            color: #93c5fd;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            margin-top: 0.2rem;
+        }
+
+        .timetable-table tbody td {
+            height: 120px;
+            vertical-align: top;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            position: relative;
+            transition: background-color 0.15s;
+        }
+
+        .timetable-table tbody td:last-child {
+            border-right: none;
+        }
+
+        .timetable-table tbody td.slot-cell-header {
+            background: #f8fafc;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 700;
+            color: #334155;
+            padding: 0.75rem 0.5rem;
+            border-right: 2px solid #cbd5e1;
+        }
+
+        .timetable-table tbody td.today-column {
+            background-color: #f0f7ff;
+        }
+
+        /* Thẻ ca học bên trong từng ô */
+        .lesson-card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-left: 4px solid #2563eb;
+            border-radius: 10px;
+            padding: 0.65rem 0.75rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+            position: relative;
+        }
+
+        .lesson-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px -2px rgba(37, 99, 235, 0.15);
+            border-color: #93c5fd;
+            border-left-color: #1d4ed8;
+        }
+
+        .lesson-card.completed {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .lesson-card.past-due {
+            opacity: 0.88;
+            border-left-color: #64748b;
+        }
+
+        .lesson-title {
+            font-weight: 700;
+            font-size: 0.83rem;
+            color: #0f172a;
+            line-height: 1.25;
+            margin-bottom: 0.35rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .lesson-meta {
+            font-size: 0.74rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .lesson-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Toggle Present / Absent */
+        .btn-attendance-toggle {
+            font-weight: 600;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .btn-attendance-toggle.active-present {
+            background-color: #10b981 !important;
+            color: #ffffff !important;
+            border-color: #059669 !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-attendance-toggle.active-absent {
+            background-color: #ef4444 !important;
+            color: #ffffff !important;
+            border-color: #dc2626 !important;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .student-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #ffffff;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            flex-shrink: 0;
+        }
+
+        .toast-container-custom {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1090;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar Container -->
+    <div id="navbar-container"></div>
+
+    <main class="container-fluid px-lg-4 my-4">
+        <!-- Toast Thông Báo Góc Màn Hình -->
+        <div class="toast-container-custom" id="toastContainer"></div>
+
+        <!-- Breadcrumb & Tiêu đề -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb small mb-1">
+                        <li class="breadcrumb-item"><a href="../index.html" class="text-decoration-none">Trang Chủ</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Thời Khóa Biểu Tuần</li>
+                    </ol>
+                </nav>
+                <h3 class="fw-bold text-dark mb-1">
+                    <i class="bi bi-calendar3 text-primary me-2"></i>Thời Khóa Biểu Tuần & Điểm Danh Lớp Học
+                </h3>
+                <p class="text-muted small mb-0">
+                    Theo dõi lịch dạy, ca học theo từng khung giờ và thực hiện điểm danh học viên trực tiếp theo thời gian thực.
+                </p>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <span id="currentUserRoleBadge" class="badge bg-primary px-3 py-2 rounded-pill small">Đang xác thực...</span>
+                <button class="btn btn-outline-primary btn-sm px-3 rounded-pill d-none" id="btnOpenCreateClassModal" onclick="openCreateClassModal()">
+                    <i class="bi bi-plus-circle me-1"></i> + Tạo Lớp & Sinh Lịch
+                </button>
+                <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadWeeklySchedule()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                </button>
+            </div>
+        </div>
+
+        <!-- Thanh điều khiển tuần & Bộ lọc -->
+        <div class="schedule-header-card">
+            <div class="row align-items-center g-3">
+                <!-- Cụm điều hướng tuần -->
+                <div class="col-lg-5 col-md-6 d-flex align-items-center gap-2 flex-wrap">
+                    <button class="btn btn-outline-secondary week-nav-btn" onclick="navigateWeek(-1)" title="Tuần trước">
+                        <i class="bi bi-chevron-left"></i> Tuần trước
+                    </button>
+                    <button class="btn btn-primary week-nav-btn shadow-sm" onclick="navigateCurrentWeek()" title="Trở về tuần này">
+                        <i class="bi bi-calendar-event"></i> Tuần Hiện Tại
+                    </button>
+                    <button class="btn btn-outline-secondary week-nav-btn" onclick="navigateWeek(1)" title="Tuần sau">
+                        Tuần sau <i class="bi bi-chevron-right"></i>
+                    </button>
+                    <input type="date" id="weekPickerDate" class="form-control form-control-sm form-control-modern ms-1" style="width: 145px;" onchange="onDateSelected(this.value)">
+                </div>
+
+                <!-- Cụm hiển thị tuần hiện tại -->
+                <div class="col-lg-3 col-md-6 text-center text-lg-start">
+                    <div class="fw-bold text-primary fs-6" id="weekDisplayTitle">
+                        Đang tải tuần...
+                    </div>
+                    <div class="small text-muted" id="weekDateRangeSubtitle">
+                        ...
+                    </div>
+                </div>
+
+                <!-- Cụm bộ lọc cho Admin / Giáo viên -->
+                <div class="col-lg-4 col-12 d-flex justify-content-lg-end gap-2 align-items-center">
+                    <div class="d-none" id="teacherFilterGroup" style="min-width: 190px;">
+                        <select id="teacherFilterSelect" class="form-select form-select-sm form-control-modern" onchange="onTeacherFilterChange()">
+                            <option value="">-- Tất cả giáo viên --</option>
+                        </select>
+                    </div>
+                    <div class="d-none" id="childFilterGroup" style="min-width: 190px;">
+                        <select id="childFilterSelect" class="form-select form-select-sm form-control-modern" onchange="onChildFilterChange()">
+                            <option value="">-- Lịch tất cả các con --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BẢNG MA TRẬN THỜI KHÓA BIỂU TUẦN -->
+        <div class="timetable-container mb-4">
+            <div class="table-responsive">
+                <table class="timetable-table" id="timetableMatrix">
+                    <thead>
+                        <tr>
+                            <th class="col-slot">Slot</th>
+                            <th id="th-day-1">Thứ 2<div class="small fw-normal text-white-50 date-sub" id="sub-day-1">--/--</div></th>
+                            <th id="th-day-2">Thứ 3<div class="small fw-normal text-white-50 date-sub" id="sub-day-2">--/--</div></th>
+                            <th id="th-day-3">Thứ 4<div class="small fw-normal text-white-50 date-sub" id="sub-day-3">--/--</div></th>
+                            <th id="th-day-4">Thứ 5<div class="small fw-normal text-white-50 date-sub" id="sub-day-4">--/--</div></th>
+                            <th id="th-day-5">Thứ 6<div class="small fw-normal text-white-50 date-sub" id="sub-day-5">--/--</div></th>
+                            <th id="th-day-6">Thứ 7<div class="small fw-normal text-white-50 date-sub" id="sub-day-6">--/--</div></th>
+                            <th id="th-day-7">Chủ Nhật<div class="small fw-normal text-white-50 date-sub" id="sub-day-7">--/--</div></th>
+                        </tr>
+                    </thead>
+                    <tbody id="timetableBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                                Đang tải ma trận thời khóa biểu tuần...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ======================================================================= -->
+    <!-- MODAL 1: ĐIỂM DANH HỌC VIÊN BUỔI HỌC (ATTENDANCE SHEET)                 -->
+    <!-- ======================================================================= -->
+    <div class="modal fade" id="modalAttendance" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <!-- Header -->
+                <div class="modal-header bg-dark text-white border-0 py-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-primary text-white p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                            <i class="bi bi-clipboard2-check-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-white mb-0" id="attModalTitle">Điểm Danh Buổi Học</h5>
+                            <span class="text-white-50 small" id="attModalSubtitle">Lớp học - Ca học</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body p-4 bg-light">
+                    <!-- Banner Cảnh Báo Phân Quyền & Time-Lock -->
+                    <div id="attLockBanner" class="alert d-none mb-3 py-2 px-3 small border">
+                        <i class="bi bi-info-circle-fill me-2" id="attLockIcon"></i>
+                        <span id="attLockMessage"></span>
+                    </div>
+
+                    <!-- Thông Tin Buổi Học -->
+                    <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                        <div class="row g-2 small">
+                            <div class="col-md-3">
+                                <span class="text-muted d-block">Khóa học / Lớp:</span>
+                                <strong id="attInfoClass" class="text-primary fs-6">...</strong>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="text-muted d-block">Thời gian ca học:</span>
+                                <strong id="attInfoTime">...</strong>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="text-muted d-block">Phòng học & Cơ sở:</span>
+                                <strong id="attInfoRoom">...</strong>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="text-muted d-block">Giáo viên phụ trách:</span>
+                                <strong id="attInfoTeacher" class="text-dark">...</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toolbar Thống Kê & Nút Thao Tác Nhanh -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-white p-3 rounded-3 shadow-sm">
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 rounded-pill small">
+                                Sĩ số: <strong id="attTotalStudents" class="text-dark">0</strong> học viên
+                            </span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill small">
+                                Có mặt: <strong id="attPresentCount">0</strong>
+                            </span>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill small">
+                                Vắng mặt: <strong id="attAbsentCount">0</strong>
+                            </span>
+                        </div>
+                        <div class="d-flex gap-2" id="attQuickActionGroup">
+                            <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3" onclick="markAllPresent()" id="btnMarkAllPresent">
+                                <i class="bi bi-check-all me-1"></i> Chọn Tất Cả Có Mặt
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bảng Danh Sách Học Viên Điểm Danh -->
+                    <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="attStudentTable">
+                                <thead class="table-light text-secondary small text-uppercase">
+                                    <tr>
+                                        <th style="width: 50px;" class="text-center">STT</th>
+                                        <th style="width: 60px;" class="text-center">Ảnh</th>
+                                        <th style="width: 100px;">MSV</th>
+                                        <th>Họ Và Tên Học Viên</th>
+                                        <th style="width: 220px;" class="text-center">Trạng Thái Điểm Danh</th>
+                                        <th>Lý Do / Ghi Chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attStudentTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">Đang tải danh sách học viên...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer bg-white border-0 py-3">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                    
+                    <!-- Nút Chỉnh Sửa (khi ở chế độ xem đã lưu) -->
+                    <button type="button" class="btn btn-warning rounded-pill px-4 shadow-sm d-none" id="btnEditAttendance" onclick="enableAttendanceEditing()">
+                        <i class="bi bi-pencil-square me-1"></i> Chỉnh Sửa Điểm Danh
+                    </button>
+
+                    <!-- Nút Lưu Điểm Danh (khi ở chế độ nhập/sửa) -->
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" id="btnSaveAttendance" onclick="submitAttendanceBatch()">
+                        <i class="bi bi-floppy-fill me-1"></i> Lưu Điểm Danh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MODAL 2: TẠO LỚP HỌC MỚI & TỰ ĐỘNG SINH DANH SÁCH BUỔI HỌC (LESSONS)    -->
+    <!-- ======================================================================= -->
+    <div class="modal fade" id="modalCreateClass" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold text-white mb-0">
+                        <i class="bi bi-calendar-plus me-2"></i>Tạo Lớp Học & Tự Động Sinh Thời Khóa Biểu
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <form id="createClassForm" onsubmit="event.preventDefault(); submitCreateClass();">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Mã Lớp Học <span class="text-danger">*</span>:</label>
+                                <input type="text" id="newClassCode" class="form-control form-control-modern" placeholder="VD: CL-PIA-02" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Tên Lớp Học <span class="text-danger">*</span>:</label>
+                                <input type="text" id="newClassName" class="form-control form-control-modern" placeholder="VD: Piano Cơ Bản K02" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Khóa Học <span class="text-danger">*</span>:</label>
+                                <select id="newCourseSelect" class="form-select form-control-modern" required>
+                                    <option value="">-- Đang tải khóa học --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Cơ Sở Đào Tạo <span class="text-danger">*</span>:</label>
+                                <select id="newBranchSelect" class="form-select form-control-modern" onchange="onNewBranchChanged()" required>
+                                    <option value="">-- Đang tải cơ sở --</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Phòng Học:</label>
+                                <select id="newRoomSelect" class="form-select form-control-modern">
+                                    <option value="">-- Chọn phòng học --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Giáo Viên Phụ Trách:</label>
+                                <select id="newTeacherSelect" class="form-select form-control-modern">
+                                    <option value="">-- Chọn giáo viên --</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-secondary">Sĩ Số Tối Đa <span class="text-danger">*</span>:</label>
+                                <input type="number" id="newMaxStudents" class="form-control form-control-modern" value="8" min="1" max="50" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-secondary">Ngày Bắt Đầu <span class="text-danger">*</span>:</label>
+                                <input type="date" id="newStartDate" class="form-control form-control-modern" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-secondary">Tổng Số Buổi Học <span class="text-danger">*</span>:</label>
+                                <input type="number" id="newTotalSessions" class="form-control form-control-modern" value="12" min="1" max="48" required>
+                            </div>
+
+                            <!-- Chọn các thứ trong tuần -->
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary mb-2">
+                                    Lịch Học Theo Thứ Trong Tuần <span class="text-danger">*</span>:
+                                </label>
+                                <div class="d-flex flex-wrap gap-2" id="dayOfWeekCheckboxes">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="btn-check" type="checkbox" name="daysOfWeek" id="dow1" value="1">
+                                        <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="dow1">Thứ 2</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="btn-check" type="checkbox" name="daysOfWeek" id="dow2" value="2">
+                                        <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="dow2">Thứ 3</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="btn-check" type="checkbox" name="daysOfWeek" id="dow3" value="3">
+                                        <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="dow3">Thứ 4</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="btn-check" type="checkbox" name="daysOfWeek" id="dow4" value="4">
+                                        <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="dow4">Thứ 5</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="btn-check" type="checkbox" name="daysOfWeek" id="dow5" value="5">
+                                        <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="dow5">Thứ 6</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="btn-check" type="checkbox" name="daysOfWeek" id="dow6" value="6">
+                                        <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="dow6">Thứ 7</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="btn-check" type="checkbox" name="daysOfWeek" id="dow7" value="7">
+                                        <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="dow7">Chủ Nhật</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Chọn nhanh khung giờ theo 4 Slot chuẩn -->
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary mb-1">
+                                    Chọn Nhanh Khung Giờ (4 Slot Chuẩn):
+                                </label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('07:00', '09:00', 'Slot 1: 07:00 - 09:00')">Slot 1: 07:00 - 09:00</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('09:30', '11:30', 'Slot 2: 09:30 - 11:30')">Slot 2: 09:30 - 11:30</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('13:00', '15:00', 'Slot 3: 13:00 - 15:00')">Slot 3: 13:00 - 15:00</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('15:30', '17:30', 'Slot 4: 15:30 - 17:30')">Slot 4: 15:30 - 17:30</button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Giờ Bắt Đầu <span class="text-danger">*</span>:</label>
+                                <input type="time" id="newStartTime" class="form-control form-control-modern" value="07:00" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary">Giờ Kết Thúc <span class="text-danger">*</span>:</label>
+                                <input type="time" id="newEndTime" class="form-control form-control-modern" value="09:00" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-secondary">Mô Tả Lịch Học (Tùy chọn):</label>
+                                <input type="text" id="newScheduleDesc" class="form-control form-control-modern" placeholder="VD: Ca tối Thứ 2 và Thứ 5">
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info py-2 px-3 small mt-3 mb-0">
+                            <i class="bi bi-info-circle-fill me-1"></i>Hệ thống sẽ <strong>tự động sinh toàn bộ danh sách buổi học (Lessons)</strong> vào Cơ sở dữ liệu và hiển thị ngay trên Thời khóa biểu.
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" id="btnSubmitCreateClass" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                                <i class="bi bi-check2-circle me-1"></i> Tạo Lớp & Sinh Lịch
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div id="footer-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        // Fallback tự động đảm bảo callApi luôn sẵn sàng
+        if (typeof callApi === 'undefined') {
+            const isDev = window.location.port !== "8080" && window.location.port !== "";
+            const BASE_URL = isDev ? `http://${window.location.hostname || 'localhost'}:8080` : "";
+
+            window.callApi = async function(endpoint, method = "GET", body = null, isFormData = false) {
+                const token = localStorage.getItem("token");
+                const headers = {};
+                if (token) headers["Authorization"] = "Bearer " + token;
+                if (!isFormData) headers["Content-Type"] = "application/json";
+
+                const options = {
+                    method: method,
+                    headers: headers,
+                    body: isFormData ? body : (body ? JSON.stringify(body) : null)
+                };
+
+                const response = await fetch(BASE_URL + endpoint, options);
+                if (response.status === 401) {
+                    localStorage.removeItem("token");
+                    window.location.href = window.location.pathname.includes('/com_fe/') ? "/com_fe/login.html" : "/login.html";
+                    return null;
+                }
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.message || `Lỗi yêu cầu: ${response.status}`);
+                }
+                const text = await response.text();
+                return text ? JSON.parse(text) : null;
+            };
+        }
+    </script>
+    <script src="../js/auth.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="../js/weekly-schedule.js"></script>
+</body>
+</html>

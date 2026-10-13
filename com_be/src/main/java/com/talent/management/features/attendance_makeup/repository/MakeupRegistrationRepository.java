@@ -50,4 +50,10 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
      * Dùng để validate trước khi cancel.
      */
     Optional<MakeupRegistration> findByIdAndStatusIn(Long id, List<MakeupStatus> statuses);
+
+    /**
+     * Tìm tất cả học viên học bù được xếp vào buổi học này
+     */
+    List<MakeupRegistration> findByTargetLessonIdAndStatus(Long targetLessonId, MakeupStatus status);
 }
+

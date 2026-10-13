@@ -42,5 +42,48 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
      */
     @Query("SELECT DISTINCT e.classEntity.className FROM Enrollment e WHERE e.student.id = :studentId")
     List<String> findClassNamesByStudentId(@Param("studentId") Long studentId);
+
+    /**
+     * Lấy toàn bộ ca học trong khoảng ngày (Tuần)
+     */
+    List<Lesson> findByLessonDateBetweenOrderByLessonDateAscStartTimeAsc(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Lấy ca học của giáo viên trong khoảng ngày (Tuần)
+     */
+    List<Lesson> findByTeacherIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
+            Long teacherId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Lấy ca học của học viên trong khoảng ngày (Tuần)
+     */
+    @Query("SELECT DISTINCT l FROM Lesson l " +
+           "JOIN Enrollment e ON e.classEntity.id = l.classEntity.id " +
+           "WHERE e.student.id = :studentId " +
+           "AND l.lessonDate BETWEEN :startDate AND :endDate " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findLessonsByStudentIdAndDateBetween(
+            @Param("studentId") Long studentId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /**
+     * Lấy ca học theo lớp học trong khoảng ngày
+     */
+    List<Lesson> findByClassEntityIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
+            Long classId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Lấy ca học theo cơ sở trong khoảng ngày
+     */
+    List<Lesson> findByClassEntityBranchIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
+            Long branchId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Tìm số thứ tự buổi học lớn nhất của một lớp
+     */
+    @Query("SELECT COALESCE(MAX(l.sessionNumber), 0) FROM Lesson l WHERE l.classEntity.id = :classId")
+    int findMaxSessionNumberByClassId(@Param("classId") Long classId);
 }
+
 

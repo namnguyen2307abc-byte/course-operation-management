@@ -1,7 +1,7 @@
 const isDev = window.location.port !== "8080" && window.location.port !== "";
 const BASE_URL = isDev ? `http://${window.location.hostname}:8080` : "";
 
-async function callApi(endpoint, method = "GET", body = null, isFormData = false) {
+async function callApi(endpoint, method = "GET", body = null, isFormData = false, showAlert = true) {
     const token = localStorage.getItem("token");
     const headers = {};
 
@@ -49,7 +49,9 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
         return text ? JSON.parse(text) : null;
     } catch (error) {
         console.error("API Error:", error);
-        alert(error.message);
+        if (showAlert) {
+            alert(error.message);
+        }
         throw error;
     }
 }
