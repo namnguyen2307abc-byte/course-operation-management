@@ -16,7 +16,7 @@ if (homeUser) {
         link.innerHTML = `<span class="feature-symbol tone-${index % 4}"><i class="bi bi-${feature.icon}"></i></span><h3>${feature.label}</h3><p>${feature.description}</p><span class="feature-open">Mở chức năng <i class="bi bi-arrow-up-right"></i></span>`;
         grid.appendChild(link);
     });
-    const primary = features.find(f => f.file === (teacher ? 'placement-test' : 'course-enrollment')) || features[0];
+    const primary = features.find(f => f.file === (teacher || parent || homeUser.role === 'STUDENT' ? 'weekly-schedule' : 'course-enrollment')) || features[0];
     if (primary) {
         const action = document.getElementById('primaryAction');
         action.href = appPath('/pages/' + primary.file + '.html');

@@ -23,7 +23,6 @@ import com.talent.management.shared.enums.PaymentStatus;
 import com.talent.management.shared.enums.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import jakarta.annotation.PostConstruct;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -262,7 +261,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
             // Cập nhật trạng thái yêu cầu đăng ký (nếu có) thành APPROVED
             try {
                 enrollmentRequestRepository.findByEnrollmentId(enrollment.getId()).ifPresent(req -> {
-                    req.setStatus(com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus.APPROVED);
+                    req.setStatus(com.talent.management.shared.enums.EnrollmentRequestStatus.APPROVED);
                     enrollmentRequestRepository.save(req);
                 });
             } catch (Exception ex) {

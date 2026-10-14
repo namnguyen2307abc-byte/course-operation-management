@@ -1,6 +1,6 @@
 package com.talent.management.features.course_enrollment.dto.response;
 
-import com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus;
+import com.talent.management.shared.enums.EnrollmentRequestStatus;
 
 import java.time.LocalDateTime;
 
@@ -24,6 +24,7 @@ public record EnrollmentRequestResponse(
         String requestedBy,
         String reviewedBy,
         Long invoiceId,
-        String invoiceCode
+        String invoiceCode,
+        boolean cancellable
 ) {
 }

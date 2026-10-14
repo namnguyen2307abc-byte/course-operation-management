@@ -1,135 +1,32 @@
 <!DOCTYPE html>
-<html
-    lang="en"
->
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Sign in | Training Center</title>
-        <link href="/css/bootstrap.min.css" rel="stylesheet" />
-        <link href="/css/app.css" rel="stylesheet" />
-        <script defer src="/js/lucide.min.js"></script>
-        <script defer src="/js/app.js"></script>
-    </head>
-    <body>
-        <header class="site-header">
-            <a class="skip-link" href="#main-content">Skip to content</a>
-            <nav class="nav-shell" aria-label="Main navigation">
-                <a class="brand" href="/">
-                    <span class="brand-mark"><i data-lucide="graduation-cap" aria-hidden="true"></i></span>
-                    <span>
-                        Training Center
-                        <small>LEARNING &amp; COMMUNITY</small>
-                    </span>
-                </a>
-                <button
-                    class="icon-button menu-toggle"
-                    type="button"
-                    aria-controls="mainNavbar"
-                    aria-expanded="false"
-                    aria-label="Open navigation"
-                    title="Open navigation"
-                >
-                    <i data-lucide="menu" aria-hidden="true"></i>
-                </button>
-                <div class="nav-content" id="mainNavbar">
-                    <div class="nav-links">
-                        <a class="nav-link" data-nav="/" href="/">
-                            <i data-lucide="layout-dashboard" aria-hidden="true"></i>
-                            Overview
-                        </a>
-                        
-                        
-                        
-                        
-                    </div>
-                    <div class="nav-account">
-                        <a
-                            class="nav-link"
-                            data-nav="/login"
-                            href="/login"
-                        >
-                            Sign in
-                        </a>
-                        <a
-                            class="btn btn-primary btn-sm"
-                            href="/register"
-                        >
-                            Create account
-                            <i data-lucide="arrow-up-right" aria-hidden="true"></i>
-                        </a>
-                        
-                        
-                    </div>
-                </div>
-            </nav>
-        </header>
-        <main id="main-content" class="page-shell auth-shell">
-            <div class="auth-heading">
-                <span class="auth-symbol"><i data-lucide="graduation-cap" aria-hidden="true"></i></span>
-                <p class="eyebrow">YOUR TRAINING CENTER ACCOUNT</p>
-                <h1>Welcome back.</h1>
-                <p class="page-description">A new day. Something new to learn.</p>
-            </div>
-            <section class="auth-panel">
-                <div class="messages" aria-live="polite">
-            
-            
-            
-            
-        </div>
-                <form action="/login" method="post"><input type="hidden" name="_csrf" value="QW3cV4kyuwX2ZMDdM6AAMnFprJNOGGsrX13aHmqAKw_8yq8Lc17qY-pUjDDbAPG_V400A0hbgap9K18GOj7uKl3kSG3L-8o6"/>
-                    <div class="mb-4">
-                        <label for="username" class="form-label">Email address</label>
-                        <input
-                            id="username"
-                            name="username"
-                            type="email"
-                            class="form-control"
-                            placeholder="you@example.com"
-                            autocomplete="username"
-                            required
-                        />
-                    </div>
-                    <div class="mb-4">
-                        <label for="password" class="form-label">Password</label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            class="form-control"
-                            autocomplete="current-password"
-                            required
-                        />
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">
-                        Sign in
-                        <i data-lucide="arrow-right" aria-hidden="true"></i>
-                    </button>
-                </form>
-                <p class="auth-switch">
-                    New to the community?
-                    <a href="/register">Create an account</a>
-                </p>
-            </section>
-            <div class="auth-footnote">
-                <i data-lucide="shield-check" aria-hidden="true"></i>
-                Your personal learning space.
-            </div>
-        </main>
-        <footer class="site-footer">
-            <div class="footer-shell">
-                <span class="footer-brand">
-                    Training Center
-                    <span class="footer-dot"></span>
-                    Learning starts here.
-                </span>
-                <span>
-                    &copy;
-                    <span>2026</span>
-                    Training Center
-                </span>
-            </div>
-        </footer>
-    </body>
-</html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đăng nhập · Trung tâm đào tạo năng khiếu</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="./css/style.css" rel="stylesheet"><link href="./css/login.css" rel="stylesheet">
+</head>
+<body class="login-page">
+<main class="login-layout">
+<section class="login-story" aria-labelledby="storyTitle">
+<div class="login-brand"><span class="brand-mark"><i class="bi bi-stars"></i></span><div><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></div></div>
+<div class="login-story-content"><p class="login-eyebrow">NUÔI DƯỠNG ĐAM MÊ, PHÁT TRIỂN TÀI NĂNG</p><h1 id="storyTitle">Mỗi tài năng,<br>một hành trình<br>được đồng hành.</h1><p>Kết nối gia đình, giáo viên và trung tâm trong từng bước học tập và phát triển.</p><div class="login-disciplines"><span><i class="bi bi-music-note-beamed"></i> Đàn</span><span><i class="bi bi-stars"></i> Múa</span><span><i class="bi bi-lightning-charge"></i> Võ</span></div></div>
+<div class="login-story-footer"><i class="bi bi-journal-check"></i><span>Đào tạo · Học vụ · Vận hành trung tâm</span></div>
+</section>
+<section class="login-form-panel" aria-labelledby="loginTitle">
+<div class="login-form-content"><p class="eyebrow">HỆ THỐNG QUẢN LÝ TRUNG TÂM</p><h2 id="loginTitle">Chào mừng trở lại</h2><p class="login-intro">Đăng nhập bằng tài khoản được trung tâm cấp để tiếp tục công việc của bạn.</p>
+<div id="errorAlert" class="login-error" role="alert" hidden><i class="bi bi-exclamation-circle"></i><span id="errorMsg"></span></div>
+<form id="loginForm">
+<label for="username">Tên đăng nhập</label><input type="text" id="username" name="username" autocomplete="username" placeholder="Nhập tên đăng nhập" required spellcheck="false" autocapitalize="none">
+<label for="password">Mật khẩu</label><div class="password-field"><input type="password" id="password" name="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required><button type="button" id="togglePasswordBtn" aria-label="Hiện mật khẩu" aria-pressed="false"><i class="bi bi-eye" id="passwordEyeIcon"></i></button></div>
+<p id="capsLockHint" class="caps-lock" hidden>Caps Lock đang bật.</p>
+<button type="submit" id="submitBtn" class="login-submit">Đăng nhập <i class="bi bi-arrow-right"></i></button>
+</form>
+<details class="login-help"><summary>Quên mật khẩu hoặc chưa có tài khoản?</summary><p>Vui lòng liên hệ nhân viên tại cơ sở đang theo học hoặc quản trị viên trung tâm để được cấp tài khoản hay đặt lại mật khẩu.</p></details>
+<div class="login-account-note"><i class="bi bi-shield-check"></i><p>Các chức năng được hiển thị theo vai trò của bạn.<br>Hãy đăng xuất sau khi sử dụng máy tính dùng chung.</p></div>
+</div><p class="login-bottom">Hệ thống quản lý trung tâm đào tạo năng khiếu</p>
+</section>
+</main>
+<script src="./js/api.js"></script><script src="./js/login.js"></script>
+</body></html>

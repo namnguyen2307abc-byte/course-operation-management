@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trang chủ · Trung tâm đào tạo năng khiếu</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="./css/style.css" rel="stylesheet">
+</head>
+<body>
+<div id="navbar-container"></div>
+<main id="main-content" class="workspace-home" tabindex="-1">
+<div class="home-heading"><div><p class="eyebrow">TRANG CHỦ / KHÔNG GIAN LÀM VIỆC</p><h1>Chào bạn, <span id="heroUserName"></span></h1><p id="welcomeDescription">Chọn nghiệp vụ để bắt đầu công việc tại trung tâm.</p></div><time id="todayLabel" class="date-label"></time></div>
+<section class="welcome-panel" aria-labelledby="welcomeTitle"><div><span class="welcome-kicker">ĐỒNG HÀNH CÙNG MỖI TÀI NĂNG</span><h2 id="welcomeTitle">Một nơi kết nối<br>mọi hoạt động đào tạo.</h2><p>Từ đăng ký lớp đến học vụ và học phí.<br>Theo dõi đúng thông tin, thực hiện đúng công việc.</p><a id="primaryAction" class="workspace-primary" hidden></a></div><div class="discipline-art" aria-label="Đàn, múa và võ"><div class="discipline-tile tile-music"><i class="bi bi-music-note-beamed"></i><span>Đàn</span></div><div class="discipline-tile tile-dance"><i class="bi bi-stars"></i><span>Múa</span></div><div class="discipline-tile tile-sport"><i class="bi bi-lightning-charge"></i><span>Võ</span></div><span class="art-caption">Khám phá · Rèn luyện · Phát triển</span></div></section>
+<section aria-labelledby="featuresTitle" class="home-features"><div class="section-heading"><div><p class="eyebrow">CÔNG VIỆC CỦA BẠN</p><h2 id="featuresTitle">Bạn muốn thực hiện việc gì?</h2></div><span id="roleContext" class="role-context"></span></div><div id="featureGrid" class="workspace-feature-grid"></div></section>
+<section class="home-guide" aria-labelledby="guideTitle"><div><span class="guide-icon"><i class="bi bi-signpost-split"></i></span><h2 id="guideTitle">Bắt đầu đúng nơi</h2><p id="roleGuide"></p></div><div class="guide-note"><i class="bi bi-info-circle"></i><p>Thông tin chi tiết và trạng thái xử lý được cập nhật trong từng nghiệp vụ. Chọn chức năng tương ứng để tra cứu.</p></div></section>
+<footer class="workspace-footer">Talent Center <span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span></footer>
+</main>
+<script src="./js/api.js"></script><script src="./js/auth.js"></script><script src="./js/home.js"></script>
+</body></html>

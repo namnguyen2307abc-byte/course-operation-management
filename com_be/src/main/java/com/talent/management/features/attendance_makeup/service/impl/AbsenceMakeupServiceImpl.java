@@ -5,6 +5,7 @@ import com.talent.management.features.attendance_makeup.dto.request.AbsenceRevie
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest.ReviewDecision;
 import com.talent.management.features.attendance_makeup.dto.request.AttendanceMarkRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupCancelRequest;
+import com.talent.management.features.attendance_makeup.dto.request.MakeupResolveRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupScheduleRequest;
 import com.talent.management.features.attendance_makeup.dto.response.AbsenceRequestResponse;
 import com.talent.management.features.attendance_makeup.dto.response.LessonOptionResponse;
@@ -13,6 +14,7 @@ import com.talent.management.features.attendance_makeup.dto.response.StudentOpti
 import com.talent.management.features.attendance_makeup.exception.AttendanceMakeupException;
 import com.talent.management.features.attendance_makeup.mapper.AttendanceMakeupMapper;
 import com.talent.management.features.attendance_makeup.repository.AbsenceRequestRepository;
+import com.talent.management.features.attendance_makeup.repository.AttendanceEnrollmentRepository;
 import com.talent.management.features.attendance_makeup.repository.AttendanceLessonRepository;
 import com.talent.management.features.attendance_makeup.repository.AttendanceRecordRepository;
 import com.talent.management.features.attendance_makeup.repository.MakeupRegistrationRepository;
@@ -31,7 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -58,6 +64,11 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     private final MakeupRegistrationRepository makeupRegistrationRepository;
     private final AttendanceLessonRepository attendanceLessonRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
+    private final AttendanceEnrollmentRepository attendanceEnrollmentRepository;
+
+    /** Trạng thái ca bù đang chiếm chỗ trong lớp đích */
+    private static final List<MakeupStatus> SEAT_HOLDING_STATUSES =
+            List.of(MakeupStatus.SCHEDULED, MakeupStatus.COMPLETED);
     private final StudentRepository studentRepository;
     private final AttendanceMakeupMapper attendanceMakeupMapper;
     private final CurrentUserService currentUserService;
@@ -92,6 +103,15 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         Lesson lesson = attendanceLessonRepository.findById(request.getLessonId())
                 .orElseThrow(() -> new AttendanceMakeupException(
                         "Không tìm thấy buổi học với ID: " + request.getLessonId()));
+
+        // 3b. Phụ huynh chỉ được xin nghỉ buổi chưa diễn ra (nghỉ trước, không hợp thức hóa sau)
+        if (currentUser.getRole() == Role.PARENT
+                && lesson.getLessonDate() != null
+                && lesson.getLessonDate().isBefore(LocalDate.now())) {
+            throw new AttendanceMakeupException(
+                    "Chỉ có thể xin nghỉ cho buổi học chưa diễn ra. Buổi học ngày " + lesson.getLessonDate()
+                            + " đã qua, vui lòng liên hệ giáo vụ nếu cần hỗ trợ.");
+        }
 
         // 4. Chống trùng lặp đơn — Không cho tạo đơn mới khi đã có PENDING hoặc APPROVED cho cùng buổi
         Optional<AbsenceRequest> existing = absenceRequestRepository
@@ -213,6 +233,18 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
 
+        // Guard: giáo viên chỉ duyệt đơn của buổi học do chính mình phụ trách (STAFF/ADMIN duyệt thay khi cần)
+        if (currentUser.getRole() == Role.TEACHER) {
+            Lesson reviewedLesson = ar.getLesson();
+            boolean isLessonTeacher = reviewedLesson != null
+                    && reviewedLesson.getTeacher() != null
+                    && reviewedLesson.getTeacher().getId().equals(currentUser.getId());
+            if (!isLessonTeacher) {
+                throw new AttendanceMakeupException(
+                        "Chỉ giáo viên phụ trách buổi học này mới được xác nhận hoặc từ chối đơn xin nghỉ!");
+            }
+        }
+
         // Guard: chỉ xử lý đơn PENDING
         if (ar.getStatus() != AbsenceStatus.PENDING) {
             throw new AttendanceMakeupException(
@@ -333,6 +365,9 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         if (mr.getStatus() == MakeupStatus.CANCELLED) {
             throw new AttendanceMakeupException("Ca học bù đã bị hủy, không thể xếp lịch!");
         }
+        if (mr.getStatus() == MakeupStatus.DEFERRED) {
+            throw new AttendanceMakeupException("Ca học bù đã được chuyển sang khóa học kỳ sau, không thể xếp lịch!");
+        }
 
         Lesson targetLesson = attendanceLessonRepository.findById(request.getTargetLessonId())
                 .orElseThrow(() -> new AttendanceMakeupException(
@@ -342,6 +377,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         if (mr.getOriginalLesson() != null && mr.getOriginalLesson().getId().equals(targetLesson.getId())) {
             throw new AttendanceMakeupException("Buổi học bù không được trùng với chính buổi học đã xin nghỉ!");
         }
+
+        validateMakeupTarget(mr, targetLesson);
 
         mr.setTargetLesson(targetLesson);
         mr.setStatus(MakeupStatus.SCHEDULED);
@@ -367,10 +404,11 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         validateStaffOrAdmin(currentUser);
 
         MakeupRegistration mr = makeupRegistrationRepository
-                .findByIdAndStatusIn(id, List.of(MakeupStatus.PENDING, MakeupStatus.SCHEDULED, MakeupStatus.REGISTERED))
+                .findByIdAndStatusIn(id, List.of(MakeupStatus.PENDING, MakeupStatus.SCHEDULED,
+                        MakeupStatus.REGISTERED, MakeupStatus.NO_SLOT))
                 .orElseThrow(() -> new AttendanceMakeupException(
                         "Không tìm thấy ca học bù có thể hủy với ID: " + id
-                        + " (Chỉ hủy được ca ở trạng thái PENDING, SCHEDULED hoặc REGISTERED)"));
+                        + " (Chỉ hủy được ca ở trạng thái PENDING, SCHEDULED hoặc NO_SLOT)"));
 
         mr.setStatus(MakeupStatus.CANCELLED);
         String cancelNote = (request != null && request.getReason() != null && !request.getReason().isBlank())
@@ -383,6 +421,120 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 saved.getId(), saved.getStudent().getFullName(), currentUser.getUsername(), cancelNote);
 
         return attendanceMakeupMapper.toMakeupResponse(saved);
+    }
+
+    /**
+     * Không tìm được lớp bù phù hợp — Giai đoạn 3 (STAFF / ADMIN).
+     * Ca bù chuyển sang NO_SLOT; nội dung thông báo hiển thị ngay trên đơn của phụ huynh
+     * để phụ huynh biết cần tự sắp xếp cho con đi học hoặc chờ chuyển kỳ sau.
+     */
+    @Override
+    @Transactional
+    public MakeupRegistrationResponse markNoSlotAvailable(Long id, MakeupResolveRequest request) {
+        User currentUser = currentUserService.getCurrentUser();
+        validateStaffOrAdmin(currentUser);
+
+        MakeupRegistration mr = makeupRegistrationRepository
+                .findByIdAndStatusIn(id, List.of(MakeupStatus.PENDING, MakeupStatus.NO_SLOT))
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Chỉ báo 'chưa có lớp phù hợp' cho ca bù đang chờ xếp lịch (ID: " + id + ")"));
+
+        String message = requireResolveNote(request,
+                "Vui lòng nhập nội dung thông báo gửi phụ huynh (ví dụ: buổi quan trọng, đề nghị cho bé đi học nếu sắp xếp được).");
+
+        mr.setStatus(MakeupStatus.NO_SLOT);
+        mr.setNote("CHƯA CÓ LỚP PHÙ HỢP: " + message);
+        MakeupRegistration saved = makeupRegistrationRepository.save(mr);
+
+        log.info("Ca bù #{} của [{}] — chưa có lớp phù hợp, đã báo phụ huynh bởi [{}]",
+                saved.getId(), saved.getStudent().getFullName(), currentUser.getUsername());
+        return attendanceMakeupMapper.toMakeupResponse(saved);
+    }
+
+    /**
+     * Chuyển học viên sang khóa học kỳ sau — Giai đoạn 3 (STAFF / ADMIN).
+     * Dùng khi buổi nghỉ quan trọng, không có lớp bù và phụ huynh không thể cho con đi học.
+     */
+    @Override
+    @Transactional
+    public MakeupRegistrationResponse deferToNextTerm(Long id, MakeupResolveRequest request) {
+        User currentUser = currentUserService.getCurrentUser();
+        validateStaffOrAdmin(currentUser);
+
+        MakeupRegistration mr = makeupRegistrationRepository
+                .findByIdAndStatusIn(id, List.of(MakeupStatus.PENDING, MakeupStatus.NO_SLOT))
+                .orElseThrow(() -> new AttendanceMakeupException(
+                        "Chỉ chuyển kỳ sau cho ca bù đang chờ xếp lịch hoặc chưa có lớp phù hợp (ID: " + id + ")"));
+
+        String message = requireResolveNote(request,
+                "Vui lòng nhập nội dung thông báo gửi phụ huynh về việc chuyển sang khóa học kỳ sau.");
+
+        mr.setStatus(MakeupStatus.DEFERRED);
+        mr.setNote("CHUYỂN KHÓA KỲ SAU: " + message);
+        MakeupRegistration saved = makeupRegistrationRepository.save(mr);
+
+        log.info("Ca bù #{} của [{}] — chuyển sang khóa học kỳ sau bởi [{}]",
+                saved.getId(), saved.getStudent().getFullName(), currentUser.getUsername());
+        return attendanceMakeupMapper.toMakeupResponse(saved);
+    }
+
+    private String requireResolveNote(MakeupResolveRequest request, String errorMessage) {
+        if (request == null || request.getNote() == null || request.getNote().isBlank()) {
+            throw new AttendanceMakeupException(errorMessage);
+        }
+        return request.getNote().trim();
+    }
+
+    /**
+     * Kiểm tra ca học đích hợp lệ: chưa diễn ra, lớp còn chỗ, học viên chưa thuộc lớp đó, cùng trình độ.
+     */
+    private void validateMakeupTarget(MakeupRegistration mr, Lesson target) {
+        if (target.getStatus() == com.talent.management.shared.enums.LessonStatus.CANCELLED) {
+            throw new AttendanceMakeupException("Buổi học được chọn đã bị hủy!");
+        }
+        if (target.getLessonDate() != null && target.getLessonDate().isBefore(LocalDate.now())) {
+            throw new AttendanceMakeupException("Không thể xếp học bù vào buổi học đã diễn ra!");
+        }
+
+        ClassEntity targetClass = target.getClassEntity();
+        if (targetClass == null) {
+            return;
+        }
+
+        // Cùng trình độ (level) với khóa học của buổi gốc
+        Lesson original = mr.getOriginalLesson();
+        String originalLevel = (original != null && original.getClassEntity() != null
+                && original.getClassEntity().getCourse() != null)
+                ? original.getClassEntity().getCourse().getLevel() : null;
+        String targetLevel = targetClass.getCourse() != null ? targetClass.getCourse().getLevel() : null;
+        if (originalLevel != null && !originalLevel.isBlank() && targetLevel != null && !targetLevel.isBlank()
+                && !originalLevel.equalsIgnoreCase(targetLevel)) {
+            throw new AttendanceMakeupException(
+                    "Lớp bù khác trình độ (" + targetLevel + " ≠ " + originalLevel + "). Vui lòng chọn lớp cùng level!");
+        }
+
+        // Học viên không được thuộc sẵn lớp đích
+        Set<Long> enrolledClassIds = new HashSet<>(attendanceEnrollmentRepository
+                .findClassIdsByStudentIdAndStatusIn(mr.getStudent().getId(),
+                        List.of(com.talent.management.shared.enums.EnrollmentStatus.ENROLLED,
+                                com.talent.management.shared.enums.EnrollmentStatus.PENDING_PAYMENT)));
+        if (enrolledClassIds.contains(targetClass.getId())) {
+            throw new AttendanceMakeupException("Học viên đã thuộc lớp này, hãy chọn lớp khác để học bù!");
+        }
+
+        // Sĩ số: sĩ số lớp + học viên bù đã xếp (không tính chính ca đang xếp)
+        int base = targetClass.getCurrentStudents() != null ? targetClass.getCurrentStudents() : 0;
+        long makeupSeats = makeupRegistrationRepository
+                .countByTargetLessonIdAndStatusIn(target.getId(), SEAT_HOLDING_STATUSES);
+        boolean alreadyCounted = mr.getTargetLesson() != null
+                && mr.getTargetLesson().getId().equals(target.getId())
+                && SEAT_HOLDING_STATUSES.contains(mr.getStatus());
+        long occupied = base + makeupSeats - (alreadyCounted ? 1 : 0);
+        Integer max = targetClass.getMaxStudents();
+        if (max != null && occupied >= max) {
+            throw new AttendanceMakeupException("Lớp " + targetClass.getClassName() + " đã đủ sĩ số ("
+                    + occupied + "/" + max + "), không thể thêm học viên học bù!");
+        }
     }
 
     // =========================================================================
@@ -521,48 +673,81 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             }
         }
 
+        LocalDate today = LocalDate.now();
+        boolean onlyUpcoming = currentUser.getRole() == Role.PARENT;
         return attendanceLessonRepository.findLessonsByStudentId(studentId)
                 .stream()
+                .filter(l -> !onlyUpcoming || (l.getLessonDate() != null && !l.getLessonDate().isBefore(today)))
                 .map(attendanceMakeupMapper::toLessonOption)
                 .toList();
     }
 
     /**
-     * Danh sách ca học khả dụng để xếp lịch bù.
-     * Ưu tiên ca cùng khóa đào tạo, loại trừ buổi gốc đã xin nghỉ.
+     * Danh sách ca học khả dụng để xếp lịch bù — lọc thông minh:
+     *  - Cùng chương trình + cùng level (hoặc cùng khóa học nếu khóa chưa có level)
+     *  - Cùng số thứ tự buổi với buổi nghỉ (lớp đích chưa học tới buổi đó → không học lặp/nhảy cóc)
+     *  - Diễn ra từ hiện tại trở đi, lớp khác lớp gốc, học viên chưa thuộc lớp đó
+     *  - Lớp còn chỗ (sĩ số lớp + học viên bù đã xếp < sĩ số tối đa)
+     * Không còn fallback "lấy mọi ca sắp tới": nếu rỗng, nhân viên sẽ báo phụ huynh / chuyển kỳ sau.
      */
     @Override
     public List<LessonOptionResponse> getAvailableLessonsForMakeup(Long makeupId) {
         MakeupRegistration mr = makeupRegistrationRepository.findById(makeupId)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + makeupId));
 
-        Long courseId = null;
-        if (mr.getOriginalLesson() != null
-                && mr.getOriginalLesson().getClassEntity() != null
-                && mr.getOriginalLesson().getClassEntity().getCourse() != null) {
-            courseId = mr.getOriginalLesson().getClassEntity().getCourse().getId();
+        Lesson original = mr.getOriginalLesson();
+        if (original == null || original.getClassEntity() == null
+                || original.getClassEntity().getCourse() == null || original.getSessionNumber() == null) {
+            return List.of();
         }
 
+        ClassEntity originalClass = original.getClassEntity();
+        Course course = originalClass.getCourse();
         LocalDate today = LocalDate.now();
-        List<Lesson> availableLessons;
+        LocalTime now = LocalTime.now();
 
-        if (courseId != null) {
-            availableLessons = attendanceLessonRepository.findUpcomingLessonsByCourseId(courseId, today);
+        List<Lesson> candidates;
+        if (course.getLevel() != null && !course.getLevel().isBlank() && course.getProgram() != null) {
+            candidates = attendanceLessonRepository.findMakeupCandidatesByLevel(
+                    today, original.getSessionNumber(), originalClass.getId(),
+                    course.getProgram().getId(), course.getLevel());
         } else {
-            availableLessons = List.of();
+            candidates = attendanceLessonRepository.findMakeupCandidatesByCourse(
+                    today, original.getSessionNumber(), originalClass.getId(), course.getId());
         }
 
-        // Fallback: nếu không có ca cùng khóa → lấy tất cả ca sắp tới
-        if (availableLessons.isEmpty()) {
-            availableLessons = attendanceLessonRepository.findAvailableUpcomingLessons(today);
+        Set<Long> enrolledClassIds = new HashSet<>(attendanceEnrollmentRepository
+                .findClassIdsByStudentIdAndStatusIn(mr.getStudent().getId(),
+                        List.of(com.talent.management.shared.enums.EnrollmentStatus.ENROLLED,
+                                com.talent.management.shared.enums.EnrollmentStatus.PENDING_PAYMENT)));
+
+        List<Lesson> usable = new ArrayList<>();
+        for (Lesson l : candidates) {
+            if (l.getStatus() == com.talent.management.shared.enums.LessonStatus.CANCELLED) continue;
+            if (l.getClassEntity() == null || enrolledClassIds.contains(l.getClassEntity().getId())) continue;
+            if (l.getLessonDate().isEqual(today) && l.getEndTime() != null && l.getEndTime().isBefore(now)) continue;
+            usable.add(l);
+        }
+        if (usable.isEmpty()) {
+            return List.of();
         }
 
-        Long origLessonId = mr.getOriginalLesson() != null ? mr.getOriginalLesson().getId() : null;
+        // Batch: đếm học viên bù đang chiếm chỗ ở từng buổi (tránh N+1)
+        List<Long> lessonIds = usable.stream().map(Lesson::getId).toList();
+        Map<Long, Long> makeupSeatMap = makeupRegistrationRepository
+                .findByTargetLessonIdInAndStatusIn(lessonIds, SEAT_HOLDING_STATUSES)
+                .stream()
+                .collect(Collectors.groupingBy(m -> m.getTargetLesson().getId(), Collectors.counting()));
 
-        return availableLessons.stream()
-                .filter(l -> origLessonId == null || !origLessonId.equals(l.getId()))
-                .map(attendanceMakeupMapper::toLessonOption)
-                .toList();
+        List<LessonOptionResponse> result = new ArrayList<>();
+        for (Lesson l : usable) {
+            int base = l.getClassEntity().getCurrentStudents() != null ? l.getClassEntity().getCurrentStudents() : 0;
+            int occupied = base + makeupSeatMap.getOrDefault(l.getId(), 0L).intValue();
+            Integer max = l.getClassEntity().getMaxStudents();
+            if (max != null && occupied >= max) continue;   // lớp đầy
+            result.add(attendanceMakeupMapper.toLessonOption(l, occupied));
+        }
+        return result;
     }
 
     // =========================================================================

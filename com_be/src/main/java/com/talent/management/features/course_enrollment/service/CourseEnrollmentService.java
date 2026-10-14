@@ -8,9 +8,9 @@ import com.talent.management.features.course_enrollment.dto.response.ClassRespon
 import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
-import com.talent.management.features.course_enrollment.entity.EnrollmentRequest;
+import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.features.course_enrollment.enums.EnrollmentDecision;
-import com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus;
+import com.talent.management.shared.enums.EnrollmentRequestStatus;
 import com.talent.management.features.course_enrollment.mapper.CourseEnrollmentMapper;
 import com.talent.management.features.course_enrollment.repository.ClassRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
@@ -26,6 +26,7 @@ import com.talent.management.shared.enums.EnrollmentStatus;
 import com.talent.management.shared.service.CurrentUserService;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
+import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
 import com.talent.management.features.tuition_payment.repository.InvoiceRepository;
 import com.talent.management.shared.entity.Invoice;
 import com.talent.management.shared.enums.DiscountType;
@@ -71,6 +72,7 @@ public class CourseEnrollmentService {
     private final EnrollmentRequestRepository requestRepository;
     private final CourseEnrollmentMapper mapper;
     private final PlacementTestService placementTestService;
+    private final PlacementScheduleRepository placementScheduleRepository;
     private final InvoiceRepository invoiceRepository;
 
     @Transactional(readOnly = true)
@@ -185,8 +187,39 @@ public class CourseEnrollmentService {
     public List<EnrollmentRequestResponse> getMyRequests() {
         User parent = currentUserService.getCurrentUser();
         return requestRepository.findByRequestedByIdOrderByCreatedAtDesc(parent.getId()).stream()
-                .map(mapper::toRequestResponse)
+                .map(request -> mapper.toRequestResponse(request, isCancellable(request)))
                 .toList();
+    }
+
+    @Transactional
+    public EnrollmentRequestResponse cancelRequest(Long requestId) {
+        User parent = currentUserService.getCurrentUser();
+        EnrollmentRequest request = requestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký"));
+        if (!Objects.equals(request.getRequestedBy().getId(), parent.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký");
+        }
+        if (!isCancellable(request)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu đã được xếp lịch kiểm tra hoặc xử lý, không thể tự hủy");
+        }
+        request.setStatus(EnrollmentRequestStatus.CANCELLED);
+        return mapper.toRequestResponse(requestRepository.save(request));
+    }
+
+    private boolean isCancellable(EnrollmentRequest request) {
+        if (request.getEnrollment() != null || request.getClassEntity() != null) {
+            return false;
+        }
+        if (!request.isPlacementRequested()) {
+            return request.getStatus() == EnrollmentRequestStatus.PENDING
+                    || request.getStatus() == EnrollmentRequestStatus.READY_FOR_ASSIGNMENT;
+        }
+        if (request.getStatus() != EnrollmentRequestStatus.WAITING_PLACEMENT
+                || placementScheduleRepository.existsByEnrollmentRequestId(request.getId())) {
+            return false;
+        }
+        return "NOT_AVAILABLE".equals(placementTestService
+                .getLatestRecommendation(request.getStudent().getId()).placementStatus());
     }
 
     @Transactional(readOnly = true)
@@ -294,7 +327,7 @@ public class CourseEnrollmentService {
     }
 
     private EnrollmentRequest getRequestOrThrow(Long requestId) {
-        return requestRepository.findById(requestId)
+        return requestRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký"));
     }
 
