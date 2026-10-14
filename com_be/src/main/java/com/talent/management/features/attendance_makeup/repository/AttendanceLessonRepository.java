@@ -61,6 +61,7 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
            "JOIN Enrollment e ON e.classEntity.id = l.classEntity.id " +
            "WHERE e.student.id = :studentId " +
            "AND l.lessonDate BETWEEN :startDate AND :endDate " +
+           "AND e.status <> com.talent.management.shared.enums.EnrollmentStatus.CANCELLED " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")
     List<Lesson> findLessonsByStudentIdAndDateBetween(
             @Param("studentId") Long studentId,

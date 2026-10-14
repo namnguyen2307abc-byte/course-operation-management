@@ -24,8 +24,9 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
         if (response.status === 401) {
             alert("Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại!");
             localStorage.removeItem("token");
-            window.location.href = window.location.port === "8080" ? "/login" : (window.location.pathname.includes("/com_fe/") ? "/com_fe/login.html" : "/login.html");
-            return null;
+            localStorage.removeItem("user");
+            window.location.href = window.location.pathname.includes("/com_fe/") ? "/com_fe/login.html" : "/login.html";
+            throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         }
 
         if (response.status === 403) {
@@ -48,6 +49,10 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
         const text = await response.text();
         return text ? JSON.parse(text) : null;
     } catch (error) {
+        if (error instanceof TypeError) {
+            error = new Error('Không kết nối được máy chủ. Vui lòng kiểm tra backend đang chạy tại ' +
+                (BASE_URL || window.location.origin) + ' rồi thử tải lại.');
+        }
         console.error("API Error:", error);
         if (showAlert) {
             alert(error.message);

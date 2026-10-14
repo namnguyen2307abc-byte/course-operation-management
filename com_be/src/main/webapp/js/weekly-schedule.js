@@ -26,6 +26,7 @@ let filterStudentId = '';
 // KHỞI TẠO KHI TẢI TRANG
 // =============================================================================
 document.addEventListener('DOMContentLoaded', async () => {
+    if (!checkAuth()) return;
     // 1. Kiểm tra xác thực & cập nhật Navbar
     currentUser = getCurrentUser();
     initNavbarAndRoleBadge();
@@ -292,6 +293,7 @@ function renderLessonCard(lesson, userRole) {
     // 1. DÀNH CHO HỌC VIÊN HOẶC PHỤ HUYNH
     // Không cho phép bấm link vào trang điểm danh, cập nhật ngay trạng thái điểm danh
     if (userRole === 'STUDENT' || userRole === 'PARENT') {
+        const personalMarks = lesson.studentAttendances || [];
         let stuBadge = '';
         if (lesson.attendanceStatus === 'PRESENT') {
             stateClass = 'state-done';
@@ -300,17 +302,22 @@ function renderLessonCard(lesson, userRole) {
             stateClass = 'state-absent';
             stuBadge = '<span class="stu-badge absent"><i class="bi bi-x-circle-fill"></i> Absent</span>';
         } else {
-            stuBadge = '<span class="stu-badge pending"><i class="bi bi-clock"></i> Chưa diễn ra</span>';
+            stuBadge = `<span class="stu-badge pending"><i class="bi bi-clock"></i> ${isToday || isPast ? 'Chưa điểm danh' : 'Chưa diễn ra'}</span>`;
         }
+        const personalRows = personalMarks.map(mark => {
+            const status = mark.status === 'PRESENT' ? 'Có mặt' : mark.status === 'ABSENT' ? 'Vắng mặt' : (isToday || isPast ? 'Chưa điểm danh' : 'Chưa diễn ra');
+            return `<div class="lesson-meta"><i class="bi bi-person-check"></i><span>${escapeHtml(mark.fullName)}: <strong>${status}</strong></span></div>`;
+        }).join('');
 
         return `
             <div class="lesson-card ${slotClass} ${stateClass} student-card" title="${escapeHtml(lesson.className)}">
                 <div class="lesson-card-top">
                     <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
-                    ${stuBadge}
+                    ${personalMarks.length > 1 ? '' : stuBadge}
                 </div>
 
                 <div class="lesson-title" title="${escapeHtml(lesson.className)}">${escapeHtml(lesson.className)}</div>
+                ${personalRows}
 
                 <div class="lesson-meta">
                     <i class="bi bi-clock"></i>

@@ -24,6 +24,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.time.temporal.WeekFields;
@@ -51,6 +52,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
     private final CurrentUserService currentUserService;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final ZoneId CENTER_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     // =========================================================================
     // 1. LẤY THỜI KHÓA BIỂU TUẦN
@@ -58,7 +60,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
     @Override
     public WeeklyScheduleResponse getWeeklySchedule(LocalDate date, Long studentId, Long teacherId, Long branchId) {
-        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        LocalDate targetDate = (date != null) ? date : LocalDate.now(CENTER_ZONE);
         LocalDate monday = targetDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate sunday = targetDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
@@ -76,7 +78,8 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 // Tìm học viên theo tài khoản
                 Optional<Student> studentOpt = studentRepository.findByParentId(currentUser.getId()).stream()
                         .findFirst();
-                Long effectiveStudentId = studentOpt.map(Student::getId).orElse(studentId);
+                // Do not trust an arbitrary studentId when the account has no linked profile.
+                Long effectiveStudentId = studentOpt.map(Student::getId).orElse(null);
                 if (effectiveStudentId != null) {
                     viewedStudentIds.add(effectiveStudentId);
                     lessons = attendanceLessonRepository.findLessonsByStudentIdAndDateBetween(effectiveStudentId,
@@ -144,9 +147,27 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             }
         }
 
-        // Đồng bộ lịch học bù: bỏ buổi gốc đã chuyển đi, thêm buổi học bù đã xếp
+        // Adjust each child's schedule separately so moving one sibling does not
+        // remove the original lesson still attended by another sibling.
+        Map<Long, Set<Long>> studentsByLesson = new HashMap<>();
+        Map<Long, String> studentNames = new HashMap<>();
         if (!viewedStudentIds.isEmpty()) {
-            lessons = applyMakeupAdjustments(lessons, viewedStudentIds, monday, sunday);
+            Map<Long, Lesson> merged = new LinkedHashMap<>();
+            for (Long sid : viewedStudentIds) {
+                studentRepository.findById(sid).ifPresent(s -> studentNames.put(sid, s.getFullName()));
+                List<Lesson> personalLessons = attendanceLessonRepository
+                        .findLessonsByStudentIdAndDateBetween(sid, monday, sunday);
+                for (Lesson lesson : applyMakeupAdjustments(personalLessons, Set.of(sid), monday, sunday)) {
+                    merged.put(lesson.getId(), lesson);
+                    studentsByLesson.computeIfAbsent(lesson.getId(), ignored -> new LinkedHashSet<>()).add(sid);
+                }
+            }
+            lessons = new ArrayList<>(merged.values());
+        }
+        if (branchId != null) {
+            lessons = lessons.stream().filter(l -> l.getClassEntity() != null
+                    && l.getClassEntity().getBranch() != null
+                    && branchId.equals(l.getClassEntity().getBranch().getId())).toList();
         }
 
         // BATCH FETCH toàn bộ attendance của các buổi học trong tuần để tránh N+1
@@ -168,7 +189,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             }
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(CENTER_ZONE);
 
         // Chuẩn bị danh sách Slots chuẩn theo mô hình LMS
         List<TimeSlotDto> standardSlots = getStandardSlots();
@@ -188,6 +209,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             } else {
                 canEdit = false;
             }
+            if (l.getStatus() == LessonStatus.CANCELLED) canEdit = false;
 
             List<Attendance> attendancesOfLesson = attendanceMap.getOrDefault(l.getId(), Collections.emptyList());
             int totalStudents = (l.getClassEntity() != null && l.getClassEntity().getCurrentStudents() != null)
@@ -201,13 +223,17 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
             // Xác định trạng thái điểm danh cho người xem
             String attendanceStatus = "NOT_MARKED";
+            List<StudentLessonAttendanceResponse> studentAttendances = new ArrayList<>();
             if (userRole == Role.STUDENT || userRole == Role.PARENT) {
-                // Tìm trạng thái của học viên này
-                for (Attendance att : attendancesOfLesson) {
-                    if (att.getStudent() != null) {
-                        attendanceStatus = att.getStatus().name();
-                        break;
-                    }
+                for (Long sid : studentsByLesson.getOrDefault(l.getId(), Set.of())) {
+                    String personalStatus = attendancesOfLesson.stream()
+                            .filter(a -> a.getStudent() != null && sid.equals(a.getStudent().getId()))
+                            .map(a -> a.getStatus().name()).findFirst().orElse("NOT_MARKED");
+                    studentAttendances.add(new StudentLessonAttendanceResponse(sid,
+                            studentNames.getOrDefault(sid, "Học viên " + sid), personalStatus));
+                }
+                if (studentAttendances.size() == 1) {
+                    attendanceStatus = studentAttendances.get(0).status();
                 }
             }
 
@@ -243,7 +269,8 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                     .isPast(isPast)
                     .canEdit(canEdit)
                     .attendanceStatus(attendanceStatus)
-                    .attendanceCompleted(!attendancesOfLesson.isEmpty())
+                    .studentAttendances(studentAttendances)
+                    .attendanceCompleted(totalStudents > 0 && attendancesOfLesson.size() >= totalStudents)
                     .totalStudents(totalStudents)
                     .presentCount((int) presentCount)
                     .absentCount((int) absentCount)
@@ -302,7 +329,15 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
         User currentUser = currentUserService.getCurrentUser();
         Role userRole = currentUser.getRole();
-        LocalDate today = LocalDate.now();
+        if (userRole != Role.ADMIN && userRole != Role.STAFF && userRole != Role.BRANCH_MANAGER
+                && userRole != Role.TEACHER) {
+            throw new AttendanceMakeupException("Tài khoản không có quyền xem bảng điểm danh của lớp.");
+        }
+        if (userRole == Role.TEACHER && (lesson.getTeacher() == null
+                || !lesson.getTeacher().getId().equals(currentUser.getId()))) {
+            throw new AttendanceMakeupException("Bạn không phải giáo viên phụ trách buổi học này!");
+        }
+        LocalDate today = LocalDate.now(CENTER_ZONE);
 
         boolean canEdit;
         String lockReason = null;
@@ -330,6 +365,11 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         } else {
             canEdit = false;
             lockReason = "Tài khoản của bạn chỉ có quyền xem thông tin điểm danh.";
+        }
+
+        if (lesson.getStatus() == LessonStatus.CANCELLED) {
+            canEdit = false;
+            lockReason = "Buổi học đã bị hủy, không thể điểm danh.";
         }
 
         // Lấy danh sách học viên chính thức của lớp
@@ -366,8 +406,6 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                         && ar.getStudent() != null)
                 .collect(Collectors.toMap(ar -> ar.getStudent().getId(), Function.identity(), (a1, a2) -> a1));
 
-        boolean isAlreadySaved = !attendanceMap.isEmpty();
-
         // Tổng hợp danh sách học sinh: Lớp chính + Học viên học bù
         Map<Long, Student> uniqueStudents = new LinkedHashMap<>();
         for (Enrollment e : enrollments) {
@@ -380,6 +418,8 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 uniqueStudents.putIfAbsent(mr.getStudent().getId(), mr.getStudent());
             }
         }
+        boolean isAlreadySaved = !uniqueStudents.isEmpty()
+                && attendanceMap.keySet().containsAll(uniqueStudents.keySet());
 
         List<StudentAttendanceItemDto> studentItems = new ArrayList<>();
         int order = 1;
@@ -482,7 +522,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
         User currentUser = currentUserService.getCurrentUser();
         Role userRole = currentUser.getRole();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(CENTER_ZONE);
 
         // 1. Phân quyền: Học sinh/phụ huynh không được điểm danh
         if (userRole == Role.PARENT || userRole == Role.STUDENT) {
@@ -508,6 +548,30 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                                     "Theo quy định, Giáo viên chỉ được phép điểm danh vào đúng ngày diễn ra ca học!");
                 }
             }
+        }
+
+        // Validate the complete roster before writing anything. Only registered
+        // learners and assigned makeup learners may be marked for this lesson.
+        LessonAttendanceSheetResponse attendanceSheet = getLessonAttendanceSheet(lessonId);
+        if (!attendanceSheet.isCanEdit()) {
+            throw new AttendanceMakeupException(attendanceSheet.getLockReason());
+        }
+        Set<Long> roster = attendanceSheet.getStudents().stream()
+                .map(StudentAttendanceItemDto::getStudentId).collect(Collectors.toSet());
+        Set<Long> submitted = new HashSet<>();
+        if (request.getAttendances() == null || request.getAttendances().isEmpty()) {
+            throw new AttendanceMakeupException("Danh sách điểm danh không được để trống.");
+        }
+        for (StudentAttendanceMarkItem item : request.getAttendances()) {
+            if (item == null || item.getStudentId() == null || !submitted.add(item.getStudentId())) {
+                throw new AttendanceMakeupException("Danh sách điểm danh có học viên trùng hoặc không hợp lệ.");
+            }
+            if (!Set.of("PRESENT", "ABSENT").contains(item.getStatus() == null ? "" : item.getStatus())) {
+                throw new AttendanceMakeupException("Trạng thái điểm danh chỉ được là PRESENT hoặc ABSENT.");
+            }
+        }
+        if (!submitted.equals(roster)) {
+            throw new AttendanceMakeupException("Danh sách học viên đã thay đổi hoặc chưa đầy đủ. Vui lòng tải lại buổi học.");
         }
 
         // 3. Xử lý lưu từng bản ghi điểm danh
@@ -581,7 +645,17 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                     "Chỉ Quản trị viên hoặc Nhân viên Giáo vụ mới có quyền tạo lớp học mới!");
         }
 
-        if (attendanceClassRepository.existsByClassCode(request.getClassCode())) {
+        if (request.getStartTime() == null || request.getEndTime() == null
+                || !request.getEndTime().isAfter(request.getStartTime())) {
+            throw new AttendanceMakeupException("Giờ kết thúc phải sau giờ bắt đầu.");
+        }
+        if (request.getDaysOfWeek() == null || request.getDaysOfWeek().isEmpty()
+                || request.getDaysOfWeek().stream().anyMatch(d -> d == null || d < 1 || d > 7)
+                || request.getTotalSessions() == null || request.getTotalSessions() < 1 || request.getTotalSessions() > 60
+                || request.getMaxStudents() == null || request.getMaxStudents() < 1) {
+            throw new AttendanceMakeupException("Lịch học cần có thứ hợp lệ, 1–60 buổi và sĩ số lớn hơn 0.");
+        }
+        if (attendanceClassRepository.existsByClassCode(request.getClassCode().trim())) {
             throw new AttendanceMakeupException(
                     "Mã lớp học '" + request.getClassCode() + "' đã tồn tại trong hệ thống!");
         }
@@ -596,12 +670,20 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
         Room room = null;
         if (request.getRoomId() != null) {
-            room = roomRepository.findById(request.getRoomId()).orElse(null);
+            room = roomRepository.findById(request.getRoomId())
+                    .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy phòng học."));
+            if (room.getBranch() == null || !branch.getId().equals(room.getBranch().getId())) {
+                throw new AttendanceMakeupException("Phòng học không thuộc cơ sở được chọn.");
+            }
         }
 
         User teacher = null;
         if (request.getTeacherId() != null) {
-            teacher = userRepository.findById(request.getTeacherId()).orElse(null);
+            teacher = userRepository.findById(request.getTeacherId())
+                    .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy giáo viên."));
+            if (teacher.getRole() != Role.TEACHER) {
+                throw new AttendanceMakeupException("Tài khoản được phân công phải là giáo viên.");
+            }
         }
 
         // 1. Lưu ClassEntity
@@ -629,9 +711,9 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         int sessionCount = 0;
         Set<Integer> targetDays = new HashSet<>(request.getDaysOfWeek());
 
-        // Chạy tối đa 365 ngày để tìm đủ số buổi học
+        // At least one weekday is validated above; 60 weekly sessions may span over a year.
         int safetyLoop = 0;
-        while (sessionCount < totalSessions && safetyLoop < 365) {
+        while (sessionCount < totalSessions && safetyLoop < totalSessions * 7) {
             int currentDayOfWeek = currentDate.getDayOfWeek().getValue();
             if (targetDays.contains(currentDayOfWeek)) {
                 sessionCount++;

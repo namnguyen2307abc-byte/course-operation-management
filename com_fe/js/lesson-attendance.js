@@ -17,8 +17,8 @@ const AVATAR_COLORS = [
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (!checkAuth() || !checkRoleAccess()) return;
     loadNavbar();
-    checkRoleAccess();
 
     const lessonId = new URLSearchParams(window.location.search).get('lessonId');
     if (!lessonId) {
@@ -36,14 +36,14 @@ function checkRoleAccess() {
         const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
         if (user) {
             const role = (user.roleName || user.role || '').toUpperCase();
-            if (role === 'STUDENT' || role === 'PARENT') {
+            if (!['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER'].includes(role)) {
                 alert('Tài khoản Học viên / Phụ huynh không có quyền thực hiện điểm danh lớp học. Đang chuyển về Thời Khóa Biểu...');
                 window.location.replace('weekly-schedule.html');
                 return false;
             }
             const roleIndicator = document.getElementById('roleIndicator');
             if (roleIndicator) {
-                roleIndicator.textContent = role === 'ADMIN' ? 'Quản Trị Viên' : 'Giáo Viên Phụ Trách';
+                roleIndicator.textContent = roleLabel(role);
             }
         }
     } catch (e) {
@@ -70,17 +70,8 @@ async function loadSheet(lessonId) {
         sheet = await callApi(`/api/schedule/lessons/${lessonId}/attendance`, 'GET', null, false, false);
         if (!sheet) return;
 
-        // NẾU BUỔI HỌC CHƯA TỪNG ĐƯỢC LƯU ĐIỂM DANH:
-        // Tuyệt đối không auto chọn Present, để tất cả học viên status = null
-        // để giáo viên tự tay bấm chọn từng người từ đầu
-        const saved = isSaved();
-        if (!saved && Array.isArray(sheet.students)) {
-            sheet.students.forEach(s => {
-                if (!s.hasApprovedAbsence) {
-                    s.status = null;
-                }
-            });
-        }
+        // Preserve existing marks when a makeup learner joins an already marked
+        // lesson. Unmarked students are returned as null by the server.
 
         renderHeader();
         setupMode();
@@ -157,7 +148,7 @@ function setupMode() {
         text.innerHTML = `<strong>ĐÃ KHÓA ĐIỂM DANH:</strong> Buổi học ngày <b>${fmtDMY(lessonDateStr)}</b> đã kết thúc trong quá khứ. Theo quy định, chỉ Admin hoặc Giáo vụ mới có thể can thiệp chỉnh sửa.`;
         btnEdit.classList.add('d-none');
         btnSave.classList.add('d-none');
-    } else if (!sheet.canEdit && !isAdmin) {
+    } else if (!sheet.canEdit) {
         editMode = false;
         banner.classList.add('lock');
         icon.className = 'bi bi-lock-fill';
@@ -184,6 +175,7 @@ function setupMode() {
 }
 
 function enableEditing() {
+    if (!sheet?.canEdit || saving) return;
     editMode = true;
     document.getElementById('btnEdit').classList.add('d-none');
     document.getElementById('btnSave').classList.remove('d-none');
@@ -306,7 +298,11 @@ function setNote(studentId, value) {
 
 /* ------------------------------ LƯU ĐIỂM DANH ------------------------------ */
 async function saveAttendance() {
-    if (!sheet || saving) return;
+    if (!sheet || saving || !editMode || !sheet.canEdit) return;
+    if (!sheet.students?.length) {
+        showToast('error', 'Chưa có học viên', 'Không thể lưu điểm danh cho danh sách trống.');
+        return;
+    }
 
     // KIỂM TRA: Giáo viên phải chọn Present hoặc Absent cho toàn bộ học viên từ đầu
     const unselected = (sheet.students || []).filter(s => !s.status);
@@ -332,6 +328,7 @@ async function saveAttendance() {
 
     try {
         const res = await callApi(`/api/schedule/lessons/${sheet.lessonId}/attendance`, 'POST', payload, false, false);
+        if (!res?.success) throw new Error('Chưa nhận được xác nhận lưu điểm danh. Vui lòng tải lại buổi học để kiểm tra.');
         showToast('success', 'Thành công', (res && res.message) || 'Lưu điểm danh thành công!');
 
         sheet.alreadySaved = true;

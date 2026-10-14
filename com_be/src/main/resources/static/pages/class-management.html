@@ -442,7 +442,7 @@
 
         $('filterForm').addEventListener('submit', event => {
             event.preventDefault();
-            loadClasses().catch(() => notice('Không tải được danh sách lớp.', 'danger'));
+            loadClasses().catch(error => showLoadError(error));
         });
 
         $('classForm').addEventListener('submit', async event => {
@@ -493,7 +493,15 @@
             }
         });
 
-        loadOptions().then(loadClasses).catch(() => notice('Không tải được dữ liệu lớp.', 'danger'));
+        function showLoadError(error) {
+            $('resultCount').textContent = 'Chưa tải được';
+            $('classRows').innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">Không tải được danh sách lớp. Hãy kiểm tra thông báo phía trên và nhấn Lọc dữ liệu để thử lại.</td></tr>';
+            notice(error.message || 'Không tải được danh sách lớp.', 'danger');
+        }
+
+        // A failed filter dependency must not prevent the class list from loading.
+        loadOptions().catch(error => notice('Không tải được tùy chọn bộ lọc. ' + error.message, 'warning'));
+        loadClasses().catch(showLoadError);
     </script>
 </body>
 </html>

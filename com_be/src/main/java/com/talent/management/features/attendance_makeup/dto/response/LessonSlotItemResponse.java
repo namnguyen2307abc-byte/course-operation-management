@@ -38,6 +38,7 @@ public class LessonSlotItemResponse {
 
     // Trạng thái hiển thị theo vai trò
     private String attendanceStatus; // PRESENT, ABSENT_UNEXCUSED, ABSENT_EXCUSED, NOT_MARKED
+    private java.util.List<StudentLessonAttendanceResponse> studentAttendances;
     private Boolean attendanceCompleted; // Dành cho GV: true nếu lớp đã được điểm danh
     private int totalStudents;
     private int presentCount;
