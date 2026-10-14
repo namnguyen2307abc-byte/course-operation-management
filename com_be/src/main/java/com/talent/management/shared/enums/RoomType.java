@@ -5,5 +5,8 @@ public enum RoomType {
     PIANO_GROUP,
     DANCE_ROOM,
     THEORY_ROOM,
-    GUITAR_ROOM
+    GUITAR_ROOM,
+    MULTIPURPOSE_ROOM,
+    CHESS_ROOM,
+    SPORTS_AREA
 }
