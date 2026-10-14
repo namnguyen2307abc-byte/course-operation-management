@@ -62,8 +62,7 @@ public class PlacementTestController {
     @GetMapping("/students/{studentId}/latest-result")
     @Operation(summary = "Lấy kết quả và khóa học đề xuất mới nhất của học viên")
     public ResponseEntity<PlacementRecommendationResponse> getLatestRecommendation(
-            @PathVariable Long studentId
-    ) {
+            @PathVariable Long studentId) {
         return ResponseEntity.ok(placementTestService.getLatestRecommendation(studentId));
     }
 
@@ -77,7 +76,7 @@ public class PlacementTestController {
     }
 
     @PostMapping("/{id}/assess")
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER')")
     @Operation(summary = "Giáo viên / Chuyên môn chấm điểm đánh giá và xếp trình độ cho bài thi (Chỉ dành cho Giáo viên)")
     public ResponseEntity<PlacementScheduleResponse> saveAssessment(
             @PathVariable Long id,

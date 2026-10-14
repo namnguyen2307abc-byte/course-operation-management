@@ -127,15 +127,16 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             var teacherOpt = userRepository.findByUsername(teacherUsername);
             if (teacherOpt.isPresent()) {
                 var teacher = teacherOpt.get();
-                if (teacher.getRole() == com.talent.management.shared.enums.Role.TEACHER) {
-                    String teacherSubject = teacher.getSubject();
-                    String scheduleSubject = schedule.getSubject() != null ? schedule.getSubject() : scheduleMapper.inferSubject(schedule.getTitle());
-                    if (teacherSubject != null && !teacherSubject.isBlank() && scheduleSubject != null && !scheduleSubject.isBlank()) {
-                        String normTeacher = scheduleMapper.normalizeSubject(teacherSubject);
-                        String normSchedule = scheduleMapper.normalizeSubject(scheduleSubject);
-                        if (!normTeacher.equalsIgnoreCase(normSchedule)) {
-                            throw new BusinessException("Bạn là giáo viên bộ môn " + teacherSubject + ", không có quyền chấm bài thi xếp lớp thuộc bộ môn " + scheduleSubject + "!");
-                        }
+                if (teacher.getRole() != com.talent.management.shared.enums.Role.TEACHER) {
+                    throw new BusinessException("Chỉ tài khoản Giáo viên (TEACHER) mới có quyền chấm điểm đánh giá bài thi!");
+                }
+                String teacherSubject = teacher.getSubject();
+                String scheduleSubject = schedule.getSubject() != null ? schedule.getSubject() : scheduleMapper.inferSubject(schedule.getTitle());
+                if (teacherSubject != null && !teacherSubject.isBlank() && scheduleSubject != null && !scheduleSubject.isBlank()) {
+                    String normTeacher = scheduleMapper.normalizeSubject(teacherSubject);
+                    String normSchedule = scheduleMapper.normalizeSubject(scheduleSubject);
+                    if (!normTeacher.equalsIgnoreCase(normSchedule)) {
+                        throw new BusinessException("Bạn là giáo viên bộ môn " + teacherSubject + ", không có quyền chấm bài thi xếp lớp thuộc bộ môn " + scheduleSubject + "!");
                     }
                 }
                 schedule.setEvaluatedBy(teacher);
