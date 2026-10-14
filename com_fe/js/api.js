@@ -91,13 +91,20 @@ function showPermissionDeniedModal(msg, redirectUrl = "/index.html") {
 
     const btnHome = document.getElementById("btnRedirectHome");
     if (btnHome) {
+        btnHome.innerHTML = redirectUrl
+            ? '<i class="bi bi-house-door-fill me-1"></i> Quay Về Trang Chủ'
+            : 'Đóng';
         btnHome.onclick = () => {
-            window.location.href = redirectUrl;
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                bootstrap.Modal.getInstance(modalEl)?.hide();
+            }
         };
     }
 
     modalEl.addEventListener('hidden.bs.modal', () => {
-        window.location.href = redirectUrl;
+        if (redirectUrl) window.location.href = redirectUrl;
     });
 
     if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -105,6 +112,6 @@ function showPermissionDeniedModal(msg, redirectUrl = "/index.html") {
         bsModal.show();
     } else {
         alert(msg);
-        window.location.href = redirectUrl;
+        if (redirectUrl) window.location.href = redirectUrl;
     }
 }

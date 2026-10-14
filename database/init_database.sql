@@ -172,7 +172,7 @@ CREATE TABLE enrollment_requests (
     review_note NVARCHAR(500),
     created_at DATETIME2 DEFAULT CURRENT_TIMESTAMP,
     reviewed_at DATETIME2 NULL,
-    CONSTRAINT CK_enrollment_requests_status CHECK (status IN ('PENDING', 'WAITING_PLACEMENT', 'READY_FOR_ASSIGNMENT', 'PENDING_PAYMENT', 'APPROVED', 'REJECTED'))
+    CONSTRAINT CK_enrollment_requests_status CHECK (status IN ('PENDING', 'WAITING_PLACEMENT', 'READY_FOR_ASSIGNMENT', 'PENDING_PAYMENT', 'APPROVED', 'REJECTED', 'CANCELLED'))
 );
 GO
 
@@ -288,6 +288,7 @@ GO
 CREATE TABLE placement_schedules (
     id BIGINT IDENTITY(1,1) PRIMARY KEY,
     user_id BIGINT FOREIGN KEY REFERENCES users(id),
+    enrollment_request_id BIGINT NULL FOREIGN KEY REFERENCES enrollment_requests(id),
     student_name NVARCHAR(100),
     title NVARCHAR(150) NOT NULL,
     room_name NVARCHAR(100) NOT NULL,
@@ -307,6 +308,11 @@ CREATE TABLE placement_schedules (
     evaluated_at DATETIME2,
     created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+GO
+
+CREATE UNIQUE INDEX UX_placement_schedules_enrollment_request
+    ON placement_schedules(enrollment_request_id)
+    WHERE enrollment_request_id IS NOT NULL;
 GO
 
 CREATE TABLE invoices (

@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class PlacementScheduleResponse {
 
     private Long id;
+    private Long enrollmentRequestId;
     private String studentName;
     private String title;
     private String roomName;
@@ -24,6 +25,8 @@ public class PlacementScheduleResponse {
     private PlacementScheduleStatus status;
     private Integer score;
     private PlacementLevel recommendedLevel;
+    private Long recommendedCourseId;
+    private String recommendedCourseName;
     private String teacherNote;
     private String audioUrl;
     private String videoUrl;

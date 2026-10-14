@@ -3,6 +3,8 @@ package com.talent.management.features.branch_facility_enrollment.service;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateBranchRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateEquipmentRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateRoomRequest;
+import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateEquipmentRequest;
+import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateRoomRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchOptionResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.EquipmentResponse;
@@ -29,4 +31,8 @@ public interface BranchFacilityService {
     RoomResponse createRoom(CreateRoomRequest request);
 
     EquipmentResponse createEquipment(CreateEquipmentRequest request);
+
+    RoomResponse updateRoom(Long roomId, UpdateRoomRequest request);
+
+    EquipmentResponse updateEquipment(Long equipmentId, UpdateEquipmentRequest request);
 }
