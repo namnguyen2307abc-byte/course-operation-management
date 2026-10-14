@@ -217,7 +217,7 @@
                                 <input id="scheduleDescription" class="form-control form-control-sm" placeholder="VD: T2-T4-T6 (08:00 - 10:00)">
                             </div>
                             <div class="form-text small text-primary mt-1">
-                                <i class="bi bi-magic me-1"></i>Hệ thống sẽ tự động sinh các buổi học vào thời khóa biểu tuần ngay khi lưu lớp.
+                                <span id="scheduleFormHint">Chọn thứ và khung giờ để tự động sinh buổi học. Không chọn thứ nếu chỉ tạo thông tin lớp.</span>
                             </div>
                         </div>
 
@@ -236,6 +236,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/api.js"></script>
     <script src="../js/auth.js"></script>
+    <script src="../js/class-management-form.js"></script>
     <script>
         checkAuth();
         const role = String(getCurrentUser()?.role || '').toUpperCase().replace('ROLE_', '');
@@ -252,9 +253,20 @@
             FINISHED: '<span class="badge bg-dark-subtle text-dark border">Đã kết thúc</span>'
         };
         let editingId = null;
+        let existingHasLessons = false;
         let classes = [];
         let teacherList = [];
         let branchRoomsMap = {};
+
+        function lockExistingSchedule(locked) {
+            document.querySelectorAll('.dow-check').forEach(input => input.disabled = locked);
+            for (const id of ['startDate', 'endDate', 'startTime', 'endTime', 'totalSessions', 'scheduleDescription']) {
+                $(id).disabled = locked;
+            }
+            $('scheduleFormHint').textContent = locked
+                ? 'Lớp đã có buổi học: giữ nguyên lịch để bảo toàn điểm danh. Đổi giáo viên/phòng chỉ áp dụng cho buổi từ hôm nay chưa hoàn thành.'
+                : 'Chọn thứ và khung giờ để tự động sinh buổi học. Không chọn thứ nếu chỉ tạo thông tin lớp.';
+        }
 
         fetch('../components/navbar.html').then(r => r.text()).then(html => {
             $('navbar-container').innerHTML = html;
@@ -395,14 +407,18 @@
 
         $('newClassBtn').addEventListener('click', () => {
             editingId = null;
+            existingHasLessons = false;
             $('classForm').reset();
+            lockExistingSchedule(false);
+            $('courseId').disabled = false;
+            $('branchId').disabled = false;
             formError('');
             $('classModalTitle').textContent = 'Tạo lớp học mới & Xếp lịch';
             $('status').value = 'OPEN';
             $('totalSessions').value = '12';
             $('startTime').value = '08:00';
             $('endTime').value = '10:00';
-            $('startDate').value = new Date().toISOString().split('T')[0];
+            $('startDate').value = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
             document.querySelectorAll('.dow-check').forEach(c => c.checked = false);
             $('dow1').checked = true;
             $('dow3').checked = true;
@@ -418,6 +434,12 @@
             const item = classes.find(c => String(c.id) === button.dataset.editId);
             if (!item) return;
             editingId = item.id;
+            existingHasLessons = item.totalLessons > 0;
+            $('classForm').reset();
+            lockExistingSchedule(existingHasLessons);
+            const linked = existingHasLessons || item.currentStudents > 0 || item.pendingPaymentStudents > 0;
+            $('courseId').disabled = linked;
+            $('branchId').disabled = linked;
             formError('');
             $('classModalTitle').textContent = 'Sửa lớp ' + item.classCode;
             for (const id of ['courseId','branchId','classCode','className','maxStudents','status','startDate','endDate','scheduleDescription']) {
@@ -428,14 +450,11 @@
 
             // Tách lịch học để tick lại các thứ nếu có
             document.querySelectorAll('.dow-check').forEach(c => c.checked = false);
-            const desc = item.scheduleDescription || '';
-            const dayNamesRev = {'T2':1, 'T3':2, 'T4':3, 'T5':4, 'T6':5, 'T7':6, 'CN':7};
-            for (const [name, val] of Object.entries(dayNamesRev)) {
-                if (desc.includes(name)) {
-                    const chk = $(`dow${val}`);
-                    if (chk) chk.checked = true;
-                }
-            }
+            const schedule = parseClassSchedule(item.scheduleDescription);
+            schedule.days.forEach(day => $(`dow${day}`).checked = true);
+            $('startTime').value = schedule.startTime;
+            $('endTime').value = schedule.endTime;
+            $('totalSessions').value = item.totalLessons || 12;
 
             modal.show();
         });
@@ -447,6 +466,7 @@
 
         $('classForm').addEventListener('submit', async event => {
             event.preventDefault();
+            if ($('saveBtn').disabled) return;
             const startDate = $('startDate').value;
             const endDate = $('endDate').value || null;
             if (endDate && endDate < startDate) {
@@ -459,6 +479,10 @@
             const startTime = $('startTime').value || null;
             const endTime = $('endTime').value || null;
             const totalSessions = Number($('totalSessions').value) || 12;
+            if (!existingHasLessons && selectedDays.length && (!startTime || !endTime || endTime <= startTime)) {
+                formError('Giờ kết thúc phải sau giờ bắt đầu.');
+                return;
+            }
 
             formError('');
             const payload = {
@@ -473,10 +497,10 @@
                 startDate,
                 endDate,
                 scheduleDescription: $('scheduleDescription').value.trim() || null,
-                daysOfWeek: selectedDays.length ? selectedDays : null,
-                startTime: startTime ? (startTime.length === 5 ? startTime + ':00' : startTime) : null,
-                endTime: endTime ? (endTime.length === 5 ? endTime + ':00' : endTime) : null,
-                totalSessions: totalSessions
+                daysOfWeek: existingHasLessons ? null : selectedDays.length ? selectedDays : null,
+                startTime: existingHasLessons ? null : startTime,
+                endTime: existingHasLessons ? null : endTime,
+                totalSessions: existingHasLessons ? null : totalSessions
             };
 
             $('saveBtn').disabled = true;
@@ -484,7 +508,7 @@
                 await callApi(editingId ? `/api/class-management/classes/${editingId}` : '/api/class-management/classes',
                     editingId ? 'PUT' : 'POST', payload);
                 modal.hide();
-                notice(editingId ? 'Đã cập nhật thông tin lớp và lịch học.' : 'Đã tạo lớp và sinh lịch học thành công!');
+                notice(editingId ? 'Đã cập nhật thông tin lớp.' : selectedDays.length ? 'Đã tạo lớp và sinh lịch học thành công!' : 'Đã tạo thông tin lớp thành công.');
                 await loadClasses();
             } catch (error) {
                 formError(error.message || 'Không lưu được lớp.');

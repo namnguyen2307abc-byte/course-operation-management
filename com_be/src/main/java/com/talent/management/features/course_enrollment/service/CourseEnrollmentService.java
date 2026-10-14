@@ -97,8 +97,8 @@ public class CourseEnrollmentService {
         }
 
         return classRepository.findByCourseIdAndStatusOrderByStartDateAsc(courseId, ClassStatus.OPEN).stream()
-                .filter(this::hasAvailableSeat)
-                .map(mapper::toClassResponse)
+                .map(this::toClassResponseWithSeats)
+                .filter(item -> item.availableSeats() > 0)
                 .toList();
     }
 
@@ -115,8 +115,8 @@ public class CourseEnrollmentService {
         List<ClassResponse> openClasses = classRepository
                 .findByStatusOrderByStartDateAsc(ClassStatus.OPEN)
                 .stream()
-                .filter(this::hasAvailableSeat)
-                .map(mapper::toClassResponse)
+                .map(this::toClassResponseWithSeats)
+                .filter(item -> item.availableSeats() > 0)
                 .toList();
 
         List<ClassResponse> recommendedClasses = placement.recommendationAvailable()
@@ -371,6 +371,12 @@ public class CourseEnrollmentService {
                         EnrollmentStatus.PENDING_PAYMENT
                 );
         return currentStudents + pendingPayment < maxStudents;
+    }
+
+    private ClassResponse toClassResponseWithSeats(ClassEntity classEntity) {
+        long pending = classEntity.getId() == null ? 0 : enrollmentRepository
+                .countByClassEntityIdAndStatus(classEntity.getId(), EnrollmentStatus.PENDING_PAYMENT);
+        return mapper.toClassResponse(classEntity, pending);
     }
 
     private void ensureNoOpenRequest(Long studentId) {

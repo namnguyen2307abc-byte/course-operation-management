@@ -54,6 +54,13 @@ class ClassManagementControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "BRANCH_MANAGER")
+    void branchManagerCanReadManagementListShownBySidebar() throws Exception {
+        when(service.search(null, null, null, null)).thenReturn(List.of());
+        mvc.perform(get("/api/class-management/classes")).andExpect(status().isOk());
+    }
+
+    @Test
     @WithMockUser(roles = "STAFF")
     void rejectsZeroCapacity() throws Exception {
         mvc.perform(post("/api/class-management/classes")

@@ -31,6 +31,16 @@ test('weekly cards distinguish unmarked past lessons and show each child separat
     assert.doesNotMatch(html, /lesson-attendance.html/);
     assert.match(ctx.renderLessonCard({...lesson, studentAttendances:[]}, 'PARENT'), /Chưa điểm danh/);
 });
+test('editing class schedule parses legacy Vietnamese labels and saved times', () => {
+    const ctx = context(); vm.runInContext(read('js/class-management-form.js'), ctx);
+    assert.equal(JSON.stringify(ctx.parseClassSchedule('Thứ 2 & Thứ 5 (18:00 - 19:00)')),
+        JSON.stringify({days:[1,4],startTime:'18:00',endTime:'19:00'}));
+    assert.equal(JSON.stringify(ctx.parseClassSchedule('T3-T6-CN (09:30 - 11:30)')),
+        JSON.stringify({days:[2,5,7],startTime:'09:30',endTime:'11:30'}));
+    assert.equal(JSON.stringify(ctx.parseClassSchedule('Chủ Nhật (9:00 - 10:30)')),
+        JSON.stringify({days:[7],startTime:'09:00',endTime:'10:30'}));
+    assert.equal(JSON.stringify(ctx.parseClassSchedule(null)), JSON.stringify({days:[],startTime:'',endTime:''}));
+});
 test('expired session rejects API promise instead of being treated as a successful save', async () => {
     const ctx = context({alert() {}, fetch: async () => ({status:401}), console:{error() {}}});
     ctx.window.location = {port:'8080', pathname:'/pages/lesson-attendance.html'};

@@ -38,6 +38,10 @@ public class CourseEnrollmentMapper {
     }
 
     public ClassResponse toClassResponse(ClassEntity classEntity) {
+        return toClassResponse(classEntity, 0);
+    }
+
+    public ClassResponse toClassResponse(ClassEntity classEntity, long pendingPaymentStudents) {
         int currentStudents = classEntity.getCurrentStudents() == null ? 0 : classEntity.getCurrentStudents();
         int maxStudents = classEntity.getMaxStudents() == null ? 0 : classEntity.getMaxStudents();
         return new ClassResponse(
@@ -54,7 +58,7 @@ public class CourseEnrollmentMapper {
                 classEntity.getTeacher() == null ? null : classEntity.getTeacher().getFullName(),
                 maxStudents,
                 currentStudents,
-                Math.max(maxStudents - currentStudents, 0),
+                (int) Math.max((long) maxStudents - currentStudents - pendingPaymentStudents, 0),
                 classEntity.getStartDate(),
                 classEntity.getEndDate(),
                 classEntity.getScheduleDescription(),

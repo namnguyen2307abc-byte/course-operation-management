@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/class-management/classes")
-@PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+@PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'BRANCH_MANAGER')")
 @RequiredArgsConstructor
 public class ClassManagementController {
     private final ClassManagementService service;
