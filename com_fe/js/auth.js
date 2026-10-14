@@ -122,6 +122,22 @@ function updateNavbarUser() {
         }
     }
 
+    // Phân quyền hiển thị Menu "Khóa Học":
+    // Chỉ Nhân viên (STAFF), Quản lý chi nhánh (BRANCH_MANAGER) và Quản trị viên (ADMIN) mới được hiện!
+    const courseManagementNavItem = document.getElementById("navItemCourseManagement");
+    if (courseManagementNavItem) {
+        const role = user ? (user.role || "").toUpperCase() : "";
+        const isCourseAuthorized = role === "ADMIN" || role === "STAFF" || role === "BRANCH_MANAGER";
+
+        if (isCourseAuthorized) {
+            courseManagementNavItem.style.display = "";
+            courseManagementNavItem.classList.remove("d-none");
+        } else {
+            courseManagementNavItem.style.display = "none";
+            courseManagementNavItem.classList.add("d-none");
+        }
+    }
+
     // Chuẩn hóa và sửa lỗi đường dẫn điều hướng trên Navbar (tránh bị lỗi /pages/pages/...)
     fixNavbarLinks();
 }
@@ -147,6 +163,8 @@ function fixNavbarLinks() {
             link.setAttribute('href', prefix + '/pages/placement-test.html');
         } else if (href.includes('tuition-payment')) {
             link.setAttribute('href', prefix + '/pages/tuition-payment.html');
+        } else if (href.includes('course-management')) {
+            link.setAttribute('href', prefix + '/pages/course-management.html');
         }
     });
 }

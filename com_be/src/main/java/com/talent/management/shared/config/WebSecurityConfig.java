@@ -42,6 +42,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/tuition-payment/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/branches/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/course-management/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                 .requestMatchers("/", "/index", "/index.html", "/login", "/login.html", "/absence-makeup", "/absence-makeup/**", "/pages/**").permitAll()
