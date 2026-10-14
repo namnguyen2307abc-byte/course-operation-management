@@ -1,228 +1,83 @@
-/**
- * Auth & Role Management JS
- * Handles authentication status, user role sanitization, and quick role switching for testing.
- */
-
+/** Shared navigation and account presentation. Roles come from the login response. */
+function appPath(path) { return (window.location.pathname.startsWith('/com_fe/') ? '/com_fe' : '') + path; }
 function checkAuth() {
-    const token = localStorage.getItem("token");
-    if (!token && !window.location.pathname.endsWith("login.html")) {
-        window.location.href = "/login.html";
-    }
+    if ((!localStorage.getItem('token') || !getCurrentUser()) && !window.location.pathname.endsWith('login.html')) window.location.replace(appPath('/login.html'));
 }
-
-const DEMO_USERS = {
-    'teacher_huong': { username: 'teacher_huong', fullName: 'Cô Vũ Thu Hương (GV Đàn)', role: 'TEACHER', subject: 'DAN', email: 'huong.vu@talent.edu.vn' },
-    'teacher_tuan': { username: 'teacher_tuan', fullName: 'Thầy Trần Anh Tuấn (GV Võ)', role: 'TEACHER', subject: 'VO', email: 'tuan.tran@talent.edu.vn' },
-    'teacher_hung': { username: 'teacher_hung', fullName: 'Cô Nguyễn Mai Phương (GV Múa)', role: 'TEACHER', subject: 'MUA', email: 'phuong.nguyen@talent.com' },
-    'admin': { username: 'admin', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN', subject: null, email: 'admin@talent.edu.vn' },
-    'cashier_mai': { username: 'cashier_mai', fullName: 'Nguyễn Thanh Mai (Thu Ngân)', role: 'STAFF', subject: null, email: 'mai.nguyen@talent.edu.vn' },
-    'parent_lan': { username: 'parent_lan', fullName: 'Phụ Huynh Lê Thị Lan', role: 'PARENT', subject: null, email: 'lan.le@gmail.com' }
-};
-
 function sanitizeUserData(user) {
-    if (!user) return null;
-
-    if (user.role) {
-        user.role = String(user.role).toUpperCase().replace("ROLE_", "");
-    }
-
-    // Map role and clean name based on username
-    if (user.username && DEMO_USERS[user.username]) {
-        const demo = DEMO_USERS[user.username];
-        user.fullName = demo.fullName;
-        user.role = demo.role;
-        user.subject = demo.subject;
-        user.email = demo.email;
-        localStorage.setItem("user", JSON.stringify(user));
-    } else if (user.username && (user.username.toLowerCase().includes("teacher") || user.username.toLowerCase().includes("gv") || user.username.toLowerCase().includes("hung"))) {
-        user.role = "TEACHER";
-        if (!user.subject) {
-            user.subject = user.username.toLowerCase().includes("tuan") ? "VO" : (user.username.toLowerCase().includes("hung") ? "MUA" : "DAN");
-        }
-        localStorage.setItem("user", JSON.stringify(user));
-    } else if (user.username && user.username.toLowerCase().includes("parent")) {
-        user.role = "PARENT";
-        localStorage.setItem("user", JSON.stringify(user));
-    }
-
-    // Default fallback if role is missing
-    if (!user.role) {
-        user.role = "TEACHER"; // Default fallback for development
-        user.subject = "DAN";
-        localStorage.setItem("user", JSON.stringify(user));
-    }
-
-    return user;
+    if (!user || typeof user !== 'object' || !user.role) return null;
+    return { ...user, role: String(user.role).toUpperCase().replace(/^ROLE_/, '') };
 }
-
 function getCurrentUser() {
-    try {
-        const userStr = localStorage.getItem("user");
-        if (!userStr) {
-            // Default demo user for seamless testing if no login session exists yet
-            const defaultUser = DEMO_USERS['teacher_huong'];
-            localStorage.setItem("user", JSON.stringify(defaultUser));
-            return defaultUser;
-        }
-        let user = JSON.parse(userStr);
-        return sanitizeUserData(user);
-    } catch (e) {
-        return DEMO_USERS['teacher_huong'];
-    }
+    try { return sanitizeUserData(JSON.parse(localStorage.getItem('user'))); } catch { return null; }
 }
-
+function roleLabel(role) {
+    return { ADMIN: 'Quản trị viên', BRANCH_MANAGER: 'Quản lý chi nhánh', STAFF: 'Nhân viên', CASHIER: 'Thu ngân', TEACHER: 'Giáo viên', PARENT: 'Phụ huynh', STUDENT: 'Học viên' }[role] || 'Tài khoản trung tâm';
+}
+const WORKSPACE_FEATURES = [
+    { file: 'course-enrollment', label: 'Đăng ký & xếp lớp', icon: 'person-plus', group: 'Đào tạo & học vụ', roles: ['PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN'], description: 'Đăng ký lớp học, theo dõi và xử lý yêu cầu ghi danh.' },
+    { file: 'course-management', label: 'Khóa học', icon: 'journal-bookmark', group: 'Đào tạo & học vụ', roles: ['STAFF', 'BRANCH_MANAGER', 'ADMIN'], description: 'Quản lý khóa học theo bộ môn, trình độ và học phí.' },
+    { file: 'placement-test', label: 'Đánh giá đầu vào', icon: 'clipboard-check', group: 'Đào tạo & học vụ', roles: ['ADMIN', 'TEACHER', 'STAFF', 'BRANCH_MANAGER'], description: 'Sắp xếp lịch kiểm tra và ghi nhận kết quả đánh giá năng khiếu.' },
+    { file: 'absence-makeup', label: 'Nghỉ học & học bù', icon: 'calendar2-week', group: 'Đào tạo & học vụ', roles: ['PARENT', 'TEACHER', 'STAFF', 'BRANCH_MANAGER', 'ADMIN', 'STUDENT'], description: 'Theo dõi đơn xin nghỉ và sắp xếp buổi học bù phù hợp.' },
+    { file: 'branch-facility', label: 'Cơ sở & phòng học', icon: 'buildings', group: 'Vận hành trung tâm', roles: ['ADMIN', 'BRANCH_MANAGER', 'STAFF', 'TEACHER', 'PARENT', 'STUDENT'], description: 'Tra cứu chi nhánh, phòng học và cơ sở vật chất của trung tâm.' },
+    { file: 'tuition-payment', label: 'Thu học phí', icon: 'wallet2', group: 'Vận hành trung tâm', roles: ['ADMIN', 'STAFF', 'CASHIER'], description: 'Tra cứu hóa đơn, thu học phí và xem lịch sử thanh toán.' }
+];
+function visibleFeatures(user) { return WORKSPACE_FEATURES.filter(feature => feature.roles.includes(user?.role)); }
 function updateNavbarUser() {
+    const nav = document.getElementById('workspaceNavigation');
+    if (!nav) return;
+    checkAuth();
     const user = getCurrentUser();
-    const displayEl = document.getElementById("userNameDisplay");
-    if (displayEl) {
-        if (user && user.fullName) {
-            let roleBadge = "bg-danger";
-            let roleName = user.role || "TEACHER";
-            let subjectText = "";
-            if (roleName === "ADMIN") roleBadge = "bg-danger";
-            else if (roleName === "TEACHER") {
-                roleBadge = "bg-warning text-dark";
-                const subName = user.subject === "DAN" ? "Đàn" : (user.subject === "MUA" ? "Múa" : (user.subject === "VO" ? "Võ" : user.subject));
-                subjectText = user.subject ? ` - BM ${subName}` : "";
-            }
-            else if (roleName === "PARENT") roleBadge = "bg-success";
-            else if (roleName === "STAFF") roleBadge = "bg-info text-dark";
-
-            displayEl.innerHTML = `
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge ${roleBadge} px-2 py-1" style="font-size: 0.72rem;"><i class="bi bi-shield-check me-1"></i>${roleName}${subjectText}</span>
-                    <span class="fw-bold text-white me-1">${user.fullName}</span>
-                    <button class="btn btn-xs btn-outline-warning text-white rounded-pill px-2 py-0 ms-1" style="font-size: 0.72rem; line-height: 1.5;" onclick="quickSwitchUserRole()" title="Bấm để đổi nhanh tài khoản Giáo Viên / Phụ Huynh / Admin">
-                        <i class="bi bi-arrow-repeat me-1"></i>Đổi tài khoản
-                    </button>
-                </div>
-            `;
-        } else {
-            displayEl.innerHTML = `
-                <a href="javascript:void(0)" onclick="window.location.href = window.location.pathname.includes('/com_fe/') ? '/com_fe/login.html' : '/login.html'" class="btn btn-outline-warning btn-sm px-3 rounded-pill py-1" style="font-size: 0.8rem;">
-                    🔑 Đăng nhập
-                </a>
-            `;
+    if (!user) return;
+    document.body.classList.add('has-workspace-sidebar');
+    const main = document.querySelector('main');
+    if (main && !main.id) main.id = 'main-content';
+    document.getElementById('sidebarUserName').textContent = user.fullName || user.username || 'Tài khoản';
+    document.getElementById('sidebarUserRole').textContent = roleLabel(user.role);
+    document.getElementById('sidebarAvatar').textContent = (user.fullName || user.username || 'T').trim().split(/\s+/).pop().slice(0, 1).toUpperCase();
+    nav.replaceChildren();
+    function addLink(label, icon, path) {
+        const a = document.createElement('a');
+        a.href = appPath(path);
+        a.className = 'workspace-nav-link';
+        a.innerHTML = `<i class="bi bi-${icon}" aria-hidden="true"></i><span>${label}</span>`;
+        if (window.location.pathname === a.pathname || (path === '/index.html' && ['/', '/com_fe/'].includes(window.location.pathname))) {
+            a.classList.add('active'); a.setAttribute('aria-current', 'page');
         }
+        nav.appendChild(a);
     }
-    // Phân quyền hiển thị Menu "Học Phí":
-    // Chỉ Quản trị viên (ADMIN) và Thu ngân (STAFF / CASHIER / cashier_mai) mới được hiện!
-    const tuitionNavItem = document.getElementById("navItemTuitionPayment");
-    if (tuitionNavItem) {
-        const role = user ? (user.role || "").toUpperCase() : "";
-        const username = user ? (user.username || "").toLowerCase() : "";
-        const isAuthorized = role === "ADMIN" || role === "STAFF" || role === "CASHIER" || username.includes("cashier") || username.includes("admin");
-
-        if (isAuthorized) {
-            tuitionNavItem.style.display = "";
-            tuitionNavItem.classList.remove("d-none");
-        } else {
-            tuitionNavItem.style.display = "none";
-            tuitionNavItem.classList.add("d-none");
+    addLink('Trang chủ', 'grid-1x2', '/index.html');
+    let group;
+    visibleFeatures(user).forEach(feature => {
+        if (group !== feature.group) {
+            group = feature.group;
+            const title = document.createElement('p'); title.className = 'sidebar-group-label'; title.textContent = group; nav.appendChild(title);
         }
-    }
-
-    // Phân quyền hiển thị Menu "Khóa Học":
-    // Chỉ Nhân viên (STAFF), Quản lý chi nhánh (BRANCH_MANAGER) và Quản trị viên (ADMIN) mới được hiện!
-    const courseManagementNavItem = document.getElementById("navItemCourseManagement");
-    if (courseManagementNavItem) {
-        const role = user ? (user.role || "").toUpperCase() : "";
-        const isCourseAuthorized = role === "ADMIN" || role === "STAFF" || role === "BRANCH_MANAGER";
-
-        if (isCourseAuthorized) {
-            courseManagementNavItem.style.display = "";
-            courseManagementNavItem.classList.remove("d-none");
-        } else {
-            courseManagementNavItem.style.display = "none";
-            courseManagementNavItem.classList.add("d-none");
-        }
-    }
-
-    // Chuẩn hóa và sửa lỗi đường dẫn điều hướng trên Navbar (tránh bị lỗi /pages/pages/...)
-    fixNavbarLinks();
-}
-
-function fixNavbarLinks() {
-    const isComFe = window.location.pathname.startsWith('/com_fe');
-    const prefix = isComFe ? '/com_fe' : '';
-
-    const brand = document.querySelector('.navbar-brand');
-    if (brand) brand.setAttribute('href', prefix + '/index.html');
-
-    document.querySelectorAll('#mainNav a.nav-link, .navbar-nav a.nav-link').forEach(link => {
-        const href = link.getAttribute('href') || '';
-        if (href.includes('index.html')) {
-            link.setAttribute('href', prefix + '/index.html');
-        } else if (href.includes('branch-facility')) {
-            link.setAttribute('href', prefix + '/pages/branch-facility.html');
-        } else if (href.includes('course-enrollment')) {
-            link.setAttribute('href', prefix + '/pages/course-enrollment.html');
-        } else if (href.includes('absence-makeup')) {
-            link.setAttribute('href', prefix + '/pages/absence-makeup.html');
-        } else if (href.includes('placement-test')) {
-            link.setAttribute('href', prefix + '/pages/placement-test.html');
-        } else if (href.includes('tuition-payment')) {
-            link.setAttribute('href', prefix + '/pages/tuition-payment.html');
-        } else if (href.includes('course-management')) {
-            link.setAttribute('href', prefix + '/pages/course-management.html');
-        }
+        addLink(feature.label, feature.icon, '/pages/' + feature.file + '.html');
     });
+    document.querySelectorAll('[data-app-path]').forEach(link => link.href = appPath(link.dataset.appPath));
 }
-
-async function quickSwitchUserRole() {
-    const choices = [
-        "1. Cô Vũ Thu Hương (Giáo Viên Đàn - TEACHER)",
-        "2. Thầy Trần Anh Tuấn (Giáo Viên Võ - TEACHER)",
-        "3. Cô Nguyễn Mai Phương (Giáo Viên Múa - TEACHER)",
-        "4. Quản Trị Viên Hệ Thống (ADMIN)",
-        "5. Nguyễn Thanh Mai (Nhân Viên / Thu Ngân - STAFF)",
-        "6. Phụ Huynh Lê Thị Lan (Phụ Huynh - PARENT)"
-    ].join("\n");
-
-    const selected = prompt(`CHỌN TÀI KHOẢN ĐỂ ĐỔI VAI TRÒ TEST:\n\n${choices}\n\nNhập số 1 - 6:`, "1");
-
-    let targetUser = null;
-    if (selected === "1") targetUser = DEMO_USERS['teacher_huong'];
-    else if (selected === "2") targetUser = DEMO_USERS['teacher_tuan'];
-    else if (selected === "3") targetUser = DEMO_USERS['teacher_hung'];
-    else if (selected === "4") targetUser = DEMO_USERS['admin'];
-    else if (selected === "5") targetUser = DEMO_USERS['cashier_mai'];
-    else if (selected === "6") targetUser = DEMO_USERS['parent_lan'];
-    else return;
-
-    localStorage.setItem("user", JSON.stringify(targetUser));
-
-    // Synchronize JWT token from Backend AuthService
-    try {
-        if (typeof callApi === 'function') {
-            const loginRes = await callApi('/api/auth/login', 'POST', {
-                username: targetUser.username,
-                password: "123456"
-            }).catch(e => null);
-
-            if (loginRes && loginRes.token) {
-                localStorage.setItem("token", loginRes.token);
-            } else {
-                localStorage.setItem("token", "AUTH_TOKEN_" + targetUser.username);
-            }
-        } else {
-            localStorage.setItem("token", "AUTH_TOKEN_" + targetUser.username);
-        }
-    } catch (e) {
-        localStorage.setItem("token", "AUTH_TOKEN_" + targetUser.username);
+function toggleMobileSidebar(force) {
+    const open = typeof force === 'boolean' ? force : !document.body.classList.contains('sidebar-open');
+    document.body.classList.toggle('sidebar-open', open);
+    const sidebar = document.getElementById('appSidebar');
+    document.getElementById('sidebarBackdrop').hidden = !open;
+    const toggle = document.querySelector('.menu-toggle');
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'Đóng menu điều hướng' : 'Mở menu điều hướng');
+    if (open) sidebar.querySelector('a').focus(); else toggle.focus();
+}
+document.addEventListener('keydown', event => {
+    if (!document.body.classList.contains('sidebar-open')) return;
+    if (event.key === 'Escape') toggleMobileSidebar(false);
+    if (event.key === 'Tab') {
+        const items = [...document.querySelectorAll('#appSidebar a, #appSidebar button')];
+        const first = items[0], last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     }
-
-    const newUser = getCurrentUser();
-    alert(`Đã đổi sang tài khoản: ${newUser.fullName} [Role: ${newUser.role}]!\nHệ thống đã đồng bộ JWT token thành công.`);
-    window.location.reload();
-}
-
-function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = window.location.pathname.includes('/com_fe/') ? '/com_fe/login.html' : '/login.html';
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(updateNavbarUser, 150);
 });
+window.addEventListener('resize', () => { if (window.innerWidth > 991 && document.body.classList.contains('sidebar-open')) toggleMobileSidebar(false); });
+function logout() {
+    localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = appPath('/login.html');
+}
+document.addEventListener('DOMContentLoaded', updateNavbarUser);
