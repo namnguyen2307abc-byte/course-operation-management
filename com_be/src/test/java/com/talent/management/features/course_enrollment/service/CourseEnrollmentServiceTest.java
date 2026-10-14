@@ -5,9 +5,9 @@ import com.talent.management.features.course_enrollment.dto.request.EnrollmentDe
 import com.talent.management.features.course_enrollment.dto.request.EnrollmentRequestCreateRequest;
 import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.ClassResponse;
-import com.talent.management.features.course_enrollment.entity.EnrollmentRequest;
+import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.features.course_enrollment.enums.EnrollmentDecision;
-import com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus;
+import com.talent.management.shared.enums.EnrollmentRequestStatus;
 import com.talent.management.features.course_enrollment.mapper.CourseEnrollmentMapper;
 import com.talent.management.features.course_enrollment.repository.ClassRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
@@ -15,9 +15,13 @@ import com.talent.management.features.course_enrollment.repository.EnrollmentRep
 import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
+import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
+import com.talent.management.features.tuition_payment.repository.InvoiceRepository;
 import com.talent.management.shared.entity.ClassEntity;
+import com.talent.management.shared.entity.Branch;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.Enrollment;
+import com.talent.management.shared.entity.Invoice;
 import com.talent.management.shared.entity.Student;
 import com.talent.management.shared.entity.User;
 import com.talent.management.shared.enums.ClassStatus;
@@ -30,12 +34,14 @@ import org.mockito.InjectMocks;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,6 +71,12 @@ class CourseEnrollmentServiceTest {
     @Mock
     private PlacementTestService placementTestService;
 
+    @Mock
+    private PlacementScheduleRepository placementScheduleRepository;
+
+    @Mock
+    private InvoiceRepository invoiceRepository;
+
     @InjectMocks
     private CourseEnrollmentService service;
 
@@ -73,6 +85,39 @@ class CourseEnrollmentServiceTest {
     private Course course;
     private ClassEntity recommendedClass;
     private ClassResponse recommendedClassResponse;
+
+    private CourseEnrollmentService serviceWithRealClassMapper() {
+        recommendedClass.setBranch(Branch.builder().id(1L).name("Cơ sở A").build());
+        return new CourseEnrollmentService(currentUserService, studentRepository, courseRepository,
+                classRepository, enrollmentRepository, requestRepository, new CourseEnrollmentMapper(),
+                placementTestService, placementScheduleRepository, invoiceRepository);
+    }
+
+    @Test
+    void parentAndStaffSeeSeatsAfterPendingPaymentReservations() {
+        var mappedService = serviceWithRealClassMapper();
+        when(courseRepository.existsById(30L)).thenReturn(true);
+        when(classRepository.findByCourseIdAndStatusOrderByStartDateAsc(30L, ClassStatus.OPEN))
+                .thenReturn(List.of(recommendedClass));
+        when(enrollmentRepository.countByClassEntityIdAndStatus(40L, EnrollmentStatus.PENDING_PAYMENT)).thenReturn(2L);
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(PlacementRecommendationResponse.notAvailable(20L));
+        assertThat(mappedService.getOpenClasses(30L)).extracting(ClassResponse::availableSeats).containsExactly(8);
+        assertThat(mappedService.getClassRecommendations(20L).openClasses())
+                .extracting(ClassResponse::availableSeats).containsExactly(8);
+    }
+
+    @Test
+    void fullyReservedOpenClassIsHiddenFromParentAndStaffOptions() {
+        var mappedService = serviceWithRealClassMapper();
+        recommendedClass.setCurrentStudents(19);
+        when(courseRepository.existsById(30L)).thenReturn(true);
+        when(classRepository.findByCourseIdAndStatusOrderByStartDateAsc(30L, ClassStatus.OPEN))
+                .thenReturn(List.of(recommendedClass));
+        when(enrollmentRepository.countByClassEntityIdAndStatus(40L, EnrollmentStatus.PENDING_PAYMENT)).thenReturn(1L);
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(PlacementRecommendationResponse.notAvailable(20L));
+        assertThat(mappedService.getOpenClasses(30L)).isEmpty();
+        assertThat(mappedService.getClassRecommendations(20L).openClasses()).isEmpty();
+    }
 
     @BeforeEach
     void setUp() {
@@ -121,7 +166,7 @@ class CourseEnrollmentServiceTest {
         lenient().when(studentRepository.findByIdAndParentId(20L, 10L)).thenReturn(Optional.of(child));
         lenient().when(classRepository.findByStatusOrderByStartDateAsc(ClassStatus.OPEN))
                 .thenReturn(List.of(recommendedClass));
-        lenient().when(mapper.toClassResponse(recommendedClass)).thenReturn(recommendedClassResponse);
+        lenient().when(mapper.toClassResponse(recommendedClass, 0L)).thenReturn(recommendedClassResponse);
     }
 
     @Test
@@ -145,6 +190,42 @@ class CourseEnrollmentServiceTest {
         assertThat(response.recommendedCourseId()).isEqualTo(30L);
         assertThat(response.recommendedClasses()).containsExactly(recommendedClassResponse);
         assertThat(response.openClasses()).containsExactly(recommendedClassResponse);
+    }
+
+    @Test
+    void staffAndParentSeeAssessedRequestReadyForAssignment() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(50L).student(child)
+                .requestedBy(parent).placementRequested(true)
+                .preferredCourse(course).status(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT).build();
+        when(requestRepository.findByStatusInOrderByCreatedAtAsc(any())).thenReturn(List.of(request));
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(
+                new PlacementRecommendationResponse(20L, "COMPLETED", true, 3.8,
+                        "BEGINNER", 30L, "English A2", "Sơ cấp", LocalDateTime.now()));
+
+        assertThat(service.getPendingRequests()).hasSize(1);
+        assertThat(request.getStatus()).isEqualTo(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT);
+        ClassRecommendationResponse parentView = service.getClassRecommendations(20L);
+        assertThat(parentView.recommendationAvailable()).isTrue();
+        assertThat(parentView.placementScore()).isEqualTo(3.8);
+        assertThat(parentView.recommendedCourseId()).isEqualTo(30L);
+        assertThat(parentView.recommendedClasses()).containsExactly(recommendedClassResponse);
+    }
+
+    @Test
+    void staffCannotReadyLegacyAssessmentWithoutRecommendedCourse() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(22L).student(child)
+                .requestedBy(parent).placementRequested(true)
+                .status(EnrollmentRequestStatus.WAITING_PLACEMENT).build();
+        when(requestRepository.findByIdForUpdate(22L)).thenReturn(Optional.of(request));
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(
+                new PlacementRecommendationResponse(20L, "COMPLETED", false, 3.8,
+                        "BEGINNER", null, null, "Sơ cấp", LocalDateTime.now()));
+
+        service.refreshPlacement(22L);
+
+        assertThat(request.getStatus()).isEqualTo(EnrollmentRequestStatus.WAITING_PLACEMENT);
+        assertThat(request.getPreferredCourse()).isNull();
+        verify(requestRepository).save(request);
     }
 
     @Test
@@ -202,8 +283,9 @@ class CourseEnrollmentServiceTest {
                 .status(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT)
                 .build();
         when(currentUserService.getCurrentUser()).thenReturn(staff);
-        when(requestRepository.findById(50L)).thenReturn(Optional.of(request));
+        when(requestRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(request));
         when(classRepository.findById(40L)).thenReturn(Optional.of(recommendedClass));
+        when(invoiceRepository.save(any(Invoice.class))).thenReturn(Invoice.builder().id(70L).build());
 
         service.decide(50L, new EnrollmentDecisionRequest(EnrollmentDecision.APPROVE, 40L, "Assigned"));
 
@@ -215,5 +297,71 @@ class CourseEnrollmentServiceTest {
         assertThat(request.getClassEntity()).isSameAs(recommendedClass);
         assertThat(recommendedClass.getCurrentStudents()).isEqualTo(10);
         verify(classRepository, never()).save(any(ClassEntity.class));
+    }
+
+    @Test
+    void parentCanCancelReadyRequestWithoutPlacement() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(51L).student(child)
+                .requestedBy(parent).status(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT).build();
+        when(requestRepository.findByIdForUpdate(51L)).thenReturn(Optional.of(request));
+
+        service.cancelRequest(51L);
+
+        assertThat(request.getStatus()).isEqualTo(EnrollmentRequestStatus.CANCELLED);
+        verify(requestRepository).save(request);
+        verifyNoInteractions(placementScheduleRepository);
+    }
+
+    @Test
+    void parentCanCancelPlacementRequestBeforeScheduling() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(52L).student(child)
+                .requestedBy(parent).placementRequested(true)
+                .status(EnrollmentRequestStatus.WAITING_PLACEMENT).build();
+        when(requestRepository.findByIdForUpdate(52L)).thenReturn(Optional.of(request));
+        when(placementTestService.getLatestRecommendation(20L))
+                .thenReturn(PlacementRecommendationResponse.notAvailable(20L));
+
+        service.cancelRequest(52L);
+
+        assertThat(request.getStatus()).isEqualTo(EnrollmentRequestStatus.CANCELLED);
+        verify(requestRepository).save(request);
+    }
+
+    @Test
+    void parentCannotCancelPlacementRequestAfterScheduling() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(53L).student(child)
+                .requestedBy(parent).placementRequested(true)
+                .status(EnrollmentRequestStatus.WAITING_PLACEMENT).build();
+        when(requestRepository.findByIdForUpdate(53L)).thenReturn(Optional.of(request));
+        when(placementScheduleRepository.existsByEnrollmentRequestId(53L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.cancelRequest(53L)).isInstanceOf(ResponseStatusException.class);
+        assertThat(request.getStatus()).isEqualTo(EnrollmentRequestStatus.WAITING_PLACEMENT);
+        verify(requestRepository, never()).save(any());
+    }
+
+    @Test
+    void parentCannotCancelPlacementRequestAfterResultExists() {
+        EnrollmentRequest request = EnrollmentRequest.builder().id(54L).student(child)
+                .requestedBy(parent).placementRequested(true)
+                .status(EnrollmentRequestStatus.WAITING_PLACEMENT).build();
+        when(requestRepository.findByIdForUpdate(54L)).thenReturn(Optional.of(request));
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(
+                new PlacementRecommendationResponse(20L, "COMPLETED", false, 8.0, null,
+                        null, null, null, LocalDateTime.now()));
+
+        assertThatThrownBy(() -> service.cancelRequest(54L)).isInstanceOf(ResponseStatusException.class);
+        verify(requestRepository, never()).save(any());
+    }
+
+    @Test
+    void anotherParentCannotCancelRequest() {
+        User otherParent = User.builder().id(99L).build();
+        EnrollmentRequest request = EnrollmentRequest.builder().id(55L).student(child)
+                .requestedBy(otherParent).status(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT).build();
+        when(requestRepository.findByIdForUpdate(55L)).thenReturn(Optional.of(request));
+
+        assertThatThrownBy(() -> service.cancelRequest(55L)).isInstanceOf(ResponseStatusException.class);
+        verify(requestRepository, never()).save(any());
     }
 }

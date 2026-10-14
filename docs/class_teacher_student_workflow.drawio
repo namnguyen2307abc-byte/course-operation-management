@@ -1,0 +1,267 @@
+<mxfile host="app.diagrams.net" modified="2026-10-13T09:15:00.000Z" agent="Antigravity" version="21.0.0" type="device">
+  <diagram id="WorkflowDiagram" name="Luồng Gán GV và Học Sinh Vào Lớp">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ================= BANNER TIÊU ĐỀ CHÍNH ================= -->
+        <mxCell id="title_banner" value="&lt;b style=&quot;font-size: 20px;&quot;&gt;HỆ THỐNG VẬN HÀNH HỌC VIỆN TALENT ACADEMY (SWP391)&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;QUY TRÌNH TẠO LỚP - GÁN GIÁO VIÊN - THÊM HỌC SINH VÀO LỚP &amp;amp; ĐIỂM DANH&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1A365D;strokeColor=#0D233A;fontColor=#FFFFFF;shadow=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1500" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ================= SWIMLANE 1: GÁN GIÁO VIÊN & TẠO LỚP ================= -->
+        <mxCell id="lane1" value="PHÂN HỆ 1: TẠO LỚP &amp;amp; GÁN GIÁO VIÊN PHỤ TRÁCH&#xa;(Role: ADMIN / GIÁO VỤ)" style="swimlane;startSize=50;fillColor=#EBF5FB;strokeColor=#2980B9;fontColor=#1B4F72;fontStyle=1;fontSize=13;rounded=1;arcSize=6;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="350" height="880" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1_1" value="Admin / Giáo vụ truy cập&#xa;&lt;b&gt;weekly-schedule.html&lt;/b&gt;&#xa;Bấm &quot;Tạo Lớp Học Mới&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2980B9;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane1">
+          <mxGeometry x="60" y="70" width="230" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1_2" value="Nhập thông tin cơ bản:&#xa;• Mã lớp (classCode)&#xa;• Tên lớp (className)&#xa;• Khóa học (courseId) &amp;amp; Cơ sở" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2980B9;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane1">
+          <mxGeometry x="60" y="155" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1_3" value="&lt;b style=&quot;color:#C0392B;&quot;&gt;★ GÁN GIÁO VIÊN PHỤ TRÁCH&lt;/b&gt;&#xa;Chọn Giáo viên từ danh sách&#xa;&lt;i&gt;gửi trường: teacherId&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDEDEC;strokeColor=#E74C3C;fontSize=12;fontColor=#2C3E50;shadow=1;strokeWidth=2;" vertex="1" parent="lane1">
+          <mxGeometry x="60" y="250" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1_4" value="Cấu hình Thời khóa biểu:&#xa;• Các thứ trong tuần (VD: T2, T4, T6)&#xa;• Giờ bắt đầu, Giờ kết thúc&#xa;• Tổng số buổi học (totalSessions)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2980B9;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane1">
+          <mxGeometry x="60" y="345" width="230" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1_5" value="Gửi API Backend:&#xa;&lt;b&gt;POST /api/schedule/classes&lt;/b&gt;&#xa;Lưu vào bảng &lt;b&gt;classes&lt;/b&gt;&#xa;(gắn teacher_id vào ClassEntity)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D4EFDF;strokeColor=#27AE60;fontSize=12;fontColor=#1E8449;shadow=1;" vertex="1" parent="lane1">
+          <mxGeometry x="60" y="445" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1_6" value="&lt;b&gt;Thuật Toán Tự Sinh Buổi Học&lt;/b&gt;&#xa;(Lesson Generator):&#xa;Sinh ra N buổi học trong bảng &lt;b&gt;lessons&lt;/b&gt;&#xa;mỗi buổi đều gắn &lt;b&gt;teacher_id&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2980B9;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane1">
+          <mxGeometry x="60" y="540" width="230" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1_7" value="&lt;b style=&quot;color:#27AE60;&quot;&gt;✔ LỚP HỌC MỞ THÀNH CÔNG&lt;/b&gt;&#xa;Trạng thái: &lt;b&gt;OPEN&lt;/b&gt;&#xa;Sẵn sàng tiếp nhận học viên&#xa;và hiển thị trên Lịch Tuần" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8F5;strokeColor=#1ABC9C;fontSize=12;fontColor=#117A65;shadow=1;strokeWidth=2;" vertex="1" parent="lane1">
+          <mxGeometry x="60" y="645" width="230" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Lane 1 -->
+        <mxCell id="e1_1" edge="1" parent="lane1" source="step1_1" target="step1_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_2" edge="1" parent="lane1" source="step1_2" target="step1_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_3" edge="1" parent="lane1" source="step1_3" target="step1_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_4" edge="1" parent="lane1" source="step1_4" target="step1_5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_5" edge="1" parent="lane1" source="step1_5" target="step1_6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_6" edge="1" parent="lane1" source="step1_6" target="step1_7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+
+        <!-- ================= SWIMLANE 2: TUYỂN SINH & XẾP LỚP ================= -->
+        <mxCell id="lane2" value="PHÂN HỆ 2: TUYỂN SINH &amp;amp; XẾP LỚP HỌC SINH&#xa;(Role: PHỤ HUYNH &amp;amp; GIÁO VỤ)" style="swimlane;startSize=50;fillColor=#F4ECF7;strokeColor=#8E44AD;fontColor=#512E5F;fontStyle=1;fontSize=13;rounded=1;arcSize=6;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="110" width="360" height="880" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_1" value="Phụ huynh vào &lt;b&gt;course-enrollment.html&lt;/b&gt;&#xa;Chọn con &amp;amp; Khóa học mong muốn&#xa;Gửi Đơn Đăng Ký Học" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E44AD;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="65" y="70" width="230" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_2" value="Có yêu cầu&#xa;Test Đầu Vào&#xa;không?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FCF3CF;strokeColor=#F39C12;fontSize=11;fontColor=#7D6608;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="120" y="150" width="120" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_test" value="Giáo viên đánh giá năng khiếu&#xa;&lt;b&gt;Placement Test&lt;/b&gt;&#xa;Đề xuất trình độ &amp;amp; khóa học" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E44AD;fontSize=11;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="20" y="240" width="150" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_ready" value="Đơn chuyển sang trạng thái:&#xa;&lt;b style=&quot;color:#8E44AD;&quot;&gt;READY_FOR_ASSIGNMENT&lt;/b&gt;&#xa;(Sẵn sàng chờ giáo vụ xếp lớp)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E44AD;fontSize=11;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="190" y="240" width="155" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_3" value="Giáo vụ mở tab &quot;Chờ xử lý&quot;&#xa;Bấm nút &lt;b&gt;&quot;Duyệt Xếp Lớp&quot;&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8E44AD;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="65" y="325" width="230" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_4" value="&lt;b style=&quot;color:#C0392B;&quot;&gt;★ CHỌN LỚP HỌC CHO HỌC SINH&lt;/b&gt;&#xa;Dropdown &lt;i&gt;assignedClassSelect&lt;/i&gt;&#xa;Chọn lớp đang mở còn chỗ trống" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDEDEC;strokeColor=#E74C3C;fontSize=12;fontColor=#2C3E50;shadow=1;strokeWidth=2;" vertex="1" parent="lane2">
+          <mxGeometry x="65" y="400" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_5" value="Gửi API Backend:&#xa;&lt;b&gt;POST /api/course-enrollment/requests/{id}/decision&lt;/b&gt;&#xa;• Tạo bản ghi &lt;b&gt;Enrollment&lt;/b&gt; (PENDING_PAYMENT)&#xa;• Tự sinh &lt;b&gt;Invoice&lt;/b&gt; học phí (UNPAID)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D4EFDF;strokeColor=#27AE60;fontSize=12;fontColor=#1E8449;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="40" y="495" width="280" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_6" value="&lt;b style=&quot;color:#D35400;&quot;&gt;QUY TRÌNH TẠI QUẦY (GIỮ CHỖ)&lt;/b&gt;&#xa;Thu ngân vào &lt;b&gt;tuition-payment.html&lt;/b&gt;&#xa;Bấm &quot;Đăng Ký Học Viên Mới&quot;&#xa;Chọn thẳng Học Sinh + Lớp Học&#xa;&lt;i&gt;(Sinh luôn Enrollment &amp;amp; Invoice)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9E7;strokeColor=#F39C12;fontSize=11;fontColor=#7D6608;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="50" y="600" width="260" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2_7" value="&lt;b style=&quot;color:#2980B9;&quot;&gt;➡ CHUYỂN SANG ĐÓNG HỌC PHÍ&lt;/b&gt;&#xa;Học sinh đã được gán vào lớp,&#xa;nhưng cần nộp phí để chính thức kích hoạt!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FB;strokeColor=#2980B9;fontSize=12;fontColor=#1B4F72;shadow=1;" vertex="1" parent="lane2">
+          <mxGeometry x="65" y="700" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Lane 2 -->
+        <mxCell id="e2_1" edge="1" parent="lane2" source="step2_1" target="step2_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_yes" value="Có" edge="1" parent="lane2" source="step2_2" target="step2_test" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F39C12;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_no" value="Không" edge="1" parent="lane2" source="step2_2" target="step2_ready" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F39C12;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_t1" edge="1" parent="lane2" source="step2_test" target="step2_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_r1" edge="1" parent="lane2" source="step2_ready" target="step2_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_2" edge="1" parent="lane2" source="step2_3" target="step2_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_3" edge="1" parent="lane2" source="step2_4" target="step2_5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_4" edge="1" parent="lane2" source="step2_5" target="step2_7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_5" edge="1" parent="lane2" source="step2_6" target="step2_7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F39C12;strokeWidth=1;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+
+        <!-- ================= SWIMLANE 3: THANH TOÁN & KÍCH HOẠT VÀO LỚP ================= -->
+        <mxCell id="lane3" value="PHÂN HỆ 3: THANH TOÁN &amp;amp; KÍCH HOẠT VÀO LỚP&#xa;(Role: PHỤ HUYNH, THU NGÂN, CỔNG PAYOS)" style="swimlane;startSize=50;fillColor=#FEF9E7;strokeColor=#F39C12;fontColor=#7D6608;fontStyle=1;fontSize=13;rounded=1;arcSize=6;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="810" y="110" width="360" height="880" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3_1" value="Hóa đơn &lt;b&gt;Invoice&lt;/b&gt; hiển thị:&#xa;• Mã HĐ: INV-2026-xxxx&#xa;• Tiền học phí: 3.600.000 đ&#xa;• Trạng thái: &lt;b style=&quot;color:#C0392B;&quot;&gt;UNPAID&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F39C12;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane3">
+          <mxGeometry x="65" y="70" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3_2" value="Chọn hình thức&#xa;Thanh toán?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FCF3CF;strokeColor=#F39C12;fontSize=11;fontColor=#7D6608;shadow=1;" vertex="1" parent="lane3">
+          <mxGeometry x="110" y="160" width="140" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3_qr" value="&lt;b&gt;Quét mã VietQR PayOS&lt;/b&gt;&#xa;Phụ huynh quét mã trên app ngân hàng&#xa;Webhook tự gửi xác nhận" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8F5;strokeColor=#1ABC9C;fontSize=11;fontColor=#117A65;shadow=1;" vertex="1" parent="lane3">
+          <mxGeometry x="15" y="250" width="150" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3_cash" value="&lt;b&gt;Nộp Tiền Mặt Tại Quầy&lt;/b&gt;&#xa;Thu ngân nhận tiền&#xa;Bấm nút &quot;Thu Tiền&quot; trên web" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F39C12;fontSize=11;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane3">
+          <mxGeometry x="195" y="250" width="150" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3_3" value="Backend Xử Lý Giao Dịch:&#xa;• Cập nhật &lt;b&gt;Invoice -&amp;gt; PAID&lt;/b&gt;&#xa;• Tạo bản ghi &lt;b&gt;Payment&lt;/b&gt; (SUCCESS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D4EFDF;strokeColor=#27AE60;fontSize=12;fontColor=#1E8449;shadow=1;" vertex="1" parent="lane3">
+          <mxGeometry x="65" y="340" width="230" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3_4" value="&lt;b style=&quot;color:#C0392B;font-size:13px;&quot;&gt;★ KÍCH HOẠT VÀO LỚP CHÍNH THỨC&lt;/b&gt;&#xa;&lt;b style=&quot;color:#27AE60;&quot;&gt;1. Enrollment: ENROLLED&lt;/b&gt;&#xa;&lt;b style=&quot;color:#2980B9;&quot;&gt;2. classes.currentStudents = current + 1&lt;/b&gt;&#xa;(Sĩ số lớp chính thức tăng thêm 1 học viên)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDEDEC;strokeColor=#E74C3C;fontSize=12;fontColor=#2C3E50;shadow=1;strokeWidth=2;" vertex="1" parent="lane3">
+          <mxGeometry x="40" y="430" width="280" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3_5" value="&lt;b style=&quot;color:#27AE60;&quot;&gt;✔ HOÀN TẤT THÊM HỌC SINH&lt;/b&gt;&#xa;Học sinh có tên chính thức&#xa;trong danh sách lớp học!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8F5;strokeColor=#1ABC9C;fontSize=12;fontColor=#117A65;shadow=1;strokeWidth=2;" vertex="1" parent="lane3">
+          <mxGeometry x="65" y="545" width="230" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Lane 3 -->
+        <mxCell id="e3_1" edge="1" parent="lane3" source="step3_1" target="step3_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F39C12;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_qr" value="VietQR" edge="1" parent="lane3" source="step3_2" target="step3_qr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1ABC9C;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_cash" value="Tiền mặt" edge="1" parent="lane3" source="step3_2" target="step3_cash" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F39C12;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_q1" edge="1" parent="lane3" source="step3_qr" target="step3_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_c1" edge="1" parent="lane3" source="step3_cash" target="step3_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_2" edge="1" parent="lane3" source="step3_3" target="step3_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F39C12;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_3" edge="1" parent="lane3" source="step3_4" target="step3_5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+
+        <!-- ================= SWIMLANE 4: ĐIỂM DANH & VẬN HÀNH ================= -->
+        <mxCell id="lane4" value="PHÂN HỆ 4: ĐIỂM DANH &amp;amp; VẬN HÀNH BUỔI HỌC&#xa;(Role: GIÁO VIÊN PHỤ TRÁCH LỚP)" style="swimlane;startSize=50;fillColor=#E8F8F5;strokeColor=#27AE60;fontColor=#1E8449;fontStyle=1;fontSize=13;rounded=1;arcSize=6;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1195" y="110" width="345" height="880" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4_1" value="Đến ngày diễn ra buổi học (&lt;b&gt;Lesson&lt;/b&gt;)&#xa;theo Thời Khóa Biểu" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#27AE60;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane4">
+          <mxGeometry x="55" y="70" width="235" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4_2" value="Giáo viên đăng nhập hệ thống&#xa;Mở trang &lt;b&gt;weekly-schedule.html&lt;/b&gt;&#xa;Nhấp vào ca học của lớp mình" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#27AE60;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane4">
+          <mxGeometry x="55" y="160" width="235" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4_3" value="Backend kiểm tra quyền:&#xa;&lt;b&gt;currentUser.id == lesson.teacher.id&lt;/b&gt;&#xa;Chỉ đúng giáo viên phụ trách mới được điểm danh!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDEDEC;strokeColor=#E74C3C;fontSize=11;fontColor=#C0392B;shadow=1;" vertex="1" parent="lane4">
+          <mxGeometry x="45" y="255" width="255" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4_4" value="API tự động tải danh sách:&#xa;&lt;b&gt;GET /api/schedule/lessons/{id}/attendance&lt;/b&gt;&#xa;Toàn bộ học viên có &lt;b&gt;ENROLLED&lt;/b&gt;&#xa;xuất hiện trên Bảng Điểm Danh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D4EFDF;strokeColor=#27AE60;fontSize=12;fontColor=#1E8449;shadow=1;" vertex="1" parent="lane4">
+          <mxGeometry x="45" y="345" width="255" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4_5" value="Giáo viên đánh dấu trạng thái:&#xa;• Có mặt (PRESENT)&#xa;• Vắng mặt (ABSENT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#27AE60;fontSize=12;fontColor=#2C3E50;shadow=1;" vertex="1" parent="lane4">
+          <mxGeometry x="55" y="445" width="235" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4_6" value="Bấm &quot;Lưu Điểm Danh&quot;&#xa;&lt;b&gt;POST /api/schedule/lessons/{id}/attendance&lt;/b&gt;&#xa;Lưu vào bảng &lt;b&gt;attendances&lt;/b&gt;&#xa;Lesson chuyển sang &lt;b&gt;COMPLETED&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D4EFDF;strokeColor=#27AE60;fontSize=12;fontColor=#1E8449;shadow=1;" vertex="1" parent="lane4">
+          <mxGeometry x="45" y="540" width="255" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4_7" value="&lt;b style=&quot;color:#27AE60;&quot;&gt;✔ KẾT THÚC BUỔI HỌC THÀNH CÔNG&lt;/b&gt;&#xa;Dữ liệu chuyên cần được lưu lại.&#xa;Học sinh có thể xem lại kết quả điểm danh&#xa;trên hệ thống!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8F5;strokeColor=#1ABC9C;fontSize=12;fontColor=#117A65;shadow=1;strokeWidth=2;" vertex="1" parent="lane4">
+          <mxGeometry x="45" y="640" width="255" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Lane 4 -->
+        <mxCell id="e4_1" edge="1" parent="lane4" source="step4_1" target="step4_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4_2" edge="1" parent="lane4" source="step4_2" target="step4_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4_3" edge="1" parent="lane4" source="step4_3" target="step4_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4_4" edge="1" parent="lane4" source="step4_4" target="step4_5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4_5" edge="1" parent="lane4" source="step4_5" target="step4_6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4_6" edge="1" parent="lane4" source="step4_6" target="step4_7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ================= LIÊN KẾT XUYÊN CÁC PHÂN HỆ (CROSS-LANE ARROWS) ================= -->
+        <!-- Lớp OPEN (Lane 1) nối sang Chọn lớp (Lane 2) -->
+        <mxCell id="cross_1_to_2" value="Lớp OPEN hiển thị trong dropdown chọn lớp" edge="1" parent="1" source="step1_7" target="step2_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E74C3C;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Tạo hóa đơn (Lane 2) nối sang Thanh toán (Lane 3) -->
+        <mxCell id="cross_2_to_3" value="Đẩy hóa đơn sang phân hệ thu phí" edge="1" parent="1" source="step2_7" target="step3_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#F39C12;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Hoàn tất thêm học sinh (Lane 3) nối sang Bảng điểm danh (Lane 4) -->
+        <mxCell id="cross_3_to_4" value="Học sinh ENROLLED tự động vào bảng điểm danh" edge="1" parent="1" source="step3_5" target="step4_4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#27AE60;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

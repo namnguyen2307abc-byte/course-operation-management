@@ -42,5 +42,80 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
      */
     @Query("SELECT DISTINCT e.classEntity.className FROM Enrollment e WHERE e.student.id = :studentId")
     List<String> findClassNamesByStudentId(@Param("studentId") Long studentId);
+
+    /**
+     * Lấy toàn bộ ca học trong khoảng ngày (Tuần)
+     */
+    List<Lesson> findByLessonDateBetweenOrderByLessonDateAscStartTimeAsc(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Lấy ca học của giáo viên trong khoảng ngày (Tuần)
+     */
+    List<Lesson> findByTeacherIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
+            Long teacherId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Lấy ca học của học viên trong khoảng ngày (Tuần)
+     */
+    @Query("SELECT DISTINCT l FROM Lesson l " +
+           "JOIN Enrollment e ON e.classEntity.id = l.classEntity.id " +
+           "WHERE e.student.id = :studentId " +
+           "AND l.lessonDate BETWEEN :startDate AND :endDate " +
+           "AND e.status <> com.talent.management.shared.enums.EnrollmentStatus.CANCELLED " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findLessonsByStudentIdAndDateBetween(
+            @Param("studentId") Long studentId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /**
+     * Lấy ca học theo lớp học trong khoảng ngày
+     */
+    List<Lesson> findByClassEntityIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
+            Long classId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Lấy ca học theo cơ sở trong khoảng ngày
+     */
+    List<Lesson> findByClassEntityBranchIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
+            Long branchId, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Tìm số thứ tự buổi học lớn nhất của một lớp
+     */
+    @Query("SELECT COALESCE(MAX(l.sessionNumber), 0) FROM Lesson l WHERE l.classEntity.id = :classId")
+    int findMaxSessionNumberByClassId(@Param("classId") Long classId);
+
+    /**
+     * Ứng viên ca bù cùng trình độ: cùng chương trình + cùng level, cùng số thứ tự buổi,
+     * diễn ra từ hôm nay, thuộc lớp khác lớp gốc.
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "WHERE l.lessonDate >= :fromDate " +
+           "AND l.sessionNumber = :sessionNumber " +
+           "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.classEntity.course.program.id = :programId " +
+           "AND l.classEntity.course.level = :level " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findMakeupCandidatesByLevel(@Param("fromDate") LocalDate fromDate,
+                                             @Param("sessionNumber") Integer sessionNumber,
+                                             @Param("excludeClassId") Long excludeClassId,
+                                             @Param("programId") Long programId,
+                                             @Param("level") String level);
+
+    /**
+     * Ứng viên ca bù khi khóa học không có thông tin level: cùng khóa học, cùng số thứ tự buổi.
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "WHERE l.lessonDate >= :fromDate " +
+           "AND l.sessionNumber = :sessionNumber " +
+           "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.classEntity.course.id = :courseId " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findMakeupCandidatesByCourse(@Param("fromDate") LocalDate fromDate,
+                                              @Param("sessionNumber") Integer sessionNumber,
+                                              @Param("excludeClassId") Long excludeClassId,
+                                              @Param("courseId") Long courseId);
 }
+
 

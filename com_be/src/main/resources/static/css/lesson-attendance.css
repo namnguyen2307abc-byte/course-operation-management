@@ -1,0 +1,565 @@
+/* ==========================================================================
+   lesson-attendance.css — Giao diện Danh Sách Sinh Viên & Điểm Danh Buổi Học
+   ========================================================================== */
+
+:root {
+    --at-ink: #0f172a;
+    --at-muted: #64748b;
+    --at-line: #e2e8f0;
+    --at-brand: #4f46e5;
+    --at-brand-2: #2563eb;
+    --at-ok: #10b981;
+    --at-ok-deep: #047857;
+    --at-ok-soft: #ecfdf5;
+    --at-bad: #ef4444;
+    --at-bad-deep: #b91c1c;
+    --at-bad-soft: #fef2f2;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: var(--at-ink);
+    background:
+        radial-gradient(1100px 380px at 8% -8%, #e0e7ff 0%, transparent 62%),
+        radial-gradient(900px 360px at 100% 0%, #dbeafe 0%, transparent 58%),
+        #f8fafc;
+    background-attachment: fixed;
+    padding-bottom: 40px;
+}
+
+/* ---------- HERO: THÔNG TIN BUỔI HỌC ---------- */
+.att-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    padding: 1.75rem 2rem;
+    color: #fff;
+    background: linear-gradient(120deg, #1e1b4b 0%, #312e81 48%, #2563eb 100%);
+    box-shadow: 0 24px 48px -28px rgba(30, 27, 75, 0.7);
+}
+
+.att-hero::before {
+    content: '';
+    position: absolute;
+    width: 340px;
+    height: 340px;
+    right: -100px;
+    top: -150px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 68%);
+    pointer-events: none;
+}
+
+.att-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    transition: all 0.2s;
+}
+
+.att-back:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.24);
+    transform: translateX(-2px);
+}
+
+.att-hero h1 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0.6rem 0 0.2rem;
+}
+
+.att-hero .att-sub {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.88rem;
+}
+
+.att-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+    position: relative;
+    z-index: 1;
+}
+
+.att-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.95rem;
+    border-radius: 14px;
+    font-size: 0.84rem;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(6px);
+}
+
+.att-chip i {
+    color: #c7d2fe;
+    font-size: 1.05rem;
+}
+
+.att-chip small {
+    display: block;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.1;
+}
+
+.att-chip b {
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+/* ---------- BANNER TRẠNG THÁI ---------- */
+.att-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.2rem;
+    border-radius: 16px;
+    font-size: 0.88rem;
+    border: 1px solid transparent;
+}
+
+.att-banner i {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.att-banner.lock {
+    background: var(--at-bad-soft);
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.att-banner.lock i { color: var(--at-bad); }
+
+.att-banner.saved {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+.att-banner.saved i { color: var(--at-ok); }
+
+.att-banner.ready {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+
+.att-banner.ready i { color: #2563eb; }
+
+.att-banner.future {
+    background: #f0fdfa;
+    border-color: #99f6e4;
+    color: #0f766e;
+}
+
+.att-banner.future i { color: #0d9488; }
+
+
+/* ---------- PANEL DANH SÁCH HỌC VIÊN ---------- */
+.att-panel {
+    background: #ffffff;
+    border: 1px solid var(--at-line);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px -28px rgba(15, 23, 42, 0.25);
+}
+
+.att-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--at-line);
+    background: linear-gradient(180deg, #ffffff, #fafbff);
+}
+
+.att-panel-head h2 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #0f172a;
+}
+
+.att-panel-head h2 i {
+    color: var(--at-brand);
+}
+
+.att-search {
+    position: relative;
+}
+
+.att-search i {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--at-muted);
+    font-size: 0.85rem;
+}
+
+.att-search input {
+    border: 1px solid var(--at-line);
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem 0.45rem 2.25rem;
+    font-size: 0.85rem;
+    width: 250px;
+    background: #f8faff;
+    transition: all 0.2s;
+}
+
+.att-search input:focus {
+    outline: none;
+    background: #fff;
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Header & Hàng dạng Grid */
+.att-grid-head,
+.att-row {
+    display: grid;
+    grid-template-columns: 56px minmax(220px, 1.8fr) 130px 130px minmax(200px, 1.4fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 1.5rem;
+}
+
+.att-grid-head {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--at-line);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--at-muted);
+}
+
+.att-grid-head .col-radio {
+    text-align: center;
+    font-weight: 800;
+}
+
+.att-grid-head .col-radio.p { color: var(--at-ok-deep); }
+.att-grid-head .col-radio.a { color: var(--at-bad-deep); }
+
+.att-row {
+    min-height: 72px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s, box-shadow 0.15s;
+    background: #ffffff;
+}
+
+.att-row:last-child {
+    border-bottom: none;
+}
+
+.att-row:hover {
+    background: #f8faff;
+}
+
+.att-row.is-present {
+    border-left: 4px solid var(--at-ok);
+    background: #fcfffd;
+}
+
+.att-row.is-absent {
+    border-left: 4px solid var(--at-bad);
+    background: #fffdfd;
+}
+
+.att-idx {
+    text-align: center;
+    font-weight: 700;
+    color: #94a3b8;
+    font-size: 0.88rem;
+}
+
+.att-student {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+    padding: 0.65rem 0;
+}
+
+.att-avatar {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.86rem;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, var(--c1, #6366f1), var(--c2, #2563eb));
+    box-shadow: 0 4px 10px -3px var(--c2, #2563eb);
+}
+
+.att-name {
+    font-weight: 700;
+    font-size: 0.94rem;
+    color: #0f172a;
+    line-height: 1.25;
+}
+
+.att-code {
+    font-size: 0.74rem;
+    color: var(--at-muted);
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.att-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+}
+
+.att-tag.makeup { background: #fef3c7; color: #92400e; }
+.att-tag.leave { background: #e0f2fe; color: #075985; }
+
+.att-reason {
+    font-size: 0.74rem;
+    color: #dc2626;
+    margin-top: 0.15rem;
+}
+
+/* ---------- NÚT CHỌN HÌNH TRÒN BÉ (TINY ROUND RADIO) ---------- */
+.att-radio-cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.att-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #64748b;
+    transition: all 0.15s ease;
+}
+
+.att-radio input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Vòng tròn radio nhỏ gọn (18px) */
+.att-radio .dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Chấm nhỏ bên trong khi được chọn */
+.att-radio .dot::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    transform: scale(0);
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+}
+
+/* Hover */
+.att-radio:hover .dot {
+    transform: scale(1.08);
+}
+
+/* PRESENT: Xanh lá cây */
+.att-radio.present:hover .dot {
+    border-color: var(--at-ok);
+}
+.att-radio.present input:checked + .dot {
+    border-color: var(--at-ok);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+.att-radio.present input:checked + .dot::after {
+    background: var(--at-ok);
+    transform: scale(1);
+}
+.att-radio.present input:checked ~ .txt {
+    color: var(--at-ok-deep);
+    font-weight: 700;
+}
+
+/* ABSENT: Đỏ */
+.att-radio.absent:hover .dot {
+    border-color: var(--at-bad);
+}
+.att-radio.absent input:checked + .dot {
+    border-color: var(--at-bad);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+}
+.att-radio.absent input:checked + .dot::after {
+    background: var(--at-bad);
+    transform: scale(1);
+}
+.att-radio.absent input:checked ~ .txt {
+    color: var(--at-bad-deep);
+    font-weight: 700;
+}
+
+/* Khóa / Disabled */
+.att-radio.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+.att-radio.is-disabled:hover .dot {
+    transform: none;
+    border-color: #cbd5e1;
+}
+
+/* Ghi chú */
+.att-note {
+    width: 100%;
+    border: 1px solid var(--at-line);
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.84rem;
+    transition: all 0.2s;
+}
+.att-note:focus {
+    outline: none;
+    background: #ffffff;
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+.att-note:disabled {
+    background: transparent;
+    border-color: transparent;
+    color: var(--at-muted);
+}
+
+.att-empty {
+    padding: 4rem 1rem;
+    text-align: center;
+    color: var(--at-muted);
+}
+.att-empty i {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 0.75rem;
+    color: #cbd5e1;
+}
+
+/* ---------- CỤM NÚT THAO TÁC Ở CHÍNH GIỮA TRANG ---------- */
+.att-center-actions {
+    background: #ffffff;
+    border: 1px solid var(--at-line);
+    border-radius: 20px;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.1);
+}
+
+.btn-att-center {
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.96rem;
+    padding: 0.75rem 2.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.btn-att-center:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.btn-att-center.primary {
+    color: #ffffff;
+    background: linear-gradient(120deg, #4f46e5, #2563eb);
+    box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.6);
+}
+.btn-att-center.primary:hover:not(:disabled) {
+    box-shadow: 0 14px 28px -6px rgba(79, 70, 229, 0.8);
+}
+
+.btn-att-center.warn {
+    color: #78350f;
+    background: #fde68a;
+    border-color: #fcd34d;
+    box-shadow: 0 6px 16px -6px rgba(217, 119, 6, 0.5);
+}
+
+.btn-att-center.ghost {
+    color: #334155;
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+.btn-att-center.ghost:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.att-toast-wrap {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1090;
+}
+
+@media (max-width: 860px) {
+    .att-grid-head { display: none; }
+    .att-row {
+        grid-template-columns: 40px 1fr 1fr;
+        grid-template-areas: "idx stu stu" ". p a" ". note note";
+        row-gap: 0.2rem;
+        padding-bottom: 0.75rem;
+    }
+    .att-row .att-idx { grid-area: idx; }
+    .att-row .att-student { grid-area: stu; }
+    .att-row .rc-p { grid-area: p; justify-content: flex-start; }
+    .att-row .rc-a { grid-area: a; justify-content: flex-start; }
+    .att-row .rc-note { grid-area: note; }
+    .att-search input { width: 100%; }
+}

@@ -14,15 +14,19 @@ import java.time.LocalDateTime;
 public class PlacementScheduleResponse {
 
     private Long id;
+    private Long enrollmentRequestId;
     private String studentName;
     private String title;
     private String roomName;
     private String branch;
     private LocalDateTime testDate;
+    private String subject;
     private String note;
     private PlacementScheduleStatus status;
     private Integer score;
     private PlacementLevel recommendedLevel;
+    private Long recommendedCourseId;
+    private String recommendedCourseName;
     private String teacherNote;
     private String audioUrl;
     private String videoUrl;

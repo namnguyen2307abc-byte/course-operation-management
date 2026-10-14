@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Khóa Học - Talent Academy</title>
+    <meta name="description" content="Quản lý danh mục khóa học âm nhạc, nghệ thuật tại Học Viện Talent - Tạo, sửa, xóa khóa học theo bộ môn.">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* ===== PREMIUM COURSE MANAGEMENT UI ===== */
+        :root {
+            --cm-primary: #7c3aed;
+            --cm-primary-light: #ede9fe;
+            --cm-secondary: #06b6d4;
+            --cm-success: #059669;
+            --cm-danger: #dc2626;
+            --cm-warning: #d97706;
+            --cm-border: #e2e8f0;
+            --cm-bg: #f8fafc;
+            --cm-card-shadow: 0 2px 12px rgba(124,58,237,0.06);
+        }
+
+        body { background: var(--cm-bg); }
+
+        /* Header band */
+        .cm-header-band {
+            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 60%, #06b6d4 100%);
+            border-radius: 1rem;
+            padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .cm-header-band::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            right: -5%;
+            width: 280px;
+            height: 280px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .cm-header-band::after {
+            content: '';
+            position: absolute;
+            bottom: -50%;
+            right: 15%;
+            width: 160px;
+            height: 160px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+        }
+
+        /* Stat cards */
+        .cm-stat {
+            background: white;
+            border: 1px solid var(--cm-border);
+            border-radius: 0.875rem;
+            padding: 1.1rem 1.25rem;
+            box-shadow: var(--cm-card-shadow);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .cm-stat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(124,58,237,0.1);
+        }
+        .cm-stat .icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        .cm-stat .stat-num {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .cm-stat .stat-lbl {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Toolbar */
+        .cm-toolbar {
+            background: white;
+            border: 1px solid var(--cm-border);
+            border-radius: 0.875rem;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--cm-card-shadow);
+        }
+
+        /* Table card */
+        .cm-table-card {
+            background: white;
+            border: 1px solid var(--cm-border);
+            border-radius: 0.875rem;
+            overflow: hidden;
+            box-shadow: var(--cm-card-shadow);
+        }
+        .cm-table-card .table { margin-bottom: 0; }
+        .cm-table-card .table thead th {
+            background: #f1f5f9;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #475569;
+            border-bottom: 1px solid var(--cm-border);
+            padding: 0.85rem 1rem;
+        }
+        .cm-table-card .table tbody td {
+            padding: 0.85rem 1rem;
+            vertical-align: middle;
+            border-color: #f1f5f9;
+            font-size: 0.875rem;
+        }
+        .cm-table-card .table tbody tr {
+            transition: background 0.1s;
+        }
+        .cm-table-card .table tbody tr:hover {
+            background: #fafbff;
+        }
+
+        /* Program badge colors */
+        .badge-program-dan { background: #ede9fe; color: #5b21b6; }
+        .badge-program-mua { background: #fce7f3; color: #9d174d; }
+        .badge-program-vo  { background: #d1fae5; color: #065f46; }
+        .badge-program-van { background: #fef3c7; color: #92400e; }
+        .badge-program-other { background: #f1f5f9; color: #475569; }
+
+        /* Level badge */
+        .badge-level {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.2rem 0.55rem;
+            border-radius: 0.375rem;
+        }
+
+        /* Action buttons */
+        .btn-cm-edit {
+            background: var(--cm-primary-light);
+            color: var(--cm-primary);
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.3rem 0.65rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+        .btn-cm-edit:hover {
+            background: var(--cm-primary);
+            color: white;
+        }
+        .btn-cm-delete {
+            background: #fee2e2;
+            color: var(--cm-danger);
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.3rem 0.65rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+        .btn-cm-delete:hover {
+            background: var(--cm-danger);
+            color: white;
+        }
+
+        /* Modal tweaks */
+        .modal-content { border-radius: 1rem; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .modal-header { border-radius: 1rem 1rem 0 0; }
+        .modal-footer { border-top: 1px solid #f1f5f9; background: #f8fafc; border-radius: 0 0 1rem 1rem; }
+
+        /* Form label style */
+        .form-label-cm { font-size: 0.8rem; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+
+        /* Empty state */
+        .cm-empty {
+            padding: 3.5rem 1rem;
+            text-align: center;
+            color: #94a3b8;
+        }
+        .cm-empty i { font-size: 3rem; opacity: 0.5; display: block; margin-bottom: 0.75rem; }
+
+        /* Search input */
+        .cm-search-wrap { position: relative; }
+        .cm-search-wrap .bi-search {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+        .cm-search-wrap input { padding-left: 2.25rem; }
+
+        /* Skeleton loader */
+        .skeleton { background: linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 0.375rem; height: 1rem; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Access denied */
+        .access-denied-card {
+            background: white;
+            border: 1px solid #fee2e2;
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: var(--cm-card-shadow);
+        }
+
+        @media (max-width: 767.98px) {
+            .cm-header-band { padding: 1.2rem 1rem; }
+            .cm-header-band h1 { font-size: 1.4rem; }
+            .cm-stat .stat-num { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="navbar-container"></div>
+
+    <main class="container my-4" id="mainContent">
+
+        <!-- ===== ACCESS DENIED (hidden by default) ===== -->
+        <div id="accessDeniedSection" class="d-none">
+            <div class="access-denied-card">
+                <i class="bi bi-shield-lock-fill text-danger" style="font-size: 3.5rem;"></i>
+                <h4 class="fw-bold text-dark mt-3 mb-2">Truy Cập Bị Từ Chối</h4>
+                <p class="text-muted mb-3">Tính năng Quản lý Khóa Học chỉ dành cho <strong>Nhân viên (STAFF)</strong>, <strong>Quản lý chi nhánh</strong> và <strong>Quản trị viên (ADMIN)</strong>.</p>
+                <a href="/index.html" class="btn btn-danger px-4 rounded-pill">
+                    <i class="bi bi-house-door me-1"></i>Quay về Trang Chủ
+                </a>
+            </div>
+        </div>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <div id="courseManagementContent" class="d-none">
+
+            <!-- Header Banner -->
+            <div class="cm-header-band mb-4">
+                <div class="row align-items-center" style="position: relative; z-index: 2;">
+                    <div class="col">
+                        <nav aria-label="breadcrumb" class="mb-1">
+                            <ol class="breadcrumb mb-0" style="font-size: 0.78rem; opacity: 0.8;">
+                                <li class="breadcrumb-item"><a href="/index.html" class="text-white-50 text-decoration-none">Trang Chủ</a></li>
+                                <li class="breadcrumb-item active text-white">Quản Lý Khóa Học</li>
+                            </ol>
+                        </nav>
+                        <h1 class="fw-bold text-white mb-1" style="font-size: 1.65rem;">
+                            <i class="bi bi-journal-bookmark-fill me-2"></i>Quản Lý Khóa Học
+                        </h1>
+                        <p class="text-white-50 mb-0 small">Tạo, chỉnh sửa và quản lý danh mục khóa học âm nhạc, nghệ thuật theo từng bộ môn.</p>
+                    </div>
+                    <div class="col-auto d-none d-md-block">
+                        <button class="btn btn-light px-4 fw-semibold rounded-pill shadow-sm" id="btnOpenCreateModal"
+                                style="color: var(--cm-primary);">
+                            <i class="bi bi-plus-circle-fill me-2"></i>Tạo Khóa Học Mới
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="row g-3 mb-4" id="statsRow">
+                <div class="col-6 col-lg-3">
+                    <div class="cm-stat">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="icon-wrap" style="background:#ede9fe;"><i class="bi bi-journal-bookmark-fill" style="color:var(--cm-primary);"></i></div>
+                        </div>
+                        <div class="stat-num text-dark" id="statTotalCourses">—</div>
+                        <div class="stat-lbl mt-1">Tổng khóa học</div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="cm-stat">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="icon-wrap" style="background:#d1fae5;"><i class="bi bi-grid-3x3-gap-fill" style="color:var(--cm-success);"></i></div>
+                        </div>
+                        <div class="stat-num text-dark" id="statTotalPrograms">—</div>
+                        <div class="stat-lbl mt-1">Bộ môn</div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="cm-stat">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="icon-wrap" style="background:#fef3c7;"><i class="bi bi-door-open-fill" style="color:var(--cm-warning);"></i></div>
+                        </div>
+                        <div class="stat-num text-dark" id="statTotalClasses">—</div>
+                        <div class="stat-lbl mt-1">Lớp học đang mở</div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="cm-stat">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="icon-wrap" style="background:#cffafe;"><i class="bi bi-people-fill" style="color:var(--cm-secondary);"></i></div>
+                        </div>
+                        <div class="stat-num text-dark" id="statTotalEnrollments">—</div>
+                        <div class="stat-lbl mt-1">Học viên đăng ký</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="cm-toolbar d-flex flex-wrap align-items-center gap-3 justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3 flex-wrap flex-grow-1">
+                    <div class="cm-search-wrap" style="min-width: 220px; flex: 1;">
+                        <i class="bi bi-search"></i>
+                        <input type="text" class="form-control form-control-sm" id="searchInput"
+                               placeholder="Tìm kiếm tên, mã khóa học...">
+                    </div>
+                    <select class="form-select form-select-sm" id="filterProgram" style="min-width: 160px; max-width: 220px;">
+                        <option value="">Tất cả bộ môn</option>
+                    </select>
+                    <select class="form-select form-select-sm" id="filterLevel" style="min-width: 140px; max-width: 180px;">
+                        <option value="">Tất cả trình độ</option>
+                    </select>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm px-3" id="btnRefresh">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Làm mới
+                    </button>
+                    <button class="btn btn-sm px-3 fw-semibold d-md-none" id="btnOpenCreateModalMobile"
+                            style="background: var(--cm-primary); color:white;">
+                        <i class="bi bi-plus-circle me-1"></i>Tạo mới
+                    </button>
+                </div>
+            </div>
+
+            <!-- Alert message area -->
+            <div id="pageAlert" class="alert d-none mb-3" role="alert"></div>
+
+            <!-- Course Table -->
+            <div class="cm-table-card">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark" style="font-size: 1rem;">
+                            <i class="bi bi-list-ul text-purple me-2" style="color:var(--cm-primary);"></i>Danh Sách Khóa Học
+                        </h5>
+                        <div class="text-muted small mt-1" id="tableSubtitle">Đang tải...</div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="courseTable">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">#</th>
+                                <th style="min-width:100px;">Mã KH</th>
+                                <th style="min-width:200px;">Tên Khóa Học</th>
+                                <th style="min-width:120px;">Bộ Môn</th>
+                                <th style="min-width:100px;">Trình Độ</th>
+                                <th style="min-width:100px;">Số tuần</th>
+                                <th style="min-width:120px;">Học Phí</th>
+                                <th style="min-width:100px;">Lớp học</th>
+                                <th style="min-width:110px;">Học viên</th>
+                                <th class="text-end" style="min-width:140px;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="courseTableBody">
+                            <tr>
+                                <td colspan="10">
+                                    <div class="cm-empty">
+                                        <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+                                        Đang tải danh sách khóa học...
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div><!-- /#courseManagementContent -->
+
+    </main>
+
+    <div id="footer-container"></div>
+
+    <!-- ============================= -->
+    <!--  MODAL: Tạo / Sửa Khóa Học  -->
+    <!-- ============================= -->
+    <div class="modal fade" id="courseFormModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-3" style="background: linear-gradient(135deg,#7c3aed,#4f46e5); color:white;">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="formModalTitle">
+                            <i class="bi bi-journal-plus me-2"></i>Tạo Khóa Học Mới
+                        </h5>
+                        <div class="small opacity-75 mt-1" id="formModalSubtitle">Điền thông tin để tạo khóa học mới trong hệ thống</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="courseForm" novalidate>
+                        <div class="row g-3">
+                            <!-- Bộ môn -->
+                            <div class="col-md-6">
+                                <label for="fieldProgram" class="form-label-cm">Bộ môn <span class="text-danger">*</span></label>
+                                <select class="form-select" id="fieldProgram" required>
+                                    <option value="">-- Chọn bộ môn --</option>
+                                </select>
+                                <div class="invalid-feedback">Vui lòng chọn bộ môn.</div>
+                            </div>
+                            <!-- Trình độ -->
+                            <div class="col-md-6">
+                                <label for="fieldLevel" class="form-label-cm">Trình Độ</label>
+                                <select class="form-select" id="fieldLevel">
+                                    <option value="">-- Không phân cấp --</option>
+                                </select>
+                            </div>
+                            <!-- Mã khóa học -->
+                            <div class="col-md-4">
+                                <label for="fieldCode" class="form-label-cm">Mã Khóa Học <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="fieldCode"
+                                       placeholder="Vd: DAN-CB-01" maxlength="50" required>
+                                <div class="invalid-feedback">Mã khóa học không được để trống.</div>
+                                <div class="form-text">Mã duy nhất, ví dụ: DAN-CB-01, MUA-TG-02</div>
+                            </div>
+                            <!-- Tên khóa học -->
+                            <div class="col-md-8">
+                                <label for="fieldName" class="form-label-cm">Tên Khóa Học <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="fieldName"
+                                       placeholder="Vd: Piano Cổ Điển Cơ Bản" maxlength="150" required>
+                                <div class="invalid-feedback">Tên khóa học không được để trống.</div>
+                            </div>
+                            <!-- Số tuần -->
+                            <div class="col-6 col-md-4">
+                                <label for="fieldDurationWeeks" class="form-label-cm">Thời lượng (tuần)</label>
+                                <input type="number" class="form-control" id="fieldDurationWeeks"
+                                       placeholder="Vd: 16" min="1" max="200">
+                                <div class="invalid-feedback">Số tuần phải lớn hơn 0.</div>
+                            </div>
+                            <!-- Số buổi -->
+                            <div class="col-6 col-md-4">
+                                <label for="fieldTotalSessions" class="form-label-cm">Tổng số buổi</label>
+                                <input type="number" class="form-control" id="fieldTotalSessions"
+                                       placeholder="Vd: 48" min="1" max="1000">
+                                <div class="invalid-feedback">Số buổi phải lớn hơn 0.</div>
+                            </div>
+                            <!-- Học phí -->
+                            <div class="col-12 col-md-4">
+                                <label for="fieldTuitionFee" class="form-label-cm">Học Phí (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="fieldTuitionFee"
+                                       placeholder="Vd: 3500000" min="1" required>
+                                <div class="invalid-feedback">Học phí phải là số dương.</div>
+                                <div class="form-text" id="tuitionFeePreview"></div>
+                            </div>
+                            <!-- Mô tả -->
+                            <div class="col-12">
+                                <label for="fieldDescription" class="form-label-cm">Mô Tả Khóa Học</label>
+                                <textarea class="form-control" id="fieldDescription" rows="3"
+                                          maxlength="1000"
+                                          placeholder="Mô tả nội dung, mục tiêu và đặc điểm của khóa học..."></textarea>
+                                <div class="form-text"><span id="descCharCount">0</span>/1000 ký tự</div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn px-4 rounded-pill fw-semibold" id="btnSubmitCourse"
+                            style="background: var(--cm-primary); color:white;">
+                        <i class="bi bi-check-circle me-1"></i>Lưu Khóa Học
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= -->
+    <!--  MODAL: Xác nhận xóa         -->
+    <!-- ============================= -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-trash3-fill me-2"></i>Xác Nhận Xóa
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mt-3 mb-2">Bạn có chắc chắn muốn xóa?</h6>
+                    <p class="text-muted small mb-1">Khóa học: <strong id="deleteCourseNameDisplay">—</strong></p>
+                    <p class="text-muted small mb-0">Hành động này không thể hoàn tác. Khóa học sẽ bị xóa vĩnh viễn.</p>
+                </div>
+                <div class="modal-footer justify-content-center gap-2">
+                    <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-danger px-4 rounded-pill fw-semibold" id="btnConfirmDelete">
+                        <i class="bi bi-trash me-1"></i>Xóa Khóa Học
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= -->
+    <!--  MODAL: Chi tiết xem          -->
+    <!-- ============================= -->
+    <div class="modal fade" id="courseDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-3">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="detailModalTitle">Chi Tiết Khóa Học</h5>
+                        <div class="text-muted small mt-1" id="detailModalCode"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" id="detailModalBody">
+                    <div class="cm-empty"><span class="spinner-border spinner-border-sm text-primary"></span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn fw-semibold rounded-pill px-4" id="btnDetailEdit"
+                            style="background: var(--cm-primary); color: white;">
+                        <i class="bi bi-pencil me-1"></i>Chỉnh sửa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+        checkAuth();
+
+        // ─── State ────────────────────────────────────────────────────────────────
+        const currentUser  = getCurrentUser();
+        let allCourses     = [];
+        let allPrograms    = [];
+        let allLevels      = [];
+        let editingId      = null;    // null = create mode, number = edit mode
+        let deleteId       = null;
+        let viewingCourse  = null;
+
+        // ─── Bootstrap Modal instances ────────────────────────────────────────────
+        let courseFormModal, deleteConfirmModal, courseDetailModal;
+
+        // ─── Load navbar / footer ─────────────────────────────────────────────────
+        fetch('../components/navbar.html')
+            .then(r => r.text())
+            .then(h => { document.getElementById('navbar-container').innerHTML = h; updateNavbarUser(); });
+        fetch('../components/footer.html')
+            .then(r => r.text())
+            .then(h => document.getElementById('footer-container').innerHTML = h);
+
+        // ─── Boot ─────────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            courseFormModal    = new bootstrap.Modal(document.getElementById('courseFormModal'));
+            deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            courseDetailModal  = new bootstrap.Modal(document.getElementById('courseDetailModal'));
+
+            // Access control
+            const ALLOWED_ROLES = ['STAFF', 'BRANCH_MANAGER', 'ADMIN'];
+            if (!currentUser || !ALLOWED_ROLES.includes(currentUser.role)) {
+                document.getElementById('accessDeniedSection').classList.remove('d-none');
+                return;
+            }
+            document.getElementById('courseManagementContent').classList.remove('d-none');
+
+            // Wire up events
+            document.getElementById('btnOpenCreateModal').addEventListener('click', openCreateModal);
+            document.getElementById('btnOpenCreateModalMobile').addEventListener('click', openCreateModal);
+            document.getElementById('btnRefresh').addEventListener('click', loadAll);
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('filterProgram').addEventListener('change', applyFilters);
+            document.getElementById('filterLevel').addEventListener('change', applyFilters);
+            document.getElementById('btnSubmitCourse').addEventListener('click', submitCourseForm);
+            document.getElementById('btnConfirmDelete').addEventListener('click', confirmDeleteCourse);
+            document.getElementById('btnDetailEdit').addEventListener('click', () => {
+                if (!viewingCourse) return;
+                courseDetailModal.hide();
+                setTimeout(() => openEditModal(viewingCourse), 350);
+            });
+
+            // Live preview for tuition fee
+            document.getElementById('fieldTuitionFee').addEventListener('input', () => {
+                const val = parseInt(document.getElementById('fieldTuitionFee').value) || 0;
+                document.getElementById('tuitionFeePreview').textContent = val > 0
+                    ? '≈ ' + formatCurrency(val)
+                    : '';
+            });
+
+            // Char counter for description
+            document.getElementById('fieldDescription').addEventListener('input', () => {
+                document.getElementById('descCharCount').textContent =
+                    document.getElementById('fieldDescription').value.length;
+            });
+
+            loadAll();
+        });
+
+        // ─── Load All Data ────────────────────────────────────────────────────────
+        async function loadAll() {
+            try {
+                const [courses, programs, levels] = await Promise.all([
+                    callApi('/api/course-management/courses'),
+                    callApi('/api/course-management/programs'),
+                    callApi('/api/course-management/levels')
+                ]);
+                allCourses  = courses  || [];
+                allPrograms = programs || [];
+                allLevels   = levels   || [];
+                populateProgramDropdown();
+                populateLevelDropdowns();
+                updateStats();
+                applyFilters();
+            } catch (err) {
+                showAlert('Lỗi tải dữ liệu: ' + err.message, 'danger');
+            }
+        }
+
+        // ─── Stats ────────────────────────────────────────────────────────────────
+        function updateStats() {
+            const uniquePrograms = new Set(allCourses.map(c => c.programId)).size;
+            const totalClasses   = allCourses.reduce((s, c) => s + (c.totalClasses || 0), 0);
+            const totalEnrol     = allCourses.reduce((s, c) => s + (c.totalEnrollments || 0), 0);
+
+            document.getElementById('statTotalCourses').textContent     = allCourses.length;
+            document.getElementById('statTotalPrograms').textContent     = allPrograms.length || uniquePrograms;
+            document.getElementById('statTotalClasses').textContent      = totalClasses;
+            document.getElementById('statTotalEnrollments').textContent  = totalEnrol;
+        }
+
+        // ─── Populate program filter dropdown ─────────────────────────────────────
+        function populateProgramDropdown() {
+            const sel = document.getElementById('filterProgram');
+            const existing = [...sel.options].slice(1).map(o => o.value);
+            allPrograms.forEach(p => {
+                if (!existing.includes(String(p.id))) {
+                    const opt = new Option(p.name, p.id);
+                    sel.add(opt);
+                }
+            });
+
+            const formSel = document.getElementById('fieldProgram');
+            formSel.innerHTML = '<option value="">-- Chọn bộ môn --</option>';
+            allPrograms.forEach(p => {
+                const opt = new Option(`${p.name} (${p.code})`, p.id);
+                formSel.add(opt);
+            });
+        }
+
+        function populateLevelDropdowns() {
+            const labels = {
+                BEGINNER: 'BEGINNER (Sơ Cấp)',
+                INTERMEDIATE: 'INTERMEDIATE (Trung Cấp)',
+                ADVANCED: 'ADVANCED (Nâng Cao)'
+            };
+            const filter = document.getElementById('filterLevel');
+            const field = document.getElementById('fieldLevel');
+            filter.innerHTML = '<option value="">Tất cả trình độ</option>';
+            field.innerHTML = '<option value="">-- Không phân cấp --</option>';
+            allLevels.forEach(level => {
+                const label = labels[level] || level;
+                filter.add(new Option(label, level));
+                field.add(new Option(label, level));
+            });
+        }
+
+        function normalizeLevel(level) {
+            const aliases = {
+                'Mầm non': 'BEGINNER',
+                'Cơ bản': 'BEGINNER',
+                'Trung cấp': 'INTERMEDIATE',
+                'Nâng cao': 'ADVANCED',
+                'Chuyên nghiệp': 'ADVANCED'
+            };
+            return allLevels.includes(level) ? level : aliases[level] || '';
+        }
+
+        function getLevelLabel(level) {
+            const labels = {
+                BEGINNER: 'BEGINNER (Sơ Cấp)',
+                INTERMEDIATE: 'INTERMEDIATE (Trung Cấp)',
+                ADVANCED: 'ADVANCED (Nâng Cao)'
+            };
+            const normalized = normalizeLevel(level);
+            return labels[normalized] || level;
+        }
+
+        // ─── Filtering & Rendering ────────────────────────────────────────────────
+        function applyFilters() {
+            const search  = document.getElementById('searchInput').value.toLowerCase().trim();
+            const progId  = document.getElementById('filterProgram').value;
+            const level   = document.getElementById('filterLevel').value;
+
+            let filtered = allCourses.filter(c => {
+                const matchSearch = !search ||
+                    c.name.toLowerCase().includes(search) ||
+                    c.code.toLowerCase().includes(search) ||
+                    (c.programName && c.programName.toLowerCase().includes(search));
+                const matchProg  = !progId || String(c.programId) === String(progId);
+                const matchLevel = !level  || normalizeLevel(c.level) === level;
+                return matchSearch && matchProg && matchLevel;
+            });
+
+            document.getElementById('tableSubtitle').textContent =
+                `Hiển thị ${filtered.length} / ${allCourses.length} khóa học`;
+
+            renderTable(filtered);
+        }
+
+        function renderTable(courses) {
+            const body = document.getElementById('courseTableBody');
+
+            if (!courses.length) {
+                body.innerHTML = `
+                    <tr><td colspan="10">
+                        <div class="cm-empty">
+                            <i class="bi bi-inbox"></i>
+                            <div class="fw-semibold">Không có khóa học nào</div>
+                            <div class="small">Thử thay đổi bộ lọc hoặc tạo khóa học mới.</div>
+                        </div>
+                    </td></tr>`;
+                return;
+            }
+
+            body.innerHTML = courses.map((c, idx) => `
+                <tr>
+                    <td class="text-muted" style="font-size:0.78rem;">${idx + 1}</td>
+                    <td>
+                        <code class="text-purple" style="font-size:0.82rem;color:var(--cm-primary);">${escapeHtml(c.code)}</code>
+                    </td>
+                    <td>
+                        <div class="fw-semibold text-dark" style="font-size:0.88rem;">${escapeHtml(c.name)}</div>
+                        ${c.description ? `<div class="text-muted" style="font-size:0.75rem;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.description)}</div>` : ''}
+                    </td>
+                    <td>
+                        <span class="badge ${getProgramBadgeClass(c.programCode)} px-2 py-1" style="font-size:0.75rem;">
+                            ${escapeHtml(c.programName)}
+                        </span>
+                    </td>
+                    <td>
+                        ${c.level
+                            ? `<span class="badge-level ${getLevelBadgeClass(c.level)}">${escapeHtml(getLevelLabel(c.level))}</span>`
+                            : `<span class="text-muted small">—</span>`}
+                    </td>
+                    <td class="text-center">
+                        ${c.durationWeeks != null ? `<span class="fw-semibold">${c.durationWeeks}</span> <span class="text-muted small">tuần</span>` : '<span class="text-muted">—</span>'}
+                    </td>
+                    <td>
+                        <span class="fw-semibold text-success">${formatCurrency(c.tuitionFee)}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2">${c.totalClasses || 0}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-info-subtle text-info border border-info-subtle px-2">${c.totalEnrollments || 0}</span>
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <button class="btn-cm-edit me-1" onclick="openDetailModal(${c.id})" title="Xem chi tiết">
+                            <i class="bi bi-eye me-1"></i>Xem
+                        </button>
+                        <button class="btn-cm-edit me-1" onclick="openEditModal(getCourseById(${c.id}))" title="Chỉnh sửa">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn-cm-delete" onclick="openDeleteModal(${c.id}, '${escapeHtml(c.name).replace(/'/g, "\\'")}')" title="Xóa">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // ─── Helpers ──────────────────────────────────────────────────────────────
+        function getCourseById(id) {
+            return allCourses.find(c => c.id === id);
+        }
+
+        function getProgramBadgeClass(code) {
+            if (!code) return 'badge-program-other';
+            const u = code.toUpperCase();
+            if (u.includes('DAN') || u.includes('NHAC') || u.includes('PIANO') || u.includes('GUITAR')) return 'badge-program-dan';
+            if (u.includes('MUA')) return 'badge-program-mua';
+            if (u.includes('VO'))  return 'badge-program-vo';
+            if (u.includes('VAN') || u.includes('HOA')) return 'badge-program-van';
+            return 'badge-program-other';
+        }
+
+        function getLevelBadgeClass(level) {
+            if (!level) return 'badge badge-level bg-secondary-subtle text-secondary';
+            const l = level.toLowerCase();
+            if (l.includes('beginner') || l.includes('mầm') || l.includes('mam') || l.includes('cơ bản') || l.includes('co ban')) return 'badge badge-level bg-success-subtle text-success';
+            if (l.includes('intermediate') || l.includes('trung cấp') || l.includes('trung cap')) return 'badge badge-level bg-warning-subtle text-warning-emphasis';
+            if (l.includes('advanced') || l.includes('nâng cao') || l.includes('nang cao') || l.includes('chuyên') || l.includes('chuyen')) return 'badge badge-level bg-primary-subtle text-primary';
+            return 'badge badge-level bg-secondary-subtle text-secondary';
+        }
+
+        // ─── Create Modal ─────────────────────────────────────────────────────────
+        function openCreateModal() {
+            editingId = null;
+            resetForm();
+            document.getElementById('formModalTitle').innerHTML    = '<i class="bi bi-journal-plus me-2"></i>Tạo Khóa Học Mới';
+            document.getElementById('formModalSubtitle').textContent = 'Điền thông tin để tạo khóa học mới trong hệ thống';
+            document.getElementById('btnSubmitCourse').innerHTML   = '<i class="bi bi-check-circle me-1"></i>Tạo Khóa Học';
+            courseFormModal.show();
+        }
+
+        // ─── Edit Modal ───────────────────────────────────────────────────────────
+        function openEditModal(course) {
+            if (!course) return;
+            editingId = course.id;
+            document.getElementById('formModalTitle').innerHTML    = '<i class="bi bi-pencil-square me-2"></i>Cập Nhật Khóa Học';
+            document.getElementById('formModalSubtitle').textContent = `Đang chỉnh sửa: ${course.name}`;
+            document.getElementById('btnSubmitCourse').innerHTML   = '<i class="bi bi-check2-circle me-1"></i>Lưu Thay Đổi';
+
+            // Fill form fields
+            document.getElementById('fieldProgram').value        = course.programId || '';
+            document.getElementById('fieldCode').value           = course.code || '';
+            document.getElementById('fieldName').value           = course.name || '';
+            document.getElementById('fieldLevel').value          = normalizeLevel(course.level);
+            document.getElementById('fieldDurationWeeks').value  = course.durationWeeks || '';
+            document.getElementById('fieldTotalSessions').value  = course.totalSessions || '';
+            document.getElementById('fieldTuitionFee').value     = course.tuitionFee || '';
+            document.getElementById('fieldDescription').value    = course.description || '';
+
+            // Update live previews
+            document.getElementById('tuitionFeePreview').textContent = course.tuitionFee
+                ? '≈ ' + formatCurrency(course.tuitionFee) : '';
+            document.getElementById('descCharCount').textContent = (course.description || '').length;
+
+            courseFormModal.show();
+        }
+
+        // ─── Detail Modal ─────────────────────────────────────────────────────────
+        function openDetailModal(courseId) {
+            const course = getCourseById(courseId);
+            if (!course) return;
+            viewingCourse = course;
+
+            document.getElementById('detailModalTitle').textContent = course.name;
+            document.getElementById('detailModalCode').textContent  = `Mã: ${course.code}`;
+
+            document.getElementById('detailModalBody').innerHTML = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border h-100">
+                            <div class="text-muted small fw-bold mb-2 text-uppercase">Thông Tin Chung</div>
+                            <div class="mb-2">
+                                <span class="text-muted small">Bộ môn:</span>
+                                <div class="fw-semibold">${escapeHtml(course.programName)}</div>
+                            </div>
+                            <div class="mb-2">
+                                <span class="text-muted small">Trình độ:</span>
+                                <div>${course.level ? `<span class="${getLevelBadgeClass(course.level)}">${escapeHtml(getLevelLabel(course.level))}</span>` : '<span class="text-muted">Không phân cấp</span>'}</div>
+                            </div>
+                            <div class="mb-2">
+                                <span class="text-muted small">Mã khóa học:</span>
+                                <div><code style="color:var(--cm-primary);">${escapeHtml(course.code)}</code></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded-3 border h-100" style="background: #f5f3ff;">
+                            <div class="text-muted small fw-bold mb-2 text-uppercase">Thống Kê & Phí</div>
+                            <div class="mb-2">
+                                <span class="text-muted small">Học phí:</span>
+                                <div class="fw-bold text-success fs-5">${formatCurrency(course.tuitionFee)}</div>
+                            </div>
+                            <div class="row g-2 mt-1">
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-white rounded-2 border">
+                                        <div class="fw-bold text-primary" style="font-size:1.3rem;">${course.durationWeeks || '—'}</div>
+                                        <div class="text-muted small">Tuần học</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-white rounded-2 border">
+                                        <div class="fw-bold text-primary" style="font-size:1.3rem;">${course.totalSessions || '—'}</div>
+                                        <div class="text-muted small">Buổi học</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-white rounded-2 border">
+                                        <div class="fw-bold" style="font-size:1.3rem;color:var(--cm-primary);">${course.totalClasses || 0}</div>
+                                        <div class="text-muted small">Lớp học</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-white rounded-2 border">
+                                        <div class="fw-bold" style="font-size:1.3rem;color:var(--cm-secondary);">${course.totalEnrollments || 0}</div>
+                                        <div class="text-muted small">Học viên</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ${course.description ? `
+                    <div class="col-12">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="text-muted small fw-bold mb-2 text-uppercase">Mô Tả Khóa Học</div>
+                            <p class="mb-0 text-dark" style="line-height:1.7;">${escapeHtml(course.description)}</p>
+                        </div>
+                    </div>` : ''}
+                </div>
+            `;
+            courseDetailModal.show();
+        }
+
+        // ─── Delete Modal ─────────────────────────────────────────────────────────
+        function openDeleteModal(courseId, courseName) {
+            deleteId = courseId;
+            document.getElementById('deleteCourseNameDisplay').textContent = courseName;
+            deleteConfirmModal.show();
+        }
+
+        async function confirmDeleteCourse() {
+            if (!deleteId) return;
+            const btn = document.getElementById('btnConfirmDelete');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang xóa...';
+            try {
+                await callApi(`/api/course-management/courses/${deleteId}`, 'DELETE');
+                deleteConfirmModal.hide();
+                showAlert('Đã xóa khóa học thành công.', 'success');
+                await loadAll();
+            } catch (err) {
+                showAlert('Xóa thất bại: ' + err.message, 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-trash me-1"></i>Xóa Khóa Học';
+                deleteId = null;
+            }
+        }
+
+        // ─── Form Submit ──────────────────────────────────────────────────────────
+        async function submitCourseForm() {
+            const form = document.getElementById('courseForm');
+            form.classList.add('was-validated');
+            if (!form.checkValidity()) return;
+
+            const btn = document.getElementById('btnSubmitCourse');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+
+            const payload = {
+                programId:      parseInt(document.getElementById('fieldProgram').value) || null,
+                code:           document.getElementById('fieldCode').value.trim(),
+                name:           document.getElementById('fieldName').value.trim(),
+                level:          document.getElementById('fieldLevel').value || null,
+                durationWeeks:  parseInt(document.getElementById('fieldDurationWeeks').value) || null,
+                totalSessions:  parseInt(document.getElementById('fieldTotalSessions').value) || null,
+                tuitionFee:     parseFloat(document.getElementById('fieldTuitionFee').value) || null,
+                description:    document.getElementById('fieldDescription').value.trim() || null
+            };
+
+            try {
+                if (editingId) {
+                    await callApi(`/api/course-management/courses/${editingId}`, 'PUT', payload);
+                    showAlert('Đã cập nhật khóa học thành công!', 'success');
+                } else {
+                    await callApi('/api/course-management/courses', 'POST', payload);
+                    showAlert('Đã tạo khóa học mới thành công!', 'success');
+                }
+                courseFormModal.hide();
+                await loadAll();
+            } catch (err) {
+                // Error handled by callApi (alert shown)
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = editingId
+                    ? '<i class="bi bi-check2-circle me-1"></i>Lưu Thay Đổi'
+                    : '<i class="bi bi-check-circle me-1"></i>Tạo Khóa Học';
+            }
+        }
+
+        function resetForm() {
+            const form = document.getElementById('courseForm');
+            form.reset();
+            form.classList.remove('was-validated');
+            document.getElementById('tuitionFeePreview').textContent = '';
+            document.getElementById('descCharCount').textContent = '0';
+            editingId = null;
+        }
+
+        document.getElementById('courseFormModal').addEventListener('hidden.bs.modal', resetForm);
+
+        // ─── UI Utilities ─────────────────────────────────────────────────────────
+        function showAlert(message, type) {
+            const el = document.getElementById('pageAlert');
+            el.className = `alert alert-${type} alert-dismissible fade show`;
+            el.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => { el.classList.add('d-none'); }, 6000);
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value || 0);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+    </script>
+</body>
+</html>

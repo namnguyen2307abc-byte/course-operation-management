@@ -3,6 +3,8 @@ package com.talent.management.features.branch_facility_enrollment.controller;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateBranchRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateEquipmentRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateRoomRequest;
+import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateEquipmentRequest;
+import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateRoomRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchOptionResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.EquipmentResponse;
@@ -81,5 +83,19 @@ public class BranchFacilityController {
     @Operation(summary = "Tạo mới thiết bị nhạc cụ vào phòng học")
     public ResponseEntity<EquipmentResponse> createEquipment(@Valid @RequestBody CreateEquipmentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(branchFacilityService.createEquipment(request));
+    }
+
+    @PutMapping("/rooms/{roomId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<RoomResponse> updateRoom(@PathVariable Long roomId,
+                                                   @Valid @RequestBody UpdateRoomRequest request) {
+        return ResponseEntity.ok(branchFacilityService.updateRoom(roomId, request));
+    }
+
+    @PutMapping("/equipments/{equipmentId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<EquipmentResponse> updateEquipment(@PathVariable Long equipmentId,
+                                                             @Valid @RequestBody UpdateEquipmentRequest request) {
+        return ResponseEntity.ok(branchFacilityService.updateEquipment(equipmentId, request));
     }
 }

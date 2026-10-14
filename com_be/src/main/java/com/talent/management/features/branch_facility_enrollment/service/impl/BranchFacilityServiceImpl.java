@@ -3,6 +3,8 @@ package com.talent.management.features.branch_facility_enrollment.service.impl;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateBranchRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateEquipmentRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.CreateRoomRequest;
+import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateEquipmentRequest;
+import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateRoomRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchOptionResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.EquipmentResponse;
@@ -100,5 +102,37 @@ public class BranchFacilityServiceImpl implements BranchFacilityService {
         Equipment equipment = branchFacilityMapper.toEquipment(request, room);
         Equipment saved = equipmentRepository.save(equipment);
         return branchFacilityMapper.toEquipmentResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public RoomResponse updateRoom(Long roomId, UpdateRoomRequest request) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phòng học"));
+        if (request.capacity() < roomRepository.maxAssignedClassSize(roomId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Sức chứa không được nhỏ hơn sĩ số tối đa của lớp đang dùng phòng");
+        }
+        if (request.roomType() != room.getRoomType() && roomRepository.hasAssignedClass(roomId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Không thể đổi loại phòng khi đã có lớp sử dụng");
+        }
+        room.setRoomName(request.roomName().trim());
+        room.setCapacity(request.capacity());
+        room.setRoomType(request.roomType());
+        room.setStatus(request.status());
+        room.setDescription(request.description());
+        return branchFacilityMapper.toRoomResponse(roomRepository.save(room));
+    }
+
+    @Override
+    @Transactional
+    public EquipmentResponse updateEquipment(Long equipmentId, UpdateEquipmentRequest request) {
+        Equipment equipment = equipmentRepository.findById(equipmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thiết bị"));
+        equipment.setName(request.name().trim());
+        equipment.setCategory(request.category());
+        equipment.setStatus(request.status());
+        equipment.setSerialNumber(request.serialNumber());
+        equipment.setDescription(request.description());
+        return branchFacilityMapper.toEquipmentResponse(equipmentRepository.save(equipment));
     }
 }

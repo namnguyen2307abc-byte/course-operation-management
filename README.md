@@ -1,5 +1,7 @@
 # Course Operation Management (COM)
 
+Chạy trên Windows: nhấn đúp `start_all.bat`. Xem [hướng dẫn khởi động ổn định](docs/local-startup.md) để chạy lại backend sau khi sửa code hoặc pull Git.
+
 > **Hệ Thống Quản Lý Vận Hành Học Viện Âm Nhạc & Nghệ Thuật (Talent Academy)**  
 > | Phiên bản kiến trúc: **Spring Boot 3 (Java 17) & Frontend Web Modular**
 
