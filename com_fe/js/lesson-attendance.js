@@ -226,6 +226,8 @@ function renderStudents() {
             makeup ? '<span class="att-tag makeup"><i class="bi bi-arrow-repeat"></i>Học bù</span>' : '',
             s.hasApprovedAbsence ? '<span class="att-tag leave"><i class="bi bi-shield-check"></i>Có phép</span>' : ''
         ].join('');
+        const makeupOrigin = s.makeupOrigin
+            ? `<div class="att-reason" style="color: #2563eb; font-weight: 500;"><i class="bi bi-arrow-return-right me-1"></i>${escapeHtml(s.makeupOrigin)}</div>` : '';
         const reason = s.absenceReason
             ? `<div class="att-reason"><i class="bi bi-info-circle me-1"></i>Lý do nghỉ: ${escapeHtml(s.absenceReason)}</div>` : '';
 
@@ -247,6 +249,7 @@ function renderStudents() {
                 <div class="min-w-0">
                     <div class="att-name">${escapeHtml(s.fullName)}${tags}</div>
                     <div class="att-code">${escapeHtml(s.studentCode || 'HV' + s.studentId)}</div>
+                    ${makeupOrigin}
                     ${reason}
                 </div>
             </div>

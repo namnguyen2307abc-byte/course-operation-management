@@ -69,6 +69,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         Role userRole = currentUser.getRole();
 
         List<Lesson> lessons;
+        Set<Long> viewedStudentIds = new LinkedHashSet<>();
 
         switch (userRole) {
             case STUDENT -> {
@@ -77,6 +78,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                         .findFirst();
                 Long effectiveStudentId = studentOpt.map(Student::getId).orElse(studentId);
                 if (effectiveStudentId != null) {
+                    viewedStudentIds.add(effectiveStudentId);
                     lessons = attendanceLessonRepository.findLessonsByStudentIdAndDateBetween(effectiveStudentId,
                             monday, sunday);
                 } else {
@@ -89,6 +91,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                     Student child = studentRepository.findByIdAndParentId(studentId, currentUser.getId())
                             .orElseThrow(() -> new AttendanceMakeupException(
                                     "Không tìm thấy học viên thuộc quyền quản lý của bạn"));
+                    viewedStudentIds.add(child.getId());
                     lessons = attendanceLessonRepository.findLessonsByStudentIdAndDateBetween(child.getId(), monday,
                             sunday);
                 } else {
@@ -100,6 +103,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                         Set<Long> lessonIds = new HashSet<>();
                         lessons = new ArrayList<>();
                         for (Student child : children) {
+                            viewedStudentIds.add(child.getId());
                             List<Lesson> childLessons = attendanceLessonRepository
                                     .findLessonsByStudentIdAndDateBetween(child.getId(), monday, sunday);
                             for (Lesson l : childLessons) {
@@ -126,6 +130,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                             .findByTeacherIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
                                     teacherId, monday, sunday);
                 } else if (studentId != null) {
+                    viewedStudentIds.add(studentId);
                     lessons = attendanceLessonRepository.findLessonsByStudentIdAndDateBetween(studentId, monday,
                             sunday);
                 } else if (branchId != null) {
@@ -139,12 +144,29 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             }
         }
 
+        // Đồng bộ lịch học bù: bỏ buổi gốc đã chuyển đi, thêm buổi học bù đã xếp
+        if (!viewedStudentIds.isEmpty()) {
+            lessons = applyMakeupAdjustments(lessons, viewedStudentIds, monday, sunday);
+        }
+
         // BATCH FETCH toàn bộ attendance của các buổi học trong tuần để tránh N+1
         List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
         Map<Long, List<Attendance>> attendanceMap = lessonIds.isEmpty()
                 ? Collections.emptyMap()
                 : attendanceRecordRepository.findByLessonIdIn(lessonIds).stream()
                         .collect(Collectors.groupingBy(att -> att.getLesson().getId()));
+
+        // Điều chỉnh sĩ số: trừ HS chuyển đi, cộng HS học bù đến
+        Map<Long, Integer> seatDelta = new HashMap<>();
+        if (!lessonIds.isEmpty()) {
+            List<MakeupStatus> active = List.of(MakeupStatus.SCHEDULED, MakeupStatus.COMPLETED);
+            for (MakeupRegistration mr : makeupRegistrationRepository.findByOriginalLessonIdInAndStatusIn(lessonIds, active)) {
+                seatDelta.merge(mr.getOriginalLesson().getId(), -1, Integer::sum);
+            }
+            for (MakeupRegistration mr : makeupRegistrationRepository.findByTargetLessonIdInAndStatusIn(lessonIds, active)) {
+                seatDelta.merge(mr.getTargetLesson().getId(), 1, Integer::sum);
+            }
+        }
 
         LocalDate today = LocalDate.now();
 
@@ -171,6 +193,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             int totalStudents = (l.getClassEntity() != null && l.getClassEntity().getCurrentStudents() != null)
                     ? l.getClassEntity().getCurrentStudents()
                     : attendancesOfLesson.size();
+            totalStudents = Math.max(0, totalStudents + seatDelta.getOrDefault(l.getId(), 0));
             long presentCount = attendancesOfLesson.stream().filter(a -> a.getStatus() == AttendanceStatus.PRESENT)
                     .count();
             long absentCount = attendancesOfLesson.stream().filter(a -> a.getStatus() == AttendanceStatus.ABSENT)
@@ -244,6 +267,34 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
     // 2. LẤY BẢNG ĐIỂM DANH HỌC VIÊN CỦA BUỔI HỌC
     // =========================================================================
 
+    /**
+     * Điều chỉnh danh sách buổi học của học viên theo các đăng ký học bù đã xếp:
+     * bỏ buổi gốc đã chuyển đi và thêm buổi học bù (trong khoảng tuần đang xem).
+     */
+    private List<Lesson> applyMakeupAdjustments(List<Lesson> lessons, Set<Long> studentIds,
+            LocalDate from, LocalDate to) {
+        Map<Long, Lesson> result = new LinkedHashMap<>();
+        for (Lesson l : lessons) {
+            result.put(l.getId(), l);
+        }
+        List<MakeupStatus> active = List.of(MakeupStatus.SCHEDULED, MakeupStatus.COMPLETED);
+        for (Long sid : studentIds) {
+            for (MakeupRegistration mr : makeupRegistrationRepository.findByStudentIdAndStatusIn(sid, active)) {
+                if (mr.getOriginalLesson() != null) {
+                    result.remove(mr.getOriginalLesson().getId());
+                }
+                Lesson target = mr.getTargetLesson();
+                if (target != null && !target.getLessonDate().isBefore(from) && !target.getLessonDate().isAfter(to)) {
+                    result.putIfAbsent(target.getId(), target);
+                }
+            }
+        }
+        List<Lesson> merged = new ArrayList<>(result.values());
+        merged.sort(Comparator.comparing(Lesson::getLessonDate)
+                .thenComparing(Lesson::getStartTime, Comparator.nullsLast(Comparator.naturalOrder())));
+        return merged;
+    }
+
     @Override
     public LessonAttendanceSheetResponse getLessonAttendanceSheet(Long lessonId) {
         Lesson lesson = attendanceLessonRepository.findById(lessonId)
@@ -288,8 +339,21 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 : Collections.emptyList();
 
         // Lấy danh sách học viên học bù được xếp vào buổi này
+        List<MakeupStatus> activeMakeup = List.of(MakeupStatus.SCHEDULED, MakeupStatus.COMPLETED);
         List<MakeupRegistration> makeups = makeupRegistrationRepository
-                .findByTargetLessonIdAndStatus(lesson.getId(), MakeupStatus.SCHEDULED);
+                .findByTargetLessonIdAndStatusIn(lesson.getId(), activeMakeup);
+        Map<Long, MakeupRegistration> makeupByStudent = new HashMap<>();
+        for (MakeupRegistration mr : makeups) {
+            if (mr.getStudent() != null) {
+                makeupByStudent.put(mr.getStudent().getId(), mr);
+            }
+        }
+        // Học viên đã được chuyển sang buổi học bù ở lớp khác -> không còn trong buổi này
+        Set<Long> movedOutStudentIds = makeupRegistrationRepository
+                .findByOriginalLessonIdAndStatusIn(lesson.getId(), activeMakeup).stream()
+                .filter(mr -> mr.getStudent() != null)
+                .map(mr -> mr.getStudent().getId())
+                .collect(Collectors.toSet());
 
         // Lấy tất cả bản ghi điểm danh hiện có của buổi học
         Map<Long, Attendance> attendanceMap = attendanceRecordRepository.findByLessonId(lesson.getId()).stream()
@@ -307,7 +371,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         // Tổng hợp danh sách học sinh: Lớp chính + Học viên học bù
         Map<Long, Student> uniqueStudents = new LinkedHashMap<>();
         for (Enrollment e : enrollments) {
-            if (e.getStudent() != null) {
+            if (e.getStudent() != null && !movedOutStudentIds.contains(e.getStudent().getId())) {
                 uniqueStudents.put(e.getStudent().getId(), e.getStudent());
             }
         }
@@ -351,7 +415,18 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             boolean hasApprovedLeave = (leaveReq != null);
             String absenceReasonText = (hasApprovedLeave && leaveReq.getReason() != null) ? leaveReq.getReason() : null;
 
+            MakeupRegistration mkReg = makeupByStudent.get(s.getId());
+            String makeupOrigin = null;
+            if (mkReg != null && mkReg.getOriginalLesson() != null) {
+                Lesson ol = mkReg.getOriginalLesson();
+                makeupOrigin = "Học bù buổi " + ol.getSessionNumber()
+                        + (ol.getClassEntity() != null ? " lớp " + ol.getClassEntity().getClassName() : "")
+                        + " (nghỉ ngày " + ol.getLessonDate().format(DateTimeFormatter.ofPattern("dd/MM")) + ")";
+            }
+
             studentItems.add(StudentAttendanceItemDto.builder()
+                    .makeup(mkReg != null)
+                    .makeupOrigin(makeupOrigin)
                     .orderNumber(order++)
                     .studentId(s.getId())
                     .studentCode(studentCode)

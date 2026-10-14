@@ -84,6 +84,37 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
      */
     @Query("SELECT COALESCE(MAX(l.sessionNumber), 0) FROM Lesson l WHERE l.classEntity.id = :classId")
     int findMaxSessionNumberByClassId(@Param("classId") Long classId);
+
+    /**
+     * Ứng viên ca bù cùng trình độ: cùng chương trình + cùng level, cùng số thứ tự buổi,
+     * diễn ra từ hôm nay, thuộc lớp khác lớp gốc.
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "WHERE l.lessonDate >= :fromDate " +
+           "AND l.sessionNumber = :sessionNumber " +
+           "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.classEntity.course.program.id = :programId " +
+           "AND l.classEntity.course.level = :level " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findMakeupCandidatesByLevel(@Param("fromDate") LocalDate fromDate,
+                                             @Param("sessionNumber") Integer sessionNumber,
+                                             @Param("excludeClassId") Long excludeClassId,
+                                             @Param("programId") Long programId,
+                                             @Param("level") String level);
+
+    /**
+     * Ứng viên ca bù khi khóa học không có thông tin level: cùng khóa học, cùng số thứ tự buổi.
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "WHERE l.lessonDate >= :fromDate " +
+           "AND l.sessionNumber = :sessionNumber " +
+           "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.classEntity.course.id = :courseId " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findMakeupCandidatesByCourse(@Param("fromDate") LocalDate fromDate,
+                                              @Param("sessionNumber") Integer sessionNumber,
+                                              @Param("excludeClassId") Long excludeClassId,
+                                              @Param("courseId") Long courseId);
 }
 
 

@@ -25,4 +25,8 @@ public class LessonOptionResponse {
     private String courseName;
     private String roomName;
     private String teacherName;
+    private String level;
+    private Integer maxStudents;
+    private Integer occupiedSeats;
+    private Integer availableSeats;
 }

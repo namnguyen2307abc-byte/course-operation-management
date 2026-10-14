@@ -365,6 +365,8 @@
                         <select id="filterMakeupStatus" class="form-select form-control-modern" onchange="renderMakeupTable()">
                             <option value="">Tất Cả Trạng Thái</option>
                             <option value="PENDING" selected>Chờ Xếp Lịch (PENDING)</option>
+                            <option value="NO_SLOT">Chưa Có Lớp Phù Hợp (NO_SLOT)</option>
+                            <option value="DEFERRED">Chuyển Khóa Kỳ Sau (DEFERRED)</option>
                             <option value="SCHEDULED">Đã Xếp Lịch (SCHEDULED)</option>
                             <option value="COMPLETED">Đã Hoàn Thành (COMPLETED)</option>
                             <option value="CANCELLED">Đã Hủy (CANCELLED)</option>
@@ -790,6 +792,16 @@
 
             const isStaffOrTeacher = currentUser && (currentUser.role === 'TEACHER' || currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
 
+            // Giáo viên chỉ được duyệt đơn của buổi học do mình phụ trách (backend cũng kiểm tra lại)
+            const canReviewItem = (item) => {
+                if (!currentUser) return false;
+                if (currentUser.role === 'TEACHER') {
+                    const myId = currentUser.userId ?? currentUser.id;
+                    return myId == null || item.teacherId == null || Number(myId) === Number(item.teacherId);
+                }
+                return ['ADMIN', 'BRANCH_MANAGER', 'STAFF'].includes(currentUser.role);
+            };
+
             tbody.innerHTML = filtered.map(item => {
                 // Status badge
                 let statusBadge = '';
@@ -813,6 +825,15 @@
                     makeupBadge = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle small">Đã xếp: ${item.makeupTargetDate || ''}</span>`;
                 } else if (item.makeupStatus === 'COMPLETED') {
                     makeupBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle small">Đã học bù</span>';
+                } else if (item.makeupStatus === 'NO_SLOT') {
+                    makeupBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Chưa có lớp phù hợp</span>';
+                } else if (item.makeupStatus === 'DEFERRED') {
+                    makeupBadge = '<span class="badge bg-dark-subtle text-dark border border-dark-subtle small">Chuyển khóa kỳ sau</span>';
+                } else if (item.makeupStatus === 'CANCELLED') {
+                    makeupBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle small">Không cần học bù</span>';
+                }
+                if (item.makeupNote && item.makeupStatus) {
+                    makeupBadge += `<div class="small text-muted text-truncate mt-1" style="max-width:220px;" title="${escapeHtml(item.makeupNote)}"><i class="bi bi-bell me-1"></i>${escapeHtml(item.makeupNote)}</div>`;
                 }
 
                 // Date formatting
@@ -826,7 +847,7 @@
                     </button>
                 `;
 
-                if (isStaffOrTeacher && item.status === 'PENDING') {
+                if (canReviewItem(item) && item.status === 'PENDING') {
                     actionButtons += `
                         <button class="btn btn-sm btn-outline-success rounded-pill px-2 py-1 ms-1" title="Duyệt đơn thường" onclick="openApproveModal(${item.id}, '${escapeHtml(item.studentName)}')">
                             <i class="bi bi-check-lg"></i>
@@ -1123,6 +1144,10 @@
                     statusBadge = '<span class="badge-status bg-success text-white"><i class="bi bi-check2-all"></i>Hoàn Thành</span>';
                 } else if (item.status === 'CANCELLED') {
                     statusBadge = '<span class="badge-status bg-secondary text-white">Đã Hủy</span>';
+                } else if (item.status === 'NO_SLOT') {
+                    statusBadge = '<span class="badge-status bg-danger text-white"><i class="bi bi-exclamation-triangle"></i>Chưa Có Lớp (Đã Báo PH)</span>';
+                } else if (item.status === 'DEFERRED') {
+                    statusBadge = '<span class="badge-status bg-dark text-white"><i class="bi bi-skip-forward"></i>Chuyển Kỳ Sau</span>';
                 }
 
                 // Buổi học gốc
@@ -1152,13 +1177,19 @@
                     </button>
                 `;
 
-                if (item.status === 'PENDING') {
+                if (item.status === 'PENDING' || item.status === 'NO_SLOT') {
                     if (isStaffOrAdmin) {
                         actionButtons += `
-                            <button class="btn btn-sm btn-warning rounded-pill px-2 py-1 ms-1 text-dark fw-semibold" title="Xếp ca học bù" onclick="openScheduleModal(${item.id})">
+                            <button class="btn btn-sm btn-warning rounded-pill px-2 py-1 ms-1 text-dark fw-semibold" title="Chuyển HS sang lớp cùng level, cùng buổi" onclick="openScheduleModal(${item.id})">
                                 <i class="bi bi-calendar-plus me-1"></i> Xếp Lịch
                             </button>
-                            <button class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 ms-1" title="Hủy ca học bù" onclick="confirmCancelMakeup(${item.id})">
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 ms-1" title="Không có lớp phù hợp - báo phụ huynh" onclick="markNoSlot(${item.id})">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-dark rounded-pill px-2 py-1 ms-1" title="Chuyển sang khóa kỳ sau (buổi quan trọng, PH không đi được)" onclick="deferNextTerm(${item.id})">
+                                <i class="bi bi-skip-forward"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1 ms-1" title="Gia đình báo không cần học bù" onclick="familyDeclines(${item.id})">
                                 <i class="bi bi-x-circle"></i>
                             </button>
                         `;
@@ -1228,7 +1259,7 @@
             try {
                 const availableLessons = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/available-lessons`);
                 if (!availableLessons || availableLessons.length === 0) {
-                    select.innerHTML = '<option value="">Không tìm thấy ca học nào phù hợp trong thời gian tới</option>';
+                    select.innerHTML = '<option value="">Không có lớp cùng level còn chỗ ở buổi này - hãy dùng nút "Chưa có lớp phù hợp" hoặc "Chuyển kỳ sau"</option>';
                     return;
                 }
 
@@ -1239,7 +1270,9 @@
                         const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
                         const teacherStr = l.teacherName ? ` - GV: ${l.teacherName}` : '';
                         const roomStr = l.roomName ? ` [${l.roomName}]` : '';
-                        return `<option value="${l.id}">${dateStr} (${timeStr}) &bull; ${titleStr} (${l.className || ''}${teacherStr}${roomStr})</option>`;
+                        const seatStr = (l.availableSeats != null && l.maxStudents != null) ? ` | Còn ${l.availableSeats}/${l.maxStudents} chỗ` : '';
+                        const levelStr = l.level ? ` | ${l.level}` : '';
+                        return `<option value="${l.id}">${dateStr} (${timeStr}) &bull; ${titleStr} (${l.className || ''}${teacherStr}${roomStr}${levelStr}${seatStr})</option>`;
                     }).join('');
 
                 if (item.targetLessonId) {
@@ -1301,6 +1334,48 @@
             }
         }
 
+        // Gia đình báo không cần học bù nữa -> hủy, phụ huynh thấy trạng thái + ghi chú
+        async function familyDeclines(makeupId) {
+            if (!confirm('Xác nhận gia đình báo KHÔNG CẦN học bù nữa và hủy yêu cầu này?')) return;
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
+                    reason: 'Gia đình báo không cần học bù'
+                });
+                showToast('warning', 'Đã hủy yêu cầu học bù theo đề nghị của gia đình.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi: ' + err.message);
+            }
+        }
+
+        // Không có lớp phù hợp -> báo phụ huynh (ghi chú hiển thị ở tài khoản phụ huynh)
+        async function markNoSlot(makeupId) {
+            const note = prompt('Nội dung báo phụ huynh (VD: Buổi này quan trọng, hiện chưa có lớp cùng level. Nếu bé đi học được vui lòng đến lớp gốc):');
+            if (note === null) return;
+            if (!note.trim()) { showToast('danger', 'Vui lòng nhập nội dung thông báo!'); return; }
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/no-slot`, 'PATCH', { note: note.trim() });
+                showToast('success', 'Đã ghi nhận chưa có lớp phù hợp và thông báo cho phụ huynh.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi: ' + err.message);
+            }
+        }
+
+        // Phụ huynh không thể đi học -> chuyển sang khóa kỳ sau
+        async function deferNextTerm(makeupId) {
+            const note = prompt('Ghi chú chuyển học bù sang khóa kỳ sau:');
+            if (note === null) return;
+            if (!note.trim()) { showToast('danger', 'Vui lòng nhập ghi chú!'); return; }
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/defer`, 'PATCH', { note: note.trim() });
+                showToast('success', 'Đã chuyển buổi học bù sang khóa kỳ sau.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi: ' + err.message);
+            }
+        }
+
         // =========================================================================
         // XEM CHI TIẾT MODAL
         // =========================================================================
@@ -1349,8 +1424,10 @@
                             <div class="small fw-bold text-success mb-1">
                                 <i class="bi bi-calendar2-check-fill me-1"></i>Ca Học Bù Liên Kết (#${item.makeupRegistrationId})
                             </div>
-                            <div class="small text-muted">Trạng thái: <strong>${item.makeupStatus || ''}</strong></div>
+                            <div class="small text-muted">Trạng thái: <strong class="text-primary">${item.makeupStatus || ''}</strong></div>
                             ${item.makeupTargetDate ? `<div class="small text-secondary">Ngày bù: <strong>${item.makeupTargetDate}</strong></div>` : ''}
+                            ${item.makeupTargetClassName ? `<div class="small text-secondary">Lớp học bù: <strong>${escapeHtml(item.makeupTargetClassName)}</strong></div>` : ''}
+                            ${item.makeupNote ? `<div class="small text-danger mt-1 p-2 bg-white rounded border"><i class="bi bi-bell-fill me-1"></i><strong>Thông báo:</strong> ${escapeHtml(item.makeupNote)}</div>` : ''}
                         </div>
                     ` : ''}
                 `;

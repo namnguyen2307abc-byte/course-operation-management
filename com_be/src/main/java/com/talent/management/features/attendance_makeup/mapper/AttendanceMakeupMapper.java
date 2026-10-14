@@ -55,6 +55,7 @@ public class AttendanceMakeupMapper {
                 .courseName(lesson != null && lesson.getClassEntity() != null && lesson.getClassEntity().getCourse() != null ? lesson.getClassEntity().getCourse().getName() : null)
                 .roomName(lesson != null && lesson.getRoom() != null ? lesson.getRoom().getRoomName() : null)
                 .teacherName(lesson != null && lesson.getTeacher() != null ? lesson.getTeacher().getFullName() : null)
+                .teacherId(lesson != null && lesson.getTeacher() != null ? lesson.getTeacher().getId() : null)
                 .reason(ar.getReason())
                 .status(ar.getStatus())
                 .reviewNote(ar.getReviewNote())
@@ -64,6 +65,9 @@ public class AttendanceMakeupMapper {
                 .makeupRegistrationId(mr != null ? mr.getId() : null)
                 .makeupStatus(mr != null ? mr.getStatus() : null)
                 .makeupTargetDate(makeupDateStr)
+                .makeupTargetClassName(mr != null && mr.getTargetLesson() != null && mr.getTargetLesson().getClassEntity() != null
+                        ? mr.getTargetLesson().getClassEntity().getClassName() : null)
+                .makeupNote(mr != null ? mr.getNote() : null)
                 .build();
     }
 
@@ -136,12 +140,24 @@ public class AttendanceMakeupMapper {
      * Chuyển đổi Lesson sang LessonOptionResponse DTO
      */
     public LessonOptionResponse toLessonOption(Lesson l) {
+        return toLessonOption(l, null);
+    }
+
+    /**
+     * Chuyển đổi Lesson sang LessonOptionResponse DTO kèm thông tin level và số chỗ còn trống.
+     * @param occupiedSeats số học viên đang chiếm chỗ (sĩ số lớp + học viên bù); null nếu không cần tính
+     */
+    public LessonOptionResponse toLessonOption(Lesson l, Integer occupiedSeats) {
         if (l == null) return null;
 
         String timeSlot = null;
         if (l.getStartTime() != null && l.getEndTime() != null) {
             timeSlot = l.getStartTime().format(TIME_FMT) + " - " + l.getEndTime().format(TIME_FMT);
         }
+
+        Integer maxStudents = l.getClassEntity() != null ? l.getClassEntity().getMaxStudents() : null;
+        Integer available = (maxStudents != null && occupiedSeats != null)
+                ? Math.max(0, maxStudents - occupiedSeats) : null;
 
         return LessonOptionResponse.builder()
                 .id(l.getId())
@@ -154,8 +170,12 @@ public class AttendanceMakeupMapper {
                 .classId(l.getClassEntity() != null ? l.getClassEntity().getId() : null)
                 .className(l.getClassEntity() != null ? l.getClassEntity().getClassName() : null)
                 .courseName(l.getClassEntity() != null && l.getClassEntity().getCourse() != null ? l.getClassEntity().getCourse().getName() : null)
+                .level(l.getClassEntity() != null && l.getClassEntity().getCourse() != null ? l.getClassEntity().getCourse().getLevel() : null)
                 .roomName(l.getRoom() != null ? l.getRoom().getRoomName() : null)
                 .teacherName(l.getTeacher() != null ? l.getTeacher().getFullName() : null)
+                .maxStudents(maxStudents)
+                .occupiedSeats(occupiedSeats)
+                .availableSeats(available)
                 .build();
     }
 }

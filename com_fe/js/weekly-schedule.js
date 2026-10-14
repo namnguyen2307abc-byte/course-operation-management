@@ -369,6 +369,11 @@ function renderLessonCard(lesson, userRole) {
                 <i class="bi bi-person"></i>
                 <span>${escapeHtml(lesson.teacherName || '—')}</span>
             </div>
+
+            <div class="lesson-meta">
+                <i class="bi bi-people"></i>
+                <span>Sĩ số: <strong>${lesson.totalStudents || 0}</strong> học viên</span>
+            </div>
         </div>
     `;
 }

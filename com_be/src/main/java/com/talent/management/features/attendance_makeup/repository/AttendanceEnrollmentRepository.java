@@ -31,4 +31,13 @@ public interface AttendanceEnrollmentRepository extends JpaRepository<Enrollment
                 List.of(EnrollmentStatus.ENROLLED, EnrollmentStatus.PENDING_PAYMENT)
         );
     }
+
+    /**
+     * ID các lớp mà học viên đang thuộc (dùng để loại trừ khỏi danh sách lớp học bù).
+     */
+    @Query("SELECT e.classEntity.id FROM Enrollment e " +
+           "WHERE e.student.id = :studentId AND e.status IN :statuses")
+    List<Long> findClassIdsByStudentIdAndStatusIn(
+            @Param("studentId") Long studentId,
+            @Param("statuses") Collection<EnrollmentStatus> statuses);
 }

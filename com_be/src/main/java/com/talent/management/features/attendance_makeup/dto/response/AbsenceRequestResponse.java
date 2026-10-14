@@ -37,6 +37,7 @@ public class AbsenceRequestResponse {
     private String courseName;
     private String roomName;
     private String teacherName;
+    private Long teacherId;
 
     // Chi tiết đơn xin nghỉ
     private String reason;
@@ -50,4 +51,6 @@ public class AbsenceRequestResponse {
     private Long makeupRegistrationId;
     private MakeupStatus makeupStatus;
     private String makeupTargetDate;
+    private String makeupTargetClassName;
+    private String makeupNote;
 }

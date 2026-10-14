@@ -5,6 +5,7 @@ import com.talent.management.shared.enums.MakeupStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,5 +56,23 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
      * Tìm tất cả học viên học bù được xếp vào buổi học này
      */
     List<MakeupRegistration> findByTargetLessonIdAndStatus(Long targetLessonId, MakeupStatus status);
+
+    /** Học viên bù được xếp vào buổi học này (gồm cả ca đã hoàn thành để không biến mất khỏi bảng điểm danh) */
+    List<MakeupRegistration> findByTargetLessonIdAndStatusIn(Long targetLessonId, Collection<MakeupStatus> statuses);
+
+    /** Học viên đã được chuyển khỏi buổi học gốc sang ca bù */
+    List<MakeupRegistration> findByOriginalLessonIdAndStatusIn(Long originalLessonId, Collection<MakeupStatus> statuses);
+
+    /** BATCH — ca bù đến (target) của nhiều buổi học cùng lúc */
+    List<MakeupRegistration> findByTargetLessonIdInAndStatusIn(Collection<Long> targetLessonIds, Collection<MakeupStatus> statuses);
+
+    /** BATCH — ca bù đi (original) của nhiều buổi học cùng lúc */
+    List<MakeupRegistration> findByOriginalLessonIdInAndStatusIn(Collection<Long> originalLessonIds, Collection<MakeupStatus> statuses);
+
+    /** Các ca bù của một học viên theo trạng thái — dùng để đồng bộ thời khóa biểu học viên */
+    List<MakeupRegistration> findByStudentIdAndStatusIn(Long studentId, Collection<MakeupStatus> statuses);
+
+    /** Đếm số học viên bù đang chiếm chỗ trong một buổi học */
+    long countByTargetLessonIdAndStatusIn(Long targetLessonId, Collection<MakeupStatus> statuses);
 }
 

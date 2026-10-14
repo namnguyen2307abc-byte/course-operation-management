@@ -37,7 +37,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createModalEl = document.getElementById('modalCreateClass');
     if (createModalEl) modalCreateClassObj = new bootstrap.Modal(createModalEl);
 
-    // 3. Khởi tạo Datepicker với ngày hiện tại (YYYY-MM-DD)
+    // 3. Khởi tạo Datepicker (ưu tiên ?date=YYYY-MM-DD khi quay lại từ trang điểm danh)
+    const dateParam = new URLSearchParams(window.location.search).get('date');
+    if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+        currentTargetDate = parseLocalDate(dateParam);
+    }
     const weekPicker = document.getElementById('weekPickerDate');
     if (weekPicker) {
         weekPicker.value = formatDateForInput(currentTargetDate);
@@ -244,9 +248,9 @@ function renderWeeklyMatrix(data) {
         html += `<tr>`;
         // Cột tiêu đề Slot
         html += `
-            <td class="slot-cell-header">
-                <div class="fw-bold text-dark fs-6">${slot.slotName}</div>
-                <div class="small text-muted fw-normal">${slot.timeRange}</div>
+            <td class="slot-cell-header slot-${slot.slotNumber}">
+                <div class="slot-name">${slot.slotName}</div>
+                <div class="slot-time"><i class="bi bi-clock"></i>${slot.timeRange}</div>
             </td>
         `;
 
@@ -278,382 +282,100 @@ function renderWeeklyMatrix(data) {
 }
 
 function renderLessonCard(lesson, userRole) {
-    // Trạng thái thẻ ca học
-    let statusBadge = '';
-    let cardClass = 'lesson-card';
+    // Lombok sinh getter isToday()/isPast() nên JSON key là "today"/"past"; đọc cả hai tên.
+    const isToday = Boolean(lesson.today ?? lesson.isToday);
+    const isPast = Boolean(lesson.past ?? lesson.isPast);
 
+    const slotClass = `slot-${lesson.slotNumber || 1}`;
+    let stateClass = isToday ? 'state-today' : '';
+
+    // 1. DÀNH CHO HỌC VIÊN HOẶC PHỤ HUYNH
+    // Không cho phép bấm link vào trang điểm danh, cập nhật ngay trạng thái điểm danh
     if (userRole === 'STUDENT' || userRole === 'PARENT') {
-        // Hiển thị trạng thái điểm danh của học viên
+        let stuBadge = '';
         if (lesson.attendanceStatus === 'PRESENT') {
-            statusBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle lesson-badge"><i class="bi bi-check-circle-fill"></i> Có mặt</span>`;
-            cardClass += ' completed';
-        } else if (lesson.attendanceStatus === 'ABSENT_EXCUSED') {
-            statusBadge = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle lesson-badge"><i class="bi bi-shield-check"></i> Nghỉ phép</span>`;
-        } else if (lesson.attendanceStatus === 'ABSENT_UNEXCUSED') {
-            statusBadge = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle lesson-badge"><i class="bi bi-x-circle-fill"></i> Vắng mặt</span>`;
+            stateClass = 'state-done';
+            stuBadge = '<span class="stu-badge present"><i class="bi bi-check-circle-fill"></i> Present</span>';
+        } else if (lesson.attendanceStatus && String(lesson.attendanceStatus).includes('ABSENT')) {
+            stateClass = 'state-absent';
+            stuBadge = '<span class="stu-badge absent"><i class="bi bi-x-circle-fill"></i> Absent</span>';
         } else {
-            statusBadge = `<span class="badge bg-secondary-subtle text-secondary border lesson-badge"><i class="bi bi-calendar"></i> Chưa diễn ra</span>`;
+            stuBadge = '<span class="stu-badge pending"><i class="bi bi-clock"></i> Chưa diễn ra</span>';
         }
-    } else {
-        // Dành cho Giáo viên, Admin, Staff
-        if (lesson.attendanceCompleted) {
-            statusBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle lesson-badge" title="Đã có kết quả điểm danh">
-                <i class="bi bi-check2-circle"></i> Đã điểm danh (${lesson.presentCount}/${lesson.totalStudents})
-            </span>`;
-            cardClass += ' completed';
-        } else {
-            statusBadge = `<span class="badge bg-warning-subtle text-dark border border-warning-subtle lesson-badge" title="Chưa lưu điểm danh">
-                <i class="bi bi-clock-history"></i> Chưa điểm danh (${lesson.totalStudents} HV)
-            </span>`;
-        }
+
+        return `
+            <div class="lesson-card ${slotClass} ${stateClass} student-card" title="${escapeHtml(lesson.className)}">
+                <div class="lesson-card-top">
+                    <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
+                    ${stuBadge}
+                </div>
+
+                <div class="lesson-title" title="${escapeHtml(lesson.className)}">${escapeHtml(lesson.className)}</div>
+
+                <div class="lesson-meta">
+                    <i class="bi bi-clock"></i>
+                    <span>${escapeHtml(lesson.timeRange)}</span>
+                    ${lesson.sessionNumber ? `<span>• Buổi ${lesson.sessionNumber}</span>` : ''}
+                </div>
+
+                <div class="lesson-meta">
+                    <i class="bi bi-geo-alt"></i>
+                    <span>${escapeHtml(lesson.roomName || '—')}</span>
+                </div>
+
+                <div class="lesson-meta">
+                    <i class="bi bi-person"></i>
+                    <span>${escapeHtml(lesson.teacherName || '—')}</span>
+                </div>
+            </div>
+        `;
     }
 
-    if (lesson.isPast) {
-        cardClass += ' past-due';
+    // 2. DÀNH CHO GIÁO VIÊN / ADMIN / STAFF
+    // Phòng học là link dẫn vào danh sách lớp để điểm danh, bỏ thanh "Chưa điểm danh"
+    if (lesson.attendanceCompleted) {
+        stateClass = 'state-done';
+    } else if (isPast) {
+        stateClass = 'state-missed';
     }
+
+    const href = `lesson-attendance.html?lessonId=${lesson.lessonId}`;
 
     return `
-        <div class="${cardClass}" onclick="openAttendanceModal(${lesson.lessonId})" title="Nhấp để xem chi tiết và điểm danh buổi học">
-            <div class="d-flex justify-content-between align-items-start mb-1">
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle small fw-bold" style="font-size: 0.65rem;">
-                    ${lesson.classCode || 'LỚP'}
-                </span>
-                ${statusBadge}
+        <div class="lesson-card ${slotClass} ${stateClass}">
+            <div class="lesson-card-top">
+                <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
+                ${lesson.attendanceCompleted ? '<span class="stu-badge present"><i class="bi bi-check2-circle"></i> Đã điểm danh</span>' : ''}
             </div>
 
-            <div class="lesson-title" title="${lesson.className}">
-                ${lesson.className}
+            <div class="lesson-title" title="${escapeHtml(lesson.className)}">
+                ${escapeHtml(lesson.className)}
             </div>
 
             <div class="lesson-meta">
-                <i class="bi bi-clock text-primary"></i>
-                <span>${lesson.timeRange}</span>
-                ${lesson.sessionNumber ? `<span class="text-secondary">• B${lesson.sessionNumber}</span>` : ''}
+                <i class="bi bi-clock"></i>
+                <span>${escapeHtml(lesson.timeRange)}</span>
+                ${lesson.sessionNumber ? `<span>• Buổi ${lesson.sessionNumber}</span>` : ''}
             </div>
 
-            <div class="lesson-meta text-truncate">
-                <i class="bi bi-geo-alt text-danger"></i>
-                <span class="text-truncate">${lesson.roomName}</span>
+            <div class="lesson-meta">
+                <i class="bi bi-geo-alt text-primary"></i>
+                <a class="lesson-room-link" href="${href}" title="Bấm vào phòng học để xem danh sách & điểm danh">
+                    ${escapeHtml(lesson.roomName || 'Chưa xếp phòng')}
+                </a>
             </div>
 
-            <div class="lesson-meta text-truncate text-secondary">
-                <i class="bi bi-person text-secondary"></i>
-                <span class="text-truncate">${lesson.teacherName}</span>
+            <div class="lesson-meta">
+                <i class="bi bi-person"></i>
+                <span>${escapeHtml(lesson.teacherName || '—')}</span>
+            </div>
+
+            <div class="lesson-meta">
+                <i class="bi bi-people"></i>
+                <span>Sĩ số: <strong>${lesson.totalStudents || 0}</strong> học viên</span>
             </div>
         </div>
     `;
-}
-
-// =============================================================================
-// MODAL ĐIỂM DANH BUỔI HỌC (ATTENDANCE SHEET MODAL)
-// =============================================================================
-async function openAttendanceModal(lessonId) {
-    if (!modalAttendanceObj) return;
-
-    // Reset giao diện Modal
-    document.getElementById('attModalTitle').innerText = 'Đang tải thông tin điểm danh...';
-    document.getElementById('attModalSubtitle').innerText = '';
-    document.getElementById('attStudentTableBody').innerHTML = `
-        <tr><td colspan="6" class="text-center py-4 text-muted">
-            <div class="spinner-border text-primary spinner-border-sm me-2"></div>Đang tải danh sách học viên...
-        </td></tr>
-    `;
-
-    modalAttendanceObj.show();
-
-    try {
-        const data = await callApi(`/api/schedule/lessons/${lessonId}/attendance`);
-        activeLessonAttendance = data;
-
-        renderAttendanceModalData(data);
-    } catch (err) {
-        console.error("Lỗi khi tải bảng điểm danh:", err);
-        showToast('error', 'Lỗi tải điểm danh', err.message || 'Không thể lấy thông tin buổi học');
-        modalAttendanceObj.hide();
-    }
-}
-
-function renderAttendanceModalData(data) {
-    if (!data) return;
-
-    // 1. Cập nhật thông tin Header
-    document.getElementById('attModalTitle').innerText = `Điểm Danh: ${data.className}`;
-    document.getElementById('attModalSubtitle').innerText = `Mã lớp: ${data.classCode} • Buổi số ${data.sessionNumber || 1} • Ngày ${formatDateDMY(data.lessonDate)}`;
-
-    document.getElementById('attInfoClass').innerText = `${data.className} (${data.courseName || ''})`;
-    document.getElementById('attInfoTime').innerText = `${data.timeRange} (${formatDateDMY(data.lessonDate)})`;
-    document.getElementById('attInfoRoom').innerText = `${data.roomName} - ${data.branchName || ''}`;
-    document.getElementById('attInfoTeacher').innerText = data.teacherName || 'Chưa phân công';
-
-    // 2. Thống kê sĩ số
-    updateAttendanceCounters();
-
-    // 3. Banner Cảnh Báo Time-Lock / Phân Quyền
-    const banner = document.getElementById('attLockBanner');
-    const lockMsg = document.getElementById('attLockMessage');
-    const lockIcon = document.getElementById('attLockIcon');
-
-    if (!data.canEdit && data.lockReason) {
-        banner.className = 'alert alert-danger py-2 px-3 small border mb-3 d-flex align-items-center';
-        lockIcon.className = 'bi bi-lock-fill text-danger fs-5 me-2';
-        lockMsg.innerHTML = `<strong>ĐÃ KHÓA CHỈNH SỬA:</strong> ${data.lockReason}`;
-        banner.classList.remove('d-none');
-    } else if (data.canEdit && data.isAlreadySaved) {
-        banner.className = 'alert alert-info py-2 px-3 small border mb-3 d-flex align-items-center';
-        lockIcon.className = 'bi bi-info-circle-fill text-info fs-5 me-2';
-        lockMsg.innerHTML = `<strong>ĐÃ LƯU ĐIỂM DANH:</strong> Buổi học này đã được điểm danh trước đó. Bạn có thể nhấn nút <strong>Chỉnh Sửa</strong> để cập nhật lại nếu cần.`;
-        banner.classList.remove('d-none');
-    } else {
-        banner.className = 'alert alert-success py-2 px-3 small border mb-3 d-flex align-items-center';
-        lockIcon.className = 'bi bi-check-circle-fill text-success fs-5 me-2';
-        lockMsg.innerHTML = `<strong>SẴN SÀNG ĐIỂM DANH:</strong> Ca học diễn ra hôm nay. Bạn có thể chọn Có mặt / Vắng mặt và nhấn <strong>Lưu Điểm Danh</strong>.`;
-        banner.classList.remove('d-none');
-    }
-
-    // 4. Thiết lập Chế độ: Chỉ xem (View) hay Soạn thảo (Edit)
-    const btnEdit = document.getElementById('btnEditAttendance');
-    const btnSave = document.getElementById('btnSaveAttendance');
-    const quickActions = document.getElementById('attQuickActionGroup');
-
-    if (data.isAlreadySaved && data.canEdit) {
-        // Đã lưu -> Vào chế độ xem trước, hiện nút Chỉnh sửa
-        isAttendanceEditMode = false;
-        btnEdit.classList.remove('d-none');
-        btnSave.classList.add('d-none');
-        quickActions.classList.add('d-none');
-    } else if (data.canEdit && !data.isAlreadySaved) {
-        // Chưa lưu -> Vào trực tiếp chế độ chỉnh sửa
-        isAttendanceEditMode = true;
-        btnEdit.classList.add('d-none');
-        btnSave.classList.remove('d-none');
-        quickActions.classList.remove('d-none');
-    } else {
-        // Bị khóa hoàn toàn (Hết hạn hoặc Role Học sinh)
-        isAttendanceEditMode = false;
-        btnEdit.classList.add('d-none');
-        btnSave.classList.add('d-none');
-        quickActions.classList.add('d-none');
-    }
-
-    // 5. Render danh sách học viên
-    renderStudentsTable(data.students);
-}
-
-function renderStudentsTable(students) {
-    const tbody = document.getElementById('attStudentTableBody');
-    if (!tbody) return;
-
-    if (!students || students.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="text-center py-5 text-muted">
-                    <i class="bi bi-people fs-2 d-block mb-2 text-secondary"></i>
-                    Không có học viên nào được xếp trong lớp học này.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    let html = '';
-    students.forEach((s, idx) => {
-        const isPresent = (s.status === 'PRESENT');
-        const isAbsent = (s.status === 'ABSENT_UNEXCUSED' || s.status === 'ABSENT_EXCUSED');
-        const initials = getInitials(s.fullName);
-        const disabledAttr = isAttendanceEditMode ? '' : 'disabled';
-
-        html += `
-            <tr id="row_student_${s.studentId}">
-                <td class="text-center fw-bold text-muted">${s.orderNumber || (idx + 1)}</td>
-                <td class="text-center">
-                    <div class="student-avatar mx-auto">${initials}</div>
-                </td>
-                <td>
-                    <span class="badge bg-secondary-subtle text-secondary border font-monospace">${s.studentCode || 'HV000' + s.studentId}</span>
-                </td>
-                <td>
-                    <div class="fw-bold text-dark">${s.fullName}</div>
-                    ${s.hasApprovedAbsence ? `<span class="badge bg-warning-subtle text-warning border border-warning-subtle small mt-1"><i class="bi bi-shield-check me-1"></i>Có đơn xin nghỉ phép</span>` : ''}
-                </td>
-                <td class="text-center">
-                    <div class="btn-group" role="group">
-                        <button type="button" 
-                                class="btn btn-outline-success btn-attendance-toggle ${isPresent ? 'active-present' : ''}" 
-                                id="btn_present_${s.studentId}" 
-                                onclick="setStudentStatus(${s.studentId}, 'PRESENT')" 
-                                ${disabledAttr}>
-                            <i class="bi bi-check-lg me-1"></i> Có Mặt
-                        </button>
-                        <button type="button" 
-                                class="btn btn-outline-danger btn-attendance-toggle ${isAbsent ? 'active-absent' : ''}" 
-                                id="btn_absent_${s.studentId}" 
-                                onclick="setStudentStatus(${s.studentId}, 'ABSENT_UNEXCUSED')" 
-                                ${disabledAttr}>
-                            <i class="bi bi-x-lg me-1"></i> Vắng Mặt
-                        </button>
-                    </div>
-                </td>
-                <td>
-                    <input type="text" 
-                           class="form-control form-control-sm form-control-modern" 
-                           id="note_student_${s.studentId}" 
-                           value="${s.note || (s.absenceReason ? 'Nghỉ phép: ' + s.absenceReason : '')}" 
-                           placeholder="Nhập lý do hoặc ghi chú..." 
-                           oninput="updateStudentNote(${s.studentId}, this.value)" 
-                           ${disabledAttr}>
-                </td>
-            </tr>
-        `;
-    });
-
-    tbody.innerHTML = html;
-}
-
-// =============================================================================
-// THAO TÁC TRÊN BẢNG ĐIỂM DANH (CLIENT-SIDE INTERACTIONS)
-// =============================================================================
-function setStudentStatus(studentId, newStatus) {
-    if (!isAttendanceEditMode || !activeLessonAttendance) return;
-
-    const student = activeLessonAttendance.students.find(s => s.studentId === studentId);
-    if (!student) return;
-
-    student.status = newStatus;
-
-    // Cập nhật trạng thái nút UI
-    const btnPres = document.getElementById(`btn_present_${studentId}`);
-    const btnAbs = document.getElementById(`btn_absent_${studentId}`);
-
-    if (newStatus === 'PRESENT') {
-        if (btnPres) btnPres.classList.add('active-present');
-        if (btnAbs) btnAbs.classList.remove('active-absent');
-    } else {
-        if (btnPres) btnPres.classList.remove('active-present');
-        if (btnAbs) btnAbs.classList.add('active-absent');
-    }
-
-    updateAttendanceCounters();
-}
-
-function updateStudentNote(studentId, noteText) {
-    if (!activeLessonAttendance) return;
-    const student = activeLessonAttendance.students.find(s => s.studentId === studentId);
-    if (student) {
-        student.note = noteText;
-    }
-}
-
-function markAllPresent() {
-    if (!isAttendanceEditMode || !activeLessonAttendance) return;
-
-    activeLessonAttendance.students.forEach(s => {
-        s.status = 'PRESENT';
-        const btnPres = document.getElementById(`btn_present_${s.studentId}`);
-        const btnAbs = document.getElementById(`btn_absent_${s.studentId}`);
-        if (btnPres) btnPres.classList.add('active-present');
-        if (btnAbs) btnAbs.classList.remove('active-absent');
-    });
-
-    updateAttendanceCounters();
-    showToast('info', 'Điểm danh nhanh', 'Đã đặt tất cả học viên thành Có Mặt');
-}
-
-function enableAttendanceEditing() {
-    isAttendanceEditMode = true;
-
-    // Bật lại các nút và input
-    document.querySelectorAll('.btn-attendance-toggle, #attStudentTable input').forEach(el => {
-        el.removeAttribute('disabled');
-    });
-
-    document.getElementById('btnEditAttendance').classList.add('d-none');
-    document.getElementById('btnSaveAttendance').classList.remove('d-none');
-    document.getElementById('attQuickActionGroup').classList.remove('d-none');
-
-    showToast('info', 'Chế độ chỉnh sửa', 'Bạn có thể thay đổi trạng thái và bấm Lưu Điểm Danh');
-}
-
-function updateAttendanceCounters() {
-    if (!activeLessonAttendance || !activeLessonAttendance.students) return;
-
-    const total = activeLessonAttendance.students.length;
-    const present = activeLessonAttendance.students.filter(s => s.status === 'PRESENT').length;
-    const absent = activeLessonAttendance.students.filter(s => s.status && s.status.startsWith('ABSENT')).length;
-
-    const elTotal = document.getElementById('attTotalStudents');
-    const elPres = document.getElementById('attPresentCount');
-    const elAbs = document.getElementById('attAbsentCount');
-
-    if (elTotal) elTotal.innerText = total;
-    if (elPres) elPres.innerText = present;
-    if (elAbs) elAbs.innerText = absent;
-}
-
-// =============================================================================
-// LƯU ĐIỂM DANH CẢ LỚP (BATCH ATTENDANCE SAVE)
-// =============================================================================
-async function submitAttendanceBatch() {
-    if (!activeLessonAttendance) return;
-
-    const btnSave = document.getElementById('btnSaveAttendance');
-    btnSave.disabled = true;
-    btnSave.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Đang lưu...`;
-
-    // Chuẩn bị payload Batch
-    const payload = {
-        attendances: activeLessonAttendance.students.map(s => {
-            const noteInput = document.getElementById(`note_student_${s.studentId}`);
-            const noteVal = noteInput ? noteInput.value.trim() : (s.note || '');
-            return {
-                studentId: s.studentId,
-                status: s.status || 'PRESENT',
-                note: noteVal
-            };
-        })
-    };
-
-    try {
-        const response = await callApi(
-            `/api/schedule/lessons/${activeLessonAttendance.lessonId}/attendance`,
-            'POST',
-            payload
-        );
-
-        showToast('success', 'Thành công', response.message || 'Lưu điểm danh thành công!');
-
-        // Đổi về chế độ đã lưu
-        isAttendanceEditMode = false;
-        activeLessonAttendance.isAlreadySaved = true;
-
-        // Vô hiệu hóa lại các nút
-        document.querySelectorAll('.btn-attendance-toggle, #attStudentTable input').forEach(el => {
-            el.setAttribute('disabled', 'true');
-        });
-
-        document.getElementById('btnSaveAttendance').classList.add('d-none');
-        document.getElementById('btnEditAttendance').classList.remove('d-none');
-        document.getElementById('attQuickActionGroup').classList.add('d-none');
-
-        // Cập nhật banner thông báo
-        const banner = document.getElementById('attLockBanner');
-        const lockMsg = document.getElementById('attLockMessage');
-        const lockIcon = document.getElementById('attLockIcon');
-        if (banner) {
-            banner.className = 'alert alert-info py-2 px-3 small border mb-3 d-flex align-items-center';
-            lockIcon.className = 'bi bi-info-circle-fill text-info fs-5 me-2';
-            lockMsg.innerHTML = `<strong>ĐÃ LƯU ĐIỂM DANH:</strong> Điểm danh đã được cập nhật thành công!`;
-            banner.classList.remove('d-none');
-        }
-
-        // Tải lại ma trận tuần ở nền để cập nhật badge ngay lập tức
-        loadWeeklySchedule();
-    } catch (err) {
-        console.error("Lỗi khi lưu điểm danh:", err);
-        showToast('error', 'Lưu thất bại', err.message || 'Không thể lưu điểm danh');
-    } finally {
-        btnSave.disabled = false;
-        btnSave.innerHTML = `<i class="bi bi-floppy-fill me-1"></i> Lưu Điểm Danh`;
-    }
 }
 
 // =============================================================================
@@ -900,10 +622,10 @@ function showToast(type, title, message) {
 
     const toastId = 'toast_' + Date.now();
     const bgClass = (type === 'success') ? 'bg-success text-white' :
-                    (type === 'error') ? 'bg-danger text-white' : 'bg-primary text-white';
+        (type === 'error') ? 'bg-danger text-white' : 'bg-primary text-white';
 
     const icon = (type === 'success') ? 'bi-check-circle-fill' :
-                 (type === 'error') ? 'bi-x-circle-fill' : 'bi-info-circle-fill';
+        (type === 'error') ? 'bi-x-circle-fill' : 'bi-info-circle-fill';
 
     const toastEl = document.createElement('div');
     toastEl.id = toastId;
@@ -941,4 +663,13 @@ function selectSlotPreset(startTime, endTime, desc) {
     if (endInput) endInput.value = endTime;
     if (descInput && !descInput.value) descInput.value = desc;
 }
+
+function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function escapeAttr(v) {
+    return escapeHtml(v);
+}
+
 
