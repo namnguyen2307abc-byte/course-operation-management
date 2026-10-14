@@ -1,6 +1,8 @@
 package com.talent.management.features.class_management.service;
 
+import com.talent.management.features.auth.repository.UserRepository;
 import com.talent.management.features.branch_facility_enrollment.repository.BranchRepository;
+import com.talent.management.features.branch_facility_enrollment.repository.RoomRepository;
 import com.talent.management.features.class_management.dto.ClassUpsertRequest;
 import com.talent.management.features.class_management.repository.ManagedClassEnrollmentRepository;
 import com.talent.management.features.class_management.repository.ManagedClassLessonRepository;
@@ -38,11 +40,14 @@ class ClassManagementServiceTest {
     @Mock ManagedClassLessonRepository lessonRepository;
     @Mock CourseRepository courseRepository;
     @Mock BranchRepository branchRepository;
+    @Mock UserRepository userRepository;
+    @Mock RoomRepository roomRepository;
     @InjectMocks ClassManagementService service;
 
     private Course course;
     private Branch branch;
     private ClassUpsertRequest request;
+
 
     @BeforeEach
     void setUp() {

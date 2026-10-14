@@ -389,10 +389,15 @@
             availableClassMap = new Map(classes.map(item => [item.id, item]));
             const select = document.getElementById('parentPreviewClassSelect');
             select.innerHTML = classes.length
-                ? classes.map(item => `<option value="${item.id}">${escapeHtml(item.className)} - ${escapeHtml(item.branchName || 'Chưa có cơ sở')} (${item.availableSeats} chỗ)</option>`).join('')
+                ? classes.map(item => {
+                    const teacher = item.teacherName ? ` | GV: ${item.teacherName}` : '';
+                    const sched = item.scheduleDescription ? ` | ${item.scheduleDescription}` : '';
+                    return `<option value="${item.id}">${escapeHtml(item.className)} - ${escapeHtml(item.branchName || 'Chưa có cơ sở')}${escapeHtml(teacher)}${escapeHtml(sched)} (${item.availableSeats} chỗ)</option>`;
+                }).join('')
                 : '<option value="">Không có lớp đang mở còn chỗ</option>';
             document.getElementById('parentFacilityPreviewBtn').disabled = classes.length === 0;
         }
+
 
         async function loadParentPreviewForCourse(courseId) {
             renderParentPreviewClasses([]);
@@ -500,11 +505,17 @@
             const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`);
             availableClassMap = new Map((classes || []).map(item => [item.id, item]));
             select.innerHTML = classes && classes.length
-                ? classes.map(item => `<option value="${item.id}">${escapeHtml(item.className)} (${escapeHtml(item.classCode)}) - ${escapeHtml(item.scheduleDescription || 'Chưa có lịch')} - còn ${item.availableSeats} chỗ</option>`).join('')
+                ? classes.map(item => {
+                    const teacher = item.teacherName ? ` | GV: ${item.teacherName}` : '';
+                    const room = item.roomName ? ` | Phòng: ${item.roomName}` : '';
+                    const sched = item.scheduleDescription ? ` | Lịch: ${item.scheduleDescription}` : '';
+                    return `<option value="${item.id}">${escapeHtml(item.className)} (${escapeHtml(item.classCode)})${escapeHtml(teacher)}${escapeHtml(room)}${escapeHtml(sched)} - còn ${item.availableSeats} chỗ</option>`;
+                }).join('')
                 : '<option value="">Không có lớp đang mở còn chỗ</option>';
             document.getElementById('staffFacilityPreviewBtn').disabled = !classes?.length;
             return classes || [];
         }
+
 
         async function openFacilityPreview(classId) {
             const selectedClass = availableClassMap.get(classId);
