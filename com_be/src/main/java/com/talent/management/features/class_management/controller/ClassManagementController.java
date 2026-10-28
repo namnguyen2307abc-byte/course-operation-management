@@ -2,6 +2,8 @@ package com.talent.management.features.class_management.controller;
 
 import com.talent.management.features.class_management.dto.ClassUpsertRequest;
 import com.talent.management.features.class_management.dto.ManagedClassResponse;
+import com.talent.management.features.class_management.dto.ClassTeacherOption;
+import com.talent.management.features.class_management.dto.ClassRoomOption;
 import com.talent.management.features.class_management.service.ClassManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ClassManagementController {
     private final ClassManagementService service;
+
+    @GetMapping("/teachers")
+    public List<ClassTeacherOption> teachers(@RequestParam Long courseId) {
+        return service.getTeacherOptions(courseId);
+    }
+
+    @GetMapping("/rooms")
+    public List<ClassRoomOption> rooms(@RequestParam Long courseId, @RequestParam Long branchId,
+                                       @RequestParam(defaultValue = "1") int maxStudents) {
+        return service.getRoomOptions(courseId, branchId, maxStudents);
+    }
 
     @GetMapping
     public List<ManagedClassResponse> search(@RequestParam(required = false) String keyword,

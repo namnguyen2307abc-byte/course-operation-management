@@ -52,6 +52,9 @@ public class User {
     @Column(length = 100)
     private String subject;
 
+    @Column(length = 100)
+    private String teachingSubject;
+
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }

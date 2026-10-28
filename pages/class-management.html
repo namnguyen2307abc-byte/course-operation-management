@@ -133,8 +133,8 @@
                             <div class="col-md-4">
                                 <label for="status" class="form-label">Trạng thái lớp *</label>
                                 <select id="status" class="form-select" required>
-                                    <option value="PLANNING">Dự kiến</option>
-                                    <option value="OPEN" selected>Đang mở (Nhận học viên)</option>
+                                    <option value="PLANNING" selected>Dự kiến</option>
+                                    <option value="OPEN">Đang mở (Nhận học viên)</option>
                                     <option value="IN_PROGRESS">Đang học</option>
                                     <option value="FINISHED">Đã kết thúc</option>
                                 </select>
@@ -161,6 +161,9 @@
                                     <option value="">-- Chọn cơ sở trước --</option>
                                 </select>
                                 <div class="form-text">Phòng học tương ứng tại cơ sở được chọn.</div>
+                                <a id="roomFacilityLink" class="btn btn-sm btn-outline-secondary mt-2 d-none" target="_blank" rel="noopener">
+                                    <i class="bi bi-eye me-1"></i>Xem phòng, thiết bị và lịch sử dụng
+                                </a>
                             </div>
                         </div>
 
@@ -255,10 +258,23 @@
         let editingId = null;
         let existingHasLessons = false;
         let classes = [];
-        let teacherList = [];
-        let branchRoomsMap = {};
+        let courseList = [];
+        let teacherLoadVersion = 0;
+        let roomLoadVersion = 0;
+        let teacherOptionsLoaded = false;
+        let roomOptionsLoaded = false;
+        let openedLinkedClass = false;
+
+        function updateRoomFacilityLink() {
+            const roomId = $('roomId').value;
+            $('roomFacilityLink').classList.toggle('d-none', !roomId);
+            $('roomFacilityLink').href = `branch-facility.html?roomId=${encodeURIComponent(roomId)}`;
+        }
+        $('roomId').addEventListener('change', updateRoomFacilityLink);
 
         function lockExistingSchedule(locked) {
+            $('endDate').readOnly = false;
+            $('scheduleDescription').readOnly = false;
             document.querySelectorAll('.dow-check').forEach(input => input.disabled = locked);
             for (const id of ['startDate', 'endDate', 'startTime', 'endTime', 'totalSessions', 'scheduleDescription']) {
                 $(id).disabled = locked;
@@ -295,16 +311,40 @@
 
         // Tự động ghép chuỗi mô tả lịch học
         function autoUpdateScheduleDesc() {
+            if (existingHasLessons) return;
             const dayNames = {1:'T2', 2:'T3', 3:'T4', 4:'T5', 5:'T6', 6:'T7', 7:'CN'};
             const selectedDays = Array.from(document.querySelectorAll('.dow-check:checked'))
                 .map(c => Number(c.value))
                 .sort((a,b) => a - b);
             const startTime = $('startTime').value;
             const endTime = $('endTime').value;
+            $('scheduleDescription').readOnly = selectedDays.length > 0;
             if (selectedDays.length > 0) {
                 const daysText = selectedDays.map(d => dayNames[d]).join('-');
                 $('scheduleDescription').value = `${daysText} (${startTime} - ${endTime})`;
+            } else {
+                $('scheduleDescription').value = '';
             }
+            updateCalculatedEndDate();
+        }
+
+        function updateCalculatedEndDate() {
+            if (existingHasLessons) return;
+            const days = Array.from(document.querySelectorAll('.dow-check:checked')).map(c => Number(c.value));
+            $('endDate').readOnly = days.length > 0;
+            const sessions = Number($('totalSessions').value);
+            if (!days.length || !$('startDate').value || !Number.isInteger(sessions) || sessions < 1 || sessions > 60) {
+                if (days.length) $('endDate').value = '';
+                return;
+            }
+            const date = new Date($('startDate').value + 'T12:00:00');
+            let count = 0;
+            while (count < sessions) {
+                const day = date.getDay() || 7;
+                if (days.includes(day)) count++;
+                if (count < sessions) date.setDate(date.getDate() + 1);
+            }
+            $('endDate').value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         }
 
         document.querySelectorAll('.dow-check').forEach(chk => {
@@ -312,6 +352,18 @@
         });
         $('startTime').addEventListener('input', autoUpdateScheduleDesc);
         $('endTime').addEventListener('input', autoUpdateScheduleDesc);
+        $('startDate').addEventListener('change', updateCalculatedEndDate);
+        $('totalSessions').addEventListener('input', updateCalculatedEndDate);
+
+        $('courseId').addEventListener('change', async () => {
+            const course = courseList.find(item => String(item.id) === $('courseId').value);
+            if (!existingHasLessons && course?.totalSessions) {
+                $('totalSessions').value = course.totalSessions;
+                updateCalculatedEndDate();
+            }
+            await Promise.all([loadTeachersForCourse(), loadRoomsForBranch($('branchId').value)]);
+        });
+        $('maxStudents').addEventListener('change', () => loadRoomsForBranch($('branchId').value, $('roomId').value));
 
         // Khi đổi cơ sở, load phòng học tương ứng
         $('branchId').addEventListener('change', async (e) => {
@@ -319,35 +371,80 @@
             await loadRoomsForBranch(branchId);
         });
 
+        async function loadTeachersForCourse(selectedTeacherId = null) {
+            const version = ++teacherLoadVersion;
+            teacherOptionsLoaded = false;
+            const courseId = $('courseId').value;
+            const select = $('teacherId');
+            select.disabled = true;
+            select.innerHTML = '<option value="">Đang tải giáo viên...</option>';
+            try {
+                const teachers = courseId ? await callApi(`/api/class-management/classes/teachers?courseId=${courseId}`) : [];
+                if (version !== teacherLoadVersion) return;
+                select.innerHTML = '<option value="">' + (!courseId ? '-- Chọn khóa học trước --'
+                    : teachers.length ? '-- Chọn giáo viên phù hợp --' : '-- Chưa có giáo viên phù hợp --') + '</option>'
+                    + teachers.map(t => `<option value="${t.id}">${escapeHtml(t.fullName)} (${escapeHtml(t.subject)})</option>`).join('');
+                if (selectedTeacherId) {
+                    if (!teachers.some(t => String(t.id) === String(selectedTeacherId))) {
+                        select.add(new Option('Giáo viên hiện tại không còn phù hợp - chọn lại', String(selectedTeacherId)));
+                    }
+                    select.value = String(selectedTeacherId);
+                }
+                teacherOptionsLoaded = true;
+            } catch (error) {
+                if (version !== teacherLoadVersion) return;
+                select.innerHTML = '<option value="">Không tải được giáo viên</option>';
+                formError(error.message);
+            } finally {
+                if (version === teacherLoadVersion) select.disabled = false;
+            }
+        }
+
         async function loadRoomsForBranch(branchId, selectedRoomId = null) {
+            const version = ++roomLoadVersion;
+            roomOptionsLoaded = false;
             const roomSelect = $('roomId');
-            if (!branchId) {
-                roomSelect.innerHTML = '<option value="">-- Chọn cơ sở trước --</option>';
+            const courseId = $('courseId').value;
+            if (!branchId || !courseId) {
+                roomSelect.disabled = false;
+                roomOptionsLoaded = true;
+                roomSelect.innerHTML = '<option value="">-- Chọn khóa học và cơ sở trước --</option>';
+                updateRoomFacilityLink();
                 return;
             }
+            roomSelect.disabled = true;
             roomSelect.innerHTML = '<option value="">Đang tải phòng học...</option>';
+            updateRoomFacilityLink();
             try {
-                if (!branchRoomsMap[branchId]) {
-                    const rooms = await callApi(`/api/branches/${branchId}/rooms/options`);
-                    branchRoomsMap[branchId] = rooms || [];
-                }
-                const rooms = branchRoomsMap[branchId];
-                roomSelect.innerHTML = '<option value="">-- Chọn phòng học --</option>' + rooms.map(r =>
-                    `<option value="${r.id}" ${selectedRoomId && String(r.id) === String(selectedRoomId) ? 'selected' : ''}>${escapeHtml(r.roomCode ? r.roomCode + ' - ' : '')}${escapeHtml(r.roomName || r.name)}</option>`
+                const maxStudents = Math.max(1, Number($('maxStudents').value) || 1);
+                const rooms = await callApi(`/api/class-management/classes/rooms?courseId=${courseId}&branchId=${branchId}&maxStudents=${maxStudents}`);
+                if (version !== roomLoadVersion) return;
+                roomSelect.innerHTML = '<option value="">' + (rooms.length ? '-- Chọn phòng học phù hợp --' : '-- Chưa có phòng phù hợp --') + '</option>' + rooms.map(r =>
+                    `<option value="${r.id}" ${selectedRoomId && String(r.id) === String(selectedRoomId) ? 'selected' : ''}>${escapeHtml(r.roomCode + ' - ' + r.roomName)} (${r.capacity} chỗ)</option>`
                 ).join('');
+                if (selectedRoomId && !rooms.some(r => String(r.id) === String(selectedRoomId))) {
+                    roomSelect.add(new Option('Phòng hiện tại không còn phù hợp - chọn lại', String(selectedRoomId)));
+                    roomSelect.value = String(selectedRoomId);
+                }
+                roomOptionsLoaded = true;
             } catch (err) {
-                console.error("Lỗi nạp phòng học:", err);
+                if (version !== roomLoadVersion) return;
                 roomSelect.innerHTML = '<option value="">-- Chưa có phòng học --</option>';
+                formError(err.message);
+            } finally {
+                if (version === roomLoadVersion) {
+                    roomSelect.disabled = false;
+                    updateRoomFacilityLink();
+                }
             }
         }
 
         async function loadOptions() {
-            const [courses, branches, teachers] = await Promise.all([
+            const [courses, branches] = await Promise.all([
                 callApi('/api/course-enrollment/courses'),
-                callApi('/api/branches/options'),
-                callApi('/api/schedule/teachers').catch(() => [])
+                callApi('/api/branches/options')
             ]);
-            teacherList = teachers || [];
+            courseList = courses || [];
 
             const courseOptions = optionList(courses || [], 'Chọn khóa học');
             const branchOptions = optionList(branches || [], 'Chọn cơ sở');
@@ -356,10 +453,7 @@
             $('filterCourse').innerHTML = optionList(courses || [], 'Tất cả khóa học');
             $('filterBranch').innerHTML = optionList(branches || [], 'Tất cả cơ sở');
 
-            // Render options giáo viên
-            $('teacherId').innerHTML = '<option value="">-- Chọn giáo viên phụ trách --</option>' + teacherList.map(t =>
-                `<option value="${t.id}">${escapeHtml(t.fullName || t.username)}</option>`
-            ).join('');
+            await loadTeachersForCourse();
         }
 
         async function loadClasses() {
@@ -403,6 +497,14 @@
                         </button>
                     </td>
                 </tr>`).join('') : '<tr><td colspan="9" class="text-center text-muted py-4">Chưa có lớp phù hợp với bộ lọc</td></tr>';
+            const linkedClassId = new URLSearchParams(window.location.search).get('classId');
+            if (!openedLinkedClass && linkedClassId && /^\d+$/.test(linkedClassId)) {
+                const editButton = document.querySelector(`[data-edit-id="${linkedClassId}"]`);
+                if (editButton) {
+                    openedLinkedClass = true;
+                    editButton.click();
+                }
+            }
         }
 
         $('newClassBtn').addEventListener('click', () => {
@@ -414,17 +516,18 @@
             $('branchId').disabled = false;
             formError('');
             $('classModalTitle').textContent = 'Tạo lớp học mới & Xếp lịch';
-            $('status').value = 'OPEN';
+            $('status').value = 'PLANNING';
             $('totalSessions').value = '12';
             $('startTime').value = '08:00';
             $('endTime').value = '10:00';
-            $('startDate').value = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
+            $('startDate').value = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(Date.now() + 86400000));
             document.querySelectorAll('.dow-check').forEach(c => c.checked = false);
             $('dow1').checked = true;
             $('dow3').checked = true;
             $('dow5').checked = true;
             autoUpdateScheduleDesc();
-            $('roomId').innerHTML = '<option value="">-- Chọn cơ sở trước --</option>';
+            loadRoomsForBranch('');
+            loadTeachersForCourse();
             modal.show();
         });
 
@@ -445,8 +548,7 @@
             for (const id of ['courseId','branchId','classCode','className','maxStudents','status','startDate','endDate','scheduleDescription']) {
                 $(id).value = item[id] ?? '';
             }
-            $('teacherId').value = item.teacherId ?? '';
-            await loadRoomsForBranch(item.branchId, item.roomId);
+            await Promise.all([loadTeachersForCourse(item.teacherId), loadRoomsForBranch(item.branchId, item.roomId)]);
 
             // Tách lịch học để tick lại các thứ nếu có
             document.querySelectorAll('.dow-check').forEach(c => c.checked = false);
@@ -455,6 +557,10 @@
             $('startTime').value = schedule.startTime;
             $('endTime').value = schedule.endTime;
             $('totalSessions').value = item.totalLessons || 12;
+            if (!existingHasLessons) {
+                if (schedule.days.length) autoUpdateScheduleDesc();
+                else updateCalculatedEndDate();
+            }
 
             modal.show();
         });
@@ -479,6 +585,15 @@
             const startTime = $('startTime').value || null;
             const endTime = $('endTime').value || null;
             const totalSessions = Number($('totalSessions').value) || 12;
+            if ($('teacherId').disabled || $('roomId').disabled || !teacherOptionsLoaded || !roomOptionsLoaded) {
+                formError('Danh sách giáo viên hoặc phòng chưa tải xong hoặc tải thất bại. Vui lòng chọn lại khóa học/cơ sở để thử lại.');
+                return;
+            }
+            if (['OPEN', 'IN_PROGRESS'].includes($('status').value)
+                    && (!$('teacherId').value || !$('roomId').value || (!existingHasLessons && !selectedDays.length))) {
+                formError('Lớp đang mở hoặc đang học cần giáo viên, phòng và lịch học. Chọn Dự kiến nếu chưa đủ thông tin.');
+                return;
+            }
             if (!existingHasLessons && selectedDays.length && (!startTime || !endTime || endTime <= startTime)) {
                 formError('Giờ kết thúc phải sau giờ bắt đầu.');
                 return;
@@ -490,6 +605,8 @@
                 branchId: Number($('branchId').value),
                 teacherId: $('teacherId').value ? Number($('teacherId').value) : null,
                 roomId: $('roomId').value ? Number($('roomId').value) : null,
+                clearTeacher: editingId !== null && !$('teacherId').value,
+                clearRoom: editingId !== null && !$('roomId').value,
                 classCode: $('classCode').value.trim(),
                 className: $('className').value.trim(),
                 maxStudents: Number($('maxStudents').value),
@@ -523,9 +640,15 @@
             notice(error.message || 'Không tải được danh sách lớp.', 'danger');
         }
 
-        // A failed filter dependency must not prevent the class list from loading.
-        loadOptions().catch(error => notice('Không tải được tùy chọn bộ lọc. ' + error.message, 'warning'));
-        loadClasses().catch(showLoadError);
+        async function initializeClassPage() {
+            try {
+                await loadOptions();
+            } catch (error) {
+                notice('Không tải được tùy chọn bộ lọc. ' + error.message, 'warning');
+            }
+            await loadClasses().catch(showLoadError);
+        }
+        initializeClassPage();
     </script>
 </body>
 </html>

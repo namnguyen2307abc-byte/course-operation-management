@@ -7,6 +7,9 @@ import com.talent.management.features.attendance_makeup.service.impl.ScheduleWee
 import com.talent.management.features.auth.repository.*;
 import com.talent.management.features.branch_facility_enrollment.repository.*;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
+import com.talent.management.features.class_management.service.ClassSchedulingService;
+import com.talent.management.features.class_management.repository.ManagedClassLessonRepository;
+import com.talent.management.features.branch_facility_enrollment.service.FacilityRulesService;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
@@ -34,6 +37,7 @@ class ScheduleWeeklyFlowTest {
     @Mock BranchRepository branches;
     @Mock RoomRepository rooms;
     @Mock CurrentUserService currentUser;
+    @Mock ClassSchedulingService schedulingService;
     @InjectMocks ScheduleWeeklyServiceImpl service;
 
     private final LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
@@ -177,13 +181,21 @@ class ScheduleWeeklyFlowTest {
         when(branches.findById(2L)).thenReturn(Optional.of(Branch.builder().id(2L).build()));
         when(classes.save(any())).thenAnswer(inv -> { ClassEntity c = inv.getArgument(0); c.setId(3L); return c; });
         var request = CreateClassWithLessonsRequest.builder().courseId(1L).branchId(2L).classCode("C60")
-                .className("60 buổi").maxStudents(10).startDate(today).totalSessions(60)
+                .className("60 buổi").maxStudents(10).startDate(today.plusWeeks(1)).totalSessions(60)
                 .daysOfWeek(List.of(today.getDayOfWeek().getValue())).startTime(LocalTime.of(18, 0))
                 .endTime(LocalTime.of(19, 0)).build();
+        ClassSchedulingService rules = new ClassSchedulingService(users, rooms, mock(ManagedClassLessonRepository.class),
+                new FacilityRulesService(mock(EquipmentRepository.class)));
+        when(schedulingService.generateLessons(any(), anyList(), any(), any(), any(), isNull()))
+                .thenAnswer(inv -> rules.generateLessons(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2),
+                        inv.getArgument(3), inv.getArgument(4), null));
         service.createClassWithLessons(request);
         verify(lessons).saveAll(argThat(items -> {
             List<Lesson> generated = new ArrayList<>(); items.forEach(generated::add);
-            return generated.size() == 60 && generated.get(59).getLessonDate().equals(today.plusWeeks(59));
+            return generated.size() == 60 && generated.get(59).getLessonDate().equals(today.plusWeeks(60));
         }));
+        verify(schedulingService).validateAssignments(any(), any(), isNull(), isNull(), eq(10));
+        verify(schedulingService).validateReadiness(eq(ClassStatus.OPEN), eq(true), isNull(), isNull());
+        verify(schedulingService).validateLessonConflicts(argThat(items -> items.size() == 60));
     }
 }
