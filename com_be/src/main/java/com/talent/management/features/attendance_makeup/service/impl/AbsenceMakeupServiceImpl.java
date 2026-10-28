@@ -91,6 +91,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new AttendanceMakeupException(
                         "Không tìm thấy học viên với ID: " + request.getStudentId()));
+        validateStudentAccess(currentUser, student);
 
         // 2. Nếu PARENT, học viên phải là con mình
         if (currentUser.getRole() == Role.PARENT) {
@@ -105,7 +106,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                         "Không tìm thấy buổi học với ID: " + request.getLessonId()));
 
         // 3b. Phụ huynh chỉ được xin nghỉ buổi chưa diễn ra (nghỉ trước, không hợp thức hóa sau)
-        if (currentUser.getRole() == Role.PARENT
+        if ((currentUser.getRole() == Role.PARENT || currentUser.getRole() == Role.STUDENT)
                 && lesson.getLessonDate() != null
                 && lesson.getLessonDate().isBefore(LocalDate.now())) {
             throw new AttendanceMakeupException(
@@ -153,6 +154,13 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         List<AbsenceRequest> list;
 
         switch (currentUser.getRole()) {
+            case STUDENT -> {
+                Optional<Student> own = studentRepository.findByAccountId(currentUser.getId());
+                if (own.isEmpty()) return List.of();
+                list = status != null
+                        ? absenceRequestRepository.findByStudentIdAndStatusOrderByCreatedAtDesc(own.get().getId(), status)
+                        : absenceRequestRepository.findByStudentIdOrderByCreatedAtDesc(own.get().getId());
+            }
             case PARENT -> {
                 // Phụ huynh chỉ xem đơn của các con mình
                 list = (status != null)
@@ -199,6 +207,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         User currentUser = currentUserService.getCurrentUser();
         AbsenceRequest ar = absenceRequestRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
+
+        validateStudentAccess(currentUser, ar.getStudent());
 
         if (currentUser.getRole() == Role.PARENT) {
             if (ar.getStudent().getParent() == null
@@ -317,6 +327,12 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             list = (status != null)
                     ? makeupRegistrationRepository.findByStudentParentIdAndStatusOrderByCreatedAtDesc(currentUser.getId(), status)
                     : makeupRegistrationRepository.findByStudentParentIdOrderByCreatedAtDesc(currentUser.getId());
+        } else if (currentUser.getRole() == Role.STUDENT) {
+            Optional<Student> own = studentRepository.findByAccountId(currentUser.getId());
+            if (own.isEmpty()) return List.of();
+            list = status != null
+                    ? makeupRegistrationRepository.findByStudentIdAndStatusOrderByCreatedAtDesc(own.get().getId(), status)
+                    : makeupRegistrationRepository.findByStudentIdOrderByCreatedAtDesc(own.get().getId());
         } else {
             list = (status != null)
                     ? makeupRegistrationRepository.findByStatusOrderByCreatedAtDesc(status)
@@ -335,6 +351,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         User currentUser = currentUserService.getCurrentUser();
         MakeupRegistration mr = makeupRegistrationRepository.findById(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
+
+        validateStudentAccess(currentUser, mr.getStudent());
 
         if (currentUser.getRole() == Role.PARENT) {
             if (mr.getStudent().getParent() == null
@@ -651,6 +669,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         User currentUser = currentUserService.getCurrentUser();
         List<Student> students = (currentUser.getRole() == Role.PARENT)
                 ? studentRepository.findByParentId(currentUser.getId())
+                : currentUser.getRole() == Role.STUDENT
+                ? studentRepository.findByAccountId(currentUser.getId()).stream().toList()
                 : studentRepository.findAll();
 
         return students.stream().map(s -> {
@@ -667,6 +687,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy học viên với ID: " + studentId));
 
+        validateStudentAccess(currentUser, student);
+
         if (currentUser.getRole() == Role.PARENT) {
             if (student.getParent() == null || !student.getParent().getId().equals(currentUser.getId())) {
                 throw new AttendanceMakeupException("Bạn chỉ có thể xem lịch học của con mình!");
@@ -674,7 +696,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         }
 
         LocalDate today = LocalDate.now();
-        boolean onlyUpcoming = currentUser.getRole() == Role.PARENT;
+        boolean onlyUpcoming = currentUser.getRole() == Role.PARENT || currentUser.getRole() == Role.STUDENT;
         return attendanceLessonRepository.findLessonsByStudentId(studentId)
                 .stream()
                 .filter(l -> !onlyUpcoming || (l.getLessonDate() != null && !l.getLessonDate().isBefore(today)))
@@ -694,6 +716,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     public List<LessonOptionResponse> getAvailableLessonsForMakeup(Long makeupId) {
         MakeupRegistration mr = makeupRegistrationRepository.findById(makeupId)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + makeupId));
+
+        validateStudentAccess(currentUserService.getCurrentUser(), mr.getStudent());
 
         Lesson original = mr.getOriginalLesson();
         if (original == null || original.getClassEntity() == null
@@ -755,6 +779,13 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     // =========================================================================
 
     /** TEACHER, STAFF và ADMIN được duyệt đơn nghỉ */
+    private void validateStudentAccess(User user, Student student) {
+        boolean denied = user.getRole() == Role.STUDENT
+                ? student.getAccount() == null || !student.getAccount().getId().equals(user.getId())
+                : user.getRole() == Role.PARENT && (student.getParent() == null || !student.getParent().getId().equals(user.getId()));
+        if (denied) throw new AttendanceMakeupException("Bạn không có quyền truy cập hồ sơ học viên này");
+    }
+
     private void validateReviewPermission(User user) {
         if (user.getRole() == Role.PARENT || user.getRole() == Role.STUDENT) {
             throw new AttendanceMakeupException(

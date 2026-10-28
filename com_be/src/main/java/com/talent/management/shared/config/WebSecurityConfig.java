@@ -42,8 +42,10 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
                 .requestMatchers("/WEB-INF/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/tuition-payment/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/tuition-payment/payos-webhook").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/tuition-payment/fix-font", "/api/tuition-payment/*/bank-webhook-simulate").hasRole("ADMIN")
+                .requestMatchers("/api/tuition-payment/**").hasAnyRole("ADMIN", "STAFF", "BRANCH_MANAGER")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/branches/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/course-management/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
@@ -57,6 +59,17 @@ public class WebSecurityConfig {
                 
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(errors -> errors
+                .authenticationEntryPoint((request, response, ex) -> {
+                    response.setStatus(401);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"message\":\"Vui lòng đăng nhập.\"}");
+                })
+                .accessDeniedHandler((request, response, ex) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"message\":\"Bạn không có quyền thực hiện thao tác này.\"}");
+                }))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

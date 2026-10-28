@@ -6,145 +6,90 @@ import com.talent.management.shared.entity.User;
 import com.talent.management.shared.enums.Role;
 import com.talent.management.shared.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
-
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository, JwtService jwtService, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.jwtService = jwtService;
-        this.passwordEncoder = passwordEncoder;
-    }
-
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        String username = request.getUsername() != null ? request.getUsername().trim() : "";
-        User user = userRepository.findByUsername(username).orElseGet(() -> {
-            String lower = username.toLowerCase();
-            String fullName;
-            Role role;
-            String subject = null;
-            if (lower.contains("parent") || lower.contains("phuhuynh")) {
-                fullName = "Phụ huynh (" + username + ")";
-                role = Role.PARENT;
-            } else if (lower.contains("teacher") || lower.contains("giaovien") || lower.contains("gv") || lower.contains("hung") || lower.contains("huong") || lower.contains("tuan")) {
-                if (lower.contains("tuan") || lower.contains("guitar")) {
-                    fullName = "Thầy Trần Anh Tuấn (GV Guitar)";
-                    role = Role.TEACHER;
-                    subject = "GUITAR";
-                } else if (lower.contains("huong")) {
-                    fullName = "Cô Vũ Thu Hương (GV Piano)";
-                    role = Role.TEACHER;
-                    subject = "PIANO";
-                } else {
-                    fullName = "Giáo viên (" + username + ")";
-                    role = Role.TEACHER;
-                    subject = "PIANO";
-                }
-            } else if (lower.contains("student") || lower.contains("hocvien") || lower.contains("hv")) {
-                fullName = "Học viên (" + username + ")";
-                role = Role.STUDENT;
-            } else if (lower.contains("cashier") || lower.contains("mai") || lower.contains("staff")) {
-                fullName = "Nhân viên (" + username + ")";
-                role = Role.STAFF;
-            } else {
-                fullName = "Quản Trị Viên";
-                role = Role.ADMIN;
-            }
-
-            User newU = User.builder()
-                    .username(username)
-                    .password(passwordEncoder.encode("123456"))
-                    .fullName(fullName)
-                    .email(username + "@talent.com")
-                    .role(role)
-                    .subject(subject)
-                    .status(UserStatus.ACTIVE)
-                    .build();
-            return userRepository.save(newU);
-        });
-
-        if (user.getStatus() != null && user.getStatus() != UserStatus.ACTIVE) {
-            throw new BadCredentialsException("Tài khoản đã bị vô hiệu hóa");
+        User user = userRepository.findByUsername(request.getUsername().trim())
+                .orElseThrow(() -> new BadCredentialsException("Thông tin đăng nhập không hợp lệ"));
+        if (user.getStatus() != UserStatus.ACTIVE || request.getPassword() == null
+                || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Thông tin đăng nhập không hợp lệ");
         }
-
-        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPassword() != null ? user.getPassword() : "123456")
-                .authorities(java.util.Collections.singletonList(
-                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
-                .build();
-
-        String token = jwtService.generateToken(userDetails, user.getId(), user.getRole().name(), user.getFullName());
-
-        return AuthResponse.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .role(user.getRole())
-                .subject(user.getSubject())
-                .token(token)
-                .build();
+        return response(user);
     }
 
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
-        Role role = request.getRole() != null ? request.getRole() : Role.PARENT;
-        User user = userRepository.findByUsername(request.getUsername()).orElseGet(() -> {
-            User newU = User.builder()
-                    .username(request.getUsername())
-                    .password(passwordEncoder.encode(request.getPassword() != null ? request.getPassword() : "123456"))
-                    .fullName(request.getFullName())
-                    .email(request.getEmail())
-                    .role(role)
-                    .status(com.talent.management.shared.enums.UserStatus.ACTIVE)
-                    .build();
-            return userRepository.save(newU);
-        });
+        if (request.getRole() != null && request.getRole() != Role.PARENT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đăng ký công khai chỉ dành cho phụ huynh");
+        }
+        String username = request.getUsername().trim();
+        if (!username.matches("[A-Za-z0-9_.-]{3,100}") || request.getFullName().trim().length() > 150
+                || request.getPassword().length() < 8 || request.getPassword().length() > 72) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thông tin tài khoản không hợp lệ; mật khẩu cần từ 8 đến 72 ký tự");
+        }
+        if (userRepository.existsByUsername(username) || (request.getEmail() != null
+                && !request.getEmail().isBlank() && userRepository.existsByEmail(request.getEmail().trim()))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tên đăng nhập hoặc email đã được sử dụng");
+        }
+        User user = userRepository.save(User.builder().username(username)
+                .password(passwordEncoder.encode(request.getPassword())).fullName(request.getFullName().trim())
+                .email(request.getEmail()).phone(request.getPhone()).role(Role.PARENT).status(UserStatus.ACTIVE).build());
+        return response(user);
+    }
 
-        org.springframework.security.core.userdetails.UserDetails userDetails =
-                org.springframework.security.core.userdetails.User.builder()
-                        .username(user.getUsername())
-                        .password(user.getPassword() != null ? user.getPassword() : "123456")
-                        .authorities(java.util.Collections.singletonList(
-                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
-                        .build();
+    @Transactional
+    public AuthResponse changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findLockedByUsername(username)
+                .orElseThrow(() -> new BadCredentialsException("Không tìm thấy tài khoản"));
+        if (user.getStatus() != UserStatus.ACTIVE || !passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Mật khẩu hiện tại không đúng");
+        }
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setMustChangePassword(false);
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        return response(user);
+    }
 
-        String token = jwtService.generateToken(userDetails, user.getId(), user.getRole().name(), user.getFullName());
+    @Transactional(readOnly = true)
+    public AuthResponse me(String username) {
+        return response(userRepository.findByUsername(username).orElseThrow(() -> new BadCredentialsException("Không tìm thấy tài khoản")));
+    }
 
-        return AuthResponse.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .role(user.getRole())
-                .subject(user.getSubject())
-                .token(token)
-                .build();
+    private AuthResponse response(User user) {
+        UserDetails details = org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
+                .password(user.getPassword()).roles(user.getRole().name()).build();
+        return AuthResponse.builder().userId(user.getId()).username(user.getUsername()).fullName(user.getFullName())
+                .role(user.getRole()).subject(user.getSubject()).mustChangePassword(user.isMustChangePassword())
+                .token(jwtService.generateToken(details, user.getId(), user.getRole().name(), user.getFullName(), user.getTokenVersion())).build();
     }
 
     public List<UserDto> getUsersByRole(Role role) {
-        return List.of();
+        return (role == null ? userRepository.findAll() : userRepository.findByRole(role)).stream()
+                .map(u -> UserDto.builder().id(u.getId()).username(u.getUsername()).fullName(u.getFullName())
+                        .email(u.getEmail()).phone(u.getPhone()).role(u.getRole()).status(u.getStatus()).build()).toList();
     }
 
-    public StudentDto createStudent(CreateStudentRequest request) {
-        return StudentDto.builder()
-                .fullName(request.getFullName())
-                .build();
-    }
-
-    public List<StudentDto> getAllStudents(Long parentId) {
-        return List.of();
-    }
-
-    public StudentDto getStudentById(Long id) {
-        return StudentDto.builder().id(id).build();
-    }
+    // Existing student endpoints are outside the administration feature.
+    public StudentDto createStudent(CreateStudentRequest request) { return StudentDto.builder().fullName(request.getFullName()).build(); }
+    public List<StudentDto> getAllStudents(Long parentId) { return List.of(); }
+    public StudentDto getStudentById(Long id) { return StudentDto.builder().id(id).build(); }
 }

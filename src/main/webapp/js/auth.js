@@ -2,6 +2,10 @@
 function appPath(path) { return (window.location.pathname.startsWith('/com_fe/') ? '/com_fe' : '') + path; }
 function checkAuth() {
     const authenticated = Boolean(localStorage.getItem('token') && getCurrentUser());
+    if (authenticated && getCurrentUser().mustChangePassword && !window.location.pathname.endsWith('change-password.html')) {
+        window.location.replace(appPath('/pages/change-password.html'));
+        return false;
+    }
     if (!authenticated && !window.location.pathname.endsWith('login.html')) window.location.replace(appPath('/login.html'));
     return authenticated;
 }
@@ -16,6 +20,9 @@ function roleLabel(role) {
     return { ADMIN: 'Quản trị viên', BRANCH_MANAGER: 'Quản lý chi nhánh', STAFF: 'Nhân viên', CASHIER: 'Thu ngân', TEACHER: 'Giáo viên', PARENT: 'Phụ huynh', STUDENT: 'Học viên' }[role] || 'Tài khoản trung tâm';
 }
 const WORKSPACE_FEATURES = [
+    { file: 'admin-dashboard', label: 'Tổng quan quản trị', icon: 'bar-chart-line', group: 'Quản trị hệ thống', roles: ['ADMIN'], description: 'Theo dõi số liệu vận hành, học phí và các công việc chờ xử lý.' },
+    { file: 'admin-users', label: 'Quản lý tài khoản', icon: 'person-gear', group: 'Quản trị hệ thống', roles: ['ADMIN'], description: 'Cấp tài khoản, phân quyền, khóa và mở quyền truy cập.' },
+    { file: 'admin-audit', label: 'Nhật ký quản trị', icon: 'clock-history', group: 'Quản trị hệ thống', roles: ['ADMIN'], description: 'Tra cứu lịch sử thay đổi tài khoản và người thực hiện.' },
     { file: 'weekly-schedule', label: 'Lịch tuần & điểm danh', icon: 'calendar3', group: 'Đào tạo & học vụ', roles: ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT', 'STUDENT'], description: 'Xem lịch học, lịch dạy và kết quả điểm danh từng buổi học.' },
     { file: 'course-enrollment', label: 'Đăng ký & xếp lớp', icon: 'person-plus', group: 'Đào tạo & học vụ', roles: ['PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN'], description: 'Đăng ký lớp học, theo dõi và xử lý yêu cầu ghi danh.' },
     { file: 'class-management', label: 'Quản lý lớp', icon: 'people', group: 'Đào tạo & học vụ', roles: ['ADMIN', 'STAFF', 'BRANCH_MANAGER'], description: 'Quản lý lớp, phân công giáo viên, phòng học và tạo lịch học.' },
@@ -23,7 +30,7 @@ const WORKSPACE_FEATURES = [
     { file: 'placement-test', label: 'Đánh giá đầu vào', icon: 'clipboard-check', group: 'Đào tạo & học vụ', roles: ['ADMIN', 'TEACHER', 'STAFF', 'BRANCH_MANAGER'], description: 'Sắp xếp lịch kiểm tra và ghi nhận kết quả đánh giá năng khiếu.' },
     { file: 'absence-makeup', label: 'Nghỉ học & học bù', icon: 'calendar2-week', group: 'Đào tạo & học vụ', roles: ['PARENT', 'TEACHER', 'STAFF', 'BRANCH_MANAGER', 'ADMIN', 'STUDENT'], description: 'Theo dõi đơn xin nghỉ và sắp xếp buổi học bù phù hợp.' },
     { file: 'branch-facility', label: 'Cơ sở & phòng học', icon: 'buildings', group: 'Vận hành trung tâm', roles: ['ADMIN', 'BRANCH_MANAGER', 'STAFF', 'TEACHER', 'PARENT', 'STUDENT'], description: 'Tra cứu chi nhánh, phòng học và cơ sở vật chất của trung tâm.' },
-    { file: 'tuition-payment', label: 'Thu học phí', icon: 'wallet2', group: 'Vận hành trung tâm', roles: ['ADMIN', 'STAFF', 'CASHIER'], description: 'Tra cứu hóa đơn, thu học phí và xem lịch sử thanh toán.' }
+    { file: 'tuition-payment', label: 'Thu học phí', icon: 'wallet2', group: 'Vận hành trung tâm', roles: ['ADMIN', 'STAFF', 'CASHIER'], description: 'Tra cứu hóa đơn, thu học phí và xem lịch sử thanh toán.' },
 ];
 function visibleFeatures(user) { return WORKSPACE_FEATURES.filter(feature => feature.roles.includes(user?.role)); }
 function updateNavbarUser() {
@@ -38,6 +45,9 @@ function updateNavbarUser() {
     document.getElementById('sidebarUserName').textContent = user.fullName || user.username || 'Tài khoản';
     document.getElementById('sidebarUserRole').textContent = roleLabel(user.role);
     document.getElementById('sidebarAvatar').textContent = (user.fullName || user.username || 'T').trim().split(/\s+/).pop().slice(0, 1).toUpperCase();
+    const navigationKey = user.username + ':' + user.role;
+    if (nav.dataset.navigationKey === navigationKey) return;
+    nav.dataset.navigationKey = navigationKey;
     nav.replaceChildren();
     function addLink(label, icon, path) {
         const a = document.createElement('a');
@@ -58,7 +68,9 @@ function updateNavbarUser() {
         }
         addLink(feature.label, feature.icon, '/pages/' + feature.file + '.html');
     });
+    addLink('Đổi mật khẩu', 'key', '/pages/change-password.html');
     document.querySelectorAll('[data-app-path]').forEach(link => link.href = appPath(link.dataset.appPath));
+    try { nav.scrollTop = Number(sessionStorage.getItem('workspace-nav-scroll:' + user.username)) || 0; } catch {}
 }
 function toggleMobileSidebar(force) {
     const open = typeof force === 'boolean' ? force : !document.body.classList.contains('sidebar-open');

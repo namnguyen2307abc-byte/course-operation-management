@@ -70,3 +70,44 @@ test('every HTML script parses and all script/stylesheet dependencies exist', ()
         }
     }
 });
+
+test('workspace reserves the sidebar before first paint and mounts navigation before content', () => {
+    const files = ['index.html', ...fs.readdirSync(path.join(root, 'pages')).map(file => `pages/${file}`)];
+    for (const file of files) {
+        const html = read(file);
+        if (!html.includes('id="navbar-container"')) continue;
+        assert.match(html, /<body\b[^>]*class="[^"]*has-workspace-sidebar/, `${file} must reserve sidebar width`);
+        assert(html.indexOf('id="appSidebar"') < html.indexOf('<main'), `${file} must include the static shell before content`);
+        assert(html.indexOf('js/workspace-shell.js') < html.indexOf('<main'), `${file} must personalize navigation before content`);
+        const auth = [...html.matchAll(/<script\b[^>]*src="[^"]*\/auth\.js"[^>]*>/g)];
+        assert.equal(auth.length, 1, `${file} must load shared auth once`);
+        assert(html.indexOf(auth[0][0]) < html.indexOf('</head>'), `${file} must have navigation functions ready before body`);
+        assert.doesNotMatch(html, /<\/[a-z]+\s+[^>]*=/i, `${file} has a malformed closing tag`);
+    }
+});
+
+test('refreshing the authenticated user preserves the existing sidebar nodes and scroll position', () => {
+    const nodes = {};
+    let clears = 0;
+    function element(tag = 'div') {
+        return { tagName: tag, dataset: {}, children: [], classList: { add() {} }, setAttribute() {},
+            appendChild(child) { this.children.push(child); }, replaceChildren() { this.children = []; clears++; } };
+    }
+    for (const id of ['workspaceNavigation', 'sidebarUserName', 'sidebarUserRole', 'sidebarAvatar']) nodes[id] = element();
+    const user = { userId: 1, username: 'qa_admin', fullName: 'Admin test', role: 'ADMIN' };
+    const ctx = context({
+        document: { addEventListener() {}, getElementById: id => nodes[id], querySelector() { return null; },
+            querySelectorAll() { return []; }, createElement: element, body: { classList: { add() {} } } },
+        sessionStorage: { getItem() { return '180'; } },
+        localStorage: { getItem: key => key === 'token' ? 'valid-token' : JSON.stringify(user) }
+    });
+    vm.runInContext(read('js/auth.js'), ctx);
+    ctx.updateNavbarUser();
+    const firstLink = nodes.workspaceNavigation.children[0];
+    assert.equal(nodes.workspaceNavigation.scrollTop, 180);
+    nodes.workspaceNavigation.scrollTop = 215;
+    ctx.updateNavbarUser();
+    assert.equal(clears, 1);
+    assert.equal(nodes.workspaceNavigation.children[0], firstLink);
+    assert.equal(nodes.workspaceNavigation.scrollTop, 215);
+});
