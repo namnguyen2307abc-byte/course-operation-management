@@ -56,17 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initNavbarAndRoleBadge() {
-    // Nạp navbar từ components/navbar.html
-    fetch('../components/navbar.html')
-        .then(r => r.text())
-        .then(html => {
-            const container = document.getElementById('navbar-container');
-            if (container) {
-                container.innerHTML = html;
-                updateNavbarUser();
-            }
-        })
-        .catch(e => console.error("Lỗi nạp navbar:", e));
+    updateNavbarUser();
 
     // Nạp footer
     fetch('../components/footer.html')

@@ -30,6 +30,13 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
         }
 
         if (response.status === 403) {
+            const denied = await response.clone().json().catch(() => ({}));
+            if (denied.code === 'PASSWORD_CHANGE_REQUIRED') {
+                const current = JSON.parse(localStorage.getItem('user') || '{}');
+                current.mustChangePassword = true; localStorage.setItem('user', JSON.stringify(current));
+                window.location.href = (window.location.pathname.startsWith('/com_fe/') ? '/com_fe' : '') + '/pages/change-password.html';
+                throw new Error(denied.message);
+            }
             let roleName = "Chưa xác định";
             try {
                 const u = JSON.parse(localStorage.getItem("user") || "{}");
@@ -42,7 +49,8 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.message || `Lỗi yêu cầu: ${response.status}`);
+            const fields = errData.details ? Object.values(errData.details).join('; ') : '';
+            throw new Error(fields || errData.message || `Lỗi yêu cầu: ${response.status}`);
         }
 
         

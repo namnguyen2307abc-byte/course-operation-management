@@ -76,8 +76,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         switch (userRole) {
             case STUDENT -> {
                 // Tìm học viên theo tài khoản
-                Optional<Student> studentOpt = studentRepository.findByParentId(currentUser.getId()).stream()
-                        .findFirst();
+                Optional<Student> studentOpt = studentRepository.findByAccountId(currentUser.getId());
                 // Do not trust an arbitrary studentId when the account has no linked profile.
                 Long effectiveStudentId = studentOpt.map(Student::getId).orElse(null);
                 if (effectiveStudentId != null) {
