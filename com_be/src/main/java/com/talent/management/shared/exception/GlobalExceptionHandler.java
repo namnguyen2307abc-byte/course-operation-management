@@ -17,6 +17,22 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(Exception ex) {
+        return ResponseEntity.status(403).body(Map.of("status", 403, "message", "Bạn không có quyền thực hiện thao tác này"));
+    }
+
+    @ExceptionHandler({org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class})
+    public ResponseEntity<Map<String, Object>> handleInvalidRequest(Exception ex) {
+        return ResponseEntity.badRequest().body(Map.of("status", 400, "message", "Dữ liệu hoặc bộ lọc không hợp lệ"));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataConflict(Exception ex) {
+        return ResponseEntity.status(409).body(Map.of("status", 409, "message", "Dữ liệu bị trùng hoặc liên kết đã thay đổi. Vui lòng tải lại và thử lại."));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Map<String, Object>> handleBusinessException(BusinessException ex) {
         Map<String, Object> body = new HashMap<>();

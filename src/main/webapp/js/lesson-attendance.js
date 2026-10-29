@@ -53,16 +53,7 @@ function checkRoleAccess() {
 }
 
 function loadNavbar() {
-    fetch('../components/navbar.html')
-        .then(r => r.text())
-        .then(html => {
-            const el = document.getElementById('navbar-container');
-            if (el) {
-                el.innerHTML = html;
-                if (typeof updateNavbarUser === 'function') updateNavbarUser();
-            }
-        })
-        .catch(e => console.error('Lỗi nạp navbar:', e));
+    updateNavbarUser();
 }
 
 async function loadSheet(lessonId) {

@@ -41,6 +41,7 @@ class MakeupSchedulingFlowTest {
         when(currentUser.getCurrentUser()).thenReturn(User.builder().id(30L).role(Role.STAFF).username("staff").build());
     }
     @Test void noMatchingClassReturnsEmptyListAndDoesNotPickAnUnrelatedLesson() {
+        staff();
         when(makeups.findById(50L)).thenReturn(Optional.of(request()));
         assertThat(service.getAvailableLessonsForMakeup(50L)).isEmpty();
         verify(lessons).findMakeupCandidatesByCourse(any(), eq(3), eq(100L), eq(1L));

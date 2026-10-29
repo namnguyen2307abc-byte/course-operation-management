@@ -427,15 +427,15 @@ facilityElement('editFacilityForm').addEventListener('submit', saveFacility);
 
 async function initializeFacilities() {
     if (!checkAuth()) return;
+    updateNavbarUser();
     facilityElement('facilityAccess').classList.toggle('d-none', canEditFacility());
     switchTab('ROOMS');
     loadBranches();
-    for (const name of ['navbar', 'footer']) {
+    for (const name of ['footer']) {
         try {
             const response = await fetch(`../components/${name}.html`);
             if (!response.ok) continue;
             facilityElement(`${name}-container`).innerHTML = await response.text();
-            if (name === 'navbar') updateNavbarUser();
         } catch (error) { console.warn(`Không tải được ${name}:`, error); }
     }
 }

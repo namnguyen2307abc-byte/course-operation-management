@@ -112,10 +112,15 @@ async function checkLayout(page, modal) {
             const element = document.querySelector(selector);
             return getComputedStyle(element).opacity === '1' && getComputedStyle(element.querySelector('.modal-dialog')).transform === 'none';
         }, modal);
-        assert.equal(await page.locator(modal + ' .modal-content').evaluate(element => {
+        const modalBounds = await page.locator(modal + ' .modal-content').evaluate(element => {
             const bounds = element.getBoundingClientRect();
-            return bounds.left >= 0 && bounds.right <= innerWidth + 1;
-        }), true, 'modal must fit viewport');
+            const dialog = element.closest('.modal-dialog'), modal = element.closest('.modal');
+            return {left:bounds.left,right:bounds.right,width:innerWidth,
+                dialogLeft:dialog.getBoundingClientRect().left, modalLeft:modal.getBoundingClientRect().left,
+                padding:getComputedStyle(modal).padding, scrollLeft:modal.scrollLeft};
+        });
+        assert.equal(modalBounds.left >= 0 && modalBounds.right <= modalBounds.width + 1,
+            true, 'modal must fit viewport: ' + JSON.stringify(modalBounds));
         assert.equal(await page.locator(modal + ' .modal-footer').evaluate(element => element.getBoundingClientRect().bottom <= innerHeight + 1), true, 'modal footer must remain visible');
     }
 }
