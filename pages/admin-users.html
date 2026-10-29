@@ -218,9 +218,15 @@
                     </label>
                     <input class="form-control mb-3" id="userPhone" type="tel" maxlength="20" pattern="[+0-9 ()-]{0,20}">
                     <label class="form-label" for="userSubject">
-                        Bộ môn giáo viên (nếu có)
+                        Bộ môn đánh giá đầu vào (nếu có)
                     </label>
                     <input class="form-control" id="userSubject" maxlength="100" placeholder="Ví dụ: DAN, MUA, VO">
+                    <div id="userTeachingSubjectFields" class="mt-3" hidden>
+                        <label class="form-label" for="userTeachingSubject">Chuyên môn giảng dạy cụ thể</label>
+                        <input class="form-control" id="userTeachingSubject" maxlength="100" list="teachingSubjects" placeholder="Ví dụ: PIANO, GUITAR, CHESS">
+                        <datalist id="teachingSubjects"><option value="PIANO"><option value="GUITAR"><option value="CHESS"><option value="SWIMMING"><option value="DANCE"><option value="MARTIAL_ARTS"></datalist>
+                        <small class="text-muted">Dùng để lọc giáo viên khi phân công lớp; không thay đổi bộ môn đánh giá đầu vào.</small>
+                    </div>
                 </div>
                 <footer>
                     <button type="button" class="btn btn-light" data-close-dialog="userDialog">

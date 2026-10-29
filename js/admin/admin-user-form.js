@@ -10,6 +10,7 @@ const AdminUserForm = (() => {
         if (prefix === 'user') {
             const hints = { ADMIN: 'Quản lý tài khoản và theo dõi hoạt động toàn trung tâm.', BRANCH_MANAGER: 'Điều phối học vụ và các nghiệp vụ dành cho quản lý.', STAFF: 'Thực hiện nghiệp vụ tuyển sinh, học vụ và thu học phí.', TEACHER: 'Theo dõi lịch dạy, điểm danh và đánh giá đầu vào.', PARENT: 'Đăng ký lớp và theo dõi việc học của con.', STUDENT: 'Xem lịch và thông tin của đúng hồ sơ học viên được liên kết.' };
             $('userRoleHint').textContent = hints[role] || '';
+            $('userTeachingSubjectFields').hidden = role !== 'TEACHER';
         }
     }
     async function loadStudents(prefix) {
@@ -34,7 +35,8 @@ const AdminUserForm = (() => {
             $('detailProfile').innerHTML = `<dl class="admin-detail-grid">${[
                 ['Tên đăng nhập', selected.username], ['Vai trò', roleLabel(selected.role)],
                 ['Trạng thái', selected.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'], ['Email', selected.email],
-                ['Điện thoại', selected.phone], ['Bộ môn', selected.subject], ['Ngày tạo', Admin.date(selected.createdAt)],
+                ['Điện thoại', selected.phone], ['Bộ môn đánh giá đầu vào', selected.subject],
+                ['Chuyên môn giảng dạy', selected.teachingSubject], ['Ngày tạo', Admin.date(selected.createdAt)],
                 ['Mật khẩu', selected.mustChangePassword ? 'Cần đổi khi đăng nhập' : 'Đã thiết lập']
             ].map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value || '—')}</dd></div>`).join('')}</dl>`;
             function links(title, records) { return `<section class="admin-linked-records"><h3>${title}</h3><ul>${records.length ? records.map(r => `<li>${esc(r.name)} <span class="text-muted">#${r.id}</span></li>`).join('') : '<li>Chưa có liên kết nghiệp vụ. Có thể đổi vai trò nếu đáp ứng các điều kiện khác.</li>'}</ul></section>`; }
@@ -54,7 +56,8 @@ const AdminUserForm = (() => {
         $('userDialogTitle').textContent = 'Cập nhật thông tin tài khoản'; $('createOnly').hidden = true;
         $('userUsername').disabled = true; $('userPassword').required = false;
         showStudentField('', 'user');
-        for (const [id, field] of [['userName', 'fullName'], ['userEmail', 'email'], ['userPhone', 'phone'], ['userSubject', 'subject']]) $(id).value = selected[field] || '';
+        $('userTeachingSubjectFields').hidden = selected.role !== 'TEACHER';
+        for (const [id, field] of [['userName', 'fullName'], ['userEmail', 'email'], ['userPhone', 'phone'], ['userSubject', 'subject'], ['userTeachingSubject', 'teachingSubject']]) $(id).value = selected[field] || '';
         $('userDialog').showModal();
     }
     function action(type) {
@@ -90,6 +93,7 @@ const AdminUserForm = (() => {
         $('userForm').addEventListener('submit', async event => {
             event.preventDefault(); error('userFormError'); $('saveUser').disabled = true;
             const payload = { fullName: $('userName').value.trim(), email: $('userEmail').value.trim(), phone: $('userPhone').value.trim(), subject: $('userSubject').value.trim() };
+            if ((editingId ? selected.role : $('userRole').value) === 'TEACHER') payload.teachingSubject = $('userTeachingSubject').value.trim();
             if (!editingId) Object.assign(payload, { username: $('userUsername').value.trim(), password: $('userPassword').value, role: $('userRole').value, studentId: $('userRole').value === 'STUDENT' ? Number($('userStudentId').value) : null });
             try {
                 await Admin.request(editingId ? `/users/${editingId}` : '/users', editingId ? 'PUT' : 'POST', payload);

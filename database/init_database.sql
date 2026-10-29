@@ -55,6 +55,7 @@ CREATE TABLE users (
     role VARCHAR(30) NOT NULL,
     status VARCHAR(30) DEFAULT 'ACTIVE',
     subject VARCHAR(100),
+    teaching_subject VARCHAR(100),
     avatar_url NVARCHAR(500),
     created_at DATETIME2 DEFAULT CURRENT_TIMESTAMP
 );
@@ -383,6 +384,11 @@ INSERT INTO users (username, password, full_name, email, phone, role, status) VA
 GO
 
 -- 3.2. DANH SÁCH HỌC VIÊN (STUDENTS)
+-- Keep the class specialism separate from the Placement Test department.
+UPDATE users SET teaching_subject = 'PIANO'
+WHERE username = 'teacher_huong' AND role = 'TEACHER';
+GO
+
 INSERT INTO students (parent_id, full_name, date_of_birth, gender, school_name, notes) VALUES
 -- Học viên của parent_lan
 ((SELECT id FROM users WHERE username = 'parent_lan'), N'Nguyễn Bảo Nam (Bé Bin)', '2016-05-12', N'Nam', N'Tiểu học Thực Nghiệm', N'Học Piano 1-1 chính thức, có lịch học cố định để test nghỉ & học bù'),

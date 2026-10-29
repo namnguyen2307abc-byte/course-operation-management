@@ -10,6 +10,36 @@ function context(extra = {}) {
         window: { location: { pathname: '/index.html' }, addEventListener() {} },
         localStorage: { getItem() { return null; }, removeItem() {} }, console, ...extra });
 }
+
+test('admin teacher editor keeps placement department separate from the exact class specialism', async () => {
+    const nodes = new Map();
+    const element = id => {
+        if (!nodes.has(id)) nodes.set(id, {value:'', hidden:false, open:false, handlers:{},
+            addEventListener(type, handler) {this.handlers[type]=handler;}, setAttribute() {}, reset() {},
+            showModal() {this.open=true;}, close() {this.open=false;}});
+        return nodes.get(id);
+    };
+    const requests=[];
+    const teacher={id:2, fullName:'Teacher', username:'teacher', role:'TEACHER', subject:'DAN', teachingSubject:'GUITAR', status:'ACTIVE'};
+    const ctx=context({roleLabel:value=>value,getCurrentUser:()=>({userId:1}),appPath:value=>value,
+        document:{querySelectorAll:()=>[]},Admin:{$:element,escape:String,date:String,options(){},roles:[],query:()=>'',message(){},
+            request:async(path,method,body)=>{
+                requests.push({path,method,body});
+                return method?{}:{user:teacher,classes:[],children:[],studentProfiles:[]};
+            }}});
+    const form=vm.runInContext(read('js/admin/admin-user-form.js')+'\nAdminUserForm;',ctx);
+    form.initialize(async()=>{});
+    await form.detail(2);
+    element('editUser').handlers.click();
+    assert.equal(element('userSubject').value,'DAN');
+    assert.equal(element('userTeachingSubject').value,'GUITAR');
+    assert.equal(element('userTeachingSubjectFields').hidden,false);
+    element('userTeachingSubject').value='PIANO';
+    await element('userForm').handlers.submit({preventDefault(){}});
+    const saved=requests.find(request=>request.method==='PUT');
+    assert.equal(saved.body.subject,'DAN');
+    assert.equal(saved.body.teachingSubject,'PIANO');
+});
 test('merged sidebar keeps weekly schedule and class management with role restrictions', () => {
     const ctx = context(); vm.runInContext(read('js/auth.js'), ctx);
     for (const role of ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT', 'STUDENT']) {

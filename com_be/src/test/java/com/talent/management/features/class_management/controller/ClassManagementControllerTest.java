@@ -1,6 +1,7 @@
 package com.talent.management.features.class_management.controller;
 
 import com.talent.management.features.class_management.service.ClassManagementService;
+import com.talent.management.features.class_management.dto.ClassTeacherOption;
 import com.talent.management.shared.config.WebSecurityConfig;
 import com.talent.management.features.auth.security.JwtAuthenticationFilter;
 import org.junit.jupiter.api.Test;
@@ -16,9 +17,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @WebMvcTest(ClassManagementController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -27,6 +33,36 @@ class ClassManagementControllerTest {
     @Autowired MockMvc mvc;
     @MockBean ClassManagementService service;
     @MockBean JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Test
+    @WithMockUser(roles = "STAFF")
+    void returnsCourseSpecificTeacherOptions() throws Exception {
+        when(service.getTeacherOptions(1L)).thenReturn(List.of(new ClassTeacherOption(2L, "Piano teacher", "PIANO")));
+        mvc.perform(get("/api/class-management/classes/teachers").param("courseId", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].subject").value("PIANO"));
+    }
+
+    @Test
+    @WithMockUser(roles = "PARENT")
+    void parentCannotReadAssignmentOptions() throws Exception {
+        mvc.perform(get("/api/class-management/classes/teachers").param("courseId", "1"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/class-management/classes/rooms").param("courseId", "1").param("branchId", "2"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "STAFF")
+    void explicitClearFlagsAreBoundWhenReturningToPlanning() throws Exception {
+        mvc.perform(put("/api/class-management/classes/10").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"courseId":1,"branchId":2,"classCode":"C-01","className":"Planning class",
+                                 "maxStudents":8,"status":"PLANNING","startDate":"2027-01-01",
+                                 "clearTeacher":true,"clearRoom":true}
+                                """))
+                .andExpect(status().isOk());
+        verify(service).update(eq(10L), argThat(request -> request.clearTeacher() && request.clearRoom()));
+    }
 
     @Test
     @WithMockUser(roles = "TEACHER")

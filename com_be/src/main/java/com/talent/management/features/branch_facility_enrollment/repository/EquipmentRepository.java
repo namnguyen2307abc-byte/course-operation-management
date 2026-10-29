@@ -8,9 +8,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
+
+    List<Equipment> findByRoomIdOrderByIdAsc(Long roomId);
+
+    @Query("select e.room.id from Equipment e where e.id = :id")
+    Optional<Long> findRoomIdById(@Param("id") Long id);
 
     @Query("SELECT e FROM Equipment e " +
            "JOIN e.room r " +

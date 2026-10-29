@@ -11,4 +11,5 @@ public record CreateAdminUserRequest(
         @Pattern(regexp = "[+0-9 ()-]{0,20}") String phone,
         @NotNull Role role,
         @Size(max = 100) String subject,
-        Long studentId) {}
+        Long studentId,
+        @Size(max = 100) String teachingSubject) {}

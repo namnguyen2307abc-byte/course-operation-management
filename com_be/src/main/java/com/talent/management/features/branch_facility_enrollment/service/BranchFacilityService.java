@@ -10,6 +10,7 @@ import com.talent.management.features.branch_facility_enrollment.dto.response.Br
 import com.talent.management.features.branch_facility_enrollment.dto.response.EquipmentResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.RoomOptionResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.RoomResponse;
+import com.talent.management.features.branch_facility_enrollment.dto.response.RoomUsageResponse;
 import com.talent.management.shared.enums.EquipmentCategory;
 
 import java.util.List;
@@ -21,6 +22,8 @@ public interface BranchFacilityService {
     List<BranchOptionResponse> getBranchOptions();
 
     List<RoomResponse> getRoomsByBranch(Long branchId);
+
+    RoomUsageResponse getRoomUsage(Long roomId);
 
     List<RoomOptionResponse> getRoomOptions(Long branchId);
 

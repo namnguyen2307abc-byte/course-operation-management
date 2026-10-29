@@ -10,8 +10,8 @@ import com.talent.management.features.attendance_makeup.service.ScheduleWeeklySe
 import com.talent.management.features.auth.repository.StudentRepository;
 import com.talent.management.features.auth.repository.UserRepository;
 import com.talent.management.features.branch_facility_enrollment.repository.BranchRepository;
-import com.talent.management.features.branch_facility_enrollment.repository.RoomRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
+import com.talent.management.features.class_management.service.ClassSchedulingService;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
@@ -48,8 +48,8 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final BranchRepository branchRepository;
-    private final RoomRepository roomRepository;
     private final CurrentUserService currentUserService;
+    private final ClassSchedulingService schedulingService;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final ZoneId CENTER_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -667,23 +667,9 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 .orElseThrow(
                         () -> new AttendanceMakeupException("Không tìm thấy cơ sở với ID: " + request.getBranchId()));
 
-        Room room = null;
-        if (request.getRoomId() != null) {
-            room = roomRepository.findById(request.getRoomId())
-                    .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy phòng học."));
-            if (room.getBranch() == null || !branch.getId().equals(room.getBranch().getId())) {
-                throw new AttendanceMakeupException("Phòng học không thuộc cơ sở được chọn.");
-            }
-        }
-
-        User teacher = null;
-        if (request.getTeacherId() != null) {
-            teacher = userRepository.findById(request.getTeacherId())
-                    .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy giáo viên."));
-            if (teacher.getRole() != Role.TEACHER) {
-                throw new AttendanceMakeupException("Tài khoản được phân công phải là giáo viên.");
-            }
-        }
+        User teacher = schedulingService.getTeacher(request.getTeacherId());
+        Room room = schedulingService.getRoom(request.getRoomId());
+        schedulingService.validateAssignments(course, branch, teacher, room, request.getMaxStudents());
 
         // 1. Lưu ClassEntity
         ClassEntity classEntity = ClassEntity.builder()
@@ -697,48 +683,16 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 .maxStudents(request.getMaxStudents())
                 .currentStudents(0)
                 .startDate(request.getStartDate())
-                .scheduleDescription(request.getScheduleDescription())
+                .scheduleDescription(schedulingService.describeSchedule(request.getDaysOfWeek(), request.getStartTime(), request.getEndTime()))
                 .status(ClassStatus.OPEN)
                 .build();
 
+        List<Lesson> lessons = schedulingService.generateLessons(classEntity, request.getDaysOfWeek(),
+                request.getStartTime(), request.getEndTime(), request.getTotalSessions(), null);
+        schedulingService.validateReadiness(ClassStatus.OPEN, !lessons.isEmpty(), teacher, room);
+        schedulingService.validateLessonConflicts(lessons);
         ClassEntity savedClass = attendanceClassRepository.save(classEntity);
-
-        // 2. Thuật toán tự động sinh danh sách N buổi học (Lesson Generator)
-        List<Lesson> lessons = new ArrayList<>();
-        LocalDate currentDate = request.getStartDate();
-        int totalSessions = Math.min(request.getTotalSessions(), 60); // Giới hạn tối đa 60 buổi
-        int sessionCount = 0;
-        Set<Integer> targetDays = new HashSet<>(request.getDaysOfWeek());
-
-        // At least one weekday is validated above; 60 weekly sessions may span over a year.
-        int safetyLoop = 0;
-        while (sessionCount < totalSessions && safetyLoop < totalSessions * 7) {
-            int currentDayOfWeek = currentDate.getDayOfWeek().getValue();
-            if (targetDays.contains(currentDayOfWeek)) {
-                sessionCount++;
-                Lesson lesson = Lesson.builder()
-                        .classEntity(savedClass)
-                        .room(room)
-                        .teacher(teacher)
-                        .sessionNumber(sessionCount)
-                        .lessonDate(currentDate)
-                        .startTime(request.getStartTime())
-                        .endTime(request.getEndTime())
-                        .title("Buổi " + sessionCount + ": " + savedClass.getClassName())
-                        .lessonNote("Tự động sinh lịch học theo thời khóa biểu")
-                        .status(LessonStatus.SCHEDULED)
-                        .build();
-                lessons.add(lesson);
-            }
-            currentDate = currentDate.plusDays(1);
-            safetyLoop++;
-        }
-
-        if (!lessons.isEmpty()) {
-            savedClass.setEndDate(lessons.get(lessons.size() - 1).getLessonDate());
-            attendanceClassRepository.save(savedClass);
-            attendanceLessonRepository.saveAll(lessons);
-        }
+        attendanceLessonRepository.saveAll(lessons);
 
         log.info("Tạo thành công lớp [{}] (#{}) với {} buổi học tự động sinh bởi [{}]",
                 savedClass.getClassName(), savedClass.getId(), lessons.size(), currentUser.getUsername());

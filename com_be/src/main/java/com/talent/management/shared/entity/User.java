@@ -52,6 +52,9 @@ public class User {
     @Column(length = 100)
     private String subject;
 
+    @Column(length = 100)
+    private String teachingSubject;
+
     @Builder.Default
     @Column(nullable = false)
     private long tokenVersion = 0;

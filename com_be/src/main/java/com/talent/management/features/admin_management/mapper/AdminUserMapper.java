@@ -6,6 +6,6 @@ import org.springframework.stereotype.Component;
 public class AdminUserMapper {
     public AdminUserResponse toResponse(User u) {
         return new AdminUserResponse(u.getId(), u.getUsername(), u.getFullName(), u.getEmail(), u.getPhone(),
-                u.getRole(), u.getStatus(), u.getSubject(), u.isMustChangePassword(), u.getCreatedAt());
+                u.getRole(), u.getStatus(), u.getSubject(), u.isMustChangePassword(), u.getCreatedAt(), u.getTeachingSubject());
     }
 }

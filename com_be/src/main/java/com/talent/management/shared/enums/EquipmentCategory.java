@@ -9,5 +9,6 @@ public enum EquipmentCategory {
     MIRROR,
     CHESS_SET,
     SPORTS_EQUIPMENT,
+    RESCUE_EQUIPMENT,
     OTHER
 }

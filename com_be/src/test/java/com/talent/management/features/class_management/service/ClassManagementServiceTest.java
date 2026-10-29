@@ -3,6 +3,10 @@ package com.talent.management.features.class_management.service;
 import com.talent.management.features.auth.repository.UserRepository;
 import com.talent.management.features.branch_facility_enrollment.repository.BranchRepository;
 import com.talent.management.features.branch_facility_enrollment.repository.RoomRepository;
+import com.talent.management.features.branch_facility_enrollment.repository.EquipmentRepository;
+import com.talent.management.features.branch_facility_enrollment.service.FacilityRulesService;
+import com.talent.management.shared.entity.Equipment;
+import com.talent.management.shared.enums.EquipmentCategory;
 import com.talent.management.features.class_management.dto.ClassUpsertRequest;
 import com.talent.management.features.class_management.repository.ManagedClassEnrollmentRepository;
 import com.talent.management.features.class_management.repository.ManagedClassLessonRepository;
@@ -14,6 +18,8 @@ import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.Room;
 import com.talent.management.shared.entity.User;
 import com.talent.management.shared.entity.Lesson;
+import com.talent.management.shared.entity.Program;
+import com.talent.management.shared.enums.RoomType;
 import com.talent.management.shared.enums.LessonStatus;
 import com.talent.management.shared.enums.Role;
 import com.talent.management.shared.enums.ClassStatus;
@@ -48,7 +54,8 @@ class ClassManagementServiceTest {
     @Mock BranchRepository branchRepository;
     @Mock UserRepository userRepository;
     @Mock RoomRepository roomRepository;
-    @InjectMocks ClassManagementService service;
+    @Mock EquipmentRepository equipmentRepository;
+    private ClassManagementService service;
 
     private Course course;
     private Branch branch;
@@ -57,8 +64,20 @@ class ClassManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        course = Course.builder().id(1L).code("PIA-G1").name("Piano Grade 1").build();
+        course = Course.builder().id(1L).code("PIA-G1").name("Piano Grade 1")
+                .program(Program.builder().code("PIANO").build()).build();
         branch = Branch.builder().id(2L).name("Cơ sở A").build();
+        ClassSchedulingService scheduling = new ClassSchedulingService(userRepository, roomRepository, lessonRepository,
+                new FacilityRulesService(equipmentRepository));
+        lenient().when(equipmentRepository.findByRoomIdOrderByIdAsc(20L)).thenReturn(java.util.stream.IntStream.range(0, 10)
+                .mapToObj(index -> Equipment.builder().category(EquipmentCategory.KEYBOARD).build()).toList());
+        service = new ClassManagementService(classRepository, enrollmentRepository, lessonRepository,
+                courseRepository, branchRepository, userRepository, roomRepository, scheduling);
+        lenient().when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+        lenient().when(branchRepository.findById(2L)).thenReturn(Optional.of(branch));
+        lenient().when(userRepository.findByIdForScheduleUpdate(30L)).thenReturn(Optional.of(teacher(30L)));
+        lenient().when(roomRepository.findByIdForScheduleUpdate(20L)).thenReturn(Optional.of(room()));
+        lenient().when(lessonRepository.existsByClassEntityId(10L)).thenReturn(true);
         request = new ClassUpsertRequest(1L, 2L, " pia-g1-02 ", " Lớp Piano mới ", 8,
                 "PLANNING", LocalDate.of(2026, 11, 1), LocalDate.of(2027, 2, 1));
     }
@@ -107,7 +126,7 @@ class ClassManagementServiceTest {
     void cannotReduceCapacityBelowPaidAndPendingStudents() {
         ClassEntity existing = existingClass();
         existing.setCurrentStudents(5);
-        when(classRepository.findById(10L)).thenReturn(Optional.of(existing));
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existing));
         when(enrollmentRepository.countByClassEntityIdAndStatus(10L, EnrollmentStatus.PENDING_PAYMENT)).thenReturn(2L);
         var smaller = new ClassUpsertRequest(1L, 2L, "PIA-G1-02", "Lớp Piano", 6, "OPEN",
                 request.startDate(), request.endDate());
@@ -120,7 +139,7 @@ class ClassManagementServiceTest {
 
     @Test
     void cannotChangeCourseAfterEnrollment() {
-        when(classRepository.findById(10L)).thenReturn(Optional.of(existingClass()));
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existingClass()));
         when(enrollmentRepository.existsByClassEntityId(10L)).thenReturn(true);
         var changed = new ClassUpsertRequest(3L, 2L, "PIA-G1-02", "Lớp Piano", 8, "OPEN",
                 request.startDate(), request.endDate());
@@ -134,12 +153,14 @@ class ClassManagementServiceTest {
     @Test
     void updatingBasicFieldsPreservesLessonTeamAssignments() {
         ClassEntity existing = existingClass();
-        Room room = Room.builder().id(20L).build();
-        User teacher = User.builder().id(30L).build();
+        Room room = room();
+        User teacher = teacher(30L);
+        when(roomRepository.findByIdForScheduleUpdate(20L)).thenReturn(Optional.of(room));
+        when(userRepository.findByIdForScheduleUpdate(30L)).thenReturn(Optional.of(teacher));
         existing.setRoom(room);
         existing.setTeacher(teacher);
         existing.setScheduleDescription("Thứ 2 hàng tuần");
-        when(classRepository.findById(10L)).thenReturn(Optional.of(existing));
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existing));
         when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
         when(branchRepository.findById(2L)).thenReturn(Optional.of(branch));
         when(classRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -158,9 +179,18 @@ class ClassManagementServiceTest {
 
     private ClassEntity existingClass() {
         return ClassEntity.builder().id(10L).course(course).branch(branch)
+                .teacher(teacher(30L)).room(room())
                 .classCode("PIA-G1-02").className("Lớp Piano")
                 .maxStudents(8).currentStudents(0).status(ClassStatus.OPEN)
                 .startDate(request.startDate()).endDate(request.endDate()).build();
+    }
+
+    private User teacher(long id) {
+        return User.builder().id(id).role(Role.TEACHER).subject("PIANO").build();
+    }
+
+    private Room room() {
+        return Room.builder().id(20L).branch(branch).roomType(RoomType.PIANO_GROUP).capacity(10).build();
     }
 
     private ClassUpsertRequest withSchedule(List<Integer> days, LocalTime start, LocalTime end, int count) {
@@ -208,11 +238,11 @@ class ClassManagementServiceTest {
     @Test
     void rejectsNonTeacherAccountAndRoomFromAnotherBranch() {
         when(branchRepository.findById(2L)).thenReturn(Optional.of(branch));
-        when(userRepository.findById(99L)).thenReturn(Optional.of(User.builder().id(99L).role(Role.PARENT).build()));
+        when(userRepository.findByIdForScheduleUpdate(99L)).thenReturn(Optional.of(User.builder().id(99L).role(Role.PARENT).build()));
         var wrongTeacher = new ClassUpsertRequest(1L, 2L, 99L, null, "C1", "Lớp", 8, "OPEN",
                 request.startDate(), request.endDate(), null, null, null, null, null);
         assertThatThrownBy(() -> service.create(wrongTeacher)).isInstanceOf(ResponseStatusException.class);
-        when(roomRepository.findById(20L)).thenReturn(Optional.of(Room.builder().id(20L)
+        when(roomRepository.findByIdForScheduleUpdate(20L)).thenReturn(Optional.of(Room.builder().id(20L)
                 .branch(Branch.builder().id(3L).build()).build()));
         var wrongRoom = new ClassUpsertRequest(1L, 2L, null, 20L, "C1", "Lớp", 8, "OPEN",
                 request.startDate(), request.endDate(), null, null, null, null, null);
@@ -223,17 +253,19 @@ class ClassManagementServiceTest {
     @Test
     void editingMetadataPreservesPastAndCompletedLessonAssignments() {
         var existing = existingClass();
-        User oldTeacher = User.builder().id(30L).role(Role.TEACHER).build();
-        User newTeacher = User.builder().id(31L).role(Role.TEACHER).build();
+        User oldTeacher = teacher(30L);
+        User newTeacher = teacher(31L);
         existing.setTeacher(oldTeacher);
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        Lesson past = Lesson.builder().lessonDate(today.minusDays(1)).teacher(oldTeacher).status(LessonStatus.SCHEDULED).build();
+        Lesson past = Lesson.builder().lessonDate(today.minusDays(1)).startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(10, 0)).teacher(oldTeacher).status(LessonStatus.SCHEDULED).build();
         Lesson completed = Lesson.builder().lessonDate(today).teacher(oldTeacher).status(LessonStatus.COMPLETED).build();
-        Lesson upcoming = Lesson.builder().lessonDate(today.plusDays(1)).teacher(oldTeacher).status(LessonStatus.SCHEDULED).build();
-        when(classRepository.findById(10L)).thenReturn(Optional.of(existing));
+        Lesson upcoming = Lesson.builder().lessonDate(today.plusDays(1)).startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(10, 0)).teacher(oldTeacher).status(LessonStatus.SCHEDULED).build();
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existing));
         when(lessonRepository.existsByClassEntityId(10L)).thenReturn(true);
         when(lessonRepository.findByClassEntityId(10L)).thenReturn(List.of(past, completed, upcoming));
-        when(userRepository.findById(31L)).thenReturn(Optional.of(newTeacher));
+        when(userRepository.findByIdForScheduleUpdate(31L)).thenReturn(Optional.of(newTeacher));
         when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
         when(branchRepository.findById(2L)).thenReturn(Optional.of(branch));
         when(classRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -246,7 +278,7 @@ class ClassManagementServiceTest {
 
     @Test
     void rejectsCalendarChangeWhenClassAlreadyHasLessons() {
-        when(classRepository.findById(10L)).thenReturn(Optional.of(existingClass()));
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existingClass()));
         when(lessonRepository.existsByClassEntityId(10L)).thenReturn(true);
         var changed = new ClassUpsertRequest(1L, 2L, "PIA-G1-02", "Lớp", 8, "OPEN",
                 request.startDate().plusDays(1), request.endDate());
@@ -258,15 +290,138 @@ class ClassManagementServiceTest {
     @Test
     void changingOnlyStatusDoesNotOverwriteIndividualLessonAssignments() {
         var existing = existingClass();
-        existing.setTeacher(User.builder().id(30L).role(Role.TEACHER).build());
-        when(classRepository.findById(10L)).thenReturn(Optional.of(existing));
+        existing.setTeacher(teacher(30L));
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existing));
         when(lessonRepository.existsByClassEntityId(10L)).thenReturn(true);
         when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
         when(branchRepository.findById(2L)).thenReturn(Optional.of(branch));
         when(classRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         service.update(10L, new ClassUpsertRequest(1L, 2L, "PIA-G1-02", "Tên mới", 8, "IN_PROGRESS",
                 request.startDate(), request.endDate()));
-        verify(lessonRepository, never()).findByClassEntityId(any());
+        verify(lessonRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void optionsContainOnlyActiveTeachersOfTheSelectedSubjectAndSuitableRooms() {
+        User piano = teacher(30L);
+        User guitar = User.builder().id(31L).role(Role.TEACHER).subject("GUITAR").build();
+        when(userRepository.findByRole(Role.TEACHER)).thenReturn(List.of(piano, guitar));
+        when(roomRepository.findByBranchId(2L)).thenReturn(List.of(room(),
+                Room.builder().id(21L).branch(branch).capacity(10).roomType(RoomType.GUITAR_ROOM).build()));
+        assertThat(service.getTeacherOptions(1L)).extracting("id").containsExactly(30L);
+        assertThat(service.getRoomOptions(1L, 2L, 8)).extracting("id").containsExactly(20L);
+        assertThat(service.getRoomOptions(1L, 2L, 11)).isEmpty();
+    }
+
+    @Test
+    void reassigningTeacherChecksAllAffectedLessonsBeforeSaving() {
+        ClassEntity existing = existingClass();
+        User newTeacher = teacher(31L);
+        LocalDate day = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusDays(10);
+        Lesson target = Lesson.builder().id(1L).classEntity(existing).teacher(existing.getTeacher()).room(room())
+                .lessonDate(day).startTime(LocalTime.of(17, 0)).endTime(LocalTime.of(19, 0))
+                .status(LessonStatus.SCHEDULED).build();
+        Lesson conflict = Lesson.builder().id(2L).teacher(newTeacher).lessonDate(day)
+                .startTime(LocalTime.of(18, 0)).endTime(LocalTime.of(20, 0)).status(LessonStatus.SCHEDULED).build();
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existing));
+        when(lessonRepository.findByClassEntityId(10L)).thenReturn(List.of(target));
+        when(userRepository.findByIdForScheduleUpdate(31L)).thenReturn(Optional.of(newTeacher));
+        when(lessonRepository.findByTeacherIdAndLessonDateBetween(eq(31L), any(), any())).thenReturn(List.of(conflict));
+        assertThatThrownBy(() -> service.update(10L, new ClassUpsertRequest(1L, 2L, 31L, 20L,
+                "PIA-G1-02", "Piano", 8, "OPEN", request.startDate(), request.endDate(), null, null, null, null, null)))
+                .hasMessageContaining("30 phút");
+        verify(lessonRepository, never()).saveAll(any());
+        verify(classRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void canClearUnavailableAssignmentsAndReturnToPlanningWithoutChangingPastLessons() {
+        ClassEntity existing = existingClass();
+        existing.getTeacher().setStatus(com.talent.management.shared.enums.UserStatus.INACTIVE);
+        existing.getRoom().setStatus(com.talent.management.shared.enums.RoomStatus.MAINTENANCE);
+        LocalDate futureDate = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusDays(10);
+        Lesson future = Lesson.builder().id(1L).classEntity(existing).teacher(existing.getTeacher()).room(existing.getRoom())
+                .lessonDate(futureDate).startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(10, 0))
+                .status(LessonStatus.SCHEDULED).build();
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existing));
+        when(lessonRepository.findByClassEntityId(10L)).thenReturn(List.of(future));
+        when(classRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.update(10L, new ClassUpsertRequest(1L, 2L, null, null, "PIA-G1-02", "Piano", 8, "PLANNING",
+                request.startDate(), request.endDate(), null, null, null, null, null, true, true));
+        assertThat(existing.getTeacher()).isNull();
+        assertThat(existing.getRoom()).isNull();
+        assertThat(future.getTeacher()).isNull();
+        assertThat(future.getRoom()).isNull();
+        assertThat(existing.getStatus()).isEqualTo(ClassStatus.PLANNING);
+    }
+
+    private Lesson futureOverride(ClassEntity owner, Room overrideRoom) {
+        return Lesson.builder().id(80L).classEntity(owner).teacher(owner.getTeacher()).room(overrideRoom)
+                .lessonDate(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusDays(10))
+                .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(10, 0)).status(LessonStatus.SCHEDULED).build();
+    }
+
+    private void existingWithOverride(ClassEntity owner, Lesson lesson, Room overrideRoom) {
+        when(classRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(owner));
+        when(lessonRepository.findByClassEntityId(10L)).thenReturn(List.of(lesson));
+        when(roomRepository.findByIdForScheduleUpdate(overrideRoom.getId())).thenReturn(Optional.of(overrideRoom));
+    }
+
+    @Test
+    void increasingClassSizeChecksCapacityOfAnIndividualLessonRoom() {
+        ClassEntity existing = existingClass();
+        existing.setMaxStudents(4);
+        Room smallRoom = Room.builder().id(21L).branch(branch).capacity(4).roomType(RoomType.PIANO_GROUP).build();
+        existingWithOverride(existing, futureOverride(existing, smallRoom), smallRoom);
+        assertThatThrownBy(() -> service.update(10L, new ClassUpsertRequest(1L, 2L, "PIA-G1-02", "Piano", 8,
+                "OPEN", request.startDate(), request.endDate()))).hasMessageContaining("sức chứa");
+        verify(classRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void increasingClassSizeChecksEquipmentOfAnIndividualLessonRoom() {
+        ClassEntity existing = existingClass();
+        existing.setMaxStudents(1);
+        Room override = Room.builder().id(21L).branch(branch).capacity(10).roomType(RoomType.PIANO_GROUP).build();
+        existingWithOverride(existing, futureOverride(existing, override), override);
+        when(equipmentRepository.findByRoomIdOrderByIdAsc(21L)).thenReturn(List.of(
+                Equipment.builder().category(EquipmentCategory.KEYBOARD).build()));
+        assertThatThrownBy(() -> service.update(10L, new ClassUpsertRequest(1L, 2L, "PIA-G1-02", "Piano", 2,
+                "OPEN", request.startDate(), request.endDate()))).hasMessageContaining("hiện có 1");
+        verify(classRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void changingTeacherPreservesTheRoomChosenForAnIndividualLesson() {
+        ClassEntity existing = existingClass();
+        Room override = Room.builder().id(21L).branch(branch).capacity(10).roomType(RoomType.GUITAR_ROOM).build();
+        // Use a room capable of the existing Piano course, equipped for all eight seats.
+        override.setRoomType(RoomType.PIANO_GROUP);
+        Lesson lesson = futureOverride(existing, override);
+        existingWithOverride(existing, lesson, override);
+        when(equipmentRepository.findByRoomIdOrderByIdAsc(21L)).thenReturn(java.util.stream.IntStream.range(0, 8)
+                .mapToObj(i -> Equipment.builder().category(EquipmentCategory.KEYBOARD).build()).toList());
+        User replacement = teacher(31L);
+        when(userRepository.findByIdForScheduleUpdate(31L)).thenReturn(Optional.of(replacement));
+        when(classRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.update(10L, new ClassUpsertRequest(1L, 2L, 31L, null, "PIA-G1-02", "Piano", 8,
+                "OPEN", request.startDate(), request.endDate(), null, null, null, null, null));
+        assertThat(lesson.getTeacher()).isSameAs(replacement);
+        assertThat(lesson.getRoom()).isSameAs(override);
+    }
+
+    @Test
+    void startingAClassChecksActualRemainingRoomsRatherThanAnUnusedDefaultRoom() {
+        ClassEntity existing = existingClass();
+        existing.getRoom().setStatus(com.talent.management.shared.enums.RoomStatus.MAINTENANCE);
+        Room override = Room.builder().id(21L).branch(branch).capacity(10).roomType(RoomType.PIANO_GROUP).build();
+        existingWithOverride(existing, futureOverride(existing, override), override);
+        when(equipmentRepository.findByRoomIdOrderByIdAsc(21L)).thenReturn(java.util.stream.IntStream.range(0, 8)
+                .mapToObj(i -> Equipment.builder().category(EquipmentCategory.KEYBOARD).build()).toList());
+        when(classRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        var result = service.update(10L, new ClassUpsertRequest(1L, 2L, "PIA-G1-02", "Piano", 8,
+                "IN_PROGRESS", request.startDate(), request.endDate()));
+        assertThat(result.status()).isEqualTo(ClassStatus.IN_PROGRESS);
         verify(lessonRepository, never()).saveAll(any());
     }
 }

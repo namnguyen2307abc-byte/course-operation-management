@@ -39,6 +39,7 @@ class AdminManagementIntegrationTest {
     @Autowired PasswordEncoder encoder;
     @Autowired EntityManager em;
     @Autowired com.talent.management.features.admin_management.service.AdminUserService administration;
+    @Autowired com.talent.management.features.class_management.service.ClassSchedulingService classScheduling;
     @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
     User admin;
     String adminToken;
@@ -66,6 +67,32 @@ class AdminManagementIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)));
     }
     JsonNode body(ResultActions result) throws Exception { return json.readTree(result.andReturn().getResponse().getContentAsString()); }
+
+    @Test void teacherSpecialismCanBeManagedWithoutChangingPlacementDepartment() throws Exception {
+        var created = body(postJson("/api/admin/users", adminToken, Map.of("username", "specific_teacher",
+                "password", "temporary-pass", "fullName", "Specific teacher", "role", "TEACHER",
+                "subject", "DAN", "teachingSubject", "GUITAR")).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.subject").value("DAN"))
+                .andExpect(jsonPath("$.teachingSubject").value("GUITAR")));
+        long id = created.get("id").asLong();
+        Course guitar = Course.builder().program(Program.builder().code("GUITAR").build()).build();
+        Course piano = Course.builder().program(Program.builder().code("PIANO").build()).build();
+        assertThat(classScheduling.isTeacherSuitable(guitar, users.findById(id).orElseThrow())).isTrue();
+        assertThat(classScheduling.isTeacherSuitable(piano, users.findById(id).orElseThrow())).isFalse();
+        mvc.perform(put("/api/admin/users/" + id).header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                        "fullName", "Specific teacher", "subject", "DAN", "teachingSubject", "PIANO"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.subject").value("DAN"))
+                .andExpect(jsonPath("$.teachingSubject").value("PIANO"));
+        // Older clients omit the new field; a profile update must preserve it.
+        mvc.perform(put("/api/admin/users/" + id).header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                        "fullName", "Updated teacher", "subject", "DAN"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.teachingSubject").value("PIANO"));
+        assertThat(classScheduling.isTeacherSuitable(piano, users.findById(id).orElseThrow())).isTrue();
+        assertThat(audit.findAll().stream().anyMatch(a -> a.getDetails().contains("GUITAR")
+                && a.getDetails().contains("PIANO"))).isTrue();
+    }
 
     @Test void loginChecksPasswordAndNeverCreatesAnUnknownUser() throws Exception {
         long before = users.count();

@@ -69,7 +69,9 @@ public class AdminUserServiceImpl implements AdminUserService {
         checkEmail(request.email(), -1L);
         User user = User.builder().username(username).password(encoder.encode(request.password()))
                 .fullName(request.fullName().trim()).email(clean(request.email())).phone(clean(request.phone()))
-                .role(request.role()).subject(clean(request.subject())).status(UserStatus.ACTIVE).mustChangePassword(true).build();
+                .role(request.role()).subject(clean(request.subject()))
+                .teachingSubject(request.role() == Role.TEACHER ? clean(request.teachingSubject()) : null)
+                .status(UserStatus.ACTIVE).mustChangePassword(true).build();
         repository.saveAndFlush(user);
         if (request.role() == Role.STUDENT) linkStudent(user, request.studentId());
         else if (request.studentId() != null) conflict("Chỉ tài khoản học viên được liên kết hồ sơ học viên độc lập");
@@ -85,6 +87,10 @@ public class AdminUserServiceImpl implements AdminUserService {
         String before = profile(user);
         user.setFullName(request.fullName().trim()); user.setEmail(clean(request.email()));
         user.setPhone(clean(request.phone())); user.setSubject(clean(request.subject()));
+        // Omitted by older clients: preserve the existing exact specialism.
+        if (user.getRole() == Role.TEACHER && request.teachingSubject() != null) {
+            user.setTeachingSubject(clean(request.teachingSubject()));
+        }
         audit.record(actor, user, "UPDATE_USER", before + " → " + profile(user));
         return mapper.toResponse(user);
     }
@@ -150,6 +156,6 @@ public class AdminUserServiceImpl implements AdminUserService {
     private User lockTarget(Long id) { return repository.lockById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản")); }
     private void revoke(User user) { user.setTokenVersion(user.getTokenVersion() + 1); }
     private String clean(String value) { return value == null || value.isBlank() ? null : value.trim(); }
-    private String profile(User u) { return "họ tên=" + u.getFullName() + "; email=" + u.getEmail() + "; điện thoại=" + u.getPhone() + "; bộ môn=" + u.getSubject(); }
+    private String profile(User u) { return "họ tên=" + u.getFullName() + "; email=" + u.getEmail() + "; điện thoại=" + u.getPhone() + "; bộ môn=" + u.getSubject() + "; chuyên môn giảng dạy=" + u.getTeachingSubject(); }
     private void conflict(String message) { throw new ResponseStatusException(HttpStatus.CONFLICT, message); }
 }

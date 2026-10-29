@@ -8,5 +8,6 @@ public enum RoomType {
     GUITAR_ROOM,
     MULTIPURPOSE_ROOM,
     CHESS_ROOM,
-    SPORTS_AREA
+    SPORTS_AREA,
+    SWIMMING_POOL
 }

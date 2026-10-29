@@ -4,12 +4,19 @@ import com.talent.management.shared.entity.ClassEntity;
 import com.talent.management.shared.enums.ClassStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ManagedClassRepository extends JpaRepository<ClassEntity, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from ClassEntity c where c.id = :id")
+    Optional<ClassEntity> findByIdForUpdate(@Param("id") Long id);
+
     boolean existsByClassCodeIgnoreCase(String classCode);
 
     boolean existsByClassCodeIgnoreCaseAndIdNot(String classCode, Long id);
