@@ -435,9 +435,10 @@
 
             panel.className = 'recommendation-strip mb-3';
             panel.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang kiểm tra kết quả Placement Test...';
+            document.getElementById('parentPreviewClassSelect').innerHTML = '<option value="">Đang tải danh sách lớp tham khảo...</option>';
 
             try {
-                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations`);
+                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations`, 'GET', null, false, false);
                 if (document.getElementById('childSelect').value !== childId
                     || !document.getElementById('placementRequested').checked) return;
 
@@ -462,7 +463,8 @@
                 panel.className = 'recommendation-strip is-unavailable mb-3';
                 panel.innerHTML = `
                     <div class="fw-semibold"><i class="bi bi-exclamation-circle me-2"></i>Chưa tải được gợi ý xếp lớp</div>
-                    <div class="text-muted small mt-1">${escapeHtml(error.message)}. Yêu cầu vẫn có thể được gửi để staff kiểm tra sau.</div>`;
+                    <div class="text-muted small mt-1">Vui lòng thử lại sau. Bạn vẫn có thể gửi yêu cầu để phòng đào tạo kiểm tra và tư vấn.</div>`;
+                document.getElementById('parentPreviewClassSelect').innerHTML = '<option value="">Chưa tải được danh sách lớp tham khảo</option>';
             }
 
         }
