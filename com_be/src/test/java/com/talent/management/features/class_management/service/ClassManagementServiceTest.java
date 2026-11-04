@@ -193,9 +193,12 @@ class ClassManagementServiceTest {
         return Room.builder().id(20L).branch(branch).roomType(RoomType.PIANO_GROUP).capacity(10).build();
     }
 
+    private final LocalDate scheduleStart = LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+            .with(java.time.temporal.TemporalAdjusters.next(java.time.DayOfWeek.SUNDAY));
+
     private ClassUpsertRequest withSchedule(List<Integer> days, LocalTime start, LocalTime end, int count) {
         return new ClassUpsertRequest(1L, 2L, null, null, "C-SCHEDULE", "Lớp lịch", 8, "PLANNING",
-                LocalDate.of(2026, 11, 1), null, null, days, start, end, count);
+                scheduleStart, null, null, days, start, end, count);
     }
 
     @Test
@@ -221,9 +224,9 @@ class ClassManagementServiceTest {
         var result = service.create(withSchedule(List.of(7), LocalTime.of(9, 0), LocalTime.of(10, 0), 60));
         verify(lessonRepository).saveAll(argThat(items -> {
             java.util.ArrayList<Lesson> saved = new java.util.ArrayList<>(); items.forEach(saved::add);
-            return saved.size() == 60 && saved.get(59).getLessonDate().equals(LocalDate.of(2026, 11, 1).plusWeeks(59));
+            return saved.size() == 60 && saved.get(59).getLessonDate().equals(scheduleStart.plusWeeks(59));
         }));
-        assertThat(result.endDate()).isEqualTo(LocalDate.of(2026, 11, 1).plusWeeks(59));
+        assertThat(result.endDate()).isEqualTo(scheduleStart.plusWeeks(59));
     }
 
     @Test

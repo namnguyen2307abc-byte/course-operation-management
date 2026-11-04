@@ -53,8 +53,9 @@ class ClassManagementPersistenceTest {
         Course course = entityManager.persist(Course.builder().program(program).code("PIA-G1")
                 .name("Piano Grade 1").tuitionFee(BigDecimal.valueOf(4800000)).build());
         Branch branch = entityManager.persist(Branch.builder().code("BR-01").name("Cơ sở A").address("Hà Nội").build());
+        LocalDate start = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusDays(1);
         var created = service.create(new ClassUpsertRequest(course.getId(), branch.getId(), "QA-CLASS-01",
-                "Lớp kiểm thử", 3, "PLANNING", LocalDate.of(2026, 11, 1), LocalDate.of(2027, 2, 1)));
+                "Lớp kiểm thử", 3, "PLANNING", start, start.plusMonths(3)));
         assertThat(enrollmentRepository.findByCourseIdAndStatusOrderByStartDateAsc(course.getId(), ClassStatus.OPEN)).isEmpty();
         User teacher = entityManager.persist(User.builder().username("piano-teacher").password("test")
                 .fullName("Teacher").role(Role.TEACHER).subject("PIANO").build());
