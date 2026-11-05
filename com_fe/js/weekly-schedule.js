@@ -77,9 +77,12 @@ function initNavbarAndRoleBadge() {
         })
         .catch(e => console.error("Lỗi nạp footer:", e));
 
-    // Cập nhật huy hiệu vai trò
+    // Cập nhật huy hiệu vai trò và tiêu đề động theo Role
     const roleBadge = document.getElementById('currentUserRoleBadge');
     const btnCreateClass = document.getElementById('btnOpenCreateClassModal');
+    const heroBreadcrumb = document.getElementById('heroBreadcrumbCurrent');
+    const heroTitle = document.getElementById('heroTitleText');
+    const heroSubtitle = document.getElementById('heroSubtitleText');
 
     if (!currentUser) {
         if (roleBadge) {
@@ -90,18 +93,40 @@ function initNavbarAndRoleBadge() {
     }
 
     const role = currentUser.role || 'TEACHER';
-    if (roleBadge) {
-        if (role === 'TEACHER') {
+    if (role === 'TEACHER') {
+        document.title = 'Thời Khóa Biểu Giảng Dạy - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Thời Khóa Biểu Giảng Dạy';
+        if (heroTitle) heroTitle.textContent = 'Thời Khóa Biểu Giảng Dạy';
+        if (heroSubtitle) heroSubtitle.textContent = 'Xem lịch dạy các lớp theo ca trong tuần, theo dõi sĩ số và bấm trực tiếp vào ca để thực hiện điểm danh học viên.';
+        if (roleBadge) {
             roleBadge.innerHTML = '<i class="bi bi-mortarboard-fill me-1"></i>Giáo Viên: ' + (currentUser.fullName || currentUser.username);
             roleBadge.className = 'badge bg-warning text-dark px-3 py-2 rounded-pill small';
-        } else if (role === 'PARENT') {
+        }
+    } else if (role === 'PARENT') {
+        document.title = 'Lịch Học Của Con - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Lịch Học Của Con';
+        if (heroTitle) heroTitle.textContent = 'Lịch Học Của Con';
+        if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi thời khóa biểu và chuyên cần của con theo từng ca học và ngày trong tuần.';
+        if (roleBadge) {
             roleBadge.innerHTML = '<i class="bi bi-people-fill me-1"></i>Phụ Huynh: ' + (currentUser.fullName || currentUser.username);
             roleBadge.className = 'badge bg-success px-3 py-2 rounded-pill small';
-        } else if (role === 'STUDENT') {
+        }
+    } else if (role === 'STUDENT') {
+        document.title = 'Lịch Học Cá Nhân - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Lịch Học';
+        if (heroTitle) heroTitle.textContent = 'Lịch Học Cá Nhân';
+        if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi thời khóa biểu các ca học và điểm danh chuyên cần của bạn.';
+        if (roleBadge) {
             roleBadge.innerHTML = '<i class="bi bi-person-fill me-1"></i>Học Viên: ' + (currentUser.fullName || currentUser.username);
             roleBadge.className = 'badge bg-info text-dark px-3 py-2 rounded-pill small';
-        } else {
-            roleBadge.innerHTML = '<i class="bi bi-shield-check me-1"></i>Quản Trị Viên / Giáo Vụ';
+        }
+    } else {
+        document.title = 'Thời Khóa Biểu Trung Tâm - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Thời Khóa Biểu Trung Tâm';
+        if (heroTitle) heroTitle.textContent = 'Thời Khóa Biểu Trung Tâm';
+        if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi toàn bộ lịch học trung tâm theo 4 slot khung giờ, lọc theo giáo viên và quản lý điểm danh ca học.';
+        if (roleBadge) {
+            roleBadge.innerHTML = '<i class="bi bi-shield-check me-1"></i>' + (role === 'ADMIN' ? 'Quản Trị Viên' : 'Giáo Vụ');
             roleBadge.className = 'badge bg-danger px-3 py-2 rounded-pill small';
         }
     }
@@ -287,8 +312,13 @@ function renderLessonCard(lesson, userRole) {
     const isToday = Boolean(lesson.today ?? lesson.isToday);
     const isPast = Boolean(lesson.past ?? lesson.isPast);
 
-    const slotClass = `slot-${lesson.slotNumber || 1}`;
+    const slotNum = lesson.slotNumber || 1;
+    const slotClass = `slot-${slotNum}`;
     let stateClass = isToday ? 'state-today' : '';
+
+    const slotBorder = lesson.slotBorderColor || (slotNum === 1 ? '#0284c7' : slotNum === 2 ? '#059669' : slotNum === 3 ? '#ea580c' : '#7c3aed');
+    const slotBg = lesson.slotBgColor || (slotNum === 1 ? '#f0f9ff' : slotNum === 2 ? '#f0fdf4' : slotNum === 3 ? '#ffedd5' : '#f3e8ff');
+    const slotInlineStyle = `style="--accent: ${slotBorder}; --accent-soft: ${slotBg}; border-left: 4.5px solid ${slotBorder} !important;"`;
 
     // 1. DÀNH CHO HỌC VIÊN HOẶC PHỤ HUYNH
     // Không cho phép bấm link vào trang điểm danh, cập nhật ngay trạng thái điểm danh
@@ -297,20 +327,25 @@ function renderLessonCard(lesson, userRole) {
         let stuBadge = '';
         if (lesson.attendanceStatus === 'PRESENT') {
             stateClass = 'state-done';
-            stuBadge = '<span class="stu-badge present"><i class="bi bi-check-circle-fill"></i> Present</span>';
+            stuBadge = '<span class="stu-badge present"><i class="bi bi-check-circle-fill"></i> Có mặt</span>';
         } else if (lesson.attendanceStatus && String(lesson.attendanceStatus).includes('ABSENT')) {
             stateClass = 'state-absent';
-            stuBadge = '<span class="stu-badge absent"><i class="bi bi-x-circle-fill"></i> Absent</span>';
+            stuBadge = '<span class="stu-badge absent"><i class="bi bi-x-circle-fill"></i> Vắng mặt</span>';
         } else {
-            stuBadge = `<span class="stu-badge pending"><i class="bi bi-clock"></i> ${isToday || isPast ? 'Chưa điểm danh' : 'Chưa diễn ra'}</span>`;
+            stuBadge = `<span class="stu-badge pending"><i class="bi bi-clock"></i> ${isToday || isPast ? 'Chưa điểm danh' : 'Sắp diễn ra'}</span>`;
         }
-        const personalRows = personalMarks.map(mark => {
-            const status = mark.status === 'PRESENT' ? 'Có mặt' : mark.status === 'ABSENT' ? 'Vắng mặt' : (isToday || isPast ? 'Chưa điểm danh' : 'Chưa diễn ra');
-            return `<div class="lesson-meta"><i class="bi bi-person-check"></i><span>${escapeHtml(mark.fullName)}: <strong>${status}</strong></span></div>`;
-        }).join('');
+        let personalRows = '';
+        if (personalMarks.length > 1) {
+            personalRows = personalMarks.map(mark => {
+                const status = mark.status === 'PRESENT' ? 'Có mặt' : mark.status === 'ABSENT' ? 'Vắng mặt' : (isToday || isPast ? 'Chưa điểm danh' : 'Sắp diễn ra');
+                return `<div class="lesson-meta"><i class="bi bi-person-check"></i><span>${escapeHtml(mark.fullName)}: <strong>${status}</strong></span></div>`;
+            }).join('');
+        } else if (personalMarks.length === 1 && userRole === 'PARENT') {
+            personalRows = `<div class="lesson-meta"><i class="bi bi-person"></i><span>${escapeHtml(personalMarks[0].fullName)}</span></div>`;
+        }
 
         return `
-            <div class="lesson-card ${slotClass} ${stateClass} student-card" title="${escapeHtml(lesson.className)}">
+            <div class="lesson-card ${slotClass} ${stateClass} student-card" ${slotInlineStyle} title="${escapeHtml(lesson.className)}">
                 <div class="lesson-card-top">
                     <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
                     ${personalMarks.length > 1 ? '' : stuBadge}
@@ -339,23 +374,51 @@ function renderLessonCard(lesson, userRole) {
     }
 
     // 2. DÀNH CHO GIÁO VIÊN / ADMIN / STAFF
-    // Phòng học là link dẫn vào danh sách lớp để điểm danh, bỏ thanh "Chưa điểm danh"
+    // Hiển thị theo LỚP: Tên lớp, Mã lớp, Giờ học, Buổi học, Phòng học, Sĩ số học viên
+    // Bấm trực tiếp vào bất kỳ vị trí nào trên thẻ để mở màn hình điểm danh cho lớp
+    const now = new Date();
+    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    let slotStartTime = '';
+    if (lesson.startTime) {
+        slotStartTime = String(lesson.startTime).substring(0, 5);
+    } else if (lesson.timeRange && lesson.timeRange.includes('-')) {
+        slotStartTime = lesson.timeRange.split('-')[0].trim();
+    }
+    const isBeforeSlot = Boolean(isToday && slotStartTime && currentTimeStr < slotStartTime);
+
+    let badgeHtml = '';
     if (lesson.attendanceCompleted) {
         stateClass = 'state-done';
+        badgeHtml = '<span class="stu-badge present"><i class="bi bi-check2-circle"></i> Đã điểm danh</span>';
+    } else if (isToday) {
+        if (isBeforeSlot && userRole === 'TEACHER') {
+            badgeHtml = `<span class="stu-badge" style="background:#f1f5f9; color:#475569; font-weight:600;"><i class="bi bi-clock"></i> Chưa vào ca (${escapeHtml(slotStartTime)})</span>`;
+        } else {
+            badgeHtml = '<span class="stu-badge" style="background:#fef3c7; color:#92400e; font-weight:700;"><i class="bi bi-pencil-square"></i> Cần điểm danh</span>';
+        }
     } else if (isPast) {
         stateClass = 'state-missed';
+        badgeHtml = '<span class="stu-badge" style="background:#fee2e2; color:#991b1b; font-weight:700;"><i class="bi bi-clock-history"></i> Chưa điểm danh</span>';
+    } else {
+        badgeHtml = '<span class="stu-badge pending"><i class="bi bi-clock"></i> Sắp diễn ra</span>';
     }
 
     const href = `lesson-attendance.html?lessonId=${lesson.lessonId}`;
+    const actionText = lesson.attendanceCompleted ? 'Xem điểm danh' : (isBeforeSlot && userRole === 'TEACHER' ? 'Xem buổi học' : 'Điểm danh ngay');
+    const actionIcon = lesson.attendanceCompleted ? 'bi-check2' : 'bi-pencil-square';
+    const actionBtnClass = lesson.attendanceCompleted ? 'btn-outline-success' : 'btn-success';
 
     return `
-        <div class="lesson-card ${slotClass} ${stateClass}">
-            <div class="lesson-card-top">
+        <div class="lesson-card ${slotClass} ${stateClass} teacher-class-card" 
+             onclick="window.location.href='${href}'" 
+             ${slotInlineStyle} 
+             title="Bấm vào để mở màn hình điểm danh lớp ${escapeAttr(lesson.className || '')}">
+            <div class="lesson-card-top d-flex justify-content-between align-items-center mb-1">
                 <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
-                ${lesson.attendanceCompleted ? '<span class="stu-badge present"><i class="bi bi-check2-circle"></i> Đã điểm danh</span>' : ''}
+                ${badgeHtml}
             </div>
 
-            <div class="lesson-title" title="${escapeHtml(lesson.className)}">
+            <div class="lesson-title fw-bold text-dark" title="${escapeHtml(lesson.className)}">
                 ${escapeHtml(lesson.className)}
             </div>
 
@@ -367,26 +430,35 @@ function renderLessonCard(lesson, userRole) {
 
             <div class="lesson-meta">
                 <i class="bi bi-geo-alt text-primary"></i>
-                <a class="lesson-room-link" href="${href}" title="Bấm vào phòng học để xem danh sách & điểm danh">
-                    ${escapeHtml(lesson.roomName || 'Chưa xếp phòng')}
-                </a>
+                <span>${escapeHtml(lesson.roomName || 'Chưa xếp phòng')}</span>
             </div>
 
+            ${userRole !== 'TEACHER' ? `
             <div class="lesson-meta">
                 <i class="bi bi-person"></i>
                 <span>${escapeHtml(lesson.teacherName || '—')}</span>
             </div>
+            ` : ''}
 
             <div class="lesson-meta">
                 <i class="bi bi-people"></i>
                 <span>Sĩ số: <strong>${lesson.totalStudents || 0}</strong> học viên</span>
+            </div>
+
+            <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                <span class="small text-muted fw-semibold" style="font-size:0.73rem;">
+                    <i class="bi bi-people-fill me-1"></i>${lesson.totalStudents || 0} HV
+                </span>
+                <span class="btn btn-sm ${actionBtnClass} py-0 px-2 rounded-pill fw-bold" style="font-size:0.75rem;">
+                    <i class="bi ${actionIcon} me-1"></i>${actionText} &rarr;
+                </span>
             </div>
         </div>
     `;
 }
 
 // =============================================================================
-// MODAL TẠO LỚP HỌC MỚI & TỰ ĐỘNG SINH DANH SÁCH BUỔI HỌC (LESSON GENERATOR)
+// MODAL TẠO LỚP HỌC MỚI MODAL TẠO LỚP HỌC MỚI & TỰ ĐỘNG SINH DANH SÁCH BUỔI HỌC (LESSON GENERATOR)
 // =============================================================================
 function openCreateClassModal() {
     if (!modalCreateClassObj) return;
@@ -417,8 +489,19 @@ async function loadCreateClassDependencies() {
         const courseSelect = document.getElementById('newCourseSelect');
         if (courseSelect && courses) {
             courseSelect.innerHTML = '<option value="">-- Chọn khóa học --</option>' +
-                courses.map(c => `<option value="${c.id}">${c.name} (${c.level || 'Cơ bản'})</option>`).join('');
-            if (courses.length > 0) courseSelect.value = courses[0].id;
+                courses.map(c => `<option value="${c.id}" data-sessions="${c.totalSessions || 12}">${c.name} (${c.level || 'Cơ bản'} - ${c.totalSessions || 12} buổi)</option>`).join('');
+            if (courses.length > 0) {
+                courseSelect.value = courses[0].id;
+                const totalInput = document.getElementById('newTotalSessions');
+                if (totalInput && courses[0].totalSessions) totalInput.value = courses[0].totalSessions;
+            }
+            courseSelect.onchange = function() {
+                const opt = courseSelect.options[courseSelect.selectedIndex];
+                const totalInput = document.getElementById('newTotalSessions');
+                if (opt && opt.dataset.sessions && totalInput) {
+                    totalInput.value = opt.dataset.sessions;
+                }
+            };
         }
 
         // Nạp cơ sở

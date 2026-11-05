@@ -3,8 +3,6 @@ package com.talent.management.features.attendance_makeup.repository;
 import com.talent.management.shared.entity.AbsenceRequest;
 import com.talent.management.shared.enums.AbsenceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -62,5 +60,9 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
      * Lấy tất cả yêu cầu nghỉ học của một buổi học
      */
     List<AbsenceRequest> findByLessonId(Long lessonId);
-}
 
+    /**
+     * Lấy tất cả yêu cầu nghỉ học của nhiều buổi học
+     */
+    List<AbsenceRequest> findByLessonIdIn(List<Long> lessonIds);
+}

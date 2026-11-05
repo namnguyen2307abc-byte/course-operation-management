@@ -1,9 +1,13 @@
 package com.talent.management.features.attendance_makeup.service;
 
-import com.talent.management.features.attendance_makeup.dto.request.*;
+import com.talent.management.features.weekly_schedule.dto.request.*;
+import com.talent.management.features.attendance_tracking.dto.request.*;
+import com.talent.management.features.attendance_tracking.dto.response.*;
+import com.talent.management.features.weekly_schedule.dto.response.*;
 import com.talent.management.features.attendance_makeup.exception.AttendanceMakeupException;
+import com.talent.management.features.weekly_schedule.repository.*;
 import com.talent.management.features.attendance_makeup.repository.*;
-import com.talent.management.features.attendance_makeup.service.impl.ScheduleWeeklyServiceImpl;
+import com.talent.management.features.weekly_schedule.service.impl.ScheduleWeeklyServiceImpl;
 import com.talent.management.features.auth.repository.*;
 import com.talent.management.features.branch_facility_enrollment.repository.*;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
@@ -43,7 +47,7 @@ class ScheduleWeeklyFlowTest {
     private final Student sibling = Student.builder().id(2L).fullName("Bé B").parent(parent).build();
     private Lesson lesson(long id) {
         return Lesson.builder().id(id).teacher(teacher).lessonDate(today).sessionNumber(1)
-                .startTime(LocalTime.of(18, 0)).endTime(LocalTime.of(19, 0)).status(LessonStatus.SCHEDULED)
+                .startTime(LocalTime.of(0, 1)).endTime(LocalTime.of(23, 59)).status(LessonStatus.SCHEDULED)
                 .classEntity(ClassEntity.builder().id(id).className("Lớp " + id).currentStudents(2).build()).build();
     }
     private void parentSchedule(Student... children) {
@@ -185,5 +189,49 @@ class ScheduleWeeklyFlowTest {
             List<Lesson> generated = new ArrayList<>(); items.forEach(generated::add);
             return generated.size() == 60 && generated.get(59).getLessonDate().equals(today.plusWeeks(59));
         }));
+    }
+    @Test void parentCanGetAttendanceTrackingForChildWithSummaryAlert() {
+        when(currentUser.getCurrentUser()).thenReturn(parent);
+        when(students.findById(1L)).thenReturn(Optional.of(child));
+        ClassEntity c = ClassEntity.builder().id(50L).classCode("SE2055-JV").className("Lớp Piano")
+                .course(Course.builder().id(1L).totalSessions(20).name("Piano").build()).build();
+        when(classes.findById(50L)).thenReturn(Optional.of(c));
+        Lesson l1 = Lesson.builder().id(101L).sessionNumber(1).lessonDate(today).startTime(LocalTime.of(7, 30))
+                .endTime(LocalTime.of(9, 50)).classEntity(c).build();
+        Lesson l2 = Lesson.builder().id(102L).sessionNumber(2).lessonDate(today.plusDays(3)).startTime(LocalTime.of(10, 0))
+                .endTime(LocalTime.of(12, 20)).classEntity(c).build();
+        when(lessons.findByClassEntityIdOrderBySessionNumberAscLessonDateAscStartTimeAsc(50L)).thenReturn(List.of(l1, l2));
+        when(records.findByLessonIdIn(List.of(101L, 102L))).thenReturn(List.of(
+                Attendance.builder().lesson(l1).student(child).status(AttendanceStatus.ABSENT).build(),
+                Attendance.builder().lesson(l2).student(child).status(AttendanceStatus.PRESENT).build()
+        ));
+        when(makeups.findByStudentIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
+
+        var tracking = service.getStudentAttendanceTracking(1L, 50L);
+        assertThat(tracking.getStudentName()).isEqualTo(child.getFullName());
+        assertThat(tracking.getTotalSessions()).isEqualTo(20);
+        assertThat(tracking.getAttendedCount()).isEqualTo(1);
+        assertThat(tracking.getAbsentCount()).isEqualTo(1);
+        assertThat(tracking.getUnmarkedCount()).isEqualTo(18);
+        assertThat(tracking.getLessons()).hasSize(20);
+        assertThat(tracking.getLessons().get(0).getStatus()).isEqualTo("ABSENT");
+        assertThat(tracking.getLessons().get(0).getStatusLabel()).isEqualTo("Vắng mặt");
+        assertThat(tracking.getLessons().get(1).getStatus()).isEqualTo("PRESENT");
+        assertThat(tracking.getLessons().get(1).getStatusLabel()).isEqualTo("Có mặt");
+        assertThat(tracking.getLessons().get(2).getStatus()).isEqualTo("NOT_MARKED");
+        assertThat(tracking.getLessons().get(2).getStatusLabel()).isEqualTo("Chưa điểm danh");
+        assertThat(tracking.getLessons().get(19).getSessionNumber()).isEqualTo(20);
+        assertThat(tracking.getSummaryAlert()).contains("Vắng");
+    }
+
+    @Test void parentCannotAccessOtherParentChildAttendanceTracking() {
+        when(currentUser.getCurrentUser()).thenReturn(parent);
+        User otherParent = User.builder().id(99L).role(Role.PARENT).build();
+        Student otherChild = Student.builder().id(9L).fullName("Bé Khác").parent(otherParent).build();
+        when(students.findById(9L)).thenReturn(Optional.of(otherChild));
+
+        assertThatThrownBy(() -> service.getStudentAttendanceTracking(9L, 50L))
+                .isInstanceOf(AttendanceMakeupException.class)
+                .hasMessageContaining("Bạn chỉ có quyền xem thông tin con của mình");
     }
 }

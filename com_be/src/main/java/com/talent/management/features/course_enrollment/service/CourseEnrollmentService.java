@@ -75,6 +75,9 @@ public class CourseEnrollmentService {
     private final PlacementScheduleRepository placementScheduleRepository;
     private final InvoiceRepository invoiceRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.talent.management.features.notification.service.NotificationService notificationService;
+
     @Transactional(readOnly = true)
     public List<ChildResponse> getMyChildren() {
         User parent = currentUserService.getCurrentUser();
@@ -180,7 +183,21 @@ public class CourseEnrollmentService {
                 .note(normalize(input.note()))
                 .build();
 
-        return mapper.toRequestResponse(requestRepository.save(request));
+        EnrollmentRequest savedReq = requestRepository.save(request);
+        if (notificationService != null) {
+            String courseTitle = preferredCourse != null ? preferredCourse.getName() : "Đăng ký kiểm tra đầu vào (Placement Test)";
+            notificationService.sendNotification(
+                    parent, parent,
+                    "Đã tiếp nhận yêu cầu đăng ký khóa học",
+                    "Yêu cầu đăng ký [" + courseTitle + "] cho bé " + child.getFullName() + " đã được hệ thống ghi nhận và đang chờ bộ phận giáo vụ xử lý.",
+                    "ENROLLMENT_REQUEST_CREATED", savedReq.getId(), "/pages/course-enrollment.html");
+            notificationService.sendToRoles(
+                    List.of(com.talent.management.shared.enums.Role.STAFF, com.talent.management.shared.enums.Role.ADMIN), parent,
+                    "Yêu cầu đăng ký khóa học mới",
+                    "Phụ huynh " + parent.getFullName() + " vừa gửi yêu cầu đăng ký [" + courseTitle + "] cho học viên " + child.getFullName() + ".",
+                    "ENROLLMENT_REQUEST_CREATED", savedReq.getId(), "/pages/course-enrollment.html");
+        }
+        return mapper.toRequestResponse(savedReq);
     }
 
     @Transactional(readOnly = true)
@@ -323,7 +340,22 @@ public class CourseEnrollmentService {
         request.setClassEntity(classEntity);
         request.setEnrollment(enrollment);
         request.setStatus(EnrollmentRequestStatus.PENDING_PAYMENT);
-        return mapper.toRequestResponse(requestRepository.save(request), savedInvoice.getId(), savedInvoice.getInvoiceCode());
+        EnrollmentRequest approvedReq = requestRepository.save(request);
+        if (notificationService != null) {
+            if (approvedReq.getRequestedBy() != null) {
+                notificationService.sendNotification(
+                        approvedReq.getRequestedBy(), reviewer,
+                        "Xếp lớp thành công — Chờ thanh toán học phí",
+                        "Bé " + approvedReq.getStudent().getFullName() + " đã được xếp vào lớp " + classEntity.getClassName() + " (" + classEntity.getClassCode() + "). Hóa đơn #" + savedInvoice.getInvoiceCode() + " đã được tạo, vui lòng hoàn tất học phí để nhập học chính thức.",
+                        "ENROLLMENT_APPROVED", savedInvoice.getId(), "/pages/course-enrollment.html");
+            }
+            notificationService.sendToRoles(
+                    List.of(com.talent.management.shared.enums.Role.STAFF, com.talent.management.shared.enums.Role.ADMIN), reviewer,
+                    "Hóa đơn học phí mới cần thu (#" + savedInvoice.getInvoiceCode() + ")",
+                    "Học viên " + approvedReq.getStudent().getFullName() + " đã được xếp vào lớp " + classEntity.getClassName() + " — Chờ thu học phí.",
+                    "INVOICE_CREATED", savedInvoice.getId(), "/pages/tuition-payment.html");
+        }
+        return mapper.toRequestResponse(approvedReq, savedInvoice.getId(), savedInvoice.getInvoiceCode());
     }
 
     private EnrollmentRequest getRequestOrThrow(Long requestId) {

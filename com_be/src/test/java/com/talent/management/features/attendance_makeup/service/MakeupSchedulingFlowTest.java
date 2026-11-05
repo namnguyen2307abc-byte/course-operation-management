@@ -3,6 +3,7 @@ package com.talent.management.features.attendance_makeup.service;
 import com.talent.management.features.attendance_makeup.dto.request.*;
 import com.talent.management.features.attendance_makeup.mapper.AttendanceMakeupMapper;
 import com.talent.management.features.attendance_makeup.repository.*;
+import com.talent.management.features.weekly_schedule.repository.*;
 import com.talent.management.features.attendance_makeup.service.impl.AbsenceMakeupServiceImpl;
 import com.talent.management.features.auth.repository.StudentRepository;
 import com.talent.management.shared.entity.*;

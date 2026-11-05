@@ -6,8 +6,8 @@
     --at-ink: #0f172a;
     --at-muted: #64748b;
     --at-line: #e2e8f0;
-    --at-brand: #4f46e5;
-    --at-brand-2: #2563eb;
+    --at-brand: #143c34;
+    --at-brand-2: #1e5346;
     --at-ok: #10b981;
     --at-ok-deep: #047857;
     --at-ok-soft: #ecfdf5;
@@ -20,8 +20,8 @@ body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     color: var(--at-ink);
     background:
-        radial-gradient(1100px 380px at 8% -8%, #e0e7ff 0%, transparent 62%),
-        radial-gradient(900px 360px at 100% 0%, #dbeafe 0%, transparent 58%),
+        radial-gradient(1100px 380px at 8% -8%, #eaf3ec 0%, transparent 62%),
+        radial-gradient(900px 360px at 100% 0%, #f0fdf4 0%, transparent 58%),
         #f8fafc;
     background-attachment: fixed;
     padding-bottom: 40px;
@@ -34,8 +34,8 @@ body {
     border-radius: 24px;
     padding: 1.75rem 2rem;
     color: #fff;
-    background: linear-gradient(120deg, #1e1b4b 0%, #312e81 48%, #2563eb 100%);
-    box-shadow: 0 24px 48px -28px rgba(30, 27, 75, 0.7);
+    background: linear-gradient(135deg, #143c34 0%, #1e5346 100%);
+    box-shadow: 0 20px 40px -20px rgba(20, 60, 52, 0.4);
 }
 
 .att-hero::before {
@@ -231,8 +231,8 @@ body {
 .att-search input:focus {
     outline: none;
     background: #fff;
-    border-color: #818cf8;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    border-color: #1e5346;
+    box-shadow: 0 0 0 3px rgba(30, 83, 70, 0.15);
 }
 
 /* Header & Hàng dạng Grid */
@@ -468,8 +468,8 @@ body {
 .att-note:focus {
     outline: none;
     background: #ffffff;
-    border-color: #818cf8;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    border-color: #1e5346;
+    box-shadow: 0 0 0 3px rgba(30, 83, 70, 0.15);
 }
 .att-note:disabled {
     background: transparent;
@@ -517,18 +517,19 @@ body {
 
 .btn-att-center.primary {
     color: #ffffff;
-    background: linear-gradient(120deg, #4f46e5, #2563eb);
-    box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.6);
+    background: linear-gradient(135deg, #143c34, #1e5346);
+    box-shadow: 0 10px 24px -6px rgba(20, 60, 52, 0.4);
 }
 .btn-att-center.primary:hover:not(:disabled) {
-    box-shadow: 0 14px 28px -6px rgba(79, 70, 229, 0.8);
+    box-shadow: 0 14px 28px -6px rgba(20, 60, 52, 0.6);
+    background: linear-gradient(135deg, #0f2e28, #17463a);
 }
 
 .btn-att-center.warn {
-    color: #78350f;
-    background: #fde68a;
-    border-color: #fcd34d;
-    box-shadow: 0 6px 16px -6px rgba(217, 119, 6, 0.5);
+    color: #92400e;
+    background: #fef3c7;
+    border-color: #fde68a;
+    box-shadow: 0 6px 16px -6px rgba(217, 119, 6, 0.25);
 }
 
 .btn-att-center.ghost {

@@ -25,7 +25,11 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
     List<MakeupRegistration> findByStudentIdAndStatusOrderByCreatedAtDesc(Long studentId, MakeupStatus status);
 
     /** Tìm yêu cầu học bù theo đơn nghỉ liên kết (nếu cần truy xuất đơn lẻ) */
-    Optional<MakeupRegistration> findByAbsenceRequestId(Long absenceRequestId);
+    Optional<MakeupRegistration> findFirstByAbsenceRequestIdOrderByIdDesc(Long absenceRequestId);
+
+    default Optional<MakeupRegistration> findByAbsenceRequestId(Long absenceRequestId) {
+        return findFirstByAbsenceRequestIdOrderByIdDesc(absenceRequestId);
+    }
 
     /**
      * BATCH FETCH — Fix N+1 query trong getAbsenceRequests().

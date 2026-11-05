@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thời Khóa Biểu Tuần & Điểm Danh - Học Viện Talent</title>
+    <title>Lịch Học - Học Viện Talent</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -14,13 +14,102 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/schedule.css">
+    <style>
+        .schedule-hero {
+            background: linear-gradient(135deg, #143c34 0%, #1e5346 55%, #2a6f5d 100%) !important;
+            box-shadow: 0 10px 25px -5px rgba(20, 60, 52, 0.28) !important;
+        }
+        .btn-primary {
+            background-color: #1e5346 !important;
+            border-color: #1e5346 !important;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #143c34 !important;
+            border-color: #143c34 !important;
+        }
+        .timetable-table thead th {
+            background: linear-gradient(180deg, #143c34, #1b4d42) !important;
+            color: #f8fafc !important;
+        }
+        .timetable-table thead th.col-slot {
+            background: linear-gradient(180deg, #0f2e27, #143c34) !important;
+        }
+        .timetable-table thead th.today-header {
+            background: linear-gradient(180deg, #1e5e4d, #2a7a65) !important;
+            color: #fff !important;
+        }
+        .timetable-table tbody td.today-column {
+            background: linear-gradient(180deg, #f2f8f5, #eaf4ef) !important;
+        }
+    
+        #currentUserRoleBadge {
+            background-color: #e3efdf !important;
+            color: #143c34 !important;
+            font-weight: 700 !important;
+            border: 1px solid rgba(20, 60, 52, 0.15) !important;
+        }
+        #weekDisplayTitle {
+            color: #174638 !important;
+        }
+        .week-nav-btn.btn-primary {
+            background-color: #1e5346 !important;
+            border-color: #1e5346 !important;
+        }
+        .week-nav-btn.btn-primary:hover {
+            background-color: #143c34 !important;
+            border-color: #143c34 !important;
+        }
+        .lesson-card {
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+            transition: all 0.2s ease;
+        }
+        .lesson-card:hover {
+            box-shadow: 0 8px 18px -6px rgba(20, 60, 52, 0.18);
+        }
+        .stu-badge.present {
+            background: #dcfce7 !important;
+            color: #15803d !important;
+            font-weight: 700 !important;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 0.72rem;
+        }
+        .stu-badge.absent {
+            background: #fee2e2 !important;
+            color: #b91c1c !important;
+            font-weight: 700 !important;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 0.72rem;
+        }
+        .stu-badge.pending {
+            background: #f1f5f9 !important;
+            color: #64748b !important;
+            font-weight: 600 !important;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 0.72rem;
+        }
+
+    </style>
+<script src="../js/auth.js"></script>
 </head>
-<body>
+<body class="has-workspace-sidebar">
 
     <!-- Navbar Container -->
-    <div id="navbar-container"></div>
-
-    <main class="container-fluid px-lg-4 my-4">
+    <div id="navbar-container"><!-- workspace-shell:start -->
+<a class="skip-content" href="#main-content">Đến nội dung chính</a>
+<header class="workspace-topbar"><button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false"><i class="bi bi-list"></i></button><span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span><span class="workspace-context">Không gian làm việc</span></header>
+<aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
+<a class="sidebar-brand" data-app-path="/index.html" href="/index.html"><span class="brand-mark"><i class="bi bi-stars"></i></span><span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span></a>
+<nav id="workspaceNavigation" class="workspace-navigation"></nav>
+<div class="sidebar-bottom"><div class="sidebar-profile"><span class="profile-initial" id="sidebarAvatar">T</span><div><strong id="sidebarUserName"></strong><small id="sidebarUserRole"></small></div></div><button type="button" class="sidebar-logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button></div>
+</aside>
+<button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
+<!-- workspace-shell:end --></div>
+<script src="../js/workspace-shell.js"></script>
+<main class="container-fluid px-lg-4 my-4">
         <!-- Toast Thông Báo Góc Màn Hình -->
         <div class="toast-container-custom" id="toastContainer"></div>
 
@@ -31,14 +120,14 @@
                     <nav class="hero-breadcrumb" aria-label="breadcrumb">
                         <ol class="breadcrumb small mb-1">
                             <li class="breadcrumb-item"><a href="../index.html">Trang Chủ</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Thời Khóa Biểu Tuần</li>
+                            <li class="breadcrumb-item active" aria-current="page" id="heroBreadcrumbCurrent">Thời Khóa Biểu Tuần</li>
                         </ol>
                     </nav>
                     <h1 class="hero-title">
                         <i class="bi bi-calendar3"></i>
-                        <span>Thời Khóa Biểu Tuần</span>
+                        <span id="heroTitleText">Thời Khóa Biểu Tuần</span>
                     </h1>
-                    <p class="hero-sub mb-0">
+                    <p class="hero-sub mb-0" id="heroSubtitleText">
                         Theo dõi lịch dạy, ca học theo 4 Slot khung giờ và xem / thực hiện điểm danh học viên trực tiếp.
                     </p>
                 </div>
@@ -56,9 +145,9 @@
 
         <!-- Chú giải trạng thái -->
         <div class="schedule-legend">
-            <span class="lg-item"><span class="lg-dot" style="background:#2563eb;"></span> Hôm nay</span>
-            <span class="lg-item"><span class="lg-dot" style="background:#10b981;"></span> Đã điểm danh (Present)</span>
-            <span class="lg-item"><span class="lg-dot" style="background:#ef4444;"></span> Vắng mặt (Absent)</span>
+            <span class="lg-item"><span class="lg-dot" style="background:#1e5e4d;"></span> Hôm nay</span>
+            <span class="lg-item"><span class="lg-dot" style="background:#10b981;"></span> Đã điểm danh</span>
+            <span class="lg-item"><span class="lg-dot" style="background:#ef4444;"></span> Vắng mặt</span>
             <span class="lg-item"><span class="lg-dot" style="background:#f59e0b;"></span> Buổi qua chưa điểm danh</span>
             <span class="lg-item"><span class="lg-dot" style="background:#94a3b8;"></span> Sắp diễn ra</span>
         </div>
@@ -196,7 +285,7 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold text-secondary">Tổng Số Buổi Học <span class="text-danger">*</span>:</label>
-                                <input type="number" id="newTotalSessions" class="form-control form-control-modern" value="12" min="1" max="48" required>
+                                <input type="number" id="newTotalSessions" class="form-control form-control-modern" value="12" min="1" max="60" required>
                             </div>
 
                             <!-- Chọn các thứ trong tuần -->
@@ -242,20 +331,20 @@
                                     Chọn Nhanh Khung Giờ (4 Slot Chuẩn):
                                 </label>
                                 <div class="d-flex flex-wrap gap-2">
-                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('07:00', '09:00', 'Slot 1: 07:00 - 09:00')">Slot 1: 07:00 - 09:00</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('08:00', '09:30', 'Slot 1: 08:00 - 09:30')">Slot 1: 08:00 - 09:30</button>
                                     <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('09:30', '11:30', 'Slot 2: 09:30 - 11:30')">Slot 2: 09:30 - 11:30</button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('13:00', '15:00', 'Slot 3: 13:00 - 15:00')">Slot 3: 13:00 - 15:00</button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('15:30', '17:30', 'Slot 4: 15:30 - 17:30')">Slot 4: 15:30 - 17:30</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('14:00', '16:00', 'Slot 3: 14:00 - 16:00')">Slot 3: 14:00 - 16:00</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="selectSlotPreset('18:00', '19:30', 'Slot 4: 18:00 - 19:30')">Slot 4: 18:00 - 19:30</button>
                                 </div>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Giờ Bắt Đầu <span class="text-danger">*</span>:</label>
-                                <input type="time" id="newStartTime" class="form-control form-control-modern" value="07:00" required>
+                                <input type="time" id="newStartTime" class="form-control form-control-modern" value="08:00" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-secondary">Giờ Kết Thúc <span class="text-danger">*</span>:</label>
-                                <input type="time" id="newEndTime" class="form-control form-control-modern" value="09:00" required>
+                                <input type="time" id="newEndTime" class="form-control form-control-modern" value="09:30" required>
                             </div>
 
                             <div class="col-12">
@@ -320,8 +409,8 @@
             };
         }
     </script>
-    <script src="../js/auth.js"></script>
-    <script src="/js/auth.js"></script>
+
+
     <script src="../js/weekly-schedule.js"></script>
 </body>
 </html>

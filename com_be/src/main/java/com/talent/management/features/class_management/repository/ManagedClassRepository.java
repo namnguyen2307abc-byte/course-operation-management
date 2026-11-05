@@ -28,4 +28,13 @@ public interface ManagedClassRepository extends JpaRepository<ClassEntity, Long>
                              @Param("courseId") Long courseId,
                              @Param("branchId") Long branchId,
                              @Param("status") ClassStatus status);
+
+    @EntityGraph(attributePaths = {"course", "branch", "room", "teacher"})
+    @Query("""
+            select distinct c from ClassEntity c
+            left join Lesson l on l.classEntity.id = c.id
+            where c.teacher.id = :teacherId or l.teacher.id = :teacherId
+            order by c.id desc
+            """)
+    List<ClassEntity> findClassesForTeacher(@Param("teacherId") Long teacherId);
 }
