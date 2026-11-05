@@ -23,6 +23,10 @@ public class Student {
     @JoinColumn(name = "parent_id")
     private User parent;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id")
+    private User account;
+
     @Column(nullable = false, length = 150)
     private String fullName;
 
