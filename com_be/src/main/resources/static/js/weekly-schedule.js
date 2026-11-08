@@ -21,6 +21,9 @@ let modalCreateClassObj = null;
 // Danh sách bộ lọc
 let filterTeacherId = '';
 let filterStudentId = '';
+let quickSearchKeyword = '';
+let expandAllCells = false;
+const MAX_VISIBLE_CARDS_PER_CELL = 2;
 
 // =============================================================================
 // KHỞI TẠO KHI TẢI TRANG
@@ -259,6 +262,10 @@ function renderWeeklyMatrix(data) {
     }
 
     // 4. Vẽ từng hàng Slot (Slot 1 đến Slot 4)
+    const expandBtn = document.getElementById('btnToggleExpandCells');
+    if (expandBtn && data.currentUserRole !== 'STUDENT' && data.currentUserRole !== 'PARENT') {
+        expandBtn.classList.remove('d-none');
+    }
     const tbody = document.getElementById('timetableBody');
     if (!tbody) return;
 
@@ -288,14 +295,42 @@ function renderWeeklyMatrix(data) {
             const isToday = (colDateStr === todayStr);
 
             const key = `${slot.slotNumber}_${dayIndex}`;
-            const lessonsInCell = cellLessonsMap[key] || [];
+            const rawLessonsInCell = cellLessonsMap[key] || [];
+            const lessonsInCell = quickSearchKeyword
+                ? rawLessonsInCell.filter(l => {
+                    const kw = quickSearchKeyword.toLowerCase();
+                    return (l.className && l.className.toLowerCase().includes(kw))
+                        || (l.classCode && l.classCode.toLowerCase().includes(kw))
+                        || (l.roomName && l.roomName.toLowerCase().includes(kw))
+                        || (l.teacherName && l.teacherName.toLowerCase().includes(kw));
+                })
+                : rawLessonsInCell;
 
             html += `<td class="${isToday ? 'today-column' : ''}">`;
 
+            const isParentOrStudent = (data.currentUserRole === 'STUDENT' || data.currentUserRole === 'PARENT');
             if (lessonsInCell.length > 0) {
-                lessonsInCell.forEach(l => {
-                    html += renderLessonCard(l, data.currentUserRole);
-                });
+                if (isParentOrStudent || expandAllCells || lessonsInCell.length <= MAX_VISIBLE_CARDS_PER_CELL) {
+                    lessonsInCell.forEach(l => {
+                        html += renderLessonCard(l, data.currentUserRole);
+                    });
+                } else {
+                    const visibleLessons = lessonsInCell.slice(0, MAX_VISIBLE_CARDS_PER_CELL);
+                    const hiddenLessons = lessonsInCell.slice(MAX_VISIBLE_CARDS_PER_CELL);
+                    visibleLessons.forEach(l => {
+                        html += renderLessonCard(l, data.currentUserRole);
+                    });
+                    html += `<div id="cellMore_${key}" class="d-none">`;
+                    hiddenLessons.forEach(l => {
+                        html += renderLessonCard(l, data.currentUserRole);
+                    });
+                    html += `</div>`;
+                    html += `
+                        <button type="button" class="btn-cell-more" id="btnCellMore_${key}" onclick="event.stopPropagation(); toggleCellMore('${key}', ${hiddenLessons.length})">
+                            <i class="bi bi-layers-fill me-1"></i>+${hiddenLessons.length} lớp khác &#9662;
+                        </button>
+                    `;
+                }
             }
 
             html += `</td>`;
@@ -373,9 +408,7 @@ function renderLessonCard(lesson, userRole) {
         `;
     }
 
-    // 2. DÀNH CHO GIÁO VIÊN / ADMIN / STAFF
-    // Hiển thị theo LỚP: Tên lớp, Mã lớp, Giờ học, Buổi học, Phòng học, Sĩ số học viên
-    // Bấm trực tiếp vào bất kỳ vị trí nào trên thẻ để mở màn hình điểm danh cho lớp
+    // 2. DÀNH CHO GIÁO VIÊN / ADMIN / STAFF (GIAO DIỆN GỌN GÀNG, CHỐNG TRÀN Ô)
     const now = new Date();
     const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     let slotStartTime = '';
@@ -389,43 +422,42 @@ function renderLessonCard(lesson, userRole) {
     let badgeHtml = '';
     if (lesson.attendanceCompleted) {
         stateClass = 'state-done';
-        badgeHtml = '<span class="stu-badge present"><i class="bi bi-check2-circle"></i> Đã điểm danh</span>';
+        badgeHtml = '<span class="stu-badge present" title="Đã hoàn thành điểm danh"><i class="bi bi-check2-circle"></i>Đã ĐD</span>';
     } else if (isToday) {
         if (isBeforeSlot && userRole === 'TEACHER') {
-            badgeHtml = `<span class="stu-badge" style="background:#f1f5f9; color:#475569; font-weight:600;"><i class="bi bi-clock"></i> Chưa vào ca (${escapeHtml(slotStartTime)})</span>`;
+            badgeHtml = `<span class="stu-badge" style="background:#f1f5f9; color:#475569; font-weight:600;" title="Chưa tới giờ vào ca (${escapeAttr(slotStartTime)})"><i class="bi bi-clock"></i>${escapeHtml(slotStartTime)}</span>`;
         } else {
-            badgeHtml = '<span class="stu-badge" style="background:#fef3c7; color:#92400e; font-weight:700;"><i class="bi bi-pencil-square"></i> Cần điểm danh</span>';
+            badgeHtml = '<span class="stu-badge" style="background:#fef3c7; color:#92400e; font-weight:700;" title="Ca học hôm nay cần điểm danh"><i class="bi bi-pencil-square"></i>Cần ĐD</span>';
         }
     } else if (isPast) {
         stateClass = 'state-missed';
-        badgeHtml = '<span class="stu-badge" style="background:#fee2e2; color:#991b1b; font-weight:700;"><i class="bi bi-clock-history"></i> Chưa điểm danh</span>';
+        badgeHtml = '<span class="stu-badge" style="background:#fee2e2; color:#991b1b; font-weight:700;" title="Buổi học đã qua chưa điểm danh"><i class="bi bi-exclamation-circle"></i>Chưa ĐD</span>';
     } else {
-        badgeHtml = '<span class="stu-badge pending"><i class="bi bi-clock"></i> Sắp diễn ra</span>';
+        badgeHtml = '<span class="stu-badge pending" title="Buổi học sắp diễn ra"><i class="bi bi-clock"></i>Sắp tới</span>';
     }
 
     const href = `lesson-attendance.html?lessonId=${lesson.lessonId}`;
-    const actionText = lesson.attendanceCompleted ? 'Xem điểm danh' : (isBeforeSlot && userRole === 'TEACHER' ? 'Xem buổi học' : 'Điểm danh ngay');
-    const actionIcon = lesson.attendanceCompleted ? 'bi-check2' : 'bi-pencil-square';
-    const actionBtnClass = lesson.attendanceCompleted ? 'btn-outline-success' : 'btn-success';
+    const actionText = lesson.attendanceCompleted ? 'Đã lưu' : (isBeforeSlot && userRole === 'TEACHER' ? 'Chi tiết' : 'Điểm danh');
+    const actionPillClass = lesson.attendanceCompleted ? 'pill-done' : (isBeforeSlot && userRole === 'TEACHER' ? 'pill-view' : 'pill-go');
+    const sessionBadge = lesson.sessionNumber ? ` • B${lesson.sessionNumber}` : '';
 
     return `
         <div class="lesson-card ${slotClass} ${stateClass} teacher-class-card" 
              onclick="window.location.href='${href}'" 
              ${slotInlineStyle} 
-             title="Bấm vào để mở màn hình điểm danh lớp ${escapeAttr(lesson.className || '')}">
-            <div class="lesson-card-top d-flex justify-content-between align-items-center mb-1">
-                <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
+             title="${escapeAttr(lesson.className || '')} (${escapeAttr(lesson.classCode || '')}) - Phòng: ${escapeAttr(lesson.roomName || 'Chưa xếp')} - GV: ${escapeAttr(lesson.teacherName || '—')}">
+            <div class="lesson-card-top">
+                <span class="lesson-code" title="${escapeAttr(lesson.classCode || '')}">${escapeHtml(lesson.classCode || 'LỚP')}</span>
                 ${badgeHtml}
             </div>
 
-            <div class="lesson-title fw-bold text-dark" title="${escapeHtml(lesson.className)}">
+            <div class="lesson-title fw-bold text-dark" title="${escapeAttr(lesson.className)}">
                 ${escapeHtml(lesson.className)}
             </div>
 
             <div class="lesson-meta">
                 <i class="bi bi-clock"></i>
-                <span>${escapeHtml(lesson.timeRange)}</span>
-                ${lesson.sessionNumber ? `<span>• Buổi ${lesson.sessionNumber}</span>` : ''}
+                <span>${escapeHtml(lesson.timeRange)}${escapeHtml(sessionBadge)}</span>
             </div>
 
             <div class="lesson-meta">
@@ -440,21 +472,53 @@ function renderLessonCard(lesson, userRole) {
             </div>
             ` : ''}
 
-            <div class="lesson-meta">
-                <i class="bi bi-people"></i>
-                <span>Sĩ số: <strong>${lesson.totalStudents || 0}</strong> học viên</span>
-            </div>
-
-            <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
-                <span class="small text-muted fw-semibold" style="font-size:0.73rem;">
-                    <i class="bi bi-people-fill me-1"></i>${lesson.totalStudents || 0} HV
+            <div class="tc-card-footer">
+                <span class="tc-student-count" title="Sĩ số lớp">
+                    <i class="bi bi-people-fill"></i>${lesson.totalStudents || 0} HV
                 </span>
-                <span class="btn btn-sm ${actionBtnClass} py-0 px-2 rounded-pill fw-bold" style="font-size:0.75rem;">
-                    <i class="bi ${actionIcon} me-1"></i>${actionText} &rarr;
+                <span class="tc-action-pill ${actionPillClass}">
+                    ${actionText} <i class="bi bi-arrow-right-short"></i>
                 </span>
             </div>
         </div>
     `;
+}
+
+function toggleCellMore(key, hiddenCount) {
+    const moreEl = document.getElementById(`cellMore_${key}`);
+    const btnEl = document.getElementById(`btnCellMore_${key}`);
+    if (!moreEl || !btnEl) return;
+    const isHidden = moreEl.classList.contains('d-none');
+    moreEl.classList.toggle('d-none', !isHidden);
+    if (isHidden) {
+        btnEl.innerHTML = '<i class="bi bi-chevron-up me-1"></i>Thu gọn &#9652;';
+    } else {
+        btnEl.innerHTML = `<i class="bi bi-layers-fill me-1"></i>+${hiddenCount} lớp khác &#9662;`;
+    }
+}
+
+function onQuickSearchScheduleChange() {
+    const input = document.getElementById('scheduleQuickSearchInput');
+    quickSearchKeyword = input ? input.value.trim() : '';
+    if (currentScheduleData) {
+        renderWeeklyMatrix(currentScheduleData);
+    }
+}
+
+function toggleExpandAllCells() {
+    expandAllCells = !expandAllCells;
+    const btn = document.getElementById('btnToggleExpandCells');
+    if (btn) {
+        btn.innerHTML = expandAllCells
+            ? '<i class="bi bi-arrows-collapse me-1"></i>Thu gọn ô'
+            : '<i class="bi bi-arrows-expand me-1"></i>Mở rộng ô';
+        btn.className = expandAllCells
+            ? 'btn btn-primary btn-sm rounded-pill px-2.5'
+            : 'btn btn-outline-secondary btn-sm rounded-pill px-2.5';
+    }
+    if (currentScheduleData) {
+        renderWeeklyMatrix(currentScheduleData);
+    }
 }
 
 // =============================================================================

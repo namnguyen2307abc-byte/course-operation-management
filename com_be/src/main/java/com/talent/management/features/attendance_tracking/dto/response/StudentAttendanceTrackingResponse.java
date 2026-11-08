@@ -23,6 +23,12 @@ public class StudentAttendanceTrackingResponse {
     private int absentCount;
     private int unmarkedCount;
     private double absentRate;
+    private int maxAllowedAbsences;
+    private int remainingAllowedAbsences;
+    private int makeupCompletedCount;
+    private int makeupMissedCount;
+    private String warningLevel;
+    private String warningTitle;
     private String summaryAlert;
     private List<StudentLessonAttendanceItemResponse> lessons;
 }

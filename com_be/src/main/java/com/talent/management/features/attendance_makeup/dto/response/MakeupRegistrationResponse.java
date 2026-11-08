@@ -47,8 +47,11 @@ public class MakeupRegistrationResponse {
     private Long targetTeacherId;
     private String targetTeacherName;
 
-    // Trạng thái & ghi chú
+    // Trạng thái, giới hạn số lần bù & ghi chú
     private MakeupStatus status;
+    private Integer retryCount;
+    private Integer maxRetries;
+    private Boolean limitExceeded;
     private String note;
     private LocalDateTime createdAt;
 }

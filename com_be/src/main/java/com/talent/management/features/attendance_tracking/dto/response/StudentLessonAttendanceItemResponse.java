@@ -22,5 +22,6 @@ public class StudentLessonAttendanceItemResponse {
     private String statusLabel;
     private String note;
     private boolean isMakeup;
+    private String makeupStatus;
     private String makeupInfo;
 }

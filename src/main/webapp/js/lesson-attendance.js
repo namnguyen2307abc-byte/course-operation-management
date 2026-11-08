@@ -9,6 +9,7 @@
 let sheet = null;         // Dữ liệu buổi học & danh sách học viên từ API
 let editMode = false;     // true: đang cho phép chọn / chỉnh sửa
 let saving = false;
+let justSaved = false;    // cờ hiển thị banner khi bấm nút Lưu Điểm Danh thành công
 
 const AVATAR_COLORS = [
     ['#6366f1', '#2563eb'], ['#ec4899', '#db2777'], ['#f59e0b', '#ea580c'],
@@ -76,6 +77,7 @@ async function loadSheet(lessonId) {
         renderHeader();
         setupMode();
         renderStudents();
+        if (typeof window.refreshNotifications === 'function') window.refreshNotifications();
     } catch (err) {
         console.error('Lỗi tải điểm danh:', err);
         document.getElementById('attTitle').textContent = 'Không thể tải buổi học';
@@ -119,75 +121,195 @@ function setupMode() {
     const btnEdit = document.getElementById('btnEdit');
     const btnSave = document.getElementById('btnSave');
 
-    banner.classList.remove('d-none', 'lock', 'saved', 'ready', 'future');
+    banner.classList.remove('lock', 'saved', 'ready', 'future');
 
-    // Xác định thời gian so với ngày hôm nay (YYYY-MM-DD)
+    // Xác định thời gian so với ngày hôm nay (YYYY-MM-DD) và giờ hiện tại
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const lessonDateStr = sheet.lessonDate || '';
-    const isFuture = lessonDateStr > todayStr;
-    const isPast = lessonDateStr < todayStr;
+    const isToday = lessonDateStr === todayStr;
+
+    // Trích xuất giờ bắt đầu ca học
+    let slotStartTime = '';
+    if (sheet.startTime) {
+        slotStartTime = String(sheet.startTime).substring(0, 5);
+    } else if (sheet.timeRange && sheet.timeRange.includes('-')) {
+        slotStartTime = sheet.timeRange.split('-')[0].trim();
+    }
+    const isBeforeSlot = Boolean(isToday && slotStartTime && currentTimeStr < slotStartTime);
 
     const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     const role = (user && (user.roleName || user.role || ''))?.toUpperCase();
     const isAdmin = role === 'ADMIN' || role === 'STAFF' || role === 'BRANCH_MANAGER';
 
-    if (isFuture && !isAdmin) {
-        // 1. BUỔI HỌC TRONG TƯƠNG LAI: Giáo viên chỉ xem trước danh sách, KHÔNG có nút lưu hay sửa
-        editMode = false;
-        banner.classList.add('future');
-        icon.className = 'bi bi-calendar-event-fill';
-        text.innerHTML = `<strong>CHƯA ĐẾN NGÀY HỌC:</strong> Buổi học sẽ diễn ra vào ngày <b>${fmtDMY(lessonDateStr)}</b>. Hiện tại bạn chỉ có thể xem danh sách học viên và chỉ được phép điểm danh vào đúng ngày diễn ra ca học.`;
-        btnEdit.classList.add('d-none');
-        btnSave.classList.add('d-none');
-    } else if (isPast && !isAdmin) {
-        // 2. BUỔI HỌC TRONG QUÁ KHỨ: Đã qua ngày, khóa điểm danh
-        editMode = false;
-        banner.classList.add('lock');
-        icon.className = 'bi bi-lock-fill';
-        text.innerHTML = `<strong>ĐÃ KHÓA ĐIỂM DANH:</strong> Buổi học ngày <b>${fmtDMY(lessonDateStr)}</b> đã kết thúc trong quá khứ. Theo quy định, chỉ Admin hoặc Giáo vụ mới có thể can thiệp chỉnh sửa.`;
-        btnEdit.classList.add('d-none');
-        btnSave.classList.add('d-none');
-    } else if (!sheet.canEdit) {
-        editMode = false;
-        banner.classList.add('lock');
-        icon.className = 'bi bi-lock-fill';
-        text.innerHTML = `<strong>ĐÃ KHÓA CHỈNH SỬA:</strong> ${escapeHtml(sheet.lockReason || 'Bạn chỉ có quyền xem danh sách buổi học này.')}`;
-        btnEdit.classList.add('d-none');
-        btnSave.classList.add('d-none');
-    } else if (isSaved()) {
-        // 3. BUỔI HỌC HÔM NAY ĐÃ LƯU: Cho phép bấm "Chỉnh sửa điểm danh"
-        editMode = false;
+    // Banner chỉ hiển thị khi vừa bấm Lưu thành công, còn khi tải ban đầu thì ẩn
+    if (justSaved) {
+        banner.classList.remove('d-none');
         banner.classList.add('saved');
         icon.className = 'bi bi-check-circle-fill';
         text.innerHTML = '<strong>ĐÃ LƯU ĐIỂM DANH:</strong> Buổi học hôm nay đã được lưu điểm danh thành công. Nhấn <b>Chỉnh Sửa Điểm Danh</b> nếu muốn cập nhật lại.';
-        btnEdit.classList.remove('d-none');
-        btnSave.classList.add('d-none');
+        justSaved = false;
     } else {
-        // 4. BUỔI HỌC HÔM NAY CHƯA LƯU: Sẵn sàng điểm danh
-        editMode = true;
-        banner.classList.add('ready');
-        icon.className = 'bi bi-pencil-square';
-        text.innerHTML = '<strong>SẴN SÀNG ĐIỂM DANH:</strong> Ca học diễn ra hôm nay. Vui lòng tích chọn nút tròn <b>Present</b> hoặc <b>Absent</b> cho từng học viên rồi nhấn <b>Lưu Điểm Danh</b>.';
-        btnEdit.classList.add('d-none');
-        btnSave.classList.remove('d-none');
+        banner.classList.add('d-none');
+    }
+
+    if (isAdmin) {
+        // Staff / Admin: toàn quyền xử lý ở bất kỳ thời điểm nào
+        if (isSaved()) {
+            editMode = false;
+            btnEdit.classList.remove('d-none');
+            btnSave.classList.add('d-none');
+        } else {
+            editMode = true;
+            btnEdit.classList.add('d-none');
+            btnSave.classList.remove('d-none');
+        }
+    } else {
+        // Giáo viên:
+        // - Buổi hôm nay:
+        //   + Nếu chưa đến giờ vào ca (ví dụ 9h mà ca học 13h): khóa không cho điểm danh trước, hiển thị cảnh báo
+        //   + Nếu đã đến giờ ca học: nếu đã lưu thì hiện nút Chỉnh sửa, chưa lưu thì hiện nút Lưu
+        // - Quá khứ / Tương lai: hiện nút Chỉnh sửa nhưng khi bấm sẽ kiểm tra và thông báo chặn
+        if (isToday) {
+            if (isBeforeSlot) {
+                editMode = false;
+                btnEdit.classList.remove('d-none');
+                btnSave.classList.add('d-none');
+                banner.classList.remove('d-none', 'saved', 'ready', 'lock');
+                banner.classList.add('future');
+                icon.className = 'bi bi-clock-history';
+                text.innerHTML = `<strong>CHƯA VÀO CA HỌC:</strong> Ca học diễn ra lúc <b>${escapeHtml(sheet.timeRange || slotStartTime)}</b>. Theo quy định, Giáo viên chỉ được phép điểm danh khi ca học bắt đầu!`;
+            } else if (isSaved()) {
+                editMode = false;
+                btnEdit.classList.remove('d-none');
+                btnSave.classList.add('d-none');
+            } else {
+                editMode = true;
+                btnEdit.classList.add('d-none');
+                btnSave.classList.remove('d-none');
+            }
+        } else {
+            editMode = false;
+            btnEdit.classList.remove('d-none');
+            btnSave.classList.add('d-none');
+        }
     }
 }
 
 function enableEditing() {
-    if (!sheet?.canEdit || saving) return;
+    if (saving) return;
+
+    const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    const role = (user && (user.roleName || user.role || ''))?.toUpperCase();
+    const isAdmin = role === 'ADMIN' || role === 'STAFF' || role === 'BRANCH_MANAGER';
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const lessonDateStr = sheet?.lessonDate || '';
+    const isToday = lessonDateStr === todayStr;
+    const isFuture = lessonDateStr > todayStr;
+    const isPast = lessonDateStr < todayStr;
+
+    // Trích xuất giờ bắt đầu ca học
+    let slotStartTime = '';
+    if (sheet?.startTime) {
+        slotStartTime = String(sheet.startTime).substring(0, 5);
+    } else if (sheet?.timeRange && sheet.timeRange.includes('-')) {
+        slotStartTime = sheet.timeRange.split('-')[0].trim();
+    }
+    const isBeforeSlot = Boolean(isToday && slotStartTime && currentTimeStr < slotStartTime);
+
+    const hasDom = typeof document !== 'undefined' && typeof document.getElementById === 'function';
+
+    if (!isAdmin) {
+        // Giáo viên: Kiểm tra nếu chưa tới ca học
+        if (isBeforeSlot) {
+            if (hasDom) {
+                const banner = document.getElementById('attBanner');
+                const icon = document.getElementById('attBannerIcon');
+                const text = document.getElementById('attBannerText');
+                if (banner && icon && text) {
+                    banner.classList.remove('d-none', 'saved', 'ready', 'lock');
+                    banner.classList.add('future');
+                    icon.className = 'bi bi-clock-history';
+                    text.innerHTML = `<strong>CHƯA VÀO CA HỌC:</strong> Ca học diễn ra lúc <b>${escapeHtml(sheet?.timeRange || slotStartTime)}</b>. Theo quy định, Giáo viên chỉ được phép điểm danh khi ca học bắt đầu!`;
+                }
+                if (typeof showToast === 'function') {
+                    showToast('warning', 'Chưa vào ca học', `Ca học diễn ra lúc ${sheet?.timeRange || slotStartTime}. Bạn chỉ được phép điểm danh khi ca học bắt đầu!`);
+                }
+            }
+            return;
+        }
+        // Giáo viên bị giới hạn trong ngày
+        if (isPast) {
+            if (hasDom) {
+                const banner = document.getElementById('attBanner');
+                const icon = document.getElementById('attBannerIcon');
+                const text = document.getElementById('attBannerText');
+                if (banner && icon && text) {
+                    banner.classList.remove('d-none', 'saved', 'ready', 'future');
+                    banner.classList.add('lock');
+                    icon.className = 'bi bi-lock-fill';
+                    text.innerHTML = `<strong>KHÔNG THỂ CHỈNH SỬA:</strong> Buổi học ngày <b>${fmtDMY(lessonDateStr)}</b> đã diễn ra trong quá khứ. Theo quy định, Giáo viên chỉ được phép điểm danh trong ngày diễn ra buổi học. Vui lòng liên hệ Giáo vụ hoặc Quản trị viên để can thiệp chỉnh sửa!`;
+                }
+                if (typeof showToast === 'function') {
+                    showToast('error', 'Chặn chỉnh sửa', 'Giáo viên chỉ được phép cập nhật điểm danh trong ngày diễn ra ca học!');
+                }
+            }
+            return;
+        }
+        if (isFuture) {
+            if (hasDom) {
+                const banner = document.getElementById('attBanner');
+                const icon = document.getElementById('attBannerIcon');
+                const text = document.getElementById('attBannerText');
+                if (banner && icon && text) {
+                    banner.classList.remove('d-none', 'saved', 'ready', 'lock');
+                    banner.classList.add('future');
+                    icon.className = 'bi bi-calendar-event-fill';
+                    text.innerHTML = `<strong>CHƯA ĐẾN NGÀY HỌC:</strong> Buổi học sẽ diễn ra vào ngày <b>${fmtDMY(lessonDateStr)}</b>. Theo quy định, Giáo viên chỉ có thể xem danh sách và chỉ được phép điểm danh vào đúng ngày diễn ra ca học.`;
+                }
+                if (typeof showToast === 'function') {
+                    showToast('error', 'Chặn chỉnh sửa', 'Buổi học chưa diễn ra, chỉ được điểm danh vào đúng ngày ca học!');
+                }
+            }
+            return;
+        }
+        if (sheet?.canEdit === false) {
+            if (hasDom) {
+                const banner = document.getElementById('attBanner');
+                const icon = document.getElementById('attBannerIcon');
+                const text = document.getElementById('attBannerText');
+                if (banner && icon && text) {
+                    banner.classList.remove('d-none', 'saved', 'ready', 'future');
+                    banner.classList.add('lock');
+                    icon.className = 'bi bi-lock-fill';
+                    text.innerHTML = `<strong>ĐÃ KHÓA:</strong> ${escapeHtml(sheet?.lockReason || 'Bạn không thể chỉnh sửa điểm danh buổi học này.')}`;
+                }
+                if (typeof showToast === 'function') {
+                    showToast('error', 'Khóa chỉnh sửa', sheet?.lockReason || 'Không có quyền chỉnh sửa.');
+                }
+            }
+            return;
+        }
+    }
+
+    // Cho phép chỉnh sửa (Admin/Staff hoặc Teacher trong ngày)
     editMode = true;
-    document.getElementById('btnEdit').classList.add('d-none');
-    document.getElementById('btnSave').classList.remove('d-none');
-
-    const banner = document.getElementById('attBanner');
-    banner.classList.remove('saved', 'lock');
-    banner.classList.add('ready');
-    document.getElementById('attBannerIcon').className = 'bi bi-pencil-square';
-    document.getElementById('attBannerText').innerHTML = '<strong>ĐANG CHỈNH SỬA:</strong> Bạn có thể thay đổi trạng thái Present / Absent của học viên rồi nhấn <b>Lưu Điểm Danh</b>.';
-
-    renderStudents();
-    showToast('info', 'Chế độ chỉnh sửa', 'Bạn có thể thay đổi Present / Absent cho học viên.');
+    if (hasDom) {
+        const btnEdit = document.getElementById('btnEdit');
+        const btnSave = document.getElementById('btnSave');
+        const banner = document.getElementById('attBanner');
+        if (btnEdit) btnEdit.classList.add('d-none');
+        if (btnSave) btnSave.classList.remove('d-none');
+        if (banner) banner.classList.add('d-none');
+        renderStudents();
+        if (typeof showToast === 'function') {
+            showToast('info', 'Chế độ chỉnh sửa', 'Bạn có thể thay đổi Present / Absent cho học viên rồi nhấn Lưu Điểm Danh.');
+        }
+    }
 }
 
 /* ------------------------------ DANH SÁCH HỌC VIÊN ------------------------------ */
@@ -334,6 +456,7 @@ async function saveAttendance() {
         sheet.alreadySaved = true;
         sheet.isAlreadySaved = true;
         editMode = false;
+        justSaved = true;
         setupMode();
         renderStudents();
     } catch (err) {

@@ -180,17 +180,24 @@
                 </div>
 
                 <!-- Cụm bộ lọc cho Admin / Giáo viên -->
-                <div class="col-lg-4 col-12 d-flex justify-content-lg-end gap-2 align-items-center">
-                    <div class="d-none" id="teacherFilterGroup" style="min-width: 190px;">
+                <div class="col-lg-4 col-12 d-flex justify-content-lg-end gap-2 align-items-center flex-wrap">
+                    <div class="input-group input-group-sm" style="max-width: 195px;" id="quickSearchScheduleGroup">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="scheduleQuickSearchInput" class="form-control border-start-0 ps-0" placeholder="Lọc lớp, phòng..." oninput="onQuickSearchScheduleChange()">
+                    </div>
+                    <div class="d-none" id="teacherFilterGroup" style="min-width: 165px;">
                         <select id="teacherFilterSelect" class="form-select form-select-sm form-control-modern" onchange="onTeacherFilterChange()">
                             <option value="">-- Tất cả giáo viên --</option>
                         </select>
                     </div>
-                    <div class="d-none" id="childFilterGroup" style="min-width: 190px;">
+                    <div class="d-none" id="childFilterGroup" style="min-width: 175px;">
                         <select id="childFilterSelect" class="form-select form-select-sm form-control-modern" onchange="onChildFilterChange()">
                             <option value="">-- Lịch tất cả các con --</option>
                         </select>
                     </div>
+                    <button type="button" id="btnToggleExpandCells" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 d-none" onclick="toggleExpandAllCells()" title="Thu gọn hoặc mở rộng các ô có nhiều lớp học">
+                        <i class="bi bi-arrows-expand me-1"></i>Mở rộng ô
+                    </button>
                 </div>
             </div>
         </div>

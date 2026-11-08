@@ -1,6 +1,8 @@
 /**
  * attendance-tracking.js
  * Quản lý giao diện Theo Dõi Điểm Danh & Tiến Độ Khóa Học của Học Viên (Có Phân Trang)
+ * Hỗ trợ Quy chuẩn Cảnh báo Tỷ lệ Chuyên cần 3 mức (NORMAL / WARNING / CRITICAL)
+ * và hiển thị trạng thái học bù (COMPLETED / SCHEDULED / MISSED).
  */
 
 let currentUser = null;
@@ -218,7 +220,7 @@ async function loadAttendanceTracking() {
 }
 
 // =============================================================================
-// RENDER GIAO DIỆN CHI TIẾT & PHÂN TRANG
+// RENDER GIAO DIỆN CHI TIẾT & QUY CHUẨN CẢNH BÁO TỶ LỆ VẮNG (3 CẤP ĐỘ)
 // =============================================================================
 function renderAttendanceTrackingView(data) {
     if (!data) {
@@ -242,35 +244,83 @@ function renderAttendanceTrackingView(data) {
     document.getElementById('kpiUnmarked').textContent = `${data.unmarkedCount || 0} buổi`;
 
     const absentRate = data.absentRate != null ? data.absentRate : 0;
+    const maxAllowed = data.maxAllowedAbsences != null
+        ? data.maxAllowedAbsences
+        : Math.max(1, Math.floor(totalSessions * 0.20));
+    const remainingAllowed = data.remainingAllowedAbsences != null
+        ? data.remainingAllowedAbsences
+        : Math.max(0, maxAllowed - (data.absentCount || 0));
+
+    // Xác định cấp độ cảnh báo chuẩn (NORMAL <= 10%, WARNING 10-20%, CRITICAL >= 20%)
+    const warningLevel = data.warningLevel || (absentRate >= 20 ? 'CRITICAL' : (absentRate > 10 ? 'WARNING' : 'NORMAL'));
+
     const kpiAbsentRate = document.getElementById('kpiAbsentRate');
-    kpiAbsentRate.textContent = `Tỷ lệ vắng: ${absentRate}%`;
-    if (absentRate >= 20) {
+    kpiAbsentRate.textContent = `Tỷ lệ: ${absentRate}% (Tối đa ${maxAllowed} buổi - 20%)`;
+    if (warningLevel === 'CRITICAL') {
         kpiAbsentRate.className = 'small text-danger fw-bold mt-1';
+    } else if (warningLevel === 'WARNING') {
+        kpiAbsentRate.className = 'small text-warning-emphasis fw-bold mt-1';
     } else {
-        kpiAbsentRate.className = 'small text-muted mt-1';
+        kpiAbsentRate.className = 'small text-success fw-semibold mt-1';
     }
 
     const alertBanner = document.getElementById('attendanceAlertBanner');
-    const alertText = document.getElementById('attendanceAlertText');
     alertBanner.classList.remove('d-none');
 
-    if (data.summaryAlert) {
-        alertText.textContent = data.summaryAlert;
-    } else {
-        alertText.textContent = `Vắng ${absentRate}% (${data.absentCount || 0}/${totalSessions} buổi), còn ${data.unmarkedCount || 0} buổi chưa điểm danh.`;
-    }
+    const summaryText = data.summaryAlert
+        || `Vắng ${absentRate}% (${data.absentCount || 0}/${totalSessions} buổi), còn ${remainingAllowed}/${maxAllowed} buổi phép và ${data.unmarkedCount || 0} buổi chưa điểm danh.`;
 
-    if (absentRate >= 20) {
+    let levelBadgeHtml = '';
+    let iconClass = 'bi-shield-check text-success fs-4';
+    let barColor = '#10b981';
+
+    if (warningLevel === 'CRITICAL') {
         alertBanner.style.backgroundColor = '#fff1f2';
         alertBanner.style.borderColor = '#fecdd3';
         alertBanner.style.color = '#9f1239';
-        alertBanner.querySelector('i').className = 'bi bi-exclamation-octagon-fill text-danger fs-5';
+        iconClass = 'bi-exclamation-octagon-fill text-danger fs-4';
+        barColor = '#ef4444';
+        levelBadgeHtml = `<span class="badge bg-danger text-white rounded-pill px-2.5 py-1 me-2">BÁO ĐỘNG ĐỎ (≥ 20% - NGUY CƠ CẤM THI)</span>`;
+    } else if (warningLevel === 'WARNING') {
+        alertBanner.style.backgroundColor = '#fffbeb';
+        alertBanner.style.borderColor = '#fde68a';
+        alertBanner.style.color = '#92400e';
+        iconClass = 'bi-exclamation-triangle-fill text-warning fs-4';
+        barColor = '#f59e0b';
+        levelBadgeHtml = `<span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 me-2">CẢNH BÁO CHUYÊN CẦN (> 10%)</span>`;
     } else {
-        alertBanner.style.backgroundColor = '#f8fafc';
-        alertBanner.style.borderColor = '#e2e8f0';
-        alertBanner.style.color = '#334155';
-        alertBanner.querySelector('i').className = 'bi bi-info-circle text-primary fs-5';
+        alertBanner.style.backgroundColor = '#f0fdf4';
+        alertBanner.style.borderColor = '#bbf7d0';
+        alertBanner.style.color = '#166534';
+        iconClass = 'bi-shield-check text-success fs-4';
+        barColor = '#10b981';
+        levelBadgeHtml = `<span class="badge bg-success text-white rounded-pill px-2.5 py-1 me-2">CHUYÊN CẦN AN TOÀN (≤ 10%)</span>`;
     }
+
+    // Thanh tiến độ hạn mức vắng so với ngưỡng cấm thi 20%
+    const quotaPercent = Math.min(100, Math.round((absentRate / 20.0) * 100));
+    const missedMakeupNote = (data.makeupMissedCount && data.makeupMissedCount > 0)
+        ? `<div class="mt-1 small text-danger fw-bold"><i class="bi bi-person-x-fill me-1"></i>Cảnh báo học bù: Học viên đã bỏ lỡ ${data.makeupMissedCount} buổi học bù (MISSED)!</div>`
+        : '';
+
+    alertBanner.innerHTML = `
+        <i class="bi ${iconClass}"></i>
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                <div>
+                    ${levelBadgeHtml}
+                    <span class="fw-bold">${escapeHtml(data.warningTitle || 'Theo dõi tỷ lệ chuyên cần khóa học')}</span>
+                </div>
+                <span class="small fw-bold">Hạn mức vắng: ${data.absentCount || 0}/${maxAllowed} buổi cho phép (${absentRate}% / 20%)</span>
+            </div>
+            <div class="small fw-semibold" id="attendanceAlertText">${escapeHtml(summaryText)}</div>
+            ${missedMakeupNote}
+            <div class="progress mt-2" style="height: 6px; background-color: rgba(0,0,0,0.08); border-radius: 999px;">
+                <div class="progress-bar" role="progressbar" style="width: ${quotaPercent}%; background-color: ${barColor}; border-radius: 999px;"
+                     aria-valuenow="${quotaPercent}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    `;
 
     renderAttendanceTablePage();
 }
@@ -323,16 +373,39 @@ function renderAttendanceTablePage() {
             statusHtml = '<span class="badge-status-unmarked">Chưa điểm danh</span>';
         }
 
-        let noteHtml = '-';
-        if (item.isMakeup) {
-            noteHtml = `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small">
-                <i class="bi bi-arrow-repeat me-1"></i>Học bù
+        let noteHtml = '';
+        if (item.makeupStatus === 'MISSED') {
+            noteHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
+                <i class="bi bi-person-x-fill me-1"></i>Bỏ lỡ học bù (MISSED)
             </span>`;
-            if (item.makeupInfo) {
-                noteHtml += ` <small class="text-muted">${escapeHtml(item.makeupInfo)}</small>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
             }
-        } else if (item.note) {
+        } else if (item.makeupStatus === 'COMPLETED' || item.isMakeup) {
+            noteHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold">
+                <i class="bi bi-check2-all me-1"></i>${escapeHtml(item.makeupInfo || 'Đã học bù ca khác')}
+            </span>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
+            }
+        } else if (item.makeupStatus === 'SCHEDULED') {
+            noteHtml = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 small fw-semibold">
+                <i class="bi bi-calendar2-check me-1"></i>${escapeHtml(item.makeupInfo || 'Đã xếp lịch học bù')}
+            </span>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
+            }
+        } else if (item.makeupInfo) {
+            noteHtml = `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small">
+                <i class="bi bi-arrow-repeat me-1"></i>${escapeHtml(item.makeupInfo)}
+            </span>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
+            }
+        } else if (item.note && item.note !== '-') {
             noteHtml = `<span class="small text-secondary">${escapeHtml(item.note)}</span>`;
+        } else {
+            noteHtml = '-';
         }
 
         return `

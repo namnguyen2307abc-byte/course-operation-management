@@ -197,10 +197,15 @@ updateNavbarUser();
         </button>
         <div class="notif-dropdown-panel d-none" id="notifDropdownPanel">
             <div class="notif-dropdown-header">
-                <strong class="small text-dark"><i class="bi bi-bell me-1 text-primary"></i>Thông báo của bạn</strong>
+                <strong class="small text-dark"><i class="bi bi-bell me-1 text-primary"></i>Thông báo <span class="badge bg-danger-subtle text-danger rounded-pill ms-1" id="notifHeaderUnreadCount">0 chưa đọc</span></strong>
                 <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small fw-semibold" id="notifMarkAllBtn">
-                    Đánh dấu đã đọc tất cả
+                    Đọc tất cả
                 </button>
+            </div>
+            <div class="px-3 py-1.5 border-bottom bg-white d-flex gap-1 flex-wrap" id="notifFilterTabs" style="font-size: 0.74rem;">
+                <button type="button" class="btn btn-sm rounded-pill px-2.5 py-0.5 btn-primary" data-filter="ALL" id="notifTabAll" style="font-size: 0.72rem;">Tất cả (0)</button>
+                <button type="button" class="btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border" data-filter="UNREAD" id="notifTabUnread" style="font-size: 0.72rem;">Chưa đọc (0)</button>
+                <button type="button" class="btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border text-danger" data-filter="ALERT" id="notifTabAlert" style="font-size: 0.72rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Cảnh báo (0)</button>
             </div>
             <div class="notif-dropdown-list" id="notifDropdownList">
                 <div class="p-4 text-center text-muted small">Đang tải thông báo...</div>
@@ -233,8 +238,21 @@ updateNavbarUser();
     const nextBtn = document.getElementById('notifNextBtn');
 
     let allNotifications = [];
+    let notifFilter = 'ALL';
     let notifPage = 1;
     const notifPageSize = 4;
+
+    const headerUnreadCountEl = document.getElementById('notifHeaderUnreadCount');
+    const tabAllBtn = document.getElementById('notifTabAll');
+    const tabUnreadBtn = document.getElementById('notifTabUnread');
+    const tabAlertBtn = document.getElementById('notifTabAlert');
+
+    function isAlertType(type) {
+        if (!type) return false;
+        return type.includes('CRITICAL') || type.includes('WARNING') || type.includes('MISSED')
+            || type.includes('LIMIT_EXCEEDED') || type.includes('ABSENT') || type.includes('REJECTED')
+            || type.includes('NO_SLOT');
+    }
 
     async function fetchNotifApi(endpoint, method = 'GET') {
         const token = localStorage.getItem('token');
@@ -252,29 +270,38 @@ updateNavbarUser();
     }
 
     function iconForType(type) {
-        if (!type) return { cls: 'bg-primary-subtle text-primary', icon: 'bi-info-circle-fill' };
+        if (!type) return { cls: 'bg-primary-subtle text-primary', icon: 'bi-info-circle-fill', tag: '' };
+        if (type.includes('ATTENDANCE_CRITICAL') || type.includes('MAKEUP_LIMIT_EXCEEDED')) {
+            return { cls: 'bg-danger text-white', icon: 'bi-exclamation-octagon-fill', tag: '<span class="badge bg-danger text-white ms-1" style="font-size:0.62rem;">Khẩn cấp</span>' };
+        }
+        if (type.includes('ATTENDANCE_WARNING') || type.includes('MAKEUP_MISSED')) {
+            return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-exclamation-triangle-fill', tag: '<span class="badge bg-warning text-dark ms-1" style="font-size:0.62rem;">Cảnh báo</span>' };
+        }
+        if (type.includes('MAKEUP_SCHEDULED') || type.includes('MAKEUP_COORDINATED') || type.includes('MAKEUP_PENDING')) {
+            return { cls: 'bg-primary-subtle text-primary', icon: 'bi-calendar2-week-fill', tag: '<span class="badge bg-primary-subtle text-primary ms-1" style="font-size:0.62rem;">Học bù</span>' };
+        }
         if (type.includes('PAYMENT_SUCCESS')) {
-            return { cls: 'bg-success-subtle text-success', icon: 'bi-cash-coin' };
+            return { cls: 'bg-success-subtle text-success', icon: 'bi-cash-coin', tag: '' };
         }
         if (type.includes('INVOICE') || type.includes('DISCOUNT')) {
-            return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-receipt-cutoff' };
+            return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-receipt-cutoff', tag: '' };
         }
         if (type.includes('ENROLLMENT_APPROVED') || type.includes('ENROLLMENT_COMPLETED')) {
-            return { cls: 'bg-success-subtle text-success', icon: 'bi-mortarboard-fill' };
+            return { cls: 'bg-success-subtle text-success', icon: 'bi-mortarboard-fill', tag: '' };
         }
         if (type.includes('ENROLLMENT_REQUEST')) {
-            return { cls: 'bg-info-subtle text-info-emphasis', icon: 'bi-person-plus-fill' };
+            return { cls: 'bg-info-subtle text-info-emphasis', icon: 'bi-person-plus-fill', tag: '' };
         }
         if (type.includes('PLACEMENT')) {
-            return { cls: 'bg-primary-subtle text-primary', icon: 'bi-clipboard2-check-fill' };
+            return { cls: 'bg-primary-subtle text-primary', icon: 'bi-clipboard2-check-fill', tag: '' };
         }
         if (type.includes('APPROVED') || type.includes('COMPLETED') || type.includes('PRESENT')) {
-            return { cls: 'bg-success-subtle text-success', icon: 'bi-check-circle-fill' };
+            return { cls: 'bg-success-subtle text-success', icon: 'bi-check-circle-fill', tag: '' };
         }
         if (type.includes('REJECTED') || type.includes('ABSENT') || type.includes('CANCELLED') || type.includes('NO_SLOT')) {
-            return { cls: 'bg-danger-subtle text-danger', icon: 'bi-exclamation-circle-fill' };
+            return { cls: 'bg-danger-subtle text-danger', icon: 'bi-exclamation-circle-fill', tag: '' };
         }
-        return { cls: 'bg-primary-subtle text-primary', icon: 'bi-calendar2-event-fill' };
+        return { cls: 'bg-primary-subtle text-primary', icon: 'bi-calendar2-event-fill', tag: '' };
     }
 
     function esc(str) {
@@ -282,19 +309,74 @@ updateNavbarUser();
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function getFilteredNotifications() {
+        if (notifFilter === 'UNREAD') {
+            return allNotifications.filter(n => !n.isRead);
+        }
+        if (notifFilter === 'ALERT') {
+            return allNotifications.filter(n => isAlertType(n.type));
+        }
+        return allNotifications;
+    }
+
+    function updateFilterCounters() {
+        const total = allNotifications.length;
+        const unread = allNotifications.filter(n => !n.isRead).length;
+        const alertCount = allNotifications.filter(n => isAlertType(n.type)).length;
+
+        if (headerUnreadCountEl) {
+            headerUnreadCountEl.textContent = `${unread} chưa đọc`;
+            headerUnreadCountEl.className = unread > 0
+                ? 'badge bg-danger text-white rounded-pill ms-1'
+                : 'badge bg-secondary-subtle text-secondary rounded-pill ms-1';
+        }
+        if (tabAllBtn) {
+            tabAllBtn.textContent = `Tất cả (${total})`;
+            tabAllBtn.className = notifFilter === 'ALL'
+                ? 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-primary'
+                : 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border';
+        }
+        if (tabUnreadBtn) {
+            tabUnreadBtn.textContent = `Chưa đọc (${unread})`;
+            tabUnreadBtn.className = notifFilter === 'UNREAD'
+                ? 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-primary'
+                : 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border';
+        }
+        if (tabAlertBtn) {
+            tabAlertBtn.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>Cảnh báo (${alertCount})`;
+            tabAlertBtn.className = notifFilter === 'ALERT'
+                ? 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-danger text-white'
+                : 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border text-danger';
+        }
+    }
+
+    [tabAllBtn, tabUnreadBtn, tabAlertBtn].forEach(btn => {
+        if (!btn) return;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notifFilter = btn.getAttribute('data-filter') || 'ALL';
+            notifPage = 1;
+            updateFilterCounters();
+            renderNotificationPage();
+        });
+    });
+
     function renderNotificationPage() {
-        if (allNotifications.length === 0) {
-            listEl.innerHTML = '<div class="p-4 text-center text-muted small"><i class="bi bi-bell-slash d-block fs-4 mb-1"></i>Chưa có thông báo nào</div>';
+        updateFilterCounters();
+        const filteredList = getFilteredNotifications();
+
+        if (filteredList.length === 0) {
+            listEl.innerHTML = '<div class="p-4 text-center text-muted small"><i class="bi bi-bell-slash d-block fs-4 mb-1"></i>Không có thông báo nào trong mục này</div>';
             if (paginationBar) paginationBar.classList.add('d-none');
             return;
         }
 
-        const totalPages = Math.max(1, Math.ceil(allNotifications.length / notifPageSize));
+        const totalPages = Math.max(1, Math.ceil(filteredList.length / notifPageSize));
         if (notifPage > totalPages) notifPage = totalPages;
         if (notifPage < 1) notifPage = 1;
 
         const startIdx = (notifPage - 1) * notifPageSize;
-        const pageItems = allNotifications.slice(startIdx, startIdx + notifPageSize);
+        const pageItems = filteredList.slice(startIdx, startIdx + notifPageSize);
 
         listEl.innerHTML = pageItems.map(item => {
             const ic = iconForType(item.type);
@@ -305,7 +387,7 @@ updateNavbarUser();
                         <i class="bi ${ic.icon}"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="notif-item-title">${esc(item.title)}</div>
+                        <div class="notif-item-title">${esc(item.title)}${ic.tag || ''}</div>
                         <div class="notif-item-msg">${esc(item.message)}</div>
                         <div class="notif-item-meta">
                             <span><i class="bi bi-person me-1"></i>${esc(item.senderName || 'Hệ thống')}</span>
@@ -318,7 +400,7 @@ updateNavbarUser();
 
         if (paginationBar) {
             paginationBar.classList.remove('d-none');
-            if (pageInfoEl) pageInfoEl.textContent = `Trang ${notifPage} / ${totalPages} (${allNotifications.length} TB)`;
+            if (pageInfoEl) pageInfoEl.textContent = `Trang ${notifPage} / ${totalPages} (${filteredList.length} TB)`;
             if (prevBtn) prevBtn.disabled = notifPage <= 1;
             if (nextBtn) nextBtn.disabled = notifPage >= totalPages;
         }
@@ -353,7 +435,8 @@ updateNavbarUser();
     if (nextBtn) {
         nextBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const totalPages = Math.max(1, Math.ceil(allNotifications.length / notifPageSize));
+            const filteredList = getFilteredNotifications();
+            const totalPages = Math.max(1, Math.ceil(filteredList.length / notifPageSize));
             if (notifPage < totalPages) {
                 notifPage++;
                 renderNotificationPage();
@@ -384,6 +467,8 @@ updateNavbarUser();
         }
     }
 
+    window.refreshNotifications = loadNotifications;
+
     bellBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const isHidden = panel.classList.contains('d-none');
@@ -405,9 +490,9 @@ updateNavbarUser();
         }
     });
 
-    // Tải số lượng thông báo ngay khi vào trang và cập nhật định kỳ mỗi 20s
+    // Tải số lượng thông báo ngay khi vào trang và cập nhật định kỳ mỗi 15s
     if (localStorage.getItem('token')) {
         loadNotifications();
-        setInterval(loadNotifications, 20000);
+        setInterval(loadNotifications, 15000);
     }
 })();

@@ -77,6 +77,7 @@ async function loadSheet(lessonId) {
         renderHeader();
         setupMode();
         renderStudents();
+        if (typeof window.refreshNotifications === 'function') window.refreshNotifications();
     } catch (err) {
         console.error('Lỗi tải điểm danh:', err);
         document.getElementById('attTitle').textContent = 'Không thể tải buổi học';

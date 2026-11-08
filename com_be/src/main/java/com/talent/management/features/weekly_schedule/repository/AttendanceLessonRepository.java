@@ -121,4 +121,35 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
                                               @Param("sessionNumber") Integer sessionNumber,
                                               @Param("excludeClassId") Long excludeClassId,
                                               @Param("courseId") Long courseId);
+
+    /**
+     * Ứng viên điều phối ghép bù linh hoạt cùng trình độ khi các lớp song song đã dạy qua buổi gốc:
+     * Tìm các buổi sắp diễn ra có sessionNumber khác buổi gốc trong cùng chương trình + level.
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "WHERE l.lessonDate >= :fromDate " +
+           "AND l.sessionNumber <> :sessionNumber " +
+           "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.classEntity.course.program.id = :programId " +
+           "AND l.classEntity.course.level = :level " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findFlexibleMakeupCandidatesByLevel(@Param("fromDate") LocalDate fromDate,
+                                                     @Param("sessionNumber") Integer sessionNumber,
+                                                     @Param("excludeClassId") Long excludeClassId,
+                                                     @Param("programId") Long programId,
+                                                     @Param("level") String level);
+
+    /**
+     * Ứng viên điều phối ghép bù linh hoạt cùng khóa học khi các lớp song song đã dạy qua buổi gốc.
+     */
+    @Query("SELECT l FROM Lesson l " +
+           "WHERE l.lessonDate >= :fromDate " +
+           "AND l.sessionNumber <> :sessionNumber " +
+           "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.classEntity.course.id = :courseId " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
+    List<Lesson> findFlexibleMakeupCandidatesByCourse(@Param("fromDate") LocalDate fromDate,
+                                                      @Param("sessionNumber") Integer sessionNumber,
+                                                      @Param("excludeClassId") Long excludeClassId,
+                                                      @Param("courseId") Long courseId);
 }
