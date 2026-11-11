@@ -233,10 +233,10 @@ test('usage errors retry locally, stale room/usage responses cannot replace curr
         state.intercept = async ({ pathname }) => pathname.endsWith('/11/usage') && failure
             ? { status: failure, body: { message: failure === 403 ? 'Không có quyền xem lịch phòng' : 'Lịch phòng tạm thời không tải được' } } : null;
         await page.locator('[data-room-usage="11"]').click();
-        await page.locator('#roomUsageBody').getByText('Lịch phòng tạm thời không tải được').waitFor();
+        await page.locator('#roomUsageBody').getByText('Chưa tải được chi tiết phòng và lịch sử dụng. Vui lòng thử lại.').waitFor();
         failure = 403;
         await page.locator('[data-facility-retry="usage"]').click();
-        await page.locator('#roomUsageBody').getByText('Không có quyền xem lịch phòng').waitFor();
+        await page.locator('#roomUsageBody').getByText('Bạn không có quyền thực hiện thao tác này.').waitFor();
         assert.equal(page.url(), origin + '/pages/branch-facility.html');
         failure = 0;
         await page.locator('[data-facility-retry="usage"]').click();

@@ -192,7 +192,7 @@
                 <div class="col-md-4">
                     <div class="stat-card">
                         <div class="stat-icon-wrapper stat-icon-amber"><i class="bi bi-hourglass-split"></i></div>
-                        <div class="stat-value" id="pendingCount">0</div>
+                        <div class="stat-value" id="pendingCount">—</div>
                         <div class="stat-label">Yêu cầu chờ duyệt</div>
                     </div>
                 </div>
@@ -237,6 +237,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="small text-muted mb-3" id="decisionSummary"></div>
+                    <div id="decisionError" class="alert alert-danger d-none" role="alert"></div>
                     <div id="assignmentFields" class="mb-3 d-none">
                         <label for="assignedClassSelect" class="form-label small fw-semibold">Lớp còn chỗ</label>
                         <div class="d-flex gap-2">
@@ -281,6 +282,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/api.js"></script>
 
+    <script src="../js/request-feedback.js"></script>
     <script>
         checkAuth();
 
@@ -337,22 +339,26 @@
 
         function loadPageData() {
             if (currentUser.role === 'PARENT') loadParentData();
-            if (['STAFF', 'BRANCH_MANAGER', 'ADMIN'].includes(currentUser.role)) loadPendingRequests();
+            if (['STAFF', 'BRANCH_MANAGER', 'ADMIN'].includes(currentUser.role)) {
+                document.getElementById('pageNotice').classList.add('d-none');
+                loadPendingRequests();
+            }
         }
 
         async function loadParentData() {
+            document.getElementById('pageNotice').classList.add('d-none');
             try {
                 const [children, courses, requests] = await Promise.all([
-                    callApi('/api/course-enrollment/children'),
-                    callApi('/api/course-enrollment/courses'),
-                    callApi('/api/course-enrollment/requests/my')
+                    callApi('/api/course-enrollment/children', 'GET', null, false, false),
+                    callApi('/api/course-enrollment/courses', 'GET', null, false, false),
+                    callApi('/api/course-enrollment/requests/my', 'GET', null, false, false)
                 ]);
                 renderChildren(children || []);
                 renderCourses(courses || []);
                 renderMyRequests(requests || []);
                 await updatePlacementMode();
             } catch (error) {
-                showNotice(error.message, 'danger');
+                showNotice('Chưa tải được thông tin đăng ký. Vui lòng nhấn Làm mới để thử lại.', 'danger');
             }
         }
 
@@ -410,14 +416,14 @@
             const select = document.getElementById('parentPreviewClassSelect');
             select.innerHTML = '<option value="">Đang tải lớp...</option>';
             try {
-                const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`);
+                const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`, 'GET', null, false, false);
                 if (document.getElementById('placementRequested').checked
                     || document.getElementById('courseSelect').value !== String(courseId)) return;
                 renderParentPreviewClasses(classes || []);
             } catch (error) {
                 if (!document.getElementById('placementRequested').checked
                     && document.getElementById('courseSelect').value === String(courseId)) {
-                    select.innerHTML = `<option value="">${escapeHtml(error.message)}</option>`;
+                    select.innerHTML = '<option value="">Chưa tải được danh sách lớp tham khảo. Vui lòng chọn lại khóa học để thử lại.</option>';
                 }
             }
         }
@@ -508,8 +514,9 @@
         async function loadAssignableClasses(courseId) {
             const select = document.getElementById('assignedClassSelect');
             select.innerHTML = '<option value="">Đang tải lớp còn chỗ...</option>';
+            availableClassMap = new Map();
             document.getElementById('staffFacilityPreviewBtn').disabled = true;
-            const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`);
+            const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`, 'GET', null, false, false);
             availableClassMap = new Map((classes || []).map(item => [item.id, item]));
             select.innerHTML = classes && classes.length
                 ? classes.map(item => {
@@ -546,9 +553,9 @@
 
             try {
                 const [branches, rooms, equipments] = await Promise.all([
-                    callApi('/api/branches'),
-                    callApi(`/api/branches/${selectedClass.branchId}/rooms`),
-                    callApi(`/api/branches/${selectedClass.branchId}/equipments`)
+                    callApi('/api/branches', 'GET', null, false, false),
+                    callApi(`/api/branches/${selectedClass.branchId}/rooms`, 'GET', null, false, false),
+                    callApi(`/api/branches/${selectedClass.branchId}/equipments`, 'GET', null, false, false)
                 ]);
                 const branch = (branches || []).find(item => item.id === selectedClass.branchId);
                 const room = (rooms || []).find(item => item.id === selectedClass.roomId);
@@ -592,7 +599,7 @@
                     ${renderFacilityEquipments(roomEquipments, selectedClass.roomId)}
                 `;
             } catch (error) {
-                body.innerHTML = `<div class="alert alert-danger mb-0">Không thể tải thông tin cơ sở: ${escapeHtml(error.message)}</div>`;
+                body.innerHTML = `<div class="alert alert-danger mb-0" role="alert">${escapeHtml(requestErrorMessage(error, 'Chưa tải được thông tin cơ sở vật chất. Vui lòng đóng cửa sổ và mở lại để thử lại.'))}</div>`;
             }
         }
 
@@ -669,27 +676,41 @@
         }
 
         async function cancelRequest(requestId) {
-            if (!window.confirm('Bạn muốn hủy yêu cầu đăng ký này?')) return;
             const button = document.querySelector(`[data-cancel-request="${requestId}"]`);
+            if (button?.disabled) return;
+            if (!window.confirm('Bạn muốn hủy yêu cầu đăng ký này?')) return;
             if (button) button.disabled = true;
+            let cancelled = false;
             try {
-                await callApi(`/api/course-enrollment/requests/${requestId}/cancel`, 'PATCH');
-                const requests = await callApi('/api/course-enrollment/requests/my');
-                renderMyRequests(requests || []);
+                await callApi(`/api/course-enrollment/requests/${requestId}/cancel`, 'PATCH', null, false, false);
+                cancelled = true;
                 showNotice('Đã hủy yêu cầu đăng ký.', 'success');
             } catch (error) {
-                if (button) button.disabled = false;
-                showNotice(error.message, 'danger');
-                const requests = await callApi('/api/course-enrollment/requests/my');
+                const messages = {
+                    'Không tìm thấy yêu cầu đăng ký': 'Không tìm thấy yêu cầu đăng ký. Vui lòng nhấn Làm mới để cập nhật danh sách.',
+                    'Yêu cầu đã được xếp lịch kiểm tra hoặc xử lý, không thể tự hủy': 'Yêu cầu đã được xếp lịch kiểm tra hoặc xử lý nên không thể tự hủy. Vui lòng liên hệ phòng đào tạo nếu cần hỗ trợ.'
+                };
+                showNotice(messages[error.message] || 'Chưa xác nhận được kết quả hủy yêu cầu. Vui lòng nhấn Làm mới để kiểm tra trạng thái.', 'danger');
+            }
+            try {
+                const requests = await callApi('/api/course-enrollment/requests/my', 'GET', null, false, false);
                 renderMyRequests(requests || []);
+            } catch (error) {
+                if (cancelled) {
+                    showNotice('Đã hủy yêu cầu đăng ký nhưng chưa tải lại được danh sách. Vui lòng nhấn Làm mới để cập nhật.', 'warning');
+                }
+            } finally {
+                if (button) button.disabled = cancelled;
             }
         }
 
         async function loadPendingRequests() {
             const body = document.getElementById('pendingTableBody');
+            document.getElementById('pendingCount').innerText = '—';
+            pendingRequestMap = new Map();
             body.innerHTML = '<tr><td colspan="5" class="empty-state"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải yêu cầu...</td></tr>';
             try {
-                const requests = await callApi('/api/course-enrollment/staff/requests');
+                const requests = await callApi('/api/course-enrollment/staff/requests', 'GET', null, false, false);
                 document.getElementById('pendingCount').innerText = requests ? requests.length : 0;
                 if (!requests || requests.length === 0) {
                     pendingRequestMap = new Map();
@@ -700,7 +721,7 @@
                     .filter(item => item.placementRequested)
                     .map(async item => {
                         try {
-                            return [item.id, await callApi(`/api/placement-tests/students/${item.childId}/latest-result`)];
+                            return [item.id, await callApi(`/api/placement-tests/students/${item.childId}/latest-result`, 'GET', null, false, false)];
                         } catch (error) {
                             return [item.id, null];
                         }
@@ -715,7 +736,9 @@
                             <div class="mt-1">${statusBadge(item.status)}</div>
                             ${placementResults.get(item.id)?.placementStatus === 'COMPLETED'
                                 ? `<div class="small text-muted mt-1">PT: ${placementResults.get(item.id).score ?? '—'}/10 · ${escapeHtml(placementResults.get(item.id).recommendedLevel || 'Chưa có trình độ')}${placementResults.get(item.id).recommendationAvailable ? '' : ' · Chờ giáo viên chọn khóa học'}</div>`
-                                : ''}
+                                : item.placementRequested && placementResults.get(item.id) === null
+                                    ? '<div class="small text-warning-emphasis mt-1">Chưa tải được kết quả Placement Test. Vui lòng nhấn Làm mới để thử lại.</div>'
+                                    : ''}
                         </td>
                         <td>${formatDateTime(item.requestedAt)}</td>
                         <td class="small">${escapeHtml(item.note || 'Không có')}</td>
@@ -727,13 +750,15 @@
                         </td>
                     </tr>`).join('');
             } catch (error) {
-                body.innerHTML = `<tr><td colspan="5" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
+                document.getElementById('pendingCount').innerText = '—';
+                pendingRequestMap = new Map();
+                body.innerHTML = '<tr><td colspan="5" class="empty-state text-danger" role="alert">Chưa tải được danh sách yêu cầu. Vui lòng nhấn Làm mới để thử lại.</td></tr>';
             }
         }
 
         async function refreshPlacement(requestId) {
             try {
-                const request = await callApi(`/api/course-enrollment/staff/requests/${requestId}/refresh-placement`, 'PATCH');
+                const request = await callApi(`/api/course-enrollment/staff/requests/${requestId}/refresh-placement`, 'PATCH', null, false, false);
                 if (request.status === 'WAITING_PLACEMENT') {
                     showNotice('Yêu cầu đang chờ giáo viên hoàn tất kết quả và chọn khóa học đề xuất.', 'warning');
                 } else {
@@ -741,7 +766,7 @@
                 }
                 await loadPendingRequests();
             } catch (error) {
-                showNotice(error.message, 'danger');
+                showNotice('Chưa kiểm tra được kết quả Placement Test. Vui lòng thử lại. Nếu tình trạng tiếp diễn, hãy liên hệ bộ phận hỗ trợ.', 'danger');
             }
         }
 
@@ -749,6 +774,7 @@
             selectedRequest = pendingRequestMap.get(requestId);
             if (!selectedRequest) return;
             selectedDecision = decision;
+            showDecisionError('');
             const isApprove = decision === 'APPROVE';
             document.getElementById('decisionModalTitle').innerText = isApprove ? 'Xếp lớp cho học viên' : 'Từ chối yêu cầu';
             document.getElementById('decisionSummary').innerHTML = `<strong>${escapeHtml(selectedRequest.childName)}</strong> - ${escapeHtml(selectedRequest.preferredCourseName || 'Chưa xác định khóa học')}`;
@@ -766,7 +792,8 @@
                     const classes = await loadAssignableClasses(selectedRequest.preferredCourseId);
                     button.disabled = classes.length === 0;
                 } catch (error) {
-                    document.getElementById('assignedClassSelect').innerHTML = `<option value="">${escapeHtml(error.message)}</option>`;
+                    document.getElementById('assignedClassSelect').innerHTML = '<option value="">Chưa tải được danh sách lớp</option>';
+                    showDecisionError(requestErrorMessage(error, 'Chưa tải được danh sách lớp còn chỗ. Vui lòng đóng cửa sổ và mở lại để thử lại.'));
                     button.disabled = true;
                 }
             }
@@ -775,7 +802,9 @@
         async function confirmDecision() {
             if (!selectedRequest || !selectedDecision) return;
             const button = document.getElementById('confirmDecisionBtn');
+            if (button.disabled) return;
             button.disabled = true;
+            showDecisionError('');
             try {
                 const res = await callApi(`/api/course-enrollment/staff/requests/${selectedRequest.id}/decision`, 'PATCH', {
                     decision: selectedDecision,
@@ -783,7 +812,7 @@
                         ? Number(document.getElementById('assignedClassSelect').value)
                         : null,
                     reviewNote: document.getElementById('reviewNote').value.trim() || null
-                });
+                }, false, false);
                 decisionModal.hide();
                 if (selectedDecision === 'APPROVE') {
                     const invoiceId = res && res.invoiceId ? res.invoiceId : '';
@@ -802,10 +831,17 @@
                 showNotice('Đã từ chối yêu cầu đăng ký.', 'success');
                 await loadPendingRequests();
             } catch (error) {
-                showNotice(error.message, 'danger');
+                const action = selectedDecision === 'APPROVE' ? 'xếp lớp' : 'từ chối';
+                showDecisionError(requestErrorMessage(error, `Chưa xác nhận được kết quả ${action}. Vui lòng đóng cửa sổ và nhấn Làm mới để kiểm tra trạng thái trước khi thử lại.`));
             } finally {
                 button.disabled = false;
             }
+        }
+
+        function showDecisionError(message) {
+            const alert = document.getElementById('decisionError');
+            alert.textContent = message;
+            alert.classList.toggle('d-none', !message);
         }
 
         function statusBadge(status) {

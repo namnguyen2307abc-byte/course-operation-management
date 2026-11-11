@@ -39,15 +39,26 @@ async function facilityRequest(endpoint, method = 'GET', payload = null) {
     let response;
     try {
         response = await fetch(BASE_URL + endpoint, { method, headers, body: payload === null ? null : JSON.stringify(payload) });
-    } catch {
+    } catch (error) {
+        console.error('Facility request failed:', error);
         throw new Error('Không kết nối được máy chủ. Vui lòng thử lại.');
     }
-    const data = await response.json().catch(() => null);
+    let data;
+    try {
+        data = await response.json();
+    } catch (error) {
+        console.error('Invalid facility response:', error);
+        const invalid = new Error('Phản hồi không hợp lệ.');
+        invalid.status = response.ok ? 502 : response.status;
+        throw invalid;
+    }
     if (!response.ok) {
         const fallback = response.status === 403 ? 'Bạn không có quyền xem hoặc sửa dữ liệu này.'
             : response.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Không tải hoặc lưu được dữ liệu.';
-        const error = new Error(data?.message || fallback);
+        const fields = data?.details ? Object.values(data.details).join('; ') : '';
+        const error = new Error(fields || data?.message || fallback);
         error.status = response.status;
+        console.error('Facility request failed:', error);
         throw error;
     }
     return data;
@@ -79,6 +90,8 @@ async function loadBranches() {
     const select = facilityElement('branchSelect');
     select.disabled = true;
     select.innerHTML = '<option value="">Đang tải danh sách cơ sở...</option>';
+    branches = [];
+    for (const id of ['statBranchesCount', 'statRoomsCount', 'statEquipmentCount', 'statGoodCount']) facilityElement(id).textContent = '—';
     facilityElement('facilityLoadError').classList.add('d-none');
     try {
         const result = await facilityRequest('/api/branches');
@@ -98,7 +111,7 @@ async function loadBranches() {
         if (request !== branchRequest) return;
         select.innerHTML = '<option value="">Không tải được cơ sở</option>';
         const alert = facilityElement('facilityLoadError');
-        alert.innerHTML = `${escapeHtml(error.message)} <button type="button" class="btn btn-sm btn-outline-danger" data-facility-retry="branches">Thử lại</button>`;
+        alert.innerHTML = `${escapeHtml(requestErrorMessage(error, 'Chưa tải được danh sách cơ sở. Vui lòng thử lại.'))} <button type="button" class="btn btn-sm btn-outline-danger" data-facility-retry="branches">Thử lại</button>`;
         alert.classList.remove('d-none');
         tableMessage('roomTableBody', 7, 'Không tải được danh sách cơ sở.');
         tableMessage('equipmentTableBody', 8, 'Không tải được danh sách cơ sở.');
@@ -185,7 +198,7 @@ async function loadRooms(branchId) {
     } catch (error) {
         if (request !== roomRequest || selectedBranchId() !== branchId) return;
         facilityElement('roomCountBadge').textContent = 'Chưa tải được';
-        tableMessage('roomTableBody', 7, error.message, 'rooms');
+        tableMessage('roomTableBody', 7, requestErrorMessage(error, 'Chưa tải được danh sách phòng học. Vui lòng thử lại.'), 'rooms');
     }
 }
 
@@ -217,7 +230,7 @@ async function loadEquipments(branchId) {
     } catch (error) {
         if (request !== equipmentRequest || selectedBranchId() !== branchId) return;
         facilityElement('equipmentCountBadge').textContent = 'Chưa tải được';
-        tableMessage('equipmentTableBody', 8, error.message, 'equipments');
+        tableMessage('equipmentTableBody', 8, requestErrorMessage(error, 'Chưa tải được danh sách thiết bị. Vui lòng thử lại.'), 'equipments');
     }
 }
 
@@ -267,14 +280,14 @@ async function loadRoomUsage(id) {
     const selectRoomBranch = usageSelectsBranch;
     facilityElement('roomUsageBody').innerHTML = '<p class="text-muted" role="status">Đang tải chi tiết phòng & lịch sử dụng...</p>';
     try {
-        if (!canViewRoomUsage()) throw new Error('Bạn không có quyền xem lịch sử dụng phòng.');
+        if (!canViewRoomUsage()) throw Object.assign(new Error('Bạn không có quyền xem lịch sử dụng phòng.'), { status: 403 });
         const data = await facilityRequest(`/api/branches/rooms/${encodeURIComponent(id)}/usage`);
         if (request !== usageRequest || usageRoomId !== id || branchId !== selectedBranchId()) return;
         if (!data?.room) throw new Error('Không tải được thông tin phòng.');
         if (selectRoomBranch) {
             const roomBranchId = String(data.room.branchId ?? '');
             if (!branches.some(branch => String(branch.id) === roomBranchId)) {
-                throw new Error('Cơ sở của phòng không nằm trong danh sách được phép truy cập.');
+                throw Object.assign(new Error('Cơ sở của phòng không nằm trong danh sách được phép truy cập.'), { status: 403 });
             }
             if (branchId !== roomBranchId) {
                 facilityElement('branchSelect').value = roomBranchId;
@@ -285,7 +298,7 @@ async function loadRoomUsage(id) {
         renderRoomUsage(data);
     } catch (error) {
         if (request !== usageRequest || usageRoomId !== id || branchId !== selectedBranchId()) return;
-        facilityElement('roomUsageBody').innerHTML = `<div class="alert alert-danger" role="alert">${escapeHtml(error.message)}</div>
+        facilityElement('roomUsageBody').innerHTML = `<div class="alert alert-danger" role="alert">${escapeHtml(requestErrorMessage(error, 'Chưa tải được chi tiết phòng và lịch sử dụng. Vui lòng thử lại.'))}</div>
             <button type="button" class="btn btn-outline-secondary" data-facility-retry="usage"><i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại</button>`;
     }
 }
@@ -380,7 +393,8 @@ async function saveFacility(event) {
         showFacilityNotice(isRoom ? 'Đã lưu thay đổi phòng học.' : 'Đã lưu thay đổi thiết bị.', warnings);
         loadCurrentTabData();
     } catch (error) {
-        if (editing === context && selectedBranchId() === context.branchId) showEditError(error.message || 'Không lưu được thay đổi.');
+        if (editing === context && selectedBranchId() === context.branchId) showEditError(requestErrorMessage(error,
+            `Chưa xác nhận được việc lưu ${isRoom ? 'phòng học' : 'thiết bị'}. Vui lòng giữ lại nội dung đã nhập và tải lại danh sách để kiểm tra trước khi lưu lại.`));
     } finally {
         setFacilitySaving(false);
     }
