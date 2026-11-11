@@ -1,11 +1,12 @@
 package com.talent.management.features.class_management.dto;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -22,13 +23,14 @@ public record ClassUpsertRequest(
         @NotBlank String status,
         @NotNull LocalDate startDate,
         LocalDate endDate,
-        String scheduleDescription,
-        List<Integer> daysOfWeek,
+        @Size(max = 200) String scheduleDescription,
+        @Size(max = 7) List<Integer> daysOfWeek,
         @JsonFormat(pattern = "HH:mm[:ss]") LocalTime startTime,
         @JsonFormat(pattern = "HH:mm[:ss]") LocalTime endTime,
-        Integer totalSessions
+        @Min(1) @Max(60) Integer totalSessions,
+        boolean clearTeacher,
+        boolean clearRoom
 ) {
-    @JsonCreator
     public ClassUpsertRequest(
             Long courseId,
             Long branchId,
@@ -46,21 +48,8 @@ public record ClassUpsertRequest(
             LocalTime endTime,
             Integer totalSessions
     ) {
-        this.courseId = courseId;
-        this.branchId = branchId;
-        this.teacherId = teacherId;
-        this.roomId = roomId;
-        this.classCode = classCode;
-        this.className = className;
-        this.maxStudents = maxStudents;
-        this.status = status;
-        this.startDate = startDate;
-        this.endDate = endDate;
-        this.scheduleDescription = scheduleDescription;
-        this.daysOfWeek = daysOfWeek;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.totalSessions = totalSessions;
+        this(courseId, branchId, teacherId, roomId, classCode, className, maxStudents, status,
+                startDate, endDate, scheduleDescription, daysOfWeek, startTime, endTime, totalSessions, false, false);
     }
 
     public ClassUpsertRequest(

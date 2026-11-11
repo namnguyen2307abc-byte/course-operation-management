@@ -16,7 +16,7 @@ if (homeUser) {
         link.innerHTML = `<span class="feature-symbol tone-${index % 4}"><i class="bi bi-${feature.icon}"></i></span><h3>${feature.label}</h3><p>${feature.description}</p><span class="feature-open">Mở chức năng <i class="bi bi-arrow-up-right"></i></span>`;
         grid.appendChild(link);
     });
-    const primary = features.find(f => f.file === (teacher || parent || homeUser.role === 'STUDENT' ? 'weekly-schedule' : 'course-enrollment')) || features[0];
+    const primary = features.find(f => f.file === (homeUser.role === 'ADMIN' ? 'admin-dashboard' : teacher || parent || homeUser.role === 'STUDENT' ? 'weekly-schedule' : 'course-enrollment')) || features[0];
     if (primary) {
         const action = document.getElementById('primaryAction');
         action.href = appPath('/pages/' + primary.file + '.html');
@@ -25,12 +25,4 @@ if (homeUser) {
     }
 }
 document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('vi-VN', {weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh'}).format(new Date());
-fetch('./components/navbar.html').then(response => {
-    if (!response.ok) throw new Error('Không tải được điều hướng');
-    return response.text();
-}).then(html => {
-    document.getElementById('navbar-container').innerHTML = html;
-    updateNavbarUser();
-}).catch(() => {
-    document.getElementById('navbar-container').textContent = 'Không tải được thanh điều hướng. Vui lòng tải lại trang.';
-});
+updateNavbarUser();

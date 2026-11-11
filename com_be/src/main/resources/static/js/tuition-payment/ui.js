@@ -393,6 +393,9 @@ export function renderReceiptModal(receipt) {
     }
 
     document.getElementById('rcFinalAmount').innerText = formatCurrency(receipt.finalAmount);
+    document.getElementById('rcTotalTuition').textContent = formatCurrency(receipt.totalTuition ?? receipt.originalAmount);
+    document.getElementById('rcRemainingAfter').textContent = receipt.remainingAfter == null
+        ? 'Giao dịch cũ chưa lưu số dư tại lúc thu' : formatCurrency(receipt.remainingAfter);
 
     const isCash = receipt.paymentMethod === 'CASH_AT_DESK';
     const cashGivenRow = document.getElementById('rcCashGivenRow');

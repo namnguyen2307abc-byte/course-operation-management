@@ -59,17 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initNavbarAndRoleBadge() {
-    // Nạp navbar từ components/navbar.html
-    fetch('../components/navbar.html')
-        .then(r => r.text())
-        .then(html => {
-            const container = document.getElementById('navbar-container');
-            if (container) {
-                container.innerHTML = html;
-                updateNavbarUser();
-            }
-        })
-        .catch(e => console.error("Lỗi nạp navbar:", e));
+    updateNavbarUser();
 
     // Nạp footer
     fetch('../components/footer.html')
@@ -604,7 +594,7 @@ async function onNewBranchChanged() {
     }
 
     try {
-        const rooms = await callApi(`/api/branch-facility/branches/${branchId}/rooms`).catch(() => []);
+        const rooms = await callApi(`/api/branches/${branchId}/rooms`).catch(() => []);
         if (rooms && rooms.length > 0) {
             roomSelect.innerHTML = '<option value="">-- Chọn phòng học --</option>' +
                 rooms.map(r => `<option value="${r.id}">${r.roomName} (${r.roomCode})</option>`).join('');

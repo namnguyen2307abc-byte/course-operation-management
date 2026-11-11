@@ -36,7 +36,7 @@ loginForm.addEventListener('submit', async event => {
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result));
         signedIn = true;
-        window.location.href = './index.html';
+        window.location.href = result.mustChangePassword ? './pages/change-password.html' : './index.html';
     } catch (err) {
         document.getElementById('errorMsg').textContent = err.name === 'TimeoutError' ? 'Kết nối quá lâu. Vui lòng thử lại.' : err instanceof TypeError ? 'Không thể kết nối đến hệ thống. Vui lòng kiểm tra kết nối và thử lại.' : err.message;
         error.hidden = false;

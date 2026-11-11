@@ -3,81 +3,61 @@ package com.talent.management.features.auth.security;
 import com.talent.management.features.auth.repository.UserRepository;
 import com.talent.management.features.auth.service.JwtService;
 import com.talent.management.shared.entity.User;
+import com.talent.management.shared.enums.UserStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
-import java.util.Collections;
 
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
-        this.jwtService = jwtService;
-        this.userRepository = userRepository;
-    }
-
     @Override
-    protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
-
-        final String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) { chain.doFilter(request, response); return; }
+        User authenticatedUser;
+        try {
+            String token = header.substring(7);
+            String username = jwtService.extractUsername(token);
+            authenticatedUser = userRepository.findByUsername(username).orElseThrow();
+            UserDetails details = org.springframework.security.core.userdetails.User.withUsername(username)
+                    .password(authenticatedUser.getPassword()).roles(authenticatedUser.getRole().name()).build();
+            Number version = jwtService.extractClaim(token, claims -> claims.get("version", Number.class));
+            if (authenticatedUser.getStatus() != UserStatus.ACTIVE || !jwtService.isTokenValid(token, details)
+                    || version == null || version.longValue() != authenticatedUser.getTokenVersion()) {
+                throw new IllegalArgumentException("Invalid session");
+            }
+            var authentication = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        } catch (Exception ex) {
+            SecurityContextHolder.clearContext();
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"message\":\"Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.\"}");
             return;
         }
-
-        final String jwt = authHeader.substring(7);
-        try {
-            String username = null;
-            if (jwt.startsWith("AUTH_TOKEN_")) {
-                username = jwt.substring("AUTH_TOKEN_".length());
-            } else {
-                try {
-                    username = jwtService.extractUsername(jwt);
-                } catch (Exception e) {
-                    username = jwt;
-                }
-            }
-
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userRepository.findByUsername(username).orElse(null);
-                if (user != null) {
-                    UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                            .username(user.getUsername())
-                            .password(user.getPassword() != null ? user.getPassword() : "123456")
-                            .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
-                            .build();
-
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
-            }
-        } catch (Exception ignored) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        if (authenticatedUser.isMustChangePassword() && path.startsWith("/api/")
+                && !path.equals("/api/auth/change-password") && !path.equals("/api/auth/me")) {
+            response.setStatus(403);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":\"PASSWORD_CHANGE_REQUIRED\",\"message\":\"Vui lòng đổi mật khẩu trước khi tiếp tục.\"}");
+            return;
         }
-
-        filterChain.doFilter(request, response);
+        chain.doFilter(request, response);
     }
 }
