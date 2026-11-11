@@ -158,15 +158,20 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         // remove the original lesson still attended by another sibling.
         Map<Long, Set<Long>> studentsByLesson = new HashMap<>();
         Map<Long, String> studentNames = new HashMap<>();
+        Set<Long> viewedMakeupLessonIds = new HashSet<>();
         if (!viewedStudentIds.isEmpty()) {
             Map<Long, Lesson> merged = new LinkedHashMap<>();
             for (Long sid : viewedStudentIds) {
                 studentRepository.findById(sid).ifPresent(s -> studentNames.put(sid, s.getFullName()));
                 List<Lesson> personalLessons = attendanceLessonRepository
                         .findLessonsByStudentIdAndDateBetween(sid, monday, sunday);
+                Set<Long> regularIds = personalLessons.stream().map(Lesson::getId).collect(Collectors.toSet());
                 for (Lesson lesson : applyMakeupAdjustments(personalLessons, Set.of(sid), monday, sunday)) {
                     merged.put(lesson.getId(), lesson);
                     studentsByLesson.computeIfAbsent(lesson.getId(), ignored -> new LinkedHashSet<>()).add(sid);
+                    if (!regularIds.contains(lesson.getId())) {
+                        viewedMakeupLessonIds.add(lesson.getId());
+                    }
                 }
             }
             lessons = new ArrayList<>(merged.values());
@@ -184,15 +189,56 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 : attendanceRecordRepository.findByLessonIdIn(lessonIds).stream()
                         .collect(Collectors.groupingBy(att -> att.getLesson().getId()));
 
-        // Điều chỉnh sĩ số: trừ HS chuyển đi, cộng HS học bù đến (bao gồm SCHEDULED, COMPLETED, MISSED)
+        // Điều chỉnh sĩ số và danh sách học viên theo từng buổi: trừ HS chuyển đi, cộng HS học bù đến
         Map<Long, Integer> seatDelta = new HashMap<>();
+        Map<Long, List<String>> makeupInDetailsMap = new HashMap<>();
+        Map<Long, List<String>> makeupOutDetailsMap = new HashMap<>();
+        Map<Long, Set<Long>> movedOutIdsMap = new HashMap<>();
+        Map<Long, List<Student>> makeupInStudentsMap = new HashMap<>();
         if (!lessonIds.isEmpty()) {
             List<MakeupStatus> active = List.of(MakeupStatus.SCHEDULED, MakeupStatus.COMPLETED, MakeupStatus.MISSED);
             for (MakeupRegistration mr : makeupRegistrationRepository.findByOriginalLessonIdInAndStatusIn(lessonIds, active)) {
-                seatDelta.merge(mr.getOriginalLesson().getId(), -1, Integer::sum);
+                Long origId = mr.getOriginalLesson().getId();
+                seatDelta.merge(origId, -1, Integer::sum);
+                if (mr.getStudent() != null) {
+                    movedOutIdsMap.computeIfAbsent(origId, k -> new HashSet<>()).add(mr.getStudent().getId());
+                    String targetCls = (mr.getTargetLesson() != null && mr.getTargetLesson().getClassEntity() != null)
+                            ? " → " + mr.getTargetLesson().getClassEntity().getClassName() : "";
+                    makeupOutDetailsMap.computeIfAbsent(origId, k -> new ArrayList<>())
+                            .add(mr.getStudent().getFullName() + targetCls);
+                }
             }
             for (MakeupRegistration mr : makeupRegistrationRepository.findByTargetLessonIdInAndStatusIn(lessonIds, active)) {
-                seatDelta.merge(mr.getTargetLesson().getId(), 1, Integer::sum);
+                Long targetId = mr.getTargetLesson().getId();
+                seatDelta.merge(targetId, 1, Integer::sum);
+                if (mr.getStudent() != null) {
+                    makeupInStudentsMap.computeIfAbsent(targetId, k -> new ArrayList<>()).add(mr.getStudent());
+                    String origCls = (mr.getOriginalLesson() != null && mr.getOriginalLesson().getClassEntity() != null)
+                            ? " (từ " + mr.getOriginalLesson().getClassEntity().getClassName() + ")" : "";
+                    makeupInDetailsMap.computeIfAbsent(targetId, k -> new ArrayList<>())
+                            .add(mr.getStudent().getFullName() + origCls);
+                }
+            }
+        }
+
+        // Batch fetch học viên chính thức theo lớp để đồng bộ danh sách & sĩ số từng buổi cho GV/Staff
+        Map<Long, List<Student>> enrolledByClass = new HashMap<>();
+        if (userRole != Role.STUDENT && userRole != Role.PARENT) {
+            Set<Long> classIds = lessons.stream()
+                    .map(Lesson::getClassEntity)
+                    .filter(Objects::nonNull)
+                    .map(ClassEntity::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            if (!classIds.isEmpty()) {
+                // Chỉ lấy học viên đã ghi danh chính thức (ENROLLED); không đưa học viên PENDING_PAYMENT (chưa đóng học phí) vào bảng điểm danh/TKB
+                List<EnrollmentStatus> activeStatuses = List.of(EnrollmentStatus.ENROLLED);
+                for (Enrollment e : attendanceEnrollmentRepository.findEnrollmentsByClassIdInAndStatusIn(classIds, activeStatuses)) {
+                    if (e.getClassEntity() != null && e.getStudent() != null) {
+                        enrolledByClass.computeIfAbsent(e.getClassEntity().getId(), k -> new ArrayList<>())
+                                .add(e.getStudent());
+                    }
+                }
             }
         }
 
@@ -206,12 +252,16 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             boolean isToday = l.getLessonDate().isEqual(today);
             boolean isPast = l.getLessonDate().isBefore(today);
 
+            User assignedTeacher = l.getTeacher() != null
+                    ? l.getTeacher()
+                    : (l.getClassEntity() != null ? l.getClassEntity().getTeacher() : null);
+
             boolean canEdit;
             if (userRole == Role.ADMIN || userRole == Role.STAFF || userRole == Role.BRANCH_MANAGER) {
                 canEdit = true;
             } else if (userRole == Role.TEACHER) {
-                boolean isAssignedTeacher = l.getTeacher() != null
-                        && l.getTeacher().getId().equals(currentUser.getId());
+                boolean isAssignedTeacher = assignedTeacher != null
+                        && assignedTeacher.getId().equals(currentUser.getId());
                 canEdit = isToday && isAssignedTeacher;
             } else {
                 canEdit = false;
@@ -219,34 +269,101 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
             if (l.getStatus() == LessonStatus.CANCELLED) canEdit = false;
 
             List<Attendance> attendancesOfLesson = attendanceMap.getOrDefault(l.getId(), Collections.emptyList());
-            int totalStudents = (l.getClassEntity() != null && l.getClassEntity().getCurrentStudents() != null)
-                    ? l.getClassEntity().getCurrentStudents()
-                    : attendancesOfLesson.size();
-            totalStudents = Math.max(0, totalStudents + seatDelta.getOrDefault(l.getId(), 0));
+            List<String> makeupInDetails = makeupInDetailsMap.getOrDefault(l.getId(), Collections.emptyList());
+            List<String> makeupOutDetails = makeupOutDetailsMap.getOrDefault(l.getId(), Collections.emptyList());
+            int makeupInCount = makeupInDetails.size();
+            int makeupOutCount = makeupOutDetails.size();
+
             long presentCount = attendancesOfLesson.stream().filter(a -> a.getStatus() == AttendanceStatus.PRESENT)
                     .count();
             long absentCount = attendancesOfLesson.stream().filter(a -> a.getStatus() == AttendanceStatus.ABSENT)
                     .count();
 
-            // Xác định trạng thái điểm danh cho người xem
+            // Xác định danh sách học viên, sĩ số và trạng thái điểm danh của từng buổi
             String attendanceStatus = "NOT_MARKED";
             List<StudentLessonAttendanceResponse> studentAttendances = new ArrayList<>();
+            int totalStudents;
+            boolean attendanceCompleted;
+
+            boolean autoAbsentPast = isPast && l.getStatus() != LessonStatus.CANCELLED;
+
             if (userRole == Role.STUDENT || userRole == Role.PARENT) {
+                totalStudents = (l.getClassEntity() != null && l.getClassEntity().getCurrentStudents() != null)
+                        ? l.getClassEntity().getCurrentStudents()
+                        : attendancesOfLesson.size();
+                totalStudents = Math.max(0, totalStudents + seatDelta.getOrDefault(l.getId(), 0));
                 for (Long sid : studentsByLesson.getOrDefault(l.getId(), Set.of())) {
                     String personalStatus = attendancesOfLesson.stream()
                             .filter(a -> a.getStudent() != null && sid.equals(a.getStudent().getId()))
                             .map(a -> a.getStatus().name()).findFirst().orElse("NOT_MARKED");
+                    if ("NOT_MARKED".equals(personalStatus) && autoAbsentPast) {
+                        personalStatus = "ABSENT";
+                    }
                     studentAttendances.add(new StudentLessonAttendanceResponse(sid,
                             studentNames.getOrDefault(sid, "Học viên " + sid), personalStatus));
                 }
                 if (studentAttendances.size() == 1) {
                     attendanceStatus = studentAttendances.get(0).status();
                 }
+                attendanceCompleted = totalStudents > 0 && attendancesOfLesson.size() >= totalStudents;
+            } else {
+                Long clsId = l.getClassEntity() != null ? l.getClassEntity().getId() : null;
+                List<Student> classEnrolled = clsId != null
+                        ? enrolledByClass.getOrDefault(clsId, Collections.emptyList())
+                        : Collections.emptyList();
+                Set<Long> movedOutIds = movedOutIdsMap.getOrDefault(l.getId(), Collections.emptySet());
+                List<Student> makeupInStudents = makeupInStudentsMap.getOrDefault(l.getId(), Collections.emptyList());
+
+                Map<Long, Student> sessionStudents = new LinkedHashMap<>();
+                Set<Long> makeupInIds = new HashSet<>();
+                for (Student s : classEnrolled) {
+                    if (!movedOutIds.contains(s.getId())) {
+                        sessionStudents.put(s.getId(), s);
+                    }
+                }
+                for (Student s : makeupInStudents) {
+                    sessionStudents.putIfAbsent(s.getId(), s);
+                    makeupInIds.add(s.getId());
+                }
+
+                Map<Long, String> statusByStudent = attendancesOfLesson.stream()
+                        .filter(a -> a.getStudent() != null && a.getStatus() != null)
+                        .collect(Collectors.toMap(a -> a.getStudent().getId(), a -> a.getStatus().name(), (a1, a2) -> a1));
+
+                for (Student s : sessionStudents.values()) {
+                    String st = statusByStudent.getOrDefault(s.getId(), "NOT_MARKED");
+                    if ("NOT_MARKED".equals(st) && autoAbsentPast) {
+                        st = "ABSENT";
+                    }
+                    String label = makeupInIds.contains(s.getId()) ? s.getFullName() + " (Học bù)" : s.getFullName();
+                    studentAttendances.add(new StudentLessonAttendanceResponse(s.getId(), label, st));
+                }
+
+                if (!classEnrolled.isEmpty()) {
+                    totalStudents = sessionStudents.size();
+                    attendanceCompleted = totalStudents > 0 && statusByStudent.keySet().containsAll(sessionStudents.keySet());
+                } else {
+                    int baseCount = (l.getClassEntity() != null && l.getClassEntity().getCurrentStudents() != null)
+                            ? l.getClassEntity().getCurrentStudents()
+                            : attendancesOfLesson.size();
+                    totalStudents = Math.max(0, baseCount + seatDelta.getOrDefault(l.getId(), 0));
+                    attendanceCompleted = totalStudents > 0 && attendancesOfLesson.size() >= totalStudents;
+                }
+
+                // Nếu giáo viên dạy lớp mà toàn bộ học viên của buổi đã chuyển đi học bù (0 HV) -> ẩn buổi trống khỏi lịch GV
+                if (userRole == Role.TEACHER && totalStudents == 0 && makeupOutCount > 0) {
+                    return null;
+                }
             }
 
             String timeRangeStr = (l.getStartTime() != null && l.getEndTime() != null)
                     ? l.getStartTime().format(TIME_FMT) + " - " + l.getEndTime().format(TIME_FMT)
                     : "08:00 - 09:30";
+
+            boolean isMakeupSession = !viewedStudentIds.isEmpty()
+                    && (viewedMakeupLessonIds.contains(l.getId())
+                            || makeupInStudentsMap.getOrDefault(l.getId(), Collections.emptyList()).stream()
+                                    .anyMatch(s -> s.getId() != null && viewedStudentIds.contains(s.getId())));
 
             return LessonSlotItemResponse.builder()
                     .lessonId(l.getId())
@@ -298,12 +415,17 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                     .canEdit(canEdit)
                     .attendanceStatus(attendanceStatus)
                     .studentAttendances(studentAttendances)
-                    .attendanceCompleted(totalStudents > 0 && attendancesOfLesson.size() >= totalStudents)
+                    .attendanceCompleted(attendanceCompleted)
                     .totalStudents(totalStudents)
                     .presentCount((int) presentCount)
                     .absentCount((int) absentCount)
+                    .makeupInCount(makeupInCount)
+                    .makeupInDetails(makeupInDetails)
+                    .makeupOutCount(makeupOutCount)
+                    .makeupOutDetails(makeupOutDetails)
+                    .makeupSession(isMakeupSession)
                     .build();
-        }).toList();
+        }).filter(Objects::nonNull).toList();
 
         return WeeklyScheduleResponse.builder()
                 .weekNumber(weekNumber)
@@ -439,8 +561,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
         // Lấy danh sách đơn xin nghỉ phép đã duyệt cho buổi này
         Map<Long, AbsenceRequest> approvedAbsenceMap = absenceRequestRepository.findByLessonId(lesson.getId()).stream()
-                .filter(ar -> (ar.getStatus() == AbsenceStatus.APPROVED || ar.getStatus() == AbsenceStatus.EXCUSED)
-                        && ar.getStudent() != null)
+                .filter(ar -> ar.getStatus() == AbsenceStatus.APPROVED && ar.getStudent() != null)
                 .collect(Collectors.toMap(ar -> ar.getStudent().getId(), Function.identity(), (a1, a2) -> a1));
 
         // Tổng hợp danh sách học sinh: Lớp chính + Học viên học bù
@@ -463,6 +584,10 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         int presentCount = 0;
         int absentCount = 0;
 
+        boolean autoAbsentPast = lesson.getLessonDate() != null
+                && lesson.getLessonDate().isBefore(today)
+                && lesson.getStatus() != LessonStatus.CANCELLED;
+
         for (Student s : uniqueStudents.values()) {
             Attendance att = attendanceMap.get(s.getId());
             AbsenceRequest leaveReq = approvedAbsenceMap.get(s.getId());
@@ -477,6 +602,9 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 // Đã có đơn nghỉ được duyệt -> gợi ý ABSENT (Nghỉ học)
                 statusStr = "ABSENT";
                 noteStr = "Nghỉ học: " + (leaveReq.getReason() != null ? leaveReq.getReason() : "");
+            } else if (autoAbsentPast) {
+                statusStr = "ABSENT";
+                noteStr = "Vắng mặt (Quá khứ chưa điểm danh)";
             } else {
                 // Chưa điểm danh -> Để null, giáo viên tự chọn từ đầu
                 statusStr = null;
@@ -660,6 +788,8 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 makeupRegistrationRepository
                         .findFirstByTargetLessonIdAndStudentIdAndStatusIn(lesson.getId(), student.getId(),
                                 List.of(MakeupStatus.SCHEDULED, MakeupStatus.MISSED))
+                        .or(() -> makeupRegistrationRepository.findFirstByTargetLessonIdAndStudentIdAndStatus(
+                                lesson.getId(), student.getId(), MakeupStatus.SCHEDULED))
                         .ifPresent(mr -> {
                             int retry = Math.max(1, com.talent.management.features.attendance_makeup.mapper.AttendanceMakeupMapper.extractRetryCount(mr));
                             mr.setStatus(MakeupStatus.COMPLETED);
@@ -972,12 +1102,16 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         int makeupMissedCount = 0;
         List<StudentLessonAttendanceItemResponse> lessonItems = new ArrayList<>();
 
+        LocalDate today = LocalDate.now(CENTER_ZONE);
         for (int i = 0; i < classLessons.size(); i++) {
             Lesson l = classLessons.get(i);
             int sessionNum = l.getSessionNumber() != null ? l.getSessionNumber() : (i + 1);
             Attendance att = attendanceByLesson.get(l.getId());
             AbsenceRequest ar = absenceByLesson.get(l.getId());
             MakeupRegistration mr = makeupByOriginal.get(l.getId());
+            boolean autoAbsentPast = l.getLessonDate() != null
+                    && l.getLessonDate().isBefore(today)
+                    && l.getStatus() != LessonStatus.CANCELLED;
 
             String status;
             String statusLabel;
@@ -988,7 +1122,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                     status = "PRESENT";
                     statusLabel = "Có mặt";
                     attendedCount++;
-                } else if (att.getStatus() == AttendanceStatus.ABSENT) {
+                } else if (att.getStatus() == AttendanceStatus.ABSENT || autoAbsentPast) {
                     status = "ABSENT";
                     statusLabel = "Vắng mặt";
                     absentCount++;
@@ -999,12 +1133,19 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 }
                 if (att.getNote() != null && !att.getNote().isBlank()) {
                     note = att.getNote().trim();
+                } else if ("ABSENT".equals(status) && att.getStatus() != AttendanceStatus.ABSENT) {
+                    note = "Vắng mặt (Quá khứ chưa điểm danh)";
                 }
-            } else if (ar != null && (ar.getStatus() == AbsenceStatus.APPROVED || ar.getStatus() == AbsenceStatus.EXCUSED)) {
+            } else if (ar != null && ar.getStatus() == AbsenceStatus.APPROVED) {
                 status = "ABSENT";
                 statusLabel = "Vắng mặt";
                 absentCount++;
                 note = "Nghỉ có phép: " + (ar.getReason() != null ? ar.getReason() : "");
+            } else if (autoAbsentPast) {
+                status = "ABSENT";
+                statusLabel = "Vắng mặt";
+                absentCount++;
+                note = "Vắng mặt (Quá khứ chưa điểm danh)";
             } else {
                 status = "NOT_MARKED";
                 statusLabel = "Chưa điểm danh";
@@ -1029,8 +1170,6 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                     makeupInfo = "Chờ xếp lịch học bù";
                 } else if (mr.getStatus() == MakeupStatus.NO_SLOT) {
                     makeupInfo = "Chưa có lớp bù phù hợp";
-                } else if (mr.getStatus() == MakeupStatus.DEFERRED) {
-                    makeupInfo = "Chuyển sang kỳ sau";
                 }
             }
 

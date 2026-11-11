@@ -7,8 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO xét duyệt đơn xin nghỉ học — gộp 3 action cũ (approve/special-approve/reject)
- * thành 1 endpoint duy nhất /review với enum ReviewDecision.
+ * DTO xét duyệt đơn xin nghỉ học của giáo viên / nhân viên / admin
  */
 @Data
 @Builder
@@ -18,22 +17,20 @@ public class AbsenceReviewRequest {
 
     /**
      * Quyết định xét duyệt (bắt buộc).
-     * APPROVED  → Duyệt, cần học bù → auto tạo MakeupRegistration{PENDING}
-     * EXCUSED   → Duyệt, miễn học bù (nghỉ ốm có giấy, lý do đặc biệt) → KHÔNG tạo ca bù
-     * REJECTED  → Từ chối
+     * APPROVED  → Đồng ý duyệt đơn nghỉ → tự động tạo ca học bù MakeupRegistration{PENDING}
+     * REJECTED  → Từ chối đơn nghỉ
      */
-    @NotNull(message = "Vui lòng chọn quyết định xét duyệt (APPROVED / EXCUSED / REJECTED)")
+    @NotNull(message = "Vui lòng chọn quyết định xét duyệt (APPROVED / REJECTED)")
     private ReviewDecision decision;
 
     /**
      * Ghi chú xét duyệt:
-     * - Bắt buộc khi EXCUSED  (lý do miễn học bù)
      * - Bắt buộc khi REJECTED (lý do từ chối, thông báo tới phụ huynh)
-     * - Tùy chọn  khi APPROVED
+     * - Tùy chọn khi APPROVED
      */
     private String reviewNote;
 
     public enum ReviewDecision {
-        APPROVED, EXCUSED, REJECTED
+        APPROVED, REJECTED
     }
 }

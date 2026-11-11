@@ -22,22 +22,6 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
     List<Lesson> findLessonsByStudentId(@Param("studentId") Long studentId);
 
     /**
-     * Lấy các ca học khả dụng cho việc xếp lịch học bù (diễn ra từ ngày hôm nay trở đi)
-     */
-    @Query("SELECT l FROM Lesson l " +
-           "WHERE l.lessonDate >= :fromDate " +
-           "ORDER BY l.lessonDate ASC, l.startTime ASC")
-    List<Lesson> findAvailableUpcomingLessons(@Param("fromDate") LocalDate fromDate);
-
-    /**
-     * Lấy các ca học cùng khóa học để học viên học bù
-     */
-    @Query("SELECT l FROM Lesson l " +
-           "WHERE l.classEntity.course.id = :courseId AND l.lessonDate >= :fromDate " +
-           "ORDER BY l.lessonDate ASC, l.startTime ASC")
-    List<Lesson> findUpcomingLessonsByCourseId(@Param("courseId") Long courseId, @Param("fromDate") LocalDate fromDate);
-
-    /**
      * Lấy tên các lớp học mà học viên đang theo học
      */
     @Query("SELECT DISTINCT e.classEntity.className FROM Enrollment e WHERE e.student.id = :studentId")
@@ -61,7 +45,7 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
            "JOIN Enrollment e ON e.classEntity.id = l.classEntity.id " +
            "WHERE e.student.id = :studentId " +
            "AND l.lessonDate BETWEEN :startDate AND :endDate " +
-           "AND e.status <> com.talent.management.shared.enums.EnrollmentStatus.CANCELLED " +
+           "AND e.status = com.talent.management.shared.enums.EnrollmentStatus.ENROLLED " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")
     List<Lesson> findLessonsByStudentIdAndDateBetween(
             @Param("studentId") Long studentId,

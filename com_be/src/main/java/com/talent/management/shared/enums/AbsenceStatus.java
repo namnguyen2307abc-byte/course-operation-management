@@ -1,10 +1,7 @@
 package com.talent.management.shared.enums;
 
 public enum AbsenceStatus {
-    PENDING,          // Chờ giáo viên duyệt
-    APPROVED,         // Duyệt — cần học bù (auto tạo MakeupRegistration)
-    EXCUSED,          // Duyệt — miễn học bù (nghỉ ốm có giấy, lý do đặc biệt)
-    REJECTED,         // Từ chối — luồng kết thúc
-    CANCELLED,        // Đã hủy đơn xin nghỉ
-    SPECIAL_APPROVED  // @Deprecated — giữ lại để tương thích dữ liệu cũ trong DB
+    PENDING,          // Chờ xét duyệt (Giáo viên phụ trách / Staff / Admin)
+    APPROVED,         // Đồng ý — cần học bù (tự động tạo MakeupRegistration{PENDING})
+    REJECTED          // Từ chối — luồng kết thúc
 }

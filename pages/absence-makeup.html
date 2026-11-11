@@ -7,90 +7,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/absence-makeup-flow.css">
     <style>
-        .nav-pills-custom .nav-link {
-            border-radius: 12px;
-            font-weight: 600;
-            padding: 0.65rem 1.4rem;
-            color: #4b635b;
-            background: #ffffff;
-            border: 1px solid #d5e2dc;
-            margin-right: 0.6rem;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .nav-pills-custom .nav-link:hover {
-            color: #143c34;
-            border-color: #b7cebf;
-            background: #f0f7f4;
-        }
-        .nav-pills-custom .nav-link.active {
-            background: linear-gradient(135deg, #143c34 0%, #1e5346 100%);
-            color: #ffffff !important;
-            border-color: #143c34;
-            box-shadow: 0 4px 12px rgba(20, 60, 52, 0.25);
-        }
-        .btn-primary {
-            background-color: #1e5346 !important;
-            border-color: #1e5346 !important;
-        }
-        .btn-primary:hover, .btn-primary:focus {
-            background-color: #143c34 !important;
-            border-color: #143c34 !important;
-        }
-        .btn-outline-primary {
-            color: #1e5346 !important;
-            border-color: #b7cebf !important;
-        }
-        .btn-outline-primary:hover {
-            background-color: #e3efdf !important;
-            color: #143c34 !important;
-            border-color: #1e5346 !important;
-        }
-        .filter-box {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 1.25rem 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        }
-        .card-modern {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-        }
-        .table-custom {
-            border-collapse: separate;
-            border-spacing: 0;
-            width: 100%;
-        }
-        .table-custom th {
-            font-size: 0.74rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #475569;
-            background-color: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 0.9rem 1rem;
-            white-space: nowrap;
-        }
-        .table-custom td {
-            vertical-align: middle;
-            padding: 0.85rem 1rem;
-            border-bottom: 1px solid #f1f5f9;
-            background: #ffffff;
-            transition: background 0.15s ease;
-        }
-        .table-custom tr:last-child td {
-            border-bottom: none;
-        }
-        .table-custom tbody tr:hover td {
-            background-color: #f8fafc !important;
-        }
         .id-badge {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             font-size: 0.78rem;
@@ -123,11 +41,6 @@
             color: #047857;
             border: 1px solid #a7f3d0;
         }
-        .status-excused {
-            background: #eff6ff;
-            color: #1d4ed8;
-            border: 1px solid #bfdbfe;
-        }
         .status-rejected {
             background: #fef2f2;
             color: #b91c1c;
@@ -147,11 +60,6 @@
             background: #fff1f2;
             color: #be123c;
             border: 1px solid #fecdd3;
-        }
-        .status-deferred {
-            background: #f8fafc;
-            color: #334155;
-            border: 1px solid #cbd5e1;
         }
         .status-cancelled {
             background: #f1f5f9;
@@ -205,6 +113,48 @@
             color: #ffffff;
             border-color: #ef4444;
         }
+        .btn-action-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0.28rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+            transition: all 0.16s ease;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .btn-action-pill-primary {
+            background: #0d9488;
+            color: #ffffff;
+            border-color: #0d9488;
+        }
+        .btn-action-pill-primary:hover {
+            background: #0f766e;
+            color: #ffffff;
+        }
+        .btn-action-pill-warn {
+            background: #fff1f2;
+            color: #be123c;
+            border-color: #fecdd3;
+        }
+        .btn-action-pill-warn:hover {
+            background: #e11d48;
+            color: #ffffff;
+            border-color: #e11d48;
+        }
+        .btn-action-pill-danger {
+            background: #fef2f2;
+            color: #dc2626;
+            border-color: #fecaca;
+        }
+        .btn-action-pill-danger:hover {
+            background: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
         .reason-box {
             padding: 0.35rem 0.65rem;
             border-radius: 8px;
@@ -213,6 +163,38 @@
             color: #475569;
             font-size: 0.78rem;
             line-height: 1.35;
+        }
+        .modal-modern .modal-content {
+            border: 0;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+        }
+        .modal-modern .modal-header {
+            padding: 1rem 1.35rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        }
+        .modal-modern .modal-body {
+            padding: 1.25rem 1.35rem;
+        }
+        .modal-modern .modal-footer {
+            padding: 0.75rem 1.35rem 1.15rem;
+            border-top: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .detail-info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+        }
+        .detail-section-label {
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b;
+            margin-bottom: 0.35rem;
         }
         .toast-container-custom {
             position: fixed;
@@ -350,7 +332,7 @@
                         <span id="pageTitleText">Viết Đơn</span>
                     </h1>
                     <p class="hero-sub mb-0" id="pageHeroDesc">
-                        Quản lý đơn xin nghỉ học và lịch học bù của học viên.
+                        Đơn xin nghỉ và lịch học bù.
                     </p>
                 </div>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
@@ -444,30 +426,67 @@
         <!-- =================================================================== -->
         <div id="sectionAbsence">
             <div class="filter-box mb-4">
-                <div class="row align-items-center g-3">
-                    <div class="col-md-4">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">
-                            <i class="bi bi-funnel me-1 text-primary"></i>Trạng Thái:
+                            <i class="bi bi-funnel me-1 text-success"></i>Trạng thái
                         </label>
-                        <select id="filterAbsenceStatus" class="form-select form-control-modern" onchange="renderAbsenceTable(true)">
-                            <option value="" selected>Tất Cả Trạng Thái</option>
-                            <option value="PENDING">Chờ Duyệt (PENDING)</option>
-                            <option value="APPROVED">Đã Duyệt (APPROVED)</option>
-                            <option value="EXCUSED">Miễn Học Bù (EXCUSED)</option>
-                            <option value="REJECTED">Từ Chối (REJECTED)</option>
+                        <select id="filterAbsenceStatus" class="form-select form-control-modern">
+                            <option value="" selected>Tất cả trạng thái</option>
+                            <option value="PENDING">Chờ duyệt</option>
+                            <option value="APPROVED">Đã duyệt</option>
+                            <option value="REJECTED">Từ chối</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">
-                            <i class="bi bi-search me-1 text-primary"></i>Tìm Kiếm:
+                            <i class="bi bi-person me-1 text-success"></i>Học viên
                         </label>
-                        <input type="text" id="searchAbsenceInput" class="form-control form-control-modern" 
-                               placeholder="Tìm theo tên học viên, buổi học, lý do..." oninput="renderAbsenceTable(true)">
+                        <select id="filterAbsenceStudent" class="form-select form-control-modern">
+                            <option value="">Tất cả học viên</option>
+                        </select>
                     </div>
-                    <div class="col-md-3 text-md-end pt-md-4" id="createBtnWrapper">
-                        <button class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm" id="btnCreateNewAbsence" onclick="switchMainTab('CREATE')">
-                            <i class="bi bi-plus-circle me-1"></i> Tạo Đơn Mới
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-easel me-1 text-success"></i>Lớp học
+                        </label>
+                        <select id="filterAbsenceClass" class="form-select form-control-modern">
+                            <option value="">Tất cả lớp</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Từ ngày</label>
+                        <input type="date" id="filterAbsenceFromDate" class="form-control form-control-modern">
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Đến ngày</label>
+                        <input type="date" id="filterAbsenceToDate" class="form-control form-control-modern">
+                    </div>
+                </div>
+                <div class="row g-2 align-items-end mt-2">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-muted rounded-start-3"><i class="bi bi-search"></i></span>
+                            <input type="text" id="searchAbsenceInput" class="form-control form-control-modern border-start-0 ps-0"
+                                   placeholder="Tìm mã đơn, học viên, lớp, lý do..."
+                                   onkeydown="if(event.key==='Enter') applyAbsenceFilter()">
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex flex-wrap justify-content-md-end gap-2">
+                        <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold" onclick="applyAbsenceFilter()">
+                            <i class="bi bi-funnel-fill me-1"></i>Lọc
                         </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="resetAbsenceFilter()">
+                            <i class="bi bi-eraser me-1"></i>Đặt lại
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadAbsenceRequests()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Làm mới
+                        </button>
+                        <span id="createBtnWrapper">
+                            <button type="button" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm fw-semibold" id="btnCreateNewAbsence" onclick="switchMainTab('CREATE')">
+                                <i class="bi bi-plus-circle me-1"></i>Viết đơn mới
+                            </button>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -484,13 +503,13 @@
                     <table class="table table-custom align-middle mb-0">
                         <thead>
                             <tr>
-                                <th style="width: 75px;" class="text-center">Mã Đơn</th>
-                                <th style="min-width: 150px;">Học Viên</th>
-                                <th style="min-width: 230px;">Buổi Học Xin Nghỉ</th>
-                                <th style="min-width: 180px;">Lý Do Xin Nghỉ</th>
-                                <th style="width: 130px;" class="text-center">Trạng Thái</th>
-                                <th style="min-width: 150px;">Học Bù</th>
-                                <th class="text-end" style="width: 110px;">Thao Tác</th>
+                                <th style="width: 64px;" class="text-center">Mã</th>
+                                <th style="min-width: 145px;">Học Viên</th>
+                                <th style="min-width: 225px;">Buổi Nghỉ</th>
+                                <th style="min-width: 185px;">Lý Do</th>
+                                <th style="width: 120px;" class="text-center">Trạng Thái</th>
+                                <th style="width: 135px;" class="text-center">Học Bù</th>
+                                <th class="text-end" style="width: 120px;">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody id="absenceTableBody">
@@ -524,89 +543,127 @@
         <!-- TAB 2: GỬI YÊU CẦU XIN NGHỈ HỌC                                     -->
         <!-- =================================================================== -->
         <div id="sectionCreate" class="d-none">
-            <div class="row g-4 mb-4">
-                <!-- Cột Trái: Biểu Mẫu Tạo Đơn -->
+            <div class="row g-4 mb-4 align-items-start">
+                <!-- Cột Trái: Biểu Mẫu Tạo Đơn Gọn Gàng -->
                 <div class="col-lg-7">
-                    <div class="card-modern p-4 h-100">
-                        <h5 class="fw-bold text-dark mb-3">
-                            <i class="bi bi-pencil-square text-primary me-2"></i>Điền Thông Tin Xin Nghỉ Học
-                        </h5>
+                    <div class="absence-form-card">
+                        <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                            <div>
+                                <h5 class="fw-bold text-dark mb-0">
+                                    <i class="bi bi-pencil-square text-success me-2"></i>Viết Đơn Xin Nghỉ
+                                </h5>
+                                <div class="small text-muted mt-1">Chọn học viên, buổi học và nhập lý do</div>
+                            </div>
+                            <span class="badge rounded-pill px-3 py-1.5" style="background: #e6f0ec; color: #143c34;">Gửi trực tiếp</span>
+                        </div>
 
                         <form id="absenceForm" onsubmit="event.preventDefault(); submitAbsenceRequest();">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-secondary small">
-                                    <i class="bi bi-person-fill text-primary me-1"></i>Học Viên Xin Nghỉ <span class="text-danger">*</span>:
-                                </label>
-                                <select id="createStudentSelect" class="form-select form-control-modern" onchange="onStudentSelectChanged()" required>
-                                    <option value="">-- Đang tải danh sách học viên --</option>
-                                </select>
-                                <div class="form-text small text-muted" id="createStudentInfo">
-                                    Chọn con hoặc học viên cần xin nghỉ để tải lịch học tương ứng.
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-secondary small">
-                                    <i class="bi bi-calendar-event text-primary me-1"></i>Buổi Học Muốn Xin Nghỉ <span class="text-danger">*</span>:
-                                </label>
-                                <select id="createLessonSelect" class="form-select form-control-modern" required disabled>
-                                    <option value="">-- Vui lòng chọn học viên trước --</option>
-                                </select>
-                                <div class="form-text small text-muted">
-                                    Chỉ hiển thị các buổi học thuộc lịch đào tạo của học viên.
-                                </div>
-                            </div>
-
+                            <!-- Bước 1: Chọn học viên -->
                             <div class="mb-4">
-                                <label class="form-label fw-semibold text-secondary small">
-                                    <i class="bi bi-chat-left-dots text-primary me-1"></i>Lý Do Xin Nghỉ Học <span class="text-danger">*</span>:
-                                </label>
-                                <textarea id="createReasonInput" class="form-control form-control-modern" rows="4" 
-                                          placeholder="Vui lòng nêu rõ lý do xin nghỉ (Ví dụ: Bé bị sốt siêu vi cần nghỉ dưỡng sức, Gia đình có việc đột xuất, Trùng lịch thi ở trường...)" required></textarea>
+                                <div class="form-step-header">
+                                    <span class="form-step-title">
+                                        <span class="form-step-num">1</span>Học viên xin nghỉ <span class="text-danger">*</span>
+                                    </span>
+                                </div>
+                                <div id="studentPickerGrid" class="student-pick-grid mb-2"></div>
+                                <select id="createStudentSelect" class="form-select form-control-modern d-none" onchange="onStudentSelectChanged()">
+                                    <option value="">-- Chọn học viên --</option>
+                                </select>
                             </div>
 
-                            <div class="d-flex gap-2 justify-content-end">
-                                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" onclick="switchMainTab('ABSENCE')">
-                                    Hủy Bỏ
+                            <!-- Bước 2: Chọn buổi học -->
+                            <div class="mb-4">
+                                <div class="form-step-header">
+                                    <span class="form-step-title">
+                                        <span class="form-step-num">2</span>Buổi học xin nghỉ <span class="text-danger">*</span>
+                                    </span>
+                                    <span class="small text-muted" id="lessonPickerCount"></span>
+                                </div>
+                                <div id="lessonPickerList" class="lesson-pick-list">
+                                    <div class="lesson-empty-box">Chọn học viên ở bước 1 để hiển thị lịch học</div>
+                                </div>
+                                <select id="createLessonSelect" class="form-select form-control-modern d-none" disabled>
+                                    <option value="">-- Chọn buổi học --</option>
+                                </select>
+                            </div>
+
+                            <!-- Bước 3: Lý do -->
+                            <div class="mb-4">
+                                <div class="form-step-header">
+                                    <span class="form-step-title">
+                                        <span class="form-step-num">3</span>Lý do xin nghỉ <span class="text-danger">*</span>
+                                    </span>
+                                    <span class="small text-muted" id="reasonCharCount">0 / 300</span>
+                                </div>
+                                <div class="reason-chips-row">
+                                    <button type="button" class="reason-chip" onclick="selectReasonChip(this, 'Bé bị ốm / sốt, xin phép nghỉ dưỡng sức')">Bị ốm / Sốt</button>
+                                    <button type="button" class="reason-chip" onclick="selectReasonChip(this, 'Gia đình có việc đột xuất')">Việc gia đình</button>
+                                    <button type="button" class="reason-chip" onclick="selectReasonChip(this, 'Trùng lịch thi / hoạt động ở trường')">Trùng lịch trường</button>
+                                    <button type="button" class="reason-chip" onclick="selectReasonChip(this, '')">Lý do khác</button>
+                                </div>
+                                <textarea id="createReasonInput" class="form-control form-control-modern" rows="3" maxlength="300"
+                                          placeholder="Nhập lý do ngắn gọn..." oninput="updateReasonCharCount()" required></textarea>
+                            </div>
+
+                            <div class="d-flex gap-2 justify-content-end pt-2 border-top">
+                                <button type="button" class="btn btn-light px-4 rounded-pill fw-semibold" onclick="switchMainTab('ABSENCE')">
+                                    Hủy
                                 </button>
                                 <button type="submit" id="btnSubmitAbsence" class="btn btn-primary px-4 rounded-pill shadow-sm">
-                                    <i class="bi bi-send-fill me-1"></i> Gửi Yêu Cầu Xin Nghỉ
+                                    <i class="bi bi-send-fill me-1"></i>Gửi Đơn Xin Nghỉ
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- Cột Phải: Quy Định & Hướng Dẫn Nhân Văn -->
-                <div class="col-lg-5">
-                    <div class="card-modern p-4 h-100 bg-white">
-                        <div class="policy-card mb-4">
-                            <div class="d-flex align-items-center gap-2 mb-2 text-warning-emphasis">
-                                <i class="bi bi-heart-pulse-fill fs-5 text-warning"></i>
-                                <h6 class="fw-bold mb-0">Quy Định Xin Nghỉ & Học Bù Học Viện</h6>
+                <!-- Cột Phải: Quy Trình & Lưu Ý Ngắn Gọn -->
+                <div class="col-lg-5 d-flex flex-column gap-3">
+                    <div class="side-flow-card">
+                        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-diagram-3 text-success"></i>Quy Trình Xử Lý
+                        </h6>
+                        <div class="flow-timeline">
+                            <div class="flow-step-row">
+                                <div class="flow-step-dot">1</div>
+                                <div class="flow-step-text">
+                                    <strong>Phụ huynh gửi đơn</strong>
+                                    <span>Giáo viên phụ trách & Học vụ nhận thông báo ngay</span>
+                                </div>
                             </div>
-                            <p class="small text-muted mb-2">
-                                Học viện Talent cam kết bảo vệ tối đa quyền lợi kiến thức và trải nghiệm học tập của học viên:
-                            </p>
-                            <ul class="small text-secondary ps-3 mb-0">
-                                <li class="mb-1"><strong>Thời gian báo trước:</strong> Quý phụ huynh vui lòng gửi đơn trước buổi học ít nhất 12 - 24 giờ.</li>
-                                <li class="mb-1"><strong>Duyệt đơn:</strong> Giáo viên, Nhân viên hoặc Quản trị viên tiếp nhận và xét duyệt đơn xin nghỉ học của phụ huynh.</li>
-                                <li class="mb-1"><strong>Hạn xếp lịch bù:</strong> Ca bù nên được xếp trong vòng 30 ngày kể từ ngày nghỉ.</li>
-                                <li><strong>Giới hạn số lần học bù:</strong> Mỗi buổi nghỉ có phép được hỗ trợ xếp lịch bù <strong>tối đa 02 lần</strong>. Nếu học viên vắng mặt (bỏ lỡ) cả 02 lần học bù, quyền học bù của buổi đó sẽ tự động bị hủy.</li>
-                            </ul>
+                            <div class="flow-step-row">
+                                <div class="flow-step-dot">2</div>
+                                <div class="flow-step-text">
+                                    <strong>Giáo viên xét duyệt</strong>
+                                    <span>Xác nhận đồng ý hoặc từ chối kèm phản hồi</span>
+                                </div>
+                            </div>
+                            <div class="flow-step-row">
+                                <div class="flow-step-dot">3</div>
+                                <div class="flow-step-text">
+                                    <strong>Học vụ xếp lớp học bù</strong>
+                                    <span>Cập nhật tự động lên Thời khóa biểu tuần</span>
+                                </div>
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="p-3 bg-light rounded-3 border">
-                            <div class="small fw-bold text-dark mb-2">
-                                <i class="bi bi-headset text-primary me-1"></i>Cần Hỗ Trợ Trực Tiếp?
-                            </div>
-                            <p class="small text-muted mb-2">
-                                Nếu có bất kỳ câu hỏi hoặc cần điều phối lịch học gấp, xin liên hệ bộ phận Học vụ hoặc Giáo vụ chi nhánh:
-                            </p>
-                            <div class="d-flex align-items-center gap-3 small">
-                                <div><i class="bi bi-telephone text-success me-1"></i>Hotline: <strong>0243.888.999</strong></div>
-                                <div><i class="bi bi-envelope text-primary me-1"></i>support@talentcenter.edu.vn</div>
-                            </div>
+                    <div class="side-flow-card">
+                        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-check text-warning"></i>Lưu Ý Quan Trọng
+                        </h6>
+                        <ul class="policy-list-compact">
+                            <li><i class="bi bi-clock-fill"></i><span>Gửi đơn trước giờ học tối thiểu <strong>12 giờ</strong>.</span></li>
+                            <li><i class="bi bi-arrow-repeat"></i><span>Mỗi buổi nghỉ có phép được xếp bù tối đa <strong>02 lần</strong>.</span></li>
+                            <li><i class="bi bi-calendar-check-fill"></i><span>Nên hoàn thành ca học bù trong vòng <strong>30 ngày</strong>.</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="support-strip d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div class="fw-bold text-dark"><i class="bi bi-headset text-success me-1"></i>Hỗ trợ nhanh</div>
+                        <div class="d-flex flex-wrap gap-3 text-secondary">
+                            <span><i class="bi bi-telephone text-success me-1"></i><strong>0243.888.999</strong></span>
+                            <span><i class="bi bi-envelope text-success me-1"></i>support@talentcenter.edu.vn</span>
                         </div>
                     </div>
                 </div>
@@ -618,32 +675,78 @@
         <!-- =================================================================== -->
         <div id="sectionMakeup" class="d-none">
             <div class="filter-box mb-4">
-                <div class="row align-items-center g-3">
-                    <div class="col-md-4">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">
-                            <i class="bi bi-funnel me-1 text-primary"></i>Trạng Thái:
+                            <i class="bi bi-funnel me-1 text-success"></i>Trạng thái
                         </label>
-                        <select id="filterMakeupStatus" class="form-select form-control-modern" onchange="renderMakeupTable(true)">
-                            <option value="" selected>Tất Cả Trạng Thái</option>
-                            <option value="PENDING">Chờ Xếp Lịch (PENDING)</option>
-                            <option value="NO_SLOT">Chưa Có Lớp Phù Hợp (NO_SLOT)</option>
-                            <option value="DEFERRED">Chuyển Khóa Kỳ Sau (DEFERRED)</option>
-                            <option value="SCHEDULED">Đã Xếp Lịch (SCHEDULED)</option>
-                            <option value="MISSED">Bỏ Lỡ / Vắng Bù (MISSED)</option>
-                            <option value="COMPLETED">Đã Hoàn Thành (COMPLETED)</option>
-                            <option value="CANCELLED">Đã Hủy (CANCELLED)</option>
+                        <select id="filterMakeupStatus" class="form-select form-control-modern">
+                            <option value="" selected>Tất cả</option>
+                            <option value="PENDING">Chờ xếp lớp</option>
+                            <option value="NO_SLOT">Chưa có lớp</option>
+                            <option value="SCHEDULED">Đã xếp lớp</option>
+                            <option value="MISSED">Vắng bù</option>
+                            <option value="COMPLETED">Hoàn thành</option>
+                            <option value="CANCELLED">Đã hủy</option>
                         </select>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-2 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">
-                            <i class="bi bi-search me-1 text-primary"></i>Tìm Kiếm:
+                            <i class="bi bi-person me-1 text-success"></i>Học viên
                         </label>
-                        <input type="text" id="searchMakeupInput" class="form-control form-control-modern" 
-                               placeholder="Tìm theo tên học viên, lớp, phòng đàn..." oninput="renderMakeupTable(true)">
+                        <select id="filterMakeupStudent" class="form-select form-control-modern">
+                            <option value="">Tất cả học viên</option>
+                        </select>
                     </div>
-                    <div class="col-md-2 text-md-end pt-md-4">
-                        <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadMakeupRequests()">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-easel me-1 text-success"></i>Lớp học
+                        </label>
+                        <select id="filterMakeupClass" class="form-select form-control-modern">
+                            <option value="">Tất cả lớp</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-6 d-none" id="makeupDirWrapper">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-arrow-left-right me-1 text-success"></i>Hướng bù
+                        </label>
+                        <select id="filterMakeupDirection" class="form-select form-control-modern">
+                            <option value="">Tất cả</option>
+                            <option value="OUT">Chuyển đi</option>
+                            <option value="IN">Bù vào lớp</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Từ ngày</label>
+                                <input type="date" id="filterMakeupFromDate" class="form-control form-control-modern">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Đến ngày</label>
+                                <input type="date" id="filterMakeupToDate" class="form-control form-control-modern">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-2 align-items-end mt-2">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-muted rounded-start-3"><i class="bi bi-search"></i></span>
+                            <input type="text" id="searchMakeupInput" class="form-control form-control-modern border-start-0 ps-0"
+                                   placeholder="Tìm mã ca, học viên, lớp..."
+                                   onkeydown="if(event.key==='Enter') applyMakeupFilter()">
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex flex-wrap justify-content-md-end gap-2">
+                        <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold" onclick="applyMakeupFilter()">
+                            <i class="bi bi-funnel-fill me-1"></i>Lọc
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="resetMakeupFilter()">
+                            <i class="bi bi-eraser me-1"></i>Đặt lại
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadMakeupRequests()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Làm mới
                         </button>
                     </div>
                 </div>
@@ -661,13 +764,13 @@
                     <table class="table table-custom align-middle mb-0">
                         <thead>
                             <tr>
-                                <th style="width: 75px;" class="text-center">Mã Ca</th>
-                                <th style="min-width: 160px;">Học Viên</th>
-                                <th style="min-width: 200px;">Buổi Nghỉ Gốc</th>
-                                <th style="min-width: 220px;">Ca Học Bù Được Xếp</th>
+                                <th style="width: 64px;" class="text-center">Mã</th>
+                                <th style="min-width: 145px;">Học Viên</th>
+                                <th style="min-width: 195px;">Buổi Gốc</th>
+                                <th style="min-width: 215px;">Lịch Học Bù</th>
                                 <th style="width: 130px;" class="text-center">Trạng Thái</th>
-                                <th style="min-width: 160px;">Ghi Chú Điều Phối</th>
-                                <th class="text-end" style="width: 140px;">Thao Tác</th>
+                                <th style="min-width: 155px;">Ghi Chú</th>
+                                <th class="text-end" style="width: 135px;">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody id="makeupTableBody">
@@ -698,144 +801,175 @@
         </div>
     </main>
 
-    <!-- Modal 1: Duyệt Đơn Thường (Approve) -->
-    <div class="modal fade" id="modalApprove" tabindex="-1" aria-hidden="true">
+    <!-- Modal 1: Duyệt Đơn Nghỉ -->
+    <div class="modal fade modal-modern" id="modalApprove" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header bg-success text-white border-0">
-                    <h6 class="modal-title fw-bold">
-                        <i class="bi bi-check-circle-fill me-2"></i>Phê Duyệt Đơn Xin Nghỉ Học
+            <div class="modal-content">
+                <div class="modal-header modal-header-emerald">
+                    <h6 class="modal-title fw-bold mb-0">
+                        <i class="bi bi-check-circle-fill me-2"></i>Phê Duyệt Đơn Nghỉ
                     </h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <p class="text-secondary mb-3">
-                        Bạn đang thực hiện phê duyệt đơn xin nghỉ của học viên <strong id="approveStudentName" class="text-dark">...</strong>.
-                    </p>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-secondary">Ghi Chú Duyệt (Tùy Chọn):</label>
-                        <textarea id="approveNoteInput" class="form-control form-control-modern" rows="2" 
-                                  placeholder="Đồng ý cho học viên nghỉ, dặn dò học viên ôn bài ở nhà..."></textarea>
+                <div class="modal-body">
+                    <div class="detail-info-card mb-3 d-flex align-items-center justify-content-between">
+                        <span class="small text-secondary">Học viên</span>
+                        <strong id="approveStudentName" class="text-dark">...</strong>
                     </div>
-                    <div class="alert alert-info py-2 px-3 small mb-0">
-                        <i class="bi bi-info-circle-fill me-1"></i>Hệ thống sẽ <strong>tự động tạo 1 yêu cầu học bù</strong> ở trạng thái Chờ xếp lịch.
+                    <div>
+                        <label class="form-label small fw-semibold text-secondary mb-1">Ghi chú (tùy chọn)</label>
+                        <textarea id="approveNoteInput" class="form-control form-control-modern" rows="2"
+                                  placeholder="Ghi chú gửi phụ huynh và điều phối viên..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm" onclick="executeApprove()">
-                        <i class="bi bi-check-lg me-1"></i> Xác Nhận Duyệt
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" onclick="executeApprove()">
+                        <i class="bi bi-check-lg me-1"></i>Duyệt Đơn
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal 3: Từ Chối Đơn Nghỉ (Reject) -->
-    <div class="modal fade" id="modalReject" tabindex="-1" aria-hidden="true">
+    <!-- Modal 3: Từ Chối Đơn Nghỉ -->
+    <div class="modal fade modal-modern" id="modalReject" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header bg-danger text-white border-0">
-                    <h6 class="modal-title fw-bold">
-                        <i class="bi bi-x-circle-fill me-2"></i>Từ Chối Đơn Xin Nghỉ Học
+            <div class="modal-content">
+                <div class="modal-header modal-header-rose">
+                    <h6 class="modal-title fw-bold mb-0">
+                        <i class="bi bi-x-circle-fill me-2"></i>Từ Chối Đơn Nghỉ
                     </h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <p class="text-secondary mb-3">
-                        Từ chối đơn xin nghỉ của học viên <strong id="rejectStudentName" class="text-dark">...</strong>.
-                    </p>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-secondary">
-                            Lý Do Từ Chối <span class="text-danger">* (Bắt buộc)</span>:
+                <div class="modal-body">
+                    <div class="detail-info-card mb-3 d-flex align-items-center justify-content-between">
+                        <span class="small text-secondary">Học viên</span>
+                        <strong id="rejectStudentName" class="text-dark">...</strong>
+                    </div>
+                    <div>
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            Lý do từ chối <span class="text-danger">*</span>
                         </label>
-                        <textarea id="rejectNoteInput" class="form-control form-control-modern" rows="3" 
-                                  placeholder="Nhập lý do từ chối rõ ràng và lịch sự gửi tới phụ huynh (VD: Đơn gửi sau khi buổi học đã kết thúc không có báo trước, hoặc đã vượt quá số buổi nghỉ cho phép trong tháng)..." required></textarea>
+                        <textarea id="rejectNoteInput" class="form-control form-control-modern" rows="3"
+                                  placeholder="Nhập lý do từ chối..." required></textarea>
                         <div class="form-text small text-danger" id="rejectNoteError" style="display: none;">
-                            Vui lòng nhập lý do từ chối!
+                            Vui lòng nhập lý do từ chối.
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-danger rounded-pill px-4 shadow-sm" onclick="executeReject()">
-                        <i class="bi bi-x-lg me-1"></i> Xác Nhận Từ Chối
+                    <button type="button" class="btn btn-rose-solid rounded-pill px-4 fw-semibold" onclick="executeReject()">
+                        <i class="bi bi-x-lg me-1"></i>Từ Chối
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal 4: Xếp Lịch Học Bù (Schedule Makeup) -->
-    <div class="modal fade" id="modalSchedule" tabindex="-1" aria-hidden="true">
+    <!-- Modal 4: Xếp Lịch Học Bù -->
+    <div class="modal fade modal-modern" id="modalSchedule" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header bg-primary text-white border-0">
-                    <h6 class="modal-title fw-bold">
-                        <i class="bi bi-calendar-plus me-2"></i>Xếp Lịch Học Bù Cho Học Viên
+            <div class="modal-content">
+                <div class="modal-header modal-header-emerald">
+                    <h6 class="modal-title fw-bold mb-0">
+                        <i class="bi bi-calendar2-check me-2"></i>Xếp Lớp Học Bù
                     </h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <div class="p-3 bg-light rounded-3 mb-3 border">
-                        <div class="row g-2 small align-items-center">
-                            <div class="col-md-5">
-                                <strong>Học viên:</strong> <span id="scheduleStudentName" class="text-primary fw-bold">...</span>
+                <div class="modal-body">
+                    <div class="detail-info-card mb-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small">
+                            <div>
+                                <span class="text-secondary">Học viên:</span>
+                                <strong id="scheduleStudentName" class="text-dark ms-1">...</strong>
                             </div>
-                            <div class="col-md-4">
-                                <strong>Buổi nghỉ gốc:</strong> <span id="scheduleOrigLesson">...</span>
+                            <div>
+                                <span class="text-secondary">Buổi nghỉ:</span>
+                                <span id="scheduleOrigLesson" class="fw-semibold text-dark ms-1">...</span>
                             </div>
-                            <div class="col-md-3 text-md-end">
-                                <span id="scheduleRetryBadge" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1">Lần xếp bù: 1/2</span>
-                            </div>
+                            <span id="scheduleRetryBadge" class="badge rounded-pill px-2.5 py-1 fw-semibold" style="background: #e6f0ec; color: #143c34;">Lần 1/2</span>
                         </div>
                     </div>
 
                     <div id="scheduleSmartCoordinationBanner" class="d-none mb-3"></div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold text-secondary">
-                            Chọn Ca Học Bù Khả Dụng <span class="text-danger">*</span>:
-                        </label>
-                        <select id="scheduleTargetLessonSelect" class="form-select form-control-modern" required>
-                            <option value="">-- Đang tải các ca học bù phù hợp --</option>
-                        </select>
-                        <div class="form-text small text-muted">
-                            Hệ thống ưu tiên đề xuất các ca học cùng khóa đào tạo, cùng giáo viên hoặc phòng đàn tương đương.
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label small fw-bold text-dark mb-0">
+                                Chọn lớp học bù <span class="text-danger">*</span>
+                            </label>
+                            <span class="small text-muted" id="scheduleOptionSummary"></span>
                         </div>
+                        <div id="scheduleTargetPickerList" class="lesson-pick-list">
+                            <div class="lesson-empty-box">Đang tải ca học bù phù hợp...</div>
+                        </div>
+                        <select id="scheduleTargetLessonSelect" class="form-select form-control-modern d-none">
+                            <option value="">-- Chọn ca học bù --</option>
+                        </select>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-secondary">Ghi Chú Điều Phối / Dặn Dò:</label>
-                        <textarea id="scheduleNoteInput" class="form-control form-control-modern" rows="2" 
-                                  placeholder="Ghi chú phòng đàn hoặc bài tập cần chuẩn bị cho ca học bù..."></textarea>
+                    <div>
+                        <label class="form-label small fw-semibold text-secondary mb-1">Ghi chú (tùy chọn)</label>
+                        <textarea id="scheduleNoteInput" class="form-control form-control-modern" rows="2"
+                                  placeholder="Ghi chú gửi phụ huynh và giáo viên..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="executeSchedule()">
-                        <i class="bi bi-calendar2-check me-1"></i> Xác Nhận Xếp Lịch Bù
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" onclick="executeSchedule()">
+                        <i class="bi bi-check2-circle me-1"></i>Xác Nhận Xếp Lớp
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal 5: Xem Chi Tiết Đơn Nghỉ / Học Bù -->
-    <div class="modal fade" id="modalDetail" tabindex="-1" aria-hidden="true">
+    <!-- Modal 5: Chi Tiết Yêu Cầu -->
+    <div class="modal fade modal-modern" id="modalDetail" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header border-0 pb-0">
-                    <h6 class="modal-title fw-bold text-dark">
-                        <i class="bi bi-info-circle text-primary me-2"></i>Chi Tiết Yêu Cầu Học Vụ
+            <div class="modal-content">
+                <div class="modal-header modal-header-emerald">
+                    <h6 class="modal-title fw-bold mb-0" id="modalDetailTitle">
+                        <i class="bi bi-file-text me-2"></i>Chi Tiết Đơn
                     </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4" id="detailModalBody">
-                    <!-- Nội dung chi tiết render động qua JS -->
+                <div class="modal-body" id="detailModalBody">
+                    <!-- Render qua JS -->
                 </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                <div class="modal-footer justify-content-between flex-wrap gap-2" id="detailModalFooter">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4 ms-auto" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 6: Xác Nhận / Ghi Chú Thao Tác -->
+    <div class="modal fade modal-modern" id="modalResolveNote" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header modal-header-emerald" id="resolveModalHeader">
+                    <h6 class="modal-title fw-bold mb-0" id="resolveModalTitle">Xác Nhận Thao Tác</h6>
+                    <button type="button" class="btn-close btn-close-white" id="resolveModalCloseBtn" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="detail-info-card mb-3 small text-dark" id="resolveModalSummary">...</div>
+                    <div id="resolveNoteGroup">
+                        <label class="form-label small fw-semibold text-secondary mb-1" id="resolveNoteLabel">Ghi chú</label>
+                        <textarea id="resolveNoteInput" class="form-control form-control-modern" rows="3"
+                                  placeholder="Nhập nội dung..."></textarea>
+                        <div class="form-text small text-danger" id="resolveNoteError" style="display: none;">
+                            Vui lòng nhập đầy đủ thông tin.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-warning rounded-pill px-4 fw-semibold" id="btnConfirmResolve" onclick="executeResolveNote()">
+                        Xác Nhận
+                    </button>
                 </div>
             </div>
         </div>
@@ -866,27 +1000,83 @@
 
         let activeReviewId = null;
         let activeMakeupId = null;
+        let activeResolveConfig = null;
 
         // Bootstrap Modals
         let modalApproveObj = null;
-                let modalRejectObj = null;
+        let modalRejectObj = null;
         let modalScheduleObj = null;
         let modalDetailObj = null;
+        let modalResolveObj = null;
+
+        function formatCleanNote(text) {
+            if (!text) return '';
+            let cleaned = String(text).trim();
+            if (/^Tự động tạo ca học bù/i.test(cleaned)) return '';
+            cleaned = cleaned
+                .replace(/^\[Lần bù:\s*[^\]]+\]\s*/i, '')
+                .replace(/^(?:CHƯA CÓ LỚP PHÙ HỢP|HỦY|CHUYỂN KỲ SAU):\s*/i, '')
+                .replace(/^Xếp lịch bù linh hoạt\s*\([^)]*\):\s*/i, '')
+                .trim();
+            return cleaned;
+        }
+
+        function getAbsenceStatusBadgeHtml(status) {
+            if (status === 'PENDING') return '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Duyệt</span>';
+            if (status === 'APPROVED') return '<span class="badge-status-modern status-approved"><i class="bi bi-check-circle-fill"></i>Đã Duyệt</span>';
+            if (status === 'REJECTED') return '<span class="badge-status-modern status-rejected"><i class="bi bi-x-circle-fill"></i>Từ Chối</span>';
+            return `<span class="badge bg-secondary">${escapeHtml(status || '')}</span>`;
+        }
+
+        function getMakeupStatusBadgeHtml(status, retryCount, maxRetries) {
+            const r = retryCount || 0;
+            const m = maxRetries || 2;
+            if (status === 'PENDING') return '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Xếp Lớp</span>';
+            if (status === 'SCHEDULED') return `<span class="badge-status-modern status-scheduled"><i class="bi bi-calendar2-check"></i>Đã Xếp Lớp (${r}/${m})</span>`;
+            if (status === 'NO_SLOT') return '<span class="badge-status-modern status-noslot"><i class="bi bi-exclamation-triangle"></i>Chưa Có Lớp</span>';
+            if (status === 'MISSED') return `<span class="badge-status-modern status-missed"><i class="bi bi-person-x-fill"></i>Vắng Bù (${r}/${m})</span>`;
+            if (status === 'COMPLETED') return '<span class="badge-status-modern status-completed"><i class="bi bi-check2-all"></i>Hoàn Thành</span>';
+            if (status === 'CANCELLED') return '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
+            return `<span class="badge bg-light text-secondary border">${escapeHtml(status || 'Chưa có')}</span>`;
+        }
 
         // =========================================================================
         // KHỞI TẠO TRANG
         // =========================================================================
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             currentUser = getCurrentUser();
             initRoleDisplay();
 
             modalApproveObj = new bootstrap.Modal(document.getElementById('modalApprove'));
-                        modalRejectObj = new bootstrap.Modal(document.getElementById('modalReject'));
+            modalRejectObj = new bootstrap.Modal(document.getElementById('modalReject'));
             modalScheduleObj = new bootstrap.Modal(document.getElementById('modalSchedule'));
             modalDetailObj = new bootstrap.Modal(document.getElementById('modalDetail'));
+            modalResolveObj = new bootstrap.Modal(document.getElementById('modalResolveNote'));
 
-            reloadData();
+            await reloadData();
+            await handleDeepLinkParams();
         });
+
+        async function handleDeepLinkParams() {
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('tab');
+            const absenceId = params.get('absenceId');
+            const makeupId = params.get('makeupId');
+
+            if (tab === 'MAKEUP') {
+                switchMainTab('MAKEUP');
+            } else if (tab === 'CREATE' && currentUser && currentUser.role === 'PARENT') {
+                switchMainTab('CREATE');
+            } else if (tab === 'ABSENCE') {
+                switchMainTab('ABSENCE');
+            }
+
+            if (absenceId) {
+                await viewAbsenceDetail(Number(absenceId));
+            } else if (makeupId) {
+                await viewMakeupDetail(Number(makeupId));
+            }
+        }
 
         function initRoleDisplay() {
             const role = currentUser ? (currentUser.role || 'USER') : 'USER';
@@ -898,17 +1088,25 @@
             const heroDescEl = document.getElementById('pageHeroDesc');
             const tabItemCreate = document.getElementById('tabItemCreate');
             const createBtnWrapper = document.getElementById('createBtnWrapper');
+            const statsRow = document.getElementById('statsRow');
+            const makeupDirWrapper = document.getElementById('makeupDirWrapper');
+            if (statsRow) {
+                statsRow.classList.toggle('d-none', role === 'PARENT' || role === 'STUDENT');
+            }
+            if (makeupDirWrapper) {
+                makeupDirWrapper.classList.toggle('d-none', role !== 'TEACHER');
+            }
 
             if (isParent) {
                 if (pageTitleEl) pageTitleEl.textContent = 'Viết Đơn';
                 if (breadcrumbEl) breadcrumbEl.textContent = 'Viết Đơn';
-                if (heroDescEl) heroDescEl.textContent = 'Viết đơn xin nghỉ học và theo dõi lịch học bù của học viên.';
+                if (heroDescEl) heroDescEl.textContent = 'Gửi đơn xin nghỉ và theo dõi lịch học bù.';
                 if (tabItemCreate) tabItemCreate.classList.remove('d-none');
                 if (createBtnWrapper) createBtnWrapper.classList.remove('d-none');
             } else {
                 if (pageTitleEl) pageTitleEl.textContent = 'Xem Đơn';
                 if (breadcrumbEl) breadcrumbEl.textContent = 'Xem Đơn';
-                if (heroDescEl) heroDescEl.textContent = 'Xem danh sách và xử lý đơn xin nghỉ học, lịch học bù.';
+                if (heroDescEl) heroDescEl.textContent = 'Xử lý đơn xin nghỉ và điều phối lịch học bù.';
                 // Ẩn tab Viết đơn và nút Tạo đơn mới cho Teacher, Staff, Admin
                 if (tabItemCreate) tabItemCreate.classList.add('d-none');
                 if (createBtnWrapper) createBtnWrapper.classList.add('d-none');
@@ -986,7 +1184,7 @@
         // =========================================================================
                 function updateKpiStats() {
             const pendingAbsence = (currentAbsenceList || []).filter(a => a.status === 'PENDING').length;
-            const approvedAbsence = (currentAbsenceList || []).filter(a => a.status === 'APPROVED' || a.status === 'EXCUSED').length;
+            const approvedAbsence = (currentAbsenceList || []).filter(a => a.status === 'APPROVED').length;
             const pendingMakeup = (currentMakeupList || []).filter(m => m.status === 'PENDING' || m.status === 'NO_SLOT').length;
             const completedMakeup = (currentMakeupList || []).filter(m => m.status === 'COMPLETED').length;
 
@@ -1000,13 +1198,60 @@
             if (elMakeupCompleted) elMakeupCompleted.innerText = completedMakeup;
         }
 
+        function sortAbsenceList(list) {
+            return [...(list || [])].sort((a, b) => {
+                const pa = a.status === 'PENDING' ? 0 : 1;
+                const pb = b.status === 'PENDING' ? 0 : 1;
+                if (pa !== pb) return pa - pb;
+                const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                if (ta !== tb) return tb - ta;
+                return (b.id || 0) - (a.id || 0);
+            });
+        }
+
+        function populateAbsenceFilterOptions() {
+            const stuSel = document.getElementById('filterAbsenceStudent');
+            const clsSel = document.getElementById('filterAbsenceClass');
+            if (stuSel) {
+                const prev = stuSel.value;
+                const names = Array.from(new Set((currentAbsenceList || []).map(a => a.studentName).filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b, 'vi'));
+                stuSel.innerHTML = '<option value="">Tất Cả Học Viên</option>'
+                    + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+                if (prev && names.includes(prev)) stuSel.value = prev;
+            }
+            if (clsSel) {
+                const prev = clsSel.value;
+                const classes = Array.from(new Set((currentAbsenceList || []).map(a => a.className).filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b, 'vi'));
+                clsSel.innerHTML = '<option value="">Tất Cả Lớp</option>'
+                    + classes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                if (prev && classes.includes(prev)) clsSel.value = prev;
+            }
+        }
+
+        function applyAbsenceFilter() {
+            renderAbsenceTable(true);
+        }
+
+        function resetAbsenceFilter() {
+            ['filterAbsenceStatus', 'filterAbsenceStudent', 'filterAbsenceClass',
+             'filterAbsenceFromDate', 'filterAbsenceToDate', 'searchAbsenceInput'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            renderAbsenceTable(true);
+        }
+
         // =========================================================================
         // LUỒNG 1 & 2: QUẢN LÝ ĐƠN XIN NGHỈ
         // =========================================================================
         async function loadAbsenceRequests() {
             try {
                 const data = await callApi('/api/attendance-makeup/absence-requests');
-                currentAbsenceList = data || [];
+                currentAbsenceList = sortAbsenceList(data || []);
+                populateAbsenceFilterOptions();
                 renderAbsenceTable();
             } catch (err) {
                 console.error("Lỗi khi tải đơn xin nghỉ:", err);
@@ -1035,16 +1280,33 @@
             const paginationInfo = document.getElementById('absencePaginationInfo');
             const paginationList = document.getElementById('absencePaginationList');
             const statusFilter = document.getElementById('filterAbsenceStatus').value;
+            const studentFilter = document.getElementById('filterAbsenceStudent')?.value || '';
+            const classFilter = document.getElementById('filterAbsenceClass')?.value || '';
+            const fromDate = document.getElementById('filterAbsenceFromDate')?.value || '';
+            const toDate = document.getElementById('filterAbsenceToDate')?.value || '';
             const searchKeyword = (document.getElementById('searchAbsenceInput').value || '').trim().toLowerCase();
 
-            let filtered = currentAbsenceList;
+            let filtered = sortAbsenceList(currentAbsenceList);
             if (statusFilter) {
                 filtered = filtered.filter(a => a.status === statusFilter);
             }
+            if (studentFilter) {
+                filtered = filtered.filter(a => a.studentName === studentFilter);
+            }
+            if (classFilter) {
+                filtered = filtered.filter(a => a.className === classFilter);
+            }
+            if (fromDate) {
+                filtered = filtered.filter(a => a.lessonDate && a.lessonDate >= fromDate);
+            }
+            if (toDate) {
+                filtered = filtered.filter(a => a.lessonDate && a.lessonDate <= toDate);
+            }
             if (searchKeyword) {
-                filtered = filtered.filter(a => 
+                filtered = filtered.filter(a =>
                     (a.studentName && a.studentName.toLowerCase().includes(searchKeyword)) ||
                     (a.className && a.className.toLowerCase().includes(searchKeyword)) ||
+                    (a.lessonTitle && a.lessonTitle.toLowerCase().includes(searchKeyword)) ||
                     (a.reason && a.reason.toLowerCase().includes(searchKeyword)) ||
                     (a.id && a.id.toString().includes(searchKeyword))
                 );
@@ -1074,8 +1336,6 @@
             const endIdx = Math.min(startIdx + absencePageSize, totalItems);
             const pagedItems = filtered.slice(startIdx, endIdx);
 
-            const isStaffOrTeacher = currentUser && (currentUser.role === 'TEACHER' || currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
-
             // Giáo viên chỉ được duyệt đơn của buổi học do mình phụ trách (backend cũng kiểm tra lại)
             const canReviewItem = (item) => {
                 if (!currentUser) return false;
@@ -1086,103 +1346,104 @@
                 return ['ADMIN', 'BRANCH_MANAGER', 'STAFF'].includes(currentUser.role);
             };
 
-            tbody.innerHTML = pagedItems.map(item => {
-                // Status badge
-                let statusBadge = '';
-                if (item.status === 'PENDING') {
-                    statusBadge = '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Duyệt</span>';
-                } else if (item.status === 'APPROVED') {
-                    statusBadge = '<span class="badge-status-modern status-approved"><i class="bi bi-check-circle-fill"></i>Đã Duyệt</span>';
-                } else if (item.status === 'EXCUSED') {
-                    statusBadge = '<span class="badge-status-modern status-excused"><i class="bi bi-shield-check"></i>Miễn Bù</span>';
-                } else if (item.status === 'REJECTED') {
-                    statusBadge = '<span class="badge-status-modern status-rejected"><i class="bi bi-x-circle-fill"></i>Từ Chối</span>';
-                }
+            const isCoordinator = currentUser && ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(currentUser.role);
+            const isCreator = currentUser && ['PARENT', 'STUDENT'].includes(currentUser.role);
 
-                // Makeup badge
-                let makeupBadge = '<span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.74rem;">Không</span>';
+            tbody.innerHTML = pagedItems.map(item => {
+                const statusBadge = getAbsenceStatusBadgeHtml(item.status);
+                const cleanMakeupNote = formatCleanNote(item.makeupNote);
+
+                let makeupBadge = '<span class="text-muted small">—</span>';
                 if (item.makeupStatus === 'PENDING') {
-                    makeupBadge = `<span class="badge-status-modern status-pending" title="${escapeHtml(item.makeupNote || 'Chờ xếp ca bù')}"><i class="bi bi-clock-history"></i>Chờ xếp ca</span>`;
+                    makeupBadge = `<span class="badge-status-modern status-pending" title="${escapeHtml(cleanMakeupNote || 'Chờ xếp lớp')}"><i class="bi bi-clock-history"></i>Chờ xếp lớp</span>`;
                 } else if (item.makeupStatus === 'SCHEDULED') {
-                    makeupBadge = `<span class="badge-status-modern status-scheduled" title="${escapeHtml(item.makeupNote || ('Đã xếp: ' + (item.makeupTargetDate || '')))}"><i class="bi bi-calendar-check"></i>${item.makeupTargetDate || 'Đã xếp'}</span>`;
+                    makeupBadge = `<span class="badge-status-modern status-scheduled" title="${escapeHtml(cleanMakeupNote || ('Đã xếp: ' + (item.makeupTargetDate || '')))}"><i class="bi bi-calendar-check"></i>${item.makeupTargetDate || 'Đã xếp'}</span>`;
                 } else if (item.makeupStatus === 'COMPLETED') {
-                    makeupBadge = `<span class="badge-status-modern status-completed" title="${escapeHtml(item.makeupNote || 'Đã học bù thành công')}"><i class="bi bi-check2-all"></i>Đã học bù</span>`;
+                    makeupBadge = `<span class="badge-status-modern status-completed" title="${escapeHtml(cleanMakeupNote || 'Hoàn thành')}"><i class="bi bi-check2-all"></i>Đã học bù</span>`;
                 } else if (item.makeupStatus === 'NO_SLOT') {
-                    makeupBadge = `<span class="badge-status-modern status-noslot" title="${escapeHtml(item.makeupNote || 'Chưa có lớp phù hợp')}"><i class="bi bi-exclamation-triangle"></i>Chưa có lớp</span>`;
-                } else if (item.makeupStatus === 'DEFERRED') {
-                    makeupBadge = `<span class="badge-status-modern status-deferred" title="${escapeHtml(item.makeupNote || 'Chuyển kỳ sau')}"><i class="bi bi-skip-forward"></i>Kỳ sau</span>`;
+                    makeupBadge = `<span class="badge-status-modern status-noslot" title="${escapeHtml(cleanMakeupNote || 'Chưa có lớp phù hợp')}"><i class="bi bi-exclamation-triangle"></i>Chưa có lớp</span>`;
                 } else if (item.makeupStatus === 'MISSED') {
                     const retryStr = item.makeupRetryCount ? ` (${item.makeupRetryCount}/${item.makeupMaxRetries || 2})` : '';
-                    makeupBadge = `<span class="badge-status-modern status-missed" title="${escapeHtml(item.makeupNote || 'Học viên vắng mặt tại buổi học bù')}"><i class="bi bi-person-x-fill"></i>Bỏ lỡ bù${retryStr}</span>`;
+                    makeupBadge = `<span class="badge-status-modern status-missed" title="${escapeHtml(cleanMakeupNote || 'Vắng mặt ca bù')}"><i class="bi bi-person-x-fill"></i>Vắng bù${retryStr}</span>`;
                 } else if (item.makeupStatus === 'CANCELLED') {
-                    const isLocked = (item.makeupRetryCount >= 2) || (item.makeupNote && item.makeupNote.includes('KHÓA'));
+                    const isLocked = (item.makeupRetryCount >= 2) || (cleanMakeupNote && cleanMakeupNote.includes('KHÓA'));
                     makeupBadge = isLocked
-                        ? `<span class="badge-status-modern status-cancelled" title="${escapeHtml(item.makeupNote || 'Quá 2 lần học bù quy định')}"><i class="bi bi-lock-fill"></i>Khóa bù (2/2)</span>`
-                        : `<span class="badge-status-modern status-cancelled" title="${escapeHtml(item.makeupNote || 'Không cần học bù')}"><i class="bi bi-x-circle"></i>Không bù</span>`;
+                        ? `<span class="badge-status-modern status-cancelled" title="${escapeHtml(cleanMakeupNote || 'Quá 2 lần học bù')}"><i class="bi bi-lock-fill"></i>Khóa bù</span>`
+                        : `<span class="badge-status-modern status-cancelled" title="${escapeHtml(cleanMakeupNote || 'Đã hủy')}"><i class="bi bi-x-circle"></i>Đã hủy</span>`;
                 }
 
-                // Date formatting
-                const lessonDateStr = item.lessonDate ? item.lessonDate : '';
-                const timeSlotStr = item.timeSlot ? item.timeSlot : '';
+                const lessonDateStr = item.lessonDate || '';
+                const timeSlotStr = item.timeSlot || '';
 
-                // Thao tác
                 let actionButtons = `
-                    <button class="btn-action-icon" title="Xem chi tiết" onclick="viewAbsenceDetail(${item.id})">
+                    <button class="btn-action-icon" title="Chi tiết" onclick="viewAbsenceDetail(${item.id})">
                         <i class="bi bi-eye"></i>
                     </button>
                 `;
 
                 if (canReviewItem(item) && item.status === 'PENDING') {
                     actionButtons += `
-                        <button class="btn-action-icon btn-action-approve" title="Duyệt đơn" onclick="openApproveModal(${item.id}, '${escapeHtml(item.studentName)}')">
+                        <button class="btn-action-icon btn-action-approve" title="Duyệt" onclick="openApproveModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
                             <i class="bi bi-check-lg"></i>
                         </button>
-                        <button class="btn-action-icon btn-action-reject" title="Từ chối đơn" onclick="openRejectModal(${item.id}, '${escapeHtml(item.studentName)}')">
+                        <button class="btn-action-icon btn-action-reject" title="Từ chối" onclick="openRejectModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     `;
+                }
+
+                if ((isCreator || isCoordinator) && item.status === 'PENDING') {
+                    actionButtons += `
+                        <button class="btn-action-pill btn-action-pill-danger" title="Hủy đơn xin nghỉ" onclick="confirmCancelAbsence(${item.id})">
+                            <i class="bi bi-trash3"></i>Hủy
+                        </button>
+                    `;
+                }
+
+                if (isCoordinator && item.status === 'APPROVED' && item.makeupRegistrationId) {
+                    const mStatus = item.makeupStatus;
+                    const canScheduleHere = mStatus === 'PENDING' || mStatus === 'NO_SLOT' || (mStatus === 'MISSED' && (item.makeupRetryCount || 0) < (item.makeupMaxRetries || 2));
+                    if (canScheduleHere) {
+                        actionButtons += `
+                            <button class="btn-action-pill btn-action-pill-primary" title="Xếp lớp học bù" onclick="openScheduleModal(${item.makeupRegistrationId})">
+                                <i class="bi bi-calendar-plus"></i>Xếp lớp
+                            </button>
+                        `;
+                    }
+                    if (mStatus === 'PENDING') {
+                        actionButtons += `
+                            <button class="btn-action-pill btn-action-pill-warn" title="Báo chưa có lớp" onclick="markNoSlot(${item.makeupRegistrationId})">
+                                <i class="bi bi-exclamation-triangle"></i>Chưa có lớp
+                            </button>
+                        `;
+                    }
                 }
 
                 return `
                     <tr>
                         <td class="text-center"><span class="id-badge">#${item.id}</span></td>
                         <td>
-                            ${(() => {
-                                const isOut = myId && item.originalTeacherId === myId && item.targetTeacherId !== myId;
-                                const isIn = myId && item.targetTeacherId === myId && item.originalTeacherId !== myId;
-                                let tag = '';
-                                if (isOut) {
-                                    tag = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill mb-1 d-inline-block" style="font-size: 0.68rem;"><i class="bi bi-box-arrow-up-right me-1"></i>Lớp tôi sang lớp khác</span>';
-                                } else if (isIn) {
-                                    tag = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill mb-1 d-inline-block" style="font-size: 0.68rem;"><i class="bi bi-box-arrow-in-down-left me-1"></i>Ngoài bù vào lớp tôi</span>';
-                                }
-                                return tag;
-                            })()}
-                            <div class="fw-bold text-dark" style="font-size: 0.88rem;">${item.studentName || 'Học viên'}</div>
+                            <div class="tbl-cell-title">${escapeHtml(item.studentName || 'Học viên')}</div>
                         </td>
                         <td>
-                            <div class="fw-semibold text-truncate" style="max-width: 340px; color: #174638;" title="${escapeHtml(item.lessonTitle || (`Buổi ${item.sessionNumber || ''}`))}">
+                            <div class="tbl-cell-title text-truncate" style="max-width: 290px;" title="${escapeHtml(item.lessonTitle || (`Buổi ${item.sessionNumber || ''}`))}">
                                 ${escapeHtml(item.lessonTitle || (`Buổi ${item.sessionNumber || ''}`))}
                             </div>
-                            <div class="text-muted mt-1 d-flex align-items-center gap-2" style="font-size: 0.76rem;">
-                                <span class="badge bg-light text-dark border px-1.5 py-0.5 font-monospace" style="font-size: 0.72rem;">
-                                    <i class="bi bi-calendar3 me-1" style="color: #1e5346;"></i>${lessonDateStr}
-                                </span>
-                                <span class="text-secondary"><i class="bi bi-clock me-1"></i>${timeSlotStr}</span>
-                            </div>
-                            <div class="text-muted mt-0.5 text-truncate" style="font-size: 0.72rem; max-width: 340px;" title="${escapeHtml((item.className || '') + ' • ' + (item.roomName || ''))}">
-                                <i class="bi bi-geo-alt me-1 text-secondary"></i>${escapeHtml(item.className || 'Lớp học')} &bull; ${escapeHtml(item.roomName || 'Phòng đàn')}
+                            <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
+                                <span class="tbl-date-pill">${lessonDateStr}</span>
+                                <span>${timeSlotStr}</span>
+                                ${item.className ? `<span>&bull; ${escapeHtml(item.className)}</span>` : ''}
                             </div>
                         </td>
                         <td>
-                            <div class="reason-box text-truncate" style="max-width: 250px;" title="${escapeHtml(item.reason || '')}">
-                                ${escapeHtml(item.reason || '-')}
+                            <div class="reason-text-clamp" title="${escapeHtml(item.reason || '')}">
+                                ${escapeHtml(item.reason || '—')}
                             </div>
                         </td>
                         <td class="text-center">${statusBadge}</td>
                         <td class="text-center">${makeupBadge}</td>
                         <td class="text-end text-nowrap">
-                            <div class="d-inline-flex gap-1 align-items-center justify-content-end">
+                            <div class="action-group-compact">
                                 ${actionButtons}
                             </div>
                         </td>
@@ -1237,8 +1498,9 @@
                     reviewNote: note
                 });
                 modalApproveObj.hide();
-                showToast('success', 'Đã phê duyệt đơn xin nghỉ học và tự động tạo ca học bù!');
+                showToast('success', 'Đã phê duyệt đơn nghỉ học.');
                 await reloadData();
+                if (window.refreshNotifications) window.refreshNotifications();
             } catch (err) {
                 showToast('danger', 'Lỗi phê duyệt: ' + err.message);
             }
@@ -1266,8 +1528,9 @@
                     reviewNote: note
                 });
                 modalRejectObj.hide();
-                showToast('warning', 'Đã từ chối đơn xin nghỉ và gửi phản hồi tới phụ huynh.');
+                showToast('warning', 'Đã từ chối đơn xin nghỉ.');
                 await reloadData();
+                if (window.refreshNotifications) window.refreshNotifications();
             } catch (err) {
                 showToast('danger', 'Lỗi từ chối: ' + err.message);
             }
@@ -1276,28 +1539,104 @@
         // =========================================================================
         // FORM TẠO ĐƠN XIN NGHỈ (TAB 2)
         // =========================================================================
+        function formatPickDate(dateStr) {
+            if (!dateStr) return { dow: '--', day: '--' };
+            const d = new Date(dateStr + 'T00:00:00');
+            if (isNaN(d.getTime())) return { dow: '', day: dateStr };
+            const dowNames = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            return { dow: dowNames[d.getDay()], day: `${dd}/${mm}` };
+        }
+
+        function getInitials(name) {
+            if (!name) return 'HV';
+            const parts = String(name).trim().split(/\s+/);
+            if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+
+        function selectStudentCard(studentId) {
+            const select = document.getElementById('createStudentSelect');
+            if (select) select.value = String(studentId);
+            document.querySelectorAll('.student-pick-card').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.studentId) === Number(studentId));
+            });
+            onStudentSelectChanged();
+        }
+
+        function selectLessonCard(lessonId) {
+            const lessonSelect = document.getElementById('createLessonSelect');
+            if (lessonSelect) lessonSelect.value = String(lessonId);
+            document.querySelectorAll('.lesson-pick-card').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.lessonId) === Number(lessonId));
+            });
+        }
+
+        function selectReasonChip(btn, text) {
+            document.querySelectorAll('.reason-chip').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const input = document.getElementById('createReasonInput');
+            if (!input) return;
+            if (text) {
+                input.value = text;
+            } else {
+                input.value = '';
+            }
+            updateReasonCharCount();
+            input.focus();
+        }
+
+        function updateReasonCharCount() {
+            const input = document.getElementById('createReasonInput');
+            const counter = document.getElementById('reasonCharCount');
+            if (input && counter) {
+                counter.textContent = `${input.value.length} / 300`;
+            }
+        }
+
         async function loadSelectableStudents() {
             try {
                 const data = await callApi('/api/attendance-makeup/students');
                 currentStudents = data || [];
 
                 const select = document.getElementById('createStudentSelect');
+                const grid = document.getElementById('studentPickerGrid');
                 if (currentStudents.length === 0) {
                     select.innerHTML = '<option value="">Không có học viên nào</option>';
+                    if (grid) grid.innerHTML = '<div class="lesson-empty-box w-100">Chưa có học viên liên kết</div>';
                     return;
                 }
 
-                select.innerHTML = '<option value="">-- Chọn học viên xin nghỉ --</option>' + 
+                select.innerHTML = '<option value="">-- Chọn học viên --</option>' +
                     currentStudents.map(s => `
                         <option value="${s.id}">
-                            ${s.fullName} (${s.currentClassName || 'Đào tạo năng khiếu'})
+                            ${escapeHtml(s.fullName)} (${escapeHtml(s.currentClassName || 'Đào tạo năng khiếu')})
                         </option>
                     `).join('');
 
-                // Nếu là phụ huynh có 1 con -> Tự chọn luôn
-                if (currentUser && currentUser.role === 'PARENT' && currentStudents.length >= 1) {
-                    select.value = currentStudents[0].id;
-                    onStudentSelectChanged();
+                if (grid) {
+                    if (currentStudents.length > 6) {
+                        grid.classList.add('d-none');
+                        select.classList.remove('d-none');
+                    } else {
+                        grid.classList.remove('d-none');
+                        select.classList.add('d-none');
+                        grid.innerHTML = currentStudents.map(s => `
+                            <button type="button" class="student-pick-card" data-student-id="${s.id}" onclick="selectStudentCard(${s.id})">
+                                <div class="student-pick-avatar">${escapeHtml(getInitials(s.fullName))}</div>
+                                <div class="min-w-0 flex-grow-1">
+                                    <div class="student-pick-name">${escapeHtml(s.fullName)}</div>
+                                    <div class="student-pick-class">${escapeHtml(s.currentClassName || 'Học viên')}</div>
+                                </div>
+                            </button>
+                        `).join('');
+                    }
+                }
+
+                // Nếu có ít nhất 1 học viên (Phụ huynh) -> tự chọn học viên đầu tiên
+                if (currentUser && ['PARENT', 'STUDENT'].includes(currentUser.role) && currentStudents.length >= 1) {
+                    selectStudentCard(currentStudents[0].id);
                 }
             } catch (err) {
                 console.error("Lỗi khi tải học viên:", err);
@@ -1307,37 +1646,71 @@
         async function onStudentSelectChanged() {
             const studentId = document.getElementById('createStudentSelect').value;
             const lessonSelect = document.getElementById('createLessonSelect');
+            const lessonList = document.getElementById('lessonPickerList');
+            const lessonCountEl = document.getElementById('lessonPickerCount');
 
             if (!studentId) {
-                lessonSelect.innerHTML = '<option value="">-- Vui lòng chọn học viên trước --</option>';
+                lessonSelect.innerHTML = '<option value="">-- Chọn buổi học --</option>';
                 lessonSelect.disabled = true;
+                if (lessonCountEl) lessonCountEl.textContent = '';
+                if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box">Chọn học viên ở bước 1 để hiển thị lịch học</div>';
                 return;
             }
 
-            lessonSelect.innerHTML = '<option value="">Đang tải các buổi học...</option>';
+            lessonSelect.innerHTML = '<option value="">Đang tải...</option>';
             lessonSelect.disabled = true;
+            if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box"><span class="spinner-border spinner-border-sm me-2 text-success"></span>Đang tải các buổi học...</div>';
 
             try {
                 const lessons = await callApi(`/api/attendance-makeup/students/${studentId}/lessons`);
                 if (!lessons || lessons.length === 0) {
-                    lessonSelect.innerHTML = '<option value="">Học viên này chưa có buổi học nào trong lịch</option>';
+                    lessonSelect.innerHTML = '<option value="">Chưa có buổi học nào</option>';
                     lessonSelect.disabled = true;
+                    if (lessonCountEl) lessonCountEl.textContent = '0 buổi';
+                    if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box">Học viên chưa có buổi học sắp tới</div>';
                     return;
                 }
 
-                lessonSelect.innerHTML = '<option value="">-- Chọn buổi học muốn xin nghỉ --</option>' + 
+                lessonSelect.innerHTML = '<option value="">-- Chọn buổi học --</option>' +
                     lessons.map(l => {
                         const dateStr = l.lessonDate || '';
                         const timeStr = l.timeSlot || `${l.startTime} - ${l.endTime}`;
                         const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
-                        const roomStr = l.roomName ? ` [Phòng: ${l.roomName}]` : '';
-                        return `<option value="${l.id}">${dateStr} (${timeStr}) &bull; ${titleStr} - ${l.className || ''}${roomStr}</option>`;
+                        const roomStr = l.roomName ? ` • ${l.roomName}` : '';
+                        return `<option value="${l.id}">${dateStr} (${timeStr}) • ${titleStr} - ${l.className || ''}${roomStr}</option>`;
                     }).join('');
-
                 lessonSelect.disabled = false;
+
+                if (lessonCountEl) lessonCountEl.textContent = `${lessons.length} buổi`;
+                if (lessonList) {
+                    lessonList.innerHTML = lessons.map(l => {
+                        const dt = formatPickDate(l.lessonDate);
+                        const timeStr = l.timeSlot || `${l.startTime || ''} - ${l.endTime || ''}`;
+                        const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
+                        const roomStr = l.roomName || 'Phòng học';
+                        return `
+                            <button type="button" class="lesson-pick-card" data-lesson-id="${l.id}" onclick="selectLessonCard(${l.id})">
+                                <div class="lesson-pick-datebox">
+                                    <div class="lesson-pick-dow">${escapeHtml(dt.dow)}</div>
+                                    <div class="lesson-pick-day">${escapeHtml(dt.day)}</div>
+                                </div>
+                                <div class="lesson-pick-info">
+                                    <div class="lesson-pick-title">${escapeHtml(titleStr)}</div>
+                                    <div class="lesson-pick-meta">
+                                        <span><i class="bi bi-clock me-1"></i>${escapeHtml(timeStr)}</span>
+                                        <span><i class="bi bi-easel me-1"></i>${escapeHtml(l.className || '')}</span>
+                                        <span><i class="bi bi-door-open me-1"></i>${escapeHtml(roomStr)}</span>
+                                    </div>
+                                </div>
+                                <div class="lesson-pick-check"><i class="bi bi-check-lg"></i></div>
+                            </button>
+                        `;
+                    }).join('');
+                }
             } catch (err) {
-                lessonSelect.innerHTML = `<option value="">Lỗi tải buổi học: ${err.message}</option>`;
+                lessonSelect.innerHTML = `<option value="">Lỗi: ${err.message}</option>`;
                 lessonSelect.disabled = true;
+                if (lessonList) lessonList.innerHTML = `<div class="lesson-empty-box text-danger">Lỗi tải lịch học: ${escapeHtml(err.message)}</div>`;
             }
         }
 
@@ -1347,13 +1720,13 @@
             const reason = document.getElementById('createReasonInput').value.trim();
 
             if (!studentId || !lessonId || !reason) {
-                showToast('danger', 'Vui lòng điền đầy đủ học viên, buổi học và lý do xin nghỉ!');
+                showToast('danger', 'Vui lòng chọn học viên, buổi học và nhập lý do!');
                 return;
             }
 
             const btnSubmit = document.getElementById('btnSubmitAbsence');
             btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang gửi đơn...';
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang gửi...';
 
             try {
                 await callApi('/api/attendance-makeup/absence-requests', 'POST', {
@@ -1362,26 +1735,82 @@
                     reason: reason
                 });
 
-                showToast('success', 'Gửi đơn xin nghỉ học thành công! Giáo viên sẽ tiếp nhận và phản hồi sớm.');
+                showToast('success', 'Đã gửi đơn xin nghỉ.');
                 document.getElementById('createReasonInput').value = '';
+                document.querySelectorAll('.reason-chip, .lesson-pick-card').forEach(b => b.classList.remove('active'));
+                document.getElementById('createLessonSelect').value = '';
+                updateReasonCharCount();
 
                 await reloadData();
+                if (window.refreshNotifications) window.refreshNotifications();
                 switchMainTab('ABSENCE');
             } catch (err) {
                 showToast('danger', 'Lỗi khi gửi đơn: ' + err.message);
             } finally {
                 btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '<i class="bi bi-send-fill me-1"></i> Gửi Yêu Cầu Xin Nghỉ';
+                btnSubmit.innerHTML = '<i class="bi bi-send-fill me-1"></i>Gửi Đơn Xin Nghỉ';
             }
         }
 
         // =========================================================================
         // LUỒNG 3 & 4: ĐIỀU PHỐI & ĐIỂM DANH HỌC BÙ (TAB 3)
         // =========================================================================
+        function sortMakeupList(list) {
+            const priorityMap = { PENDING: 0, NO_SLOT: 1, MISSED: 2, SCHEDULED: 3, COMPLETED: 4, CANCELLED: 5 };
+            return [...(list || [])].sort((a, b) => {
+                const pa = priorityMap[a.status] ?? 99;
+                const pb = priorityMap[b.status] ?? 99;
+                if (pa !== pb) return pa - pb;
+                const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                if (ta !== tb) return tb - ta;
+                return (b.id || 0) - (a.id || 0);
+            });
+        }
+
+        function populateMakeupFilterOptions() {
+            const stuSel = document.getElementById('filterMakeupStudent');
+            const clsSel = document.getElementById('filterMakeupClass');
+            if (stuSel) {
+                const prev = stuSel.value;
+                const names = Array.from(new Set((currentMakeupList || []).map(m => m.studentName).filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b, 'vi'));
+                stuSel.innerHTML = '<option value="">Tất Cả Học Viên</option>'
+                    + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+                if (prev && names.includes(prev)) stuSel.value = prev;
+            }
+            if (clsSel) {
+                const prev = clsSel.value;
+                const classSet = new Set();
+                (currentMakeupList || []).forEach(m => {
+                    if (m.originalClassName) classSet.add(m.originalClassName);
+                    if (m.targetClassName) classSet.add(m.targetClassName);
+                });
+                const classes = Array.from(classSet).sort((a, b) => a.localeCompare(b, 'vi'));
+                clsSel.innerHTML = '<option value="">Tất Cả Lớp</option>'
+                    + classes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                if (prev && classes.includes(prev)) clsSel.value = prev;
+            }
+        }
+
+        function applyMakeupFilter() {
+            renderMakeupTable(true);
+        }
+
+        function resetMakeupFilter() {
+            ['filterMakeupStatus', 'filterMakeupStudent', 'filterMakeupClass',
+             'filterMakeupDirection', 'filterMakeupFromDate', 'filterMakeupToDate', 'searchMakeupInput'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            renderMakeupTable(true);
+        }
+
         async function loadMakeupRequests() {
             try {
                 const data = await callApi('/api/attendance-makeup/makeup-requests');
-                currentMakeupList = data || [];
+                currentMakeupList = sortMakeupList(data || []);
+                populateMakeupFilterOptions();
                 renderMakeupTable();
             } catch (err) {
                 console.error("Lỗi khi tải danh sách học bù:", err);
@@ -1410,24 +1839,47 @@
             const paginationInfo = document.getElementById('makeupPaginationInfo');
             const paginationList = document.getElementById('makeupPaginationList');
             const statusFilter = document.getElementById('filterMakeupStatus').value;
+            const studentFilter = document.getElementById('filterMakeupStudent')?.value || '';
+            const classFilter = document.getElementById('filterMakeupClass')?.value || '';
             const dirFilter = document.getElementById('filterMakeupDirection') ? document.getElementById('filterMakeupDirection').value : '';
+            const fromDate = document.getElementById('filterMakeupFromDate')?.value || '';
+            const toDate = document.getElementById('filterMakeupToDate')?.value || '';
             const searchKeyword = (document.getElementById('searchMakeupInput').value || '').trim().toLowerCase();
-            const myId = currentUser ? currentUser.id : null;
+            const myId = currentUser ? (currentUser.userId ?? currentUser.id) : null;
 
-            let filtered = currentMakeupList;
+            let filtered = sortMakeupList(currentMakeupList);
             if (dirFilter === 'OUT' && myId) {
-                filtered = filtered.filter(m => m.originalTeacherId === myId && m.targetTeacherId !== myId);
+                filtered = filtered.filter(m => Number(m.originalTeacherId) === Number(myId) && Number(m.targetTeacherId) !== Number(myId));
             } else if (dirFilter === 'IN' && myId) {
-                filtered = filtered.filter(m => m.targetTeacherId === myId && m.originalTeacherId !== myId);
+                filtered = filtered.filter(m => Number(m.targetTeacherId) === Number(myId) && Number(m.originalTeacherId) !== Number(myId));
             }
             if (statusFilter) {
                 filtered = filtered.filter(m => m.status === statusFilter);
             }
+            if (studentFilter) {
+                filtered = filtered.filter(m => m.studentName === studentFilter);
+            }
+            if (classFilter) {
+                filtered = filtered.filter(m => m.originalClassName === classFilter || m.targetClassName === classFilter);
+            }
+            if (fromDate) {
+                filtered = filtered.filter(m =>
+                    (m.originalLessonDate && m.originalLessonDate >= fromDate) ||
+                    (m.targetLessonDate && m.targetLessonDate >= fromDate)
+                );
+            }
+            if (toDate) {
+                filtered = filtered.filter(m =>
+                    (m.originalLessonDate && m.originalLessonDate <= toDate) ||
+                    (m.targetLessonDate && m.targetLessonDate <= toDate)
+                );
+            }
             if (searchKeyword) {
-                filtered = filtered.filter(m => 
+                filtered = filtered.filter(m =>
                     (m.studentName && m.studentName.toLowerCase().includes(searchKeyword)) ||
                     (m.targetClassName && m.targetClassName.toLowerCase().includes(searchKeyword)) ||
                     (m.originalClassName && m.originalClassName.toLowerCase().includes(searchKeyword)) ||
+                    (m.targetRoomName && m.targetRoomName.toLowerCase().includes(searchKeyword)) ||
                     (m.note && m.note.toLowerCase().includes(searchKeyword)) ||
                     (m.id && m.id.toString().includes(searchKeyword))
                 );
@@ -1472,7 +1924,7 @@
                 let statusBadge = '';
                 if (item.status === 'PENDING') {
                     statusBadge = '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Xếp Lịch</span>';
-                } else if (item.status === 'SCHEDULED' || item.status === 'REGISTERED') {
+                } else if (item.status === 'SCHEDULED') {
                     statusBadge = '<span class="badge-status-modern status-scheduled"><i class="bi bi-calendar2-check"></i>Đã Xếp Lịch</span>' + retryTagHtml;
                 } else if (item.status === 'MISSED') {
                     statusBadge = '<span class="badge-status-modern status-missed"><i class="bi bi-person-x-fill"></i>Bỏ Lỡ Bù</span>' + retryTagHtml;
@@ -1484,8 +1936,6 @@
                         : '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
                 } else if (item.status === 'NO_SLOT') {
                     statusBadge = '<span class="badge-status-modern status-noslot"><i class="bi bi-exclamation-triangle"></i>Chưa Có Lớp</span>' + retryTagHtml;
-                } else if (item.status === 'DEFERRED') {
-                    statusBadge = '<span class="badge-status-modern status-deferred"><i class="bi bi-skip-forward"></i>Chuyển Kỳ Sau</span>' + retryTagHtml;
                 }
 
                 // Buổi học gốc
@@ -1493,30 +1943,28 @@
                 const origTimeStr = item.originalTimeSlot || '';
 
                 // Ca bù mục tiêu
-                let targetCell = '<span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.74rem;"><i class="bi bi-clock me-1"></i>Chưa xếp ca bù</span>';
+                let targetCell = '<span class="text-muted small">Chưa xếp</span>';
                 if (item.targetLessonId) {
                     const sessionCompareBadge = (item.originalSessionNumber && item.targetSessionNumber && item.originalSessionNumber !== item.targetSessionNumber)
-                        ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">Ghép linh hoạt #Buổi ${item.targetSessionNumber}</span>`
-                        : (item.targetSessionNumber ? `<span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.65rem;">#Buổi ${item.targetSessionNumber}</span>` : '');
+                        ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">Linh hoạt B${item.targetSessionNumber}</span>`
+                        : (item.targetSessionNumber ? `<span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.65rem;">Buổi ${item.targetSessionNumber}</span>` : '');
                     targetCell = `
-                        <div class="fw-semibold text-truncate" style="max-width: 260px; color: #174638;">
+                        <div class="tbl-cell-title text-truncate" style="max-width: 240px;">
                             ${escapeHtml(item.targetClassName || 'Lớp bù')}${sessionCompareBadge}
                         </div>
-                        <div class="text-muted mt-1 d-flex align-items-center gap-2" style="font-size: 0.76rem;">
-                            <span class="badge bg-light text-dark border px-1.5 py-0.5 font-monospace" style="font-size: 0.72rem;">
-                                <i class="bi bi-calendar-check me-1 text-success"></i>${item.targetLessonDate || ''}
-                            </span>
-                            <span class="text-secondary"><i class="bi bi-clock me-1"></i>${item.targetTimeSlot || ''}</span>
+                        <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
+                            <span class="tbl-date-pill">${item.targetLessonDate || ''}</span>
+                            <span>${item.targetTimeSlot || ''}</span>
                         </div>
-                        <div class="text-muted mt-0.5 text-truncate" style="font-size: 0.72rem; max-width: 220px;">
-                            <i class="bi bi-person me-1 text-secondary"></i>GV: <strong>${escapeHtml(item.targetTeacherName || 'Chưa phân công')}</strong> &bull; ${escapeHtml(item.targetRoomName || 'Phòng đàn')}
+                        <div class="tbl-cell-sub mt-0.5 text-truncate" style="max-width: 230px;">
+                            ${escapeHtml(item.targetTeacherName || 'Chưa phân công')} &bull; ${escapeHtml(item.targetRoomName || 'Phòng học')}
                         </div>
                     `;
                 }
 
                 // Nút thao tác
                 let actionButtons = `
-                    <button class="btn-action-icon" title="Xem chi tiết ca bù" onclick="viewMakeupDetail(${item.id})">
+                    <button class="btn-action-icon" title="Chi tiết" onclick="viewMakeupDetail(${item.id})">
                         <i class="bi bi-eye"></i>
                     </button>
                 `;
@@ -1524,38 +1972,35 @@
                 if (item.status === 'PENDING' || item.status === 'NO_SLOT') {
                     if (isStaffOrAdmin && !isLimitExceeded) {
                         actionButtons += `
-                            <button class="btn btn-sm btn-primary rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;" title="Xếp học viên vào lớp học bù" onclick="openScheduleModal(${item.id})">
-                                <i class="bi bi-calendar-plus me-1"></i> Xếp Lịch
+                            <button class="btn-action-pill btn-action-pill-primary" title="Xếp lớp học bù" onclick="openScheduleModal(${item.id})">
+                                <i class="bi bi-calendar-plus"></i>Xếp lớp
                             </button>
-                            <button class="btn-action-icon btn-action-reject" title="Chưa có lớp phù hợp - báo phụ huynh" onclick="markNoSlot(${item.id})">
+                            <button class="btn-action-icon btn-action-reject" title="Báo chưa có lớp" onclick="markNoSlot(${item.id})">
                                 <i class="bi bi-exclamation-triangle"></i>
                             </button>
-                            <button class="btn-action-icon" title="Chuyển sang kỳ sau" onclick="deferNextTerm(${item.id})">
-                                <i class="bi bi-skip-forward"></i>
-                            </button>
-                            <button class="btn-action-icon" title="Gia đình báo không cần học bù" onclick="familyDeclines(${item.id})">
+                            <button class="btn-action-icon" title="Hủy ca bù (gia đình không học bù)" onclick="familyDeclines(${item.id})">
                                 <i class="bi bi-x-circle"></i>
                             </button>
                         `;
                     }
-                } else if (item.status === 'SCHEDULED' || item.status === 'REGISTERED') {
+                } else if (item.status === 'SCHEDULED') {
                     if (isStaffOrTeacher) {
                         actionButtons += `
-                            <button class="btn btn-sm btn-success rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;" title="Điểm danh có mặt (Hoàn thành ca bù)" onclick="confirmCompleteMakeup(${item.id})">
-                                <i class="bi bi-check2-all me-1"></i> Có Mặt
+                            <button class="btn-action-pill btn-action-pill-primary" style="background:#16a34a;" title="Điểm danh có mặt" onclick="confirmCompleteMakeup(${item.id})">
+                                <i class="bi bi-check2-all"></i>Có mặt
                             </button>
                         `;
                     }
                     if (isStaffOrAdmin) {
                         if (retryCount < maxRetries) {
                             actionButtons += `
-                                <button class="btn-action-icon btn-action-primary" title="Đổi ca học bù khác (Còn ${maxRetries - retryCount} lần đổi)" onclick="openScheduleModal(${item.id})">
+                                <button class="btn-action-icon btn-action-primary" title="Đổi ca học bù (còn ${maxRetries - retryCount} lần)" onclick="openScheduleModal(${item.id})">
                                     <i class="bi bi-arrow-repeat"></i>
                                 </button>
                             `;
                         }
                         actionButtons += `
-                            <button class="btn-action-icon btn-action-reject" title="Hủy ca học bù" onclick="confirmCancelMakeup(${item.id})">
+                            <button class="btn-action-icon btn-action-reject" title="Hủy ca bù" onclick="confirmCancelMakeup(${item.id})">
                                 <i class="bi bi-x-circle"></i>
                             </button>
                         `;
@@ -1563,45 +2008,45 @@
                 } else if (item.status === 'MISSED') {
                     if (isStaffOrAdmin && !isLimitExceeded && retryCount < maxRetries) {
                         actionButtons += `
-                            <button class="btn btn-sm btn-warning text-dark rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;" title="Xếp lại lịch học bù lần cuối (Lần ${retryCount + 1}/${maxRetries})" onclick="openScheduleModal(${item.id})">
-                                <i class="bi bi-arrow-repeat me-1"></i> Xếp Lại (${retryCount + 1}/${maxRetries})
+                            <button class="btn-action-pill btn-action-pill-warn" title="Xếp lại ca bù (${retryCount + 1}/${maxRetries})" onclick="openScheduleModal(${item.id})">
+                                <i class="bi bi-arrow-repeat"></i>Xếp lại (${retryCount + 1}/${maxRetries})
                             </button>
-                            <button class="btn-action-icon btn-action-reject" title="Hủy ca học bù" onclick="confirmCancelMakeup(${item.id})">
+                            <button class="btn-action-icon btn-action-reject" title="Hủy ca bù" onclick="confirmCancelMakeup(${item.id})">
                                 <i class="bi bi-x-circle"></i>
                             </button>
                         `;
                     }
                 }
 
+                const cleanNote = formatCleanNote(item.note);
+
                 return `
                     <tr>
                         <td class="text-center"><span class="id-badge">#${item.id}</span></td>
                         <td>
-                            <div class="fw-bold text-dark" style="font-size: 0.88rem;">${item.studentName || 'Học viên'}</div>
+                            <div class="tbl-cell-title">${escapeHtml(item.studentName || 'Học viên')}</div>
                         </td>
                         <td>
-                            <div class="fw-semibold text-secondary text-truncate" style="max-width: 250px;">
+                            <div class="tbl-cell-title text-truncate" style="max-width: 230px;">
                                 ${escapeHtml(item.originalClassName || 'Lớp học')}
                             </div>
-                            <div class="text-muted mt-1 d-flex align-items-center gap-2" style="font-size: 0.76rem;">
-                                <span class="badge bg-light text-dark border px-1.5 py-0.5 font-monospace" style="font-size: 0.72rem;">
-                                    <i class="bi bi-calendar3 me-1 text-secondary"></i>${origDateStr}
-                                </span>
-                                <span class="text-secondary"><i class="bi bi-clock me-1"></i>${origTimeStr}</span>
+                            <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
+                                <span class="tbl-date-pill">${origDateStr}</span>
+                                <span>${origTimeStr}</span>
                             </div>
-                            <div class="text-muted mt-0.5 text-truncate" style="font-size: 0.72rem; max-width: 240px;">
-                                <i class="bi bi-person me-1 text-secondary"></i>GV: <strong>${escapeHtml(item.originalTeacherName || 'Chưa phân công')}</strong>
+                            <div class="tbl-cell-sub mt-0.5 text-truncate" style="max-width: 220px;">
+                                ${escapeHtml(item.originalTeacherName || 'Chưa phân công')}
                             </div>
                         </td>
                         <td>${targetCell}</td>
                         <td class="text-center">${statusBadge}</td>
                         <td>
-                            <div class="reason-box text-truncate" style="max-width: 240px;" title="${escapeHtml(item.note || '')}">
-                                ${escapeHtml(item.note || 'Tự động tạo từ đơn nghỉ')}
+                            <div class="reason-text-clamp" title="${escapeHtml(cleanNote)}">
+                                ${escapeHtml(cleanNote || '—')}
                             </div>
                         </td>
                         <td class="text-end text-nowrap">
-                            <div class="d-inline-flex gap-1 align-items-center justify-content-end">
+                            <div class="action-group-compact">
                                 ${actionButtons}
                             </div>
                         </td>
@@ -1640,30 +2085,51 @@
         // =========================================================================
         // XẾP LỊCH HỌC BÙ & ĐIỂM DANH HOÀN THÀNH
         // =========================================================================
+        function selectScheduleTargetCard(lessonId) {
+            const select = document.getElementById('scheduleTargetLessonSelect');
+            if (select) select.value = String(lessonId);
+            document.querySelectorAll('#scheduleTargetPickerList .lesson-pick-card').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.lessonId) === Number(lessonId));
+            });
+        }
+
         async function openScheduleModal(makeupId) {
             activeMakeupId = makeupId;
-            const item = currentMakeupList.find(m => m.id === makeupId);
+            let item = currentMakeupList.find(m => Number(m.id) === Number(makeupId));
+            if (!item) {
+                try {
+                    item = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}`);
+                } catch (err) {
+                    showToast('danger', 'Không tải được ca học bù: ' + err.message);
+                    return;
+                }
+            }
             if (!item) return;
 
             const currentRetry = item.retryCount || 0;
             const maxRetries = item.maxRetries || 2;
             if (item.limitExceeded || currentRetry >= maxRetries) {
-                showToast('danger', `Học viên đã sử dụng hết tối đa ${maxRetries}/${maxRetries} lần xếp lịch học bù theo quy định!`);
+                showToast('danger', `Đã hết ${maxRetries}/${maxRetries} lần xếp học bù.`);
                 return;
             }
 
             const nextAttempt = currentRetry + 1;
-            const origSessionText = item.originalSessionNumber ? `#Buổi ${item.originalSessionNumber} - ` : '';
+            const origSessionText = item.originalSessionNumber ? `#Buổi ${item.originalSessionNumber} • ` : '';
             document.getElementById('scheduleStudentName').innerText = item.studentName || '';
-            document.getElementById('scheduleOrigLesson').innerText = `${origSessionText}${item.originalClassName || ''} (Ngày: ${item.originalLessonDate || ''})`;
-            document.getElementById('scheduleNoteInput').value = (item.note || '').replace(/^\[Lần bù:\s*\d+\/\d+(?:\s*-\s*KHÓA)?\]\s*/, '');
+            document.getElementById('scheduleOrigLesson').innerText = `${origSessionText}${item.originalClassName || ''} (${item.originalLessonDate || ''})`;
+            const rawCleanNote = formatCleanNote((item.note || '').replace(/^\[Lần bù:\s*\d+\/\d+(?:\s*-\s*KHÓA)?\]\s*/, ''));
+            document.getElementById('scheduleNoteInput').value = rawCleanNote;
 
             const retryBadge = document.getElementById('scheduleRetryBadge');
             if (retryBadge) {
                 retryBadge.className = nextAttempt >= maxRetries
                     ? 'badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold'
-                    : 'badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold';
-                retryBadge.innerHTML = `<i class="bi bi-repeat me-1"></i>Lần xếp bù: ${nextAttempt}/${maxRetries}${nextAttempt >= maxRetries ? ' (Lần cuối)' : ''}`;
+                    : 'badge rounded-pill px-2.5 py-1 fw-semibold';
+                if (nextAttempt < maxRetries) {
+                    retryBadge.style.background = '#e6f0ec';
+                    retryBadge.style.color = '#143c34';
+                }
+                retryBadge.innerHTML = `<i class="bi bi-repeat me-1"></i>Lần ${nextAttempt}/${maxRetries}${nextAttempt >= maxRetries ? ' (Cuối)' : ''}`;
             }
 
             const coordBanner = document.getElementById('scheduleSmartCoordinationBanner');
@@ -1673,25 +2139,24 @@
             }
 
             const select = document.getElementById('scheduleTargetLessonSelect');
-            select.innerHTML = '<option value="">Đang tải các ca học bù phù hợp...</option>';
+            const pickerList = document.getElementById('scheduleTargetPickerList');
+            const summaryEl = document.getElementById('scheduleOptionSummary');
+            select.innerHTML = '<option value="">-- Đang tải --</option>';
+            if (summaryEl) summaryEl.textContent = '';
+            if (pickerList) pickerList.innerHTML = '<div class="lesson-empty-box"><span class="spinner-border spinner-border-sm me-2 text-success"></span>Đang tải ca phù hợp...</div>';
             modalScheduleObj.show();
 
             try {
                 const availableLessons = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/available-lessons`);
                 if (!availableLessons || availableLessons.length === 0) {
-                    select.innerHTML = '<option value="">-- Không còn lớp cùng trình độ nào có lịch sắp tới --</option>';
+                    select.innerHTML = '<option value="">-- Không có lớp phù hợp --</option>';
+                    if (pickerList) pickerList.innerHTML = '<div class="lesson-empty-box">Hiện chưa có lớp phù hợp sắp tới</div>';
                     if (coordBanner) {
-                        coordBanner.className = 'alert alert-danger border-0 rounded-3 p-3 mb-3 small';
+                        coordBanner.className = 'alert alert-warning border-0 rounded-3 p-3 mb-3 small d-flex flex-wrap justify-content-between align-items-center gap-2';
                         coordBanner.innerHTML = `
-                            <div class="fw-bold mb-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>Tất cả các lớp cùng trình độ đã kết thúc hoặc hết chỗ trống!</div>
-                            <div class="text-secondary mb-2">Không tìm thấy buổi học sắp diễn ra ở các lớp song song. Bạn có thể chuyển trạng thái xử lý nhanh ngay bên dưới:</div>
-                            <div class="d-flex flex-wrap gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">
-                                    <i class="bi bi-exclamation-triangle me-1"></i>Báo Chưa Có Lớp (NO_SLOT)
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold" onclick="modalScheduleObj.hide(); deferNextTerm(${makeupId});">
-                                    <i class="bi bi-skip-forward me-1"></i>Bảo Lưu Chuyển Kỳ Sau (DEFERRED)
-                                </button>
+                            <span class="fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>Không tìm thấy ca trống cùng trình độ.</span>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">Báo chưa có lớp</button>
                             </div>
                         `;
                     }
@@ -1701,58 +2166,77 @@
                 const exactLessons = availableLessons.filter(l => l.exactSessionMatch !== false);
                 const flexLessons = availableLessons.filter(l => l.exactSessionMatch === false);
 
-                if (coordBanner) {
-                    if (exactLessons.length === 0 && flexLessons.length > 0) {
-                        coordBanner.className = 'alert alert-warning border-0 rounded-3 p-3 mb-3 small';
-                        coordBanner.innerHTML = `
-                            <div class="fw-bold text-warning-emphasis mb-1">
-                                <i class="bi bi-lightbulb-fill me-1 text-warning"></i>Điều phối thông minh: Các lớp song song đã dạy qua Buổi #${item.originalSessionNumber || ''}!
-                            </div>
-                            <div class="text-secondary mb-2">
-                                Hiện không còn lớp nào sắp dạy đúng <strong>Buổi #${item.originalSessionNumber || ''}</strong>. Hệ thống đã tự động mở rộng <strong>${flexLessons.length} ca ghép bù linh hoạt</strong> ở các buổi kế tiếp của lớp cùng trình độ để Giáo vụ ghép lớp, hoặc bạn có thể chọn:
-                            </div>
-                            <div class="d-flex flex-wrap gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">
-                                    <i class="bi bi-exclamation-triangle me-1"></i>Báo Phụ Huynh Chưa Có Lớp Đúng Bài
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="modalScheduleObj.hide(); deferNextTerm(${makeupId});">
-                                    <i class="bi bi-skip-forward me-1"></i>Chuyển Sang Khóa Kỳ Sau
-                                </button>
-                            </div>
-                        `;
-                    } else if (exactLessons.length > 0) {
-                        coordBanner.className = 'alert alert-success border-0 rounded-3 py-2 px-3 mb-3 small';
-                        coordBanner.innerHTML = `
-                            <i class="bi bi-check-circle-fill me-1"></i>Tìm thấy <strong>${exactLessons.length} ca học đúng bài gốc (#Buổi ${item.originalSessionNumber || ''})</strong> còn chỗ trống${flexLessons.length > 0 ? ` và ${flexLessons.length} ca ghép bù linh hoạt dự phòng` : ''}.
-                        `;
-                    }
+                if (summaryEl) {
+                    const parts = [];
+                    if (exactLessons.length > 0) parts.push(`${exactLessons.length} đúng bài`);
+                    if (flexLessons.length > 0) parts.push(`${flexLessons.length} linh hoạt`);
+                    summaryEl.textContent = parts.join(' • ');
                 }
 
-                const renderOption = (l) => {
-                    const dateStr = l.lessonDate || '';
-                    const timeStr = l.timeSlot || `${l.startTime} - ${l.endTime}`;
+                if (coordBanner && exactLessons.length === 0 && flexLessons.length > 0) {
+                    coordBanner.className = 'alert alert-warning border-0 rounded-3 py-2 px-3 mb-3 small d-flex flex-wrap justify-content-between align-items-center gap-2';
+                    coordBanner.innerHTML = `
+                        <span><i class="bi bi-lightbulb-fill me-1"></i>Đã qua Buổi #${item.originalSessionNumber || ''} — gợi ý ca ghép linh hoạt:</span>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-2.5" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">Chưa có lớp</button>
+                        </div>
+                    `;
+                }
+
+                select.innerHTML = '<option value="">-- Chọn ca học bù --</option>' +
+                    availableLessons.map(l => `<option value="${l.id}">${l.lessonDate || ''} - ${l.className || ''}</option>`).join('');
+
+                const renderCard = (l, isExact) => {
+                    const dt = formatPickDate(l.lessonDate);
+                    const timeStr = l.timeSlot || `${l.startTime || ''} - ${l.endTime || ''}`;
                     const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
-                    const teacherStr = l.teacherName ? ` - GV: ${l.teacherName}` : '';
-                    const roomStr = l.roomName ? ` [${l.roomName}]` : '';
-                    const seatStr = (l.availableSeats != null && l.maxStudents != null) ? ` | Còn ${l.availableSeats}/${l.maxStudents} chỗ` : '';
-                    const matchTag = l.exactSessionMatch === false ? ` [Ghép linh hoạt #Buổi ${l.sessionNumber}]` : ` [Đúng bài #Buổi ${l.sessionNumber}]`;
-                    return `<option value="${l.id}">${dateStr} (${timeStr}) • ${l.className || ''}${matchTag} - ${titleStr}${teacherStr}${roomStr}${seatStr}</option>`;
+                    const seatBadge = (l.availableSeats != null && l.maxStudents != null)
+                        ? `<span class="seat-pill">Còn ${l.availableSeats}/${l.maxStudents}</span>` : '';
+                    const matchBadge = isExact
+                        ? `<span class="schedule-match-pill schedule-match-exact">Đúng bài #${l.sessionNumber || ''}</span>`
+                        : `<span class="schedule-match-pill schedule-match-flex">Linh hoạt #${l.sessionNumber || ''}</span>`;
+                    const isActive = item.targetLessonId && Number(item.targetLessonId) === Number(l.id) ? ' active' : '';
+                    return `
+                        <button type="button" class="lesson-pick-card${isActive}" data-lesson-id="${l.id}" onclick="selectScheduleTargetCard(${l.id})">
+                            <div class="lesson-pick-datebox">
+                                <div class="lesson-pick-dow">${escapeHtml(dt.dow)}</div>
+                                <div class="lesson-pick-day">${escapeHtml(dt.day)}</div>
+                            </div>
+                            <div class="lesson-pick-info">
+                                <div class="d-flex align-items-center justify-content-between gap-2 mb-0.5">
+                                    <div class="lesson-pick-title">${escapeHtml(l.className || 'Lớp học')}</div>
+                                    ${matchBadge}
+                                </div>
+                                <div class="small text-secondary text-truncate">${escapeHtml(titleStr)}</div>
+                                <div class="lesson-pick-meta">
+                                    <span><i class="bi bi-clock me-1"></i>${escapeHtml(timeStr)}</span>
+                                    ${l.teacherName ? `<span><i class="bi bi-person me-1"></i>${escapeHtml(l.teacherName)}</span>` : ''}
+                                    ${l.roomName ? `<span><i class="bi bi-door-open me-1"></i>${escapeHtml(l.roomName)}</span>` : ''}
+                                    ${seatBadge}
+                                </div>
+                            </div>
+                            <div class="lesson-pick-check"><i class="bi bi-check-lg"></i></div>
+                        </button>
+                    `;
                 };
 
-                let optionsHtml = '<option value="">-- Chọn buổi học để điều phối học bù --</option>';
+                let cardsHtml = '';
                 if (exactLessons.length > 0) {
-                    optionsHtml += `<optgroup label="🎯 Ca học ĐÚNG BÀI GỐC (#Buổi ${item.originalSessionNumber || ''} - Ưu tiên)">${exactLessons.map(renderOption).join('')}</optgroup>`;
+                    cardsHtml += `<div class="schedule-picker-group-label"><span>Đúng bài gốc (Ưu tiên)</span><span>${exactLessons.length} ca</span></div>`;
+                    cardsHtml += exactLessons.map(l => renderCard(l, true)).join('');
                 }
                 if (flexLessons.length > 0) {
-                    optionsHtml += `<optgroup label="🔄 Ca GHÉP BÙ LINH HOẠT cùng trình độ (Khi lớp khác đã qua bài gốc)">${flexLessons.map(renderOption).join('')}</optgroup>`;
+                    cardsHtml += `<div class="schedule-picker-group-label mt-1"><span>Ghép bù linh hoạt cùng trình độ</span><span>${flexLessons.length} ca</span></div>`;
+                    cardsHtml += flexLessons.map(l => renderCard(l, false)).join('');
                 }
-                select.innerHTML = optionsHtml;
+                if (pickerList) pickerList.innerHTML = cardsHtml;
 
                 if (item.targetLessonId) {
-                    select.value = item.targetLessonId;
+                    selectScheduleTargetCard(item.targetLessonId);
                 }
             } catch (err) {
-                select.innerHTML = `<option value="">Lỗi tải ca học: ${err.message}</option>`;
+                select.innerHTML = `<option value="">Lỗi: ${err.message}</option>`;
+                if (pickerList) pickerList.innerHTML = `<div class="lesson-empty-box text-danger">Lỗi tải ca học: ${escapeHtml(err.message)}</div>`;
             }
         }
 
@@ -1762,7 +2246,7 @@
             const note = document.getElementById('scheduleNoteInput').value.trim();
 
             if (!targetLessonId) {
-                showToast('danger', 'Vui lòng chọn ca học bù phù hợp!');
+                showToast('danger', 'Vui lòng chọn ca học bù.');
                 return;
             }
 
@@ -1772,81 +2256,143 @@
                     note: note
                 });
                 modalScheduleObj.hide();
-                showToast('success', 'Đã xếp lịch học bù thành công cho học viên!');
+                showToast('success', 'Đã xếp lớp học bù thành công.');
                 await reloadData();
+                if (window.refreshNotifications) window.refreshNotifications();
             } catch (err) {
-                showToast('danger', 'Lỗi xếp lịch bù: ' + err.message);
+                showToast('danger', 'Lỗi xếp lớp: ' + err.message);
             }
         }
 
-        async function confirmCompleteMakeup(makeupId) {
-            if (!confirm('Xác nhận học viên đã có mặt và hoàn thành buổi học bù này? Hệ thống sẽ tự động lưu điểm danh.')) {
+        function openResolveModal(config) {
+            activeResolveConfig = config;
+            const header = document.getElementById('resolveModalHeader');
+            const closeBtn = document.getElementById('resolveModalCloseBtn');
+            const title = document.getElementById('resolveModalTitle');
+            const summary = document.getElementById('resolveModalSummary');
+            const noteGroup = document.getElementById('resolveNoteGroup');
+            const noteLabel = document.getElementById('resolveNoteLabel');
+            const noteInput = document.getElementById('resolveNoteInput');
+            const noteError = document.getElementById('resolveNoteError');
+            const btnConfirm = document.getElementById('btnConfirmResolve');
+
+            header.className = `modal-header ${config.headerClass || 'modal-header-emerald'}`;
+            if (closeBtn) {
+                closeBtn.className = config.lightHeader ? 'btn-close' : 'btn-close btn-close-white';
+            }
+            title.innerHTML = config.titleHtml;
+            summary.innerHTML = config.summaryHtml;
+            noteGroup.style.display = config.hideNote ? 'none' : 'block';
+            noteLabel.innerHTML = `${config.noteLabel || 'Ghi chú'}${config.noteRequired ? ' <span class="text-danger">*</span>' : ''}`;
+            noteInput.value = config.defaultNote || '';
+            noteInput.placeholder = config.placeholder || 'Nhập nội dung...';
+            noteError.style.display = 'none';
+            btnConfirm.className = `btn rounded-pill px-4 fw-semibold ${config.btnClass || 'btn-primary'}`;
+            btnConfirm.innerHTML = config.btnText || 'Xác Nhận';
+
+            modalResolveObj.show();
+        }
+
+        async function executeResolveNote() {
+            if (!activeResolveConfig) return;
+            const cfg = activeResolveConfig;
+            const noteVal = document.getElementById('resolveNoteInput').value.trim();
+            const noteError = document.getElementById('resolveNoteError');
+
+            if (cfg.noteRequired && !noteVal) {
+                noteError.style.display = 'block';
                 return;
             }
 
             try {
-                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/complete`, 'PUT');
-                showToast('success', 'Đã xác nhận hoàn thành ca học bù và ghi nhận điểm danh có mặt!');
+                await cfg.onConfirm(noteVal);
+                modalResolveObj.hide();
+                showToast(cfg.toastType || 'success', cfg.toastMessage || 'Đã cập nhật.');
                 await reloadData();
+                if (window.refreshNotifications) window.refreshNotifications();
             } catch (err) {
-                showToast('danger', 'Lỗi hoàn thành học bù: ' + err.message);
+                showToast('danger', 'Lỗi: ' + err.message);
             }
         }
 
-        async function confirmCancelMakeup(makeupId) {
-            const reason = prompt("Nhập lý do hủy ca học bù:");
-            if (reason === null) return;
-            try {
-                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
-                    reason: reason.trim()
-                });
-                showToast('warning', 'Đã hủy ca học bù thành công.');
-                await reloadData();
-            } catch (err) {
-                showToast('danger', 'Lỗi hủy ca bù: ' + err.message);
-            }
+        function confirmCancelAbsence(absenceId) {
+            const found = (currentAbsenceList || []).find(a => Number(a.id) === Number(absenceId));
+            const label = found ? `${escapeHtml(found.studentName || 'Học viên')} • ${escapeHtml(found.className || '')} (${found.lessonDate || ''})` : `Đơn #${absenceId}`;
+            openResolveModal({
+                headerClass: 'modal-header-rose',
+                titleHtml: '<i class="bi bi-trash3-fill me-2"></i>Hủy Đơn Xin Nghỉ',
+                summaryHtml: `Hủy đơn xin nghỉ của <strong>${label}</strong>?`,
+                hideNote: true,
+                btnClass: 'btn-rose-solid',
+                btnText: '<i class="bi bi-trash3 me-1"></i>Hủy Đơn',
+                toastType: 'warning',
+                toastMessage: 'Đã hủy đơn xin nghỉ.',
+                onConfirm: async () => callApi(`/api/attendance-makeup/absence-requests/${absenceId}`, 'DELETE')
+            });
         }
 
-        // Gia đình báo không cần học bù nữa -> hủy, phụ huynh thấy trạng thái + ghi chú
-        async function familyDeclines(makeupId) {
-            if (!confirm('Xác nhận gia đình báo KHÔNG CẦN học bù nữa và hủy yêu cầu này?')) return;
-            try {
-                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
+        function confirmCompleteMakeup(makeupId) {
+            openResolveModal({
+                headerClass: 'modal-header-emerald',
+                titleHtml: '<i class="bi bi-check2-all me-2"></i>Điểm Danh Có Mặt',
+                summaryHtml: `Xác nhận học viên đã hoàn thành ca học bù <strong>#${makeupId}</strong>?`,
+                hideNote: true,
+                btnClass: 'btn-primary',
+                btnText: '<i class="bi bi-check-lg me-1"></i>Xác Nhận Có Mặt',
+                toastType: 'success',
+                toastMessage: 'Đã ghi nhận hoàn thành ca học bù.',
+                onConfirm: async () => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/complete`, 'PUT')
+            });
+        }
+
+        function confirmCancelMakeup(makeupId) {
+            openResolveModal({
+                headerClass: 'modal-header-rose',
+                titleHtml: '<i class="bi bi-x-circle-fill me-2"></i>Hủy Ca Học Bù',
+                summaryHtml: `Hủy ca học bù <strong>#${makeupId}</strong> và thông báo các bên liên quan.`,
+                noteLabel: 'Lý do hủy',
+                noteRequired: true,
+                placeholder: 'Nhập lý do hủy ca học bù...',
+                btnClass: 'btn-rose-solid',
+                btnText: '<i class="bi bi-x-circle me-1"></i>Hủy Ca Bù',
+                toastType: 'warning',
+                toastMessage: 'Đã hủy ca học bù.',
+                onConfirm: async (reason) => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', { reason })
+            });
+        }
+
+        function familyDeclines(makeupId) {
+            openResolveModal({
+                headerClass: 'modal-header-slate',
+                titleHtml: '<i class="bi bi-x-circle me-2"></i>Gia Đình Không Học Bù',
+                summaryHtml: `Xác nhận gia đình báo <strong>không cần học bù</strong> cho ca #${makeupId}?`,
+                hideNote: true,
+                btnClass: 'btn-secondary',
+                btnText: 'Xác Nhận Hủy Bù',
+                toastType: 'warning',
+                toastMessage: 'Đã hủy yêu cầu học bù.',
+                onConfirm: async () => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
                     reason: 'Gia đình báo không cần học bù'
-                });
-                showToast('warning', 'Đã hủy yêu cầu học bù theo đề nghị của gia đình.');
-                await reloadData();
-            } catch (err) {
-                showToast('danger', 'Lỗi: ' + err.message);
-            }
+                })
+            });
         }
 
-        // Không có lớp phù hợp -> báo phụ huynh (ghi chú hiển thị ở tài khoản phụ huynh)
-        async function markNoSlot(makeupId) {
-            const note = prompt('Nội dung báo phụ huynh (VD: Buổi này quan trọng, hiện chưa có lớp cùng level. Nếu bé đi học được vui lòng đến lớp gốc):');
-            if (note === null) return;
-            if (!note.trim()) { showToast('danger', 'Vui lòng nhập nội dung thông báo!'); return; }
-            try {
-                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/no-slot`, 'PATCH', { note: note.trim() });
-                showToast('success', 'Đã ghi nhận chưa có lớp phù hợp và thông báo cho phụ huynh.');
-                await reloadData();
-            } catch (err) {
-                showToast('danger', 'Lỗi: ' + err.message);
-            }
-        }
-
-        // Phụ huynh không thể đi học -> chuyển sang khóa kỳ sau
-        async function deferNextTerm(makeupId) {
-            const note = prompt('Ghi chú chuyển học bù sang khóa kỳ sau:');
-            if (note === null) return;
-            if (!note.trim()) { showToast('danger', 'Vui lòng nhập ghi chú!'); return; }
-            try {
-                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/defer`, 'PATCH', { note: note.trim() });
-                showToast('success', 'Đã chuyển buổi học bù sang khóa kỳ sau.');
-                await reloadData();
-            } catch (err) {
-                showToast('danger', 'Lỗi: ' + err.message);
-            }
+        function markNoSlot(makeupId) {
+            openResolveModal({
+                headerClass: 'modal-header-amber',
+                lightHeader: true,
+                titleHtml: '<i class="bi bi-exclamation-triangle-fill me-2"></i>Báo Chưa Có Lớp Phù Hợp',
+                summaryHtml: `Gửi thông báo tới phụ huynh và giáo viên cho ca học bù <strong>#${makeupId}</strong>.`,
+                noteLabel: 'Nội dung gửi phụ huynh',
+                noteRequired: true,
+                defaultNote: 'Hiện chưa có lớp phù hợp cùng trình độ để xếp học bù. Phụ huynh theo dõi thông báo mới từ trung tâm.',
+                placeholder: 'Nhập thông báo gửi phụ huynh...',
+                btnClass: 'btn-amber-solid',
+                btnText: '<i class="bi bi-send me-1"></i>Gửi Thông Báo',
+                toastType: 'success',
+                toastMessage: 'Đã gửi thông báo chưa có lớp.',
+                onConfirm: async (note) => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/no-slot`, 'PATCH', { note })
+            });
         }
 
         // =========================================================================
@@ -1857,53 +2403,111 @@
                 const item = await callApi(`/api/attendance-makeup/absence-requests/${id}`);
                 if (!item) return;
 
+                const cleanReviewNote = formatCleanNote(item.reviewNote);
+                const cleanMakeupNote = formatCleanNote(item.makeupNote);
+
+                document.getElementById('modalDetailTitle').innerHTML = `<i class="bi bi-file-text text-primary me-2"></i>Đơn Xin Nghỉ #${item.id}`;
                 const body = document.getElementById('detailModalBody');
                 body.innerHTML = `
-                    <div class="mb-3 border-bottom pb-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="badge bg-secondary">Đơn #${item.id}</span>
-                            <span class="badge bg-primary">${item.status}</span>
+                    <div class="detail-info-card mb-3">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-bold text-dark fs-6">${escapeHtml(item.studentName || 'Học viên')}</div>
+                                <div class="small text-secondary mt-1">
+                                    PH: ${escapeHtml(item.parentName || 'N/A')}${item.parentPhone ? ` &bull; ${escapeHtml(item.parentPhone)}` : ''}
+                                </div>
+                            </div>
+                            ${getAbsenceStatusBadgeHtml(item.status)}
                         </div>
-                        <h6 class="fw-bold mt-2 mb-1 text-primary">${item.studentName || 'Học viên'}</h6>
-                        <div class="small text-muted">Phụ huynh: ${item.parentName || 'N/A'} - SĐT: ${item.parentPhone || 'N/A'}</div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="small text-muted fw-bold">Buổi Học Xin Nghỉ:</label>
-                        <div class="small fw-semibold text-dark">${item.lessonTitle || `Buổi ${item.sessionNumber || ''}`}</div>
-                        <div class="small text-secondary">
-                            Ngày: <strong>${item.lessonDate || ''}</strong> (${item.timeSlot || ''}) &bull; Lớp: ${item.className || ''}
+                        <div class="detail-section-label">Buổi học xin nghỉ</div>
+                        <div class="fw-semibold text-dark">${escapeHtml(item.lessonTitle || `Buổi ${item.sessionNumber || ''}`)}</div>
+                        <div class="small text-secondary mt-1">
+                            ${item.lessonDate || ''} (${item.timeSlot || ''}) &bull; ${escapeHtml(item.className || '')}
                         </div>
-                        <div class="small text-muted">Phòng đàn: ${item.roomName || 'N/A'} &bull; Giáo viên: ${item.teacherName || 'N/A'}</div>
+                        <div class="small text-muted mt-0.5">
+                            ${escapeHtml(item.roomName || 'Phòng học')} &bull; GV: ${escapeHtml(item.teacherName || 'N/A')}
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="small text-muted fw-bold">Lý Do Xin Nghỉ:</label>
-                        <div class="p-2 bg-light rounded text-dark small border">${escapeHtml(item.reason || '')}</div>
+                        <div class="detail-section-label">Lý do xin nghỉ</div>
+                        <div class="reason-box text-dark">${escapeHtml(item.reason || '')}</div>
                     </div>
 
-                    ${item.reviewNote ? `
+                    ${cleanReviewNote ? `
                         <div class="mb-3">
-                            <label class="small text-muted fw-bold">Ghi Chú Phê Duyệt / Xét Duyệt:</label>
-                            <div class="p-2 bg-light rounded text-primary small border">
-                                <i class="bi bi-chat-left-quote me-1"></i>${escapeHtml(item.reviewNote)}
-                                <div class="text-muted mt-1" style="font-size: 0.72rem;">Người duyệt: ${item.approvedByTeacherName || 'Giáo viên'}</div>
+                            <div class="detail-section-label">Phản hồi duyệt</div>
+                            <div class="p-2.5 bg-light rounded-3 text-dark small border">
+                                <div>${escapeHtml(cleanReviewNote)}</div>
+                                <div class="text-muted mt-1" style="font-size: 0.72rem;">Người duyệt: ${escapeHtml(item.approvedByTeacherName || 'Giáo viên')}</div>
                             </div>
                         </div>
                     ` : ''}
 
                     ${item.makeupRegistrationId ? `
-                        <div class="p-3 bg-light rounded-3 border">
-                            <div class="small fw-bold text-success mb-1">
-                                <i class="bi bi-calendar2-check-fill me-1"></i>Ca Học Bù Liên Kết (#${item.makeupRegistrationId})
+                        <div class="detail-info-card">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="detail-section-label mb-0 text-success"><i class="bi bi-calendar2-check me-1"></i>Ca học bù #${item.makeupRegistrationId}</span>
+                                ${getMakeupStatusBadgeHtml(item.makeupStatus, item.makeupRetryCount, item.makeupMaxRetries)}
                             </div>
-                            <div class="small text-muted">Trạng thái: <strong class="text-primary">${item.makeupStatus || ''}</strong></div>
-                            ${item.makeupTargetDate ? `<div class="small text-secondary">Ngày bù: <strong>${item.makeupTargetDate}</strong></div>` : ''}
-                            ${item.makeupTargetClassName ? `<div class="small text-secondary">Lớp học bù: <strong>${escapeHtml(item.makeupTargetClassName)}</strong></div>` : ''}
-                            ${item.makeupNote ? `<div class="small text-danger mt-1 p-2 bg-white rounded border"><i class="bi bi-bell-fill me-1"></i><strong>Thông báo:</strong> ${escapeHtml(item.makeupNote)}</div>` : ''}
+                            ${item.makeupTargetDate ? `<div class="small text-dark">Ngày bù: <strong>${item.makeupTargetDate}</strong></div>` : ''}
+                            ${item.makeupTargetClassName ? `<div class="small text-secondary">Lớp bù: <strong>${escapeHtml(item.makeupTargetClassName)}</strong></div>` : ''}
+                            ${cleanMakeupNote ? `<div class="small text-danger mt-2 p-2 bg-white rounded border"><i class="bi bi-bell-fill me-1"></i>${escapeHtml(cleanMakeupNote)}</div>` : ''}
                         </div>
                     ` : ''}
                 `;
+
+                const footer = document.getElementById('detailModalFooter');
+                const role = currentUser ? currentUser.role : '';
+                const isCoordinator = ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(role);
+                const isCreator = ['PARENT', 'STUDENT'].includes(role);
+                const myId = currentUser ? (currentUser.userId ?? currentUser.id) : null;
+                const canReview = isCoordinator || (role === 'TEACHER' && (myId == null || item.teacherId == null || Number(myId) === Number(item.teacherId)));
+
+                let footerActions = '';
+                if (canReview && item.status === 'PENDING') {
+                    footerActions += `
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3" onclick="modalDetailObj.hide(); openApproveModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
+                            <i class="bi bi-check-lg me-1"></i>Duyệt
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger rounded-pill px-3" onclick="modalDetailObj.hide(); openRejectModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
+                            <i class="bi bi-x-lg me-1"></i>Từ chối
+                        </button>
+                    `;
+                }
+                if ((isCreator || isCoordinator) && item.status === 'PENDING') {
+                    footerActions += `
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="modalDetailObj.hide(); confirmCancelAbsence(${item.id})">
+                            <i class="bi bi-trash3 me-1"></i>Hủy đơn
+                        </button>
+                    `;
+                }
+                if (isCoordinator && item.status === 'APPROVED' && item.makeupRegistrationId) {
+                    const mStatus = item.makeupStatus;
+                    if (mStatus === 'PENDING' || mStatus === 'NO_SLOT' || (mStatus === 'MISSED' && (item.makeupRetryCount || 0) < (item.makeupMaxRetries || 2))) {
+                        footerActions += `
+                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="modalDetailObj.hide(); openScheduleModal(${item.makeupRegistrationId})">
+                                <i class="bi bi-calendar-plus me-1"></i>Xếp lớp
+                            </button>
+                        `;
+                    }
+                    if (mStatus === 'PENDING') {
+                        footerActions += `
+                            <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3" onclick="modalDetailObj.hide(); markNoSlot(${item.makeupRegistrationId})">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Chưa có lớp
+                            </button>
+                        `;
+                    }
+                }
+
+                footer.innerHTML = `
+                    <div class="d-flex flex-wrap gap-2">${footerActions}</div>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                `;
+
                 modalDetailObj.show();
             } catch (err) {
                 showToast('danger', 'Lỗi xem chi tiết: ' + err.message);
@@ -1915,43 +2519,78 @@
                 const item = await callApi(`/api/attendance-makeup/makeup-requests/${id}`);
                 if (!item) return;
 
+                const cleanNote = formatCleanNote(item.note);
+                document.getElementById('modalDetailTitle').innerHTML = `<i class="bi bi-calendar2-check text-primary me-2"></i>Ca Học Bù #${item.id}`;
                 const body = document.getElementById('detailModalBody');
                 body.innerHTML = `
-                    <div class="mb-3 border-bottom pb-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="badge bg-secondary">Ca Bù #${item.id}</span>
-                            <span class="badge bg-primary">${item.status}</span>
-                        </div>
-                        <h6 class="fw-bold mt-2 mb-1 text-primary">${item.studentName || 'Học viên'}</h6>
-                        <div class="small text-muted">Phụ huynh: ${item.parentName || 'N/A'}</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="small text-muted fw-bold">Buổi Nghỉ Gốc:</label>
-                        <div class="small text-dark">
-                            Ngày: <strong>${item.originalLessonDate || ''}</strong> (${item.originalTimeSlot || ''})
-                        </div>
-                        <div class="small text-muted">Lớp: ${item.originalClassName || ''}</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="small text-muted fw-bold">Ca Học Bù Được Xếp:</label>
-                        ${item.targetLessonId ? `
-                            <div class="small text-success fw-bold">
-                                Ngày bù: ${item.targetLessonDate || ''} (${item.targetTimeSlot || ''})
+                    <div class="detail-info-card mb-3">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-bold text-dark fs-6">${escapeHtml(item.studentName || 'Học viên')}</div>
+                                <div class="small text-secondary mt-1">PH: ${escapeHtml(item.parentName || 'N/A')}</div>
                             </div>
-                            <div class="small text-secondary">Lớp: ${item.targetClassName || ''} &bull; Phòng: ${item.targetRoomName || ''}</div>
-                            <div class="small text-muted">Giáo viên phụ trách: ${item.targetTeacherName || 'N/A'}</div>
-                        ` : `<div class="small text-warning">Chưa được xếp buổi học cụ thể</div>`}
+                            ${getMakeupStatusBadgeHtml(item.status, item.retryCount, item.maxRetries)}
+                        </div>
                     </div>
 
-                    ${item.note ? `
-                        <div class="mb-2">
-                            <label class="small text-muted fw-bold">Ghi Chú Điều Phối:</label>
-                            <div class="p-2 bg-light rounded text-dark small border">${escapeHtml(item.note)}</div>
+                    <div class="mb-3">
+                        <div class="detail-section-label">Buổi nghỉ gốc</div>
+                        <div class="small text-dark fw-semibold">${escapeHtml(item.originalClassName || '')}</div>
+                        <div class="small text-secondary">${item.originalLessonDate || ''} (${item.originalTimeSlot || ''}) &bull; GV: ${escapeHtml(item.originalTeacherName || 'N/A')}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="detail-section-label">Ca học bù được xếp</div>
+                        ${item.targetLessonId ? `
+                            <div class="detail-info-card">
+                                <div class="small text-success fw-bold">${item.targetLessonDate || ''} (${item.targetTimeSlot || ''})</div>
+                                <div class="small text-dark mt-0.5">${escapeHtml(item.targetClassName || '')} &bull; ${escapeHtml(item.targetRoomName || '')}</div>
+                                <div class="small text-muted mt-0.5">GV: ${escapeHtml(item.targetTeacherName || 'N/A')}</div>
+                            </div>
+                        ` : `<div class="small text-warning fw-semibold">Chưa xếp buổi học bù</div>`}
+                    </div>
+
+                    ${cleanNote ? `
+                        <div>
+                            <div class="detail-section-label">Ghi chú điều phối</div>
+                            <div class="reason-box text-dark">${escapeHtml(cleanNote)}</div>
                         </div>
                     ` : ''}
                 `;
+
+                const footer = document.getElementById('detailModalFooter');
+                const role = currentUser ? currentUser.role : '';
+                const isCoordinator = ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(role);
+                const isTeacher = role === 'TEACHER';
+
+                let footerActions = '';
+                if (isCoordinator && (item.status === 'PENDING' || item.status === 'NO_SLOT' || (item.status === 'MISSED' && (item.retryCount || 0) < (item.maxRetries || 2)))) {
+                    footerActions += `
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="modalDetailObj.hide(); openScheduleModal(${item.id})">
+                            <i class="bi bi-calendar-plus me-1"></i>Xếp lớp
+                        </button>
+                    `;
+                }
+                if (isCoordinator && item.status === 'PENDING') {
+                    footerActions += `
+                        <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3" onclick="modalDetailObj.hide(); markNoSlot(${item.id})">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Chưa có lớp
+                        </button>
+                    `;
+                }
+                if ((isCoordinator || isTeacher) && item.status === 'SCHEDULED') {
+                    footerActions += `
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3" onclick="modalDetailObj.hide(); confirmCompleteMakeup(${item.id})">
+                            <i class="bi bi-check2-all me-1"></i>Có mặt
+                        </button>
+                    `;
+                }
+
+                footer.innerHTML = `
+                    <div class="d-flex flex-wrap gap-2">${footerActions}</div>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                `;
+
                 modalDetailObj.show();
             } catch (err) {
                 showToast('danger', 'Lỗi xem chi tiết: ' + err.message);

@@ -54,15 +54,10 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
             Long targetLessonId, Long studentId, Collection<MakeupStatus> statuses);
 
     /**
-     * Tìm ca bù theo ID và trong tập trạng thái cho phép hủy (PENDING, SCHEDULED, MISSED).
+     * Tìm ca bù theo ID và trong tập trạng thái cho phép hủy (PENDING, SCHEDULED, MISSED, NO_SLOT).
      * Dùng để validate trước khi cancel.
      */
     Optional<MakeupRegistration> findByIdAndStatusIn(Long id, List<MakeupStatus> statuses);
-
-    /**
-     * Tìm tất cả học viên học bù được xếp vào buổi học này
-     */
-    List<MakeupRegistration> findByTargetLessonIdAndStatus(Long targetLessonId, MakeupStatus status);
 
     /** Học viên bù được xếp vào buổi học này (gồm cả ca đã hoàn thành/bỏ lỡ để không biến mất khỏi bảng điểm danh) */
     List<MakeupRegistration> findByTargetLessonIdAndStatusIn(Long targetLessonId, Collection<MakeupStatus> statuses);

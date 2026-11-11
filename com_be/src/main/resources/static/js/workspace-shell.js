@@ -277,6 +277,9 @@ updateNavbarUser();
         if (type.includes('ATTENDANCE_WARNING') || type.includes('MAKEUP_MISSED')) {
             return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-exclamation-triangle-fill', tag: '<span class="badge bg-warning text-dark ms-1" style="font-size:0.62rem;">Cảnh báo</span>' };
         }
+        if (type.includes('ABSENCE_CREATED')) {
+            return { cls: 'bg-info-subtle text-info-emphasis', icon: 'bi-envelope-plus-fill', tag: '<span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size:0.62rem;">Đơn mới</span>' };
+        }
         if (type.includes('MAKEUP_SCHEDULED') || type.includes('MAKEUP_COORDINATED') || type.includes('MAKEUP_PENDING')) {
             return { cls: 'bg-primary-subtle text-primary', icon: 'bi-calendar2-week-fill', tag: '<span class="badge bg-primary-subtle text-primary ms-1" style="font-size:0.62rem;">Học bù</span>' };
         }

@@ -73,8 +73,11 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         if (userRole == Role.ADMIN || userRole == Role.STAFF || userRole == Role.BRANCH_MANAGER) {
             canEdit = true;
         } else if (userRole == Role.TEACHER) {
-            boolean isAssignedTeacher = lesson.getTeacher() != null
-                    && lesson.getTeacher().getId().equals(currentUser.getId());
+            User assignedTeacher = lesson.getTeacher() != null
+                    ? lesson.getTeacher()
+                    : (lesson.getClassEntity() != null ? lesson.getClassEntity().getTeacher() : null);
+            boolean isAssignedTeacher = assignedTeacher != null
+                    && assignedTeacher.getId().equals(currentUser.getId());
             if (!isAssignedTeacher) {
                 canEdit = false;
                 lockReason = "Bạn không phải giáo viên phụ trách buổi học này!";
@@ -139,8 +142,7 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
         // Lấy danh sách đơn xin nghỉ phép đã duyệt cho buổi này
         Map<Long, AbsenceRequest> approvedAbsenceMap = absenceRequestRepository.findByLessonId(lesson.getId()).stream()
-                .filter(ar -> (ar.getStatus() == AbsenceStatus.APPROVED || ar.getStatus() == AbsenceStatus.EXCUSED)
-                        && ar.getStudent() != null)
+                .filter(ar -> ar.getStatus() == AbsenceStatus.APPROVED && ar.getStudent() != null)
                 .collect(Collectors.toMap(ar -> ar.getStudent().getId(), Function.identity(), (a1, a2) -> a1));
 
         // Tổng hợp danh sách học sinh: Lớp chính + Học viên học bù
@@ -163,6 +165,10 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         int presentCount = 0;
         int absentCount = 0;
 
+        boolean autoAbsentPast = lesson.getLessonDate() != null
+                && lesson.getLessonDate().isBefore(today)
+                && lesson.getStatus() != LessonStatus.CANCELLED;
+
         for (Student s : uniqueStudents.values()) {
             Attendance att = attendanceMap.get(s.getId());
             AbsenceRequest leaveReq = approvedAbsenceMap.get(s.getId());
@@ -176,6 +182,9 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
             } else if (leaveReq != null) {
                 statusStr = "ABSENT";
                 noteStr = "Nghỉ học: " + (leaveReq.getReason() != null ? leaveReq.getReason() : "");
+            } else if (autoAbsentPast) {
+                statusStr = "ABSENT";
+                noteStr = "Vắng mặt (Quá khứ chưa điểm danh)";
             } else {
                 statusStr = null;
             }
@@ -267,8 +276,11 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
         // 2. Ràng buộc thời gian & giáo viên (Crucial Business Rule)
         if (userRole == Role.TEACHER) {
-            boolean isAssignedTeacher = lesson.getTeacher() != null
-                    && lesson.getTeacher().getId().equals(currentUser.getId());
+            User assignedTeacher = lesson.getTeacher() != null
+                    ? lesson.getTeacher()
+                    : (lesson.getClassEntity() != null ? lesson.getClassEntity().getTeacher() : null);
+            boolean isAssignedTeacher = assignedTeacher != null
+                    && assignedTeacher.getId().equals(currentUser.getId());
             if (!isAssignedTeacher) {
                 throw new AttendanceMakeupException("Bạn không phải giáo viên phụ trách buổi học này!");
             }
@@ -584,12 +596,16 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         int makeupMissedCount = 0;
         List<StudentLessonAttendanceItemResponse> lessonItems = new ArrayList<>();
 
+        LocalDate today = LocalDate.now(CENTER_ZONE);
         for (int i = 0; i < classLessons.size(); i++) {
             Lesson l = classLessons.get(i);
             int sessionNum = l.getSessionNumber() != null ? l.getSessionNumber() : (i + 1);
             Attendance att = attendanceByLesson.get(l.getId());
             AbsenceRequest ar = absenceByLesson.get(l.getId());
             MakeupRegistration mr = makeupByOriginal.get(l.getId());
+            boolean autoAbsentPast = l.getLessonDate() != null
+                    && l.getLessonDate().isBefore(today)
+                    && l.getStatus() != LessonStatus.CANCELLED;
 
             String status;
             String statusLabel;
@@ -600,7 +616,7 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                     status = "PRESENT";
                     statusLabel = "Có mặt";
                     attendedCount++;
-                } else if (att.getStatus() == AttendanceStatus.ABSENT) {
+                } else if (att.getStatus() == AttendanceStatus.ABSENT || autoAbsentPast) {
                     status = "ABSENT";
                     statusLabel = "Vắng mặt";
                     absentCount++;
@@ -611,12 +627,19 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 }
                 if (att.getNote() != null && !att.getNote().isBlank()) {
                     note = att.getNote().trim();
+                } else if ("ABSENT".equals(status) && att.getStatus() != AttendanceStatus.ABSENT) {
+                    note = "Vắng mặt (Quá khứ chưa điểm danh)";
                 }
-            } else if (ar != null && (ar.getStatus() == AbsenceStatus.APPROVED || ar.getStatus() == AbsenceStatus.EXCUSED)) {
+            } else if (ar != null && ar.getStatus() == AbsenceStatus.APPROVED) {
                 status = "ABSENT";
                 statusLabel = "Vắng mặt";
                 absentCount++;
                 note = "Nghỉ có phép: " + (ar.getReason() != null ? ar.getReason() : "");
+            } else if (autoAbsentPast) {
+                status = "ABSENT";
+                statusLabel = "Vắng mặt";
+                absentCount++;
+                note = "Vắng mặt (Quá khứ chưa điểm danh)";
             } else {
                 status = "NOT_MARKED";
                 statusLabel = "Chưa điểm danh";
@@ -649,8 +672,6 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                     makeupInfo = "Chờ xếp lịch học bù";
                 } else if (mr.getStatus() == MakeupStatus.NO_SLOT) {
                     makeupInfo = "Chưa có lớp bù phù hợp";
-                } else if (mr.getStatus() == MakeupStatus.DEFERRED) {
-                    makeupInfo = "Chuyển sang kỳ sau";
                 }
             }
 

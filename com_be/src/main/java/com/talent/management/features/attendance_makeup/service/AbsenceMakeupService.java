@@ -2,7 +2,6 @@ package com.talent.management.features.attendance_makeup.service;
 
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceRequestCreateRequest;
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest;
-import com.talent.management.features.attendance_makeup.dto.request.AttendanceMarkRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupCancelRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupResolveRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupScheduleRequest;
@@ -16,12 +15,12 @@ import com.talent.management.shared.enums.MakeupStatus;
 import java.util.List;
 
 /**
- * Service xử lý toàn bộ nghiệp vụ Phân hệ Nghỉ học & Học bù — Luồng Mới (4 giai đoạn).
+ * Service xử lý toàn bộ nghiệp vụ Phân hệ Nghỉ học & Học bù (4 giai đoạn).
  *
  * Giai đoạn 1: Phụ huynh gửi đơn
- * Giai đoạn 2: Giáo viên xét duyệt (1 endpoint /review, 3 quyết định: APPROVED/EXCUSED/REJECTED)
- * Giai đoạn 3: Nhân viên/Admin xếp lịch bù (Schedule / Cancel)
- * Giai đoạn 4: Giáo viên điểm danh & hoàn thành
+ * Giai đoạn 2: Giáo viên / Staff / Admin xét duyệt (APPROVED / REJECTED)
+ * Giai đoạn 3: Staff / Admin xếp lịch bù / báo chưa có ca phù hợp (Schedule / No-Slot / Cancel)
+ * Giai đoạn 4: Điểm danh & hoàn thành học bù
  */
 public interface AbsenceMakeupService {
 
@@ -38,16 +37,17 @@ public interface AbsenceMakeupService {
     /** Chi tiết yêu cầu nghỉ học theo ID */
     AbsenceRequestResponse getAbsenceRequestById(Long id);
 
+    /** Phụ huynh / Học viên / Quản trị hủy đơn xin nghỉ khi đang ở trạng thái PENDING */
+    void cancelAbsenceRequest(Long id);
+
     // ==========================================
     // GIAI ĐOẠN 2: GIÁO VIÊN XÉT DUYỆT
     // ==========================================
 
     /**
-     * Xét duyệt đơn nghỉ — 1 endpoint duy nhất thay thế 3 endpoint cũ (approve/special-approve/reject).
-     *
-     * APPROVED  → Tự động tạo MakeupRegistration{PENDING}
-     * EXCUSED   → Đóng luồng, KHÔNG tạo ca bù
-     * REJECTED  → Đóng luồng, bắt buộc reviewNote
+     * Xét duyệt đơn nghỉ:
+     * APPROVED  → Đồng ý, tự động tạo MakeupRegistration{PENDING}
+     * REJECTED  → Từ chối, bắt buộc reviewNote
      */
     AbsenceRequestResponse reviewAbsenceRequest(Long id, AbsenceReviewRequest request);
 
@@ -70,17 +70,9 @@ public interface AbsenceMakeupService {
     /** Không có lớp bù phù hợp — báo phụ huynh (PENDING/NO_SLOT → NO_SLOT) */
     MakeupRegistrationResponse markNoSlotAvailable(Long id, MakeupResolveRequest request);
 
-    /** Buổi quan trọng không bù được — chuyển sang khóa học kỳ sau (PENDING/NO_SLOT → DEFERRED) */
-    MakeupRegistrationResponse deferToNextTerm(Long id, MakeupResolveRequest request);
-
     // ==========================================
-    // GIAI ĐOẠN 4: GIÁO VIÊN ĐIỂM DANH & HOÀN THÀNH
+    // GIAI ĐOẠN 4: HOÀN THÀNH HỌC BÙ
     // ==========================================
-
-    /**
-     * Điểm danh buổi học bù — Nếu PRESENT và có MakeupRegistration{SCHEDULED} → auto COMPLETED.
-     */
-    void markAttendance(AttendanceMarkRequest request);
 
     /**
      * Hoàn thành ca học bù thủ công qua ID (khi không dùng điểm danh tự động).

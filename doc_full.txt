@@ -1,0 +1,5352 @@
+﻿Requirement & Design Specification
+Course Operation Management
+Version: 1.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+– Hanoi, November 2026 –
+
+
+Record of Changes
+Version
+	Date
+	A*
+M, D
+	In charge
+	Change Description
+	V1.0
+	08/09/2026
+	A
+	
+
+	Initial base code 
+	
+
+	13/09/2026
+	A
+	
+
+	complete the context diagram, external entities
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	*A - Added M - Modified D - Deleted
+________________
+
+
+Contents
+Record of Changes        2
+I. Overview        5
+1. System Context        5
+2. External Entities        5
+3. Business Processes        5
+3.1 Sale Process        6
+3.2 Customer Support        6
+4. User Requirements        6
+4.1 UCs for Guest        7
+4.2 UCs for Student        7
+4.3 …        7
+5. System Functionalities        7
+5.1 Screens Flow        7
+5.2 Screen Authorization        8
+5.3 Non-UI Functions        8
+II. Functional Requirements        9
+1. Feature Name1        9
+1.1 SubFeature Name1.1        9
+1.2 SubFeature Name1.2        9
+2. User Authentication        9
+2.1 User Register        9
+3. System Administration        9
+3.1 Master Data        9
+3.2 User Management        10
+III. System Design        11
+1. Software Architecture        11
+1.1 Overall Architecturural Diagram        11
+1.2 Component Descriptions        11
+2. Code Package Design        11
+2.1. Package Diagram        12
+2.2 Package Descriptions        12
+3. Database Design        12
+3.1 Database Schema        13
+3.2 Table Descriptions        13
+
+
+________________
+
+
+I. Overview
+1. System Context 
+The Multi-Discipline Training Center Academic Operations Management System is designed to support and digitalize the academic operations of a multi-discipline training center. The system supports key processes such as course and class management, trial and placement, enrollment, scheduling, attendance, make-up lessons, student assessment and progress tracking, and tuition payment.
+The system interacts with Parents, Students, Academic Staff, Branch Managers, Teachers, Admin, and an external Payment Gateway. Each entity exchanges information with the system according to its responsibilities and access permissions. 
+
+
+  
+
+
+
+
+
+2. External Entities
+
+
+#
+	Entity
+	Description
+	1
+	Parent
+	Searches available courses and classes, submits and tracks enrollment requests for their children, requests a placement test when needed, and cancels eligible requests. Parents can also submit absence requests and view related learning information. 
+	2
+	Academic Staff 
+	Creates and updates classes based on existing courses and branches. Reviews enrollment requests, checks placement recommendations when applicable, and assigns students to suitable open classes. Staff may also arrange placement tests and make-up lessons in the relevant modules. 
+	3
+	Teacher 
+	Evaluates placement tests, records assessment results and course recommendations, reviews absence requests, and records student attendance. 
+	4
+	Admin 
+	Performs authorized administrative tasks across the system, including managing classes, reviewing enrollment requests, and views branch facilities and updates permitted room and equipment information and conditions. Reviews room usage and facility warnings. 
+	5
+	Payment Gateway 
+	PayOS provides payment links or QR codes and sends transaction results to the system through a webhook. The system uses these results to process the related tuition payment. 
+	3. Business Processes
+3.1 Manage Registration and enrollment
+  
+
+3.2 Class Management
+  
+
+3.3 Facility lookup and update
+  
+
+3.4 Absence, Attendance, and Make-up Process
+  
+
+  
+
+  
+
+4. User Requirements
+ID
+	Use Case
+	Feature
+	Main Actor
+	Use Case Description
+	UC-CM-01
+	Search and filter classes
+	Class Management
+	Staff/
+Admin
+	Staff/Admin open the list and filter by keyword, course, campus, or status; the system returns the list and enrollment figures.
+	UC-CM-02 
+	Create class 
+	Class Management
+	Staff/
+Admin
+
+
+	Select an existing course and facility; enter the class code, name, maximum enrollment, expected start and end dates, and status; the system validates the information and saves the class.
+	UC-CM-03 
+	Update class 
+	Class Management
+	Staff/
+Admin
+
+
+	Select an existing class; edit the information or status; the system validates and saves the changes, then reloads the list.
+	UC-CE-01 
+	Browse enrollment options
+	Course Enrollment 
+	Parent 
+	Select a child and browse courses, open classes with available seats, and class recommendations when a placement result is available. 
+	UC-CE-02 
+	
+
+Submit enrollment request
+	Course Enrollment 
+	Parent 
+	
+
+Submit a request for a child, choosing a preferred course or requesting a placement test. The system checks the request and records its initial status.
+	UC-CE-03 
+	View own enrollment requests 
+	Course Enrollment 
+	Parent 
+	
+
+View submitted requests and their current statuses, including placement, class assignment, payment, rejection, or cancellation outcomes.
+	UC-CE-04 
+	
+
+Cancel eligible enrollment request
+	Course Enrollment 
+	Parent 
+	
+
+Cancel an owned enrollment request while it still meets the cancellation conditions. The system updates its status to CANCELLED.
+	UC-CE-05 
+	
+
+Review and decide enrollment request
+	Course Enrollment 
+	
+
+Staff /Admin
+	Review a pending request and placement recommendation when applicable. Reject the request, or assign an eligible open class and create a pending enrollment and unpaid invoice. 
+	UC-BF-01 
+	
+
+View rooms by branch
+	Facility Lookup & Update 
+	Facility Viewer 
+	
+
+Select a branch and view its rooms, including room code, name, type, capacity, and current status.
+	UC-BF-02 
+	
+
+View equipment by branch
+	Facility Lookup & Update 
+	Facility Viewer 
+	
+
+Select a branch and view its equipment, including code, name, category, assigned room, and current status.
+	UC-BF-03 
+	
+
+Update room information and status
+	Facility Lookup & Update 
+	Admin
+	
+
+Update a room’s name, capacity, type, status, or description. The system validates restrictions related to classes assigned to the room, saves valid changes, and reloads the list.
+	UC-BF-04 
+	
+
+Update equipment information and status
+	Facility Lookup & Update 
+	Admin
+	
+
+Update an equipment item’s name, category, status, serial number, or description. The system saves valid changes and reloads the list.
+	UC-BF-05 
+	View room details and usage 
+	Facility Lookup & Update 
+	Admin/Staff/Teacher
+	View room information, equipment, associated classes, ongoing and upcoming scheduled lessons, and facility warnings. 
+	UC-PT-01 
+	Search and filter placement tests 
+	Placement Test 
+	Staff / Teacher / Admin 
+	Search and filter placement schedules by keyword (schedule ID, student name, title), subject (Piano, Dance, Martial Arts), recommended level, or test status (SCHEDULED, COMPLETED, CANCELED). 
+	UC-PT-02 
+	Create placement test schedule 
+	Placement Test 
+	Staff / Admin / Parent 
+	Submit and record a new placement test appointment with student name, subject, facility branch, designated room, test date, and time. The system enforces real-time validation to prevent past dates and initializes status to SCHEDULED. 
+	UC-PT-03 
+	Assess and grade placement test 
+	Placement Test 
+	Teacher 
+	The subject-specific teacher evaluates the student across 4 specialized skill criteria, computes an overall score (0–100), selects a recommended level (BEGINNER, INTERMEDIATE, ADVANCED), uploads media evidence, enters notes, and completes the assessment. 
+	UC-PT-04 
+	View placement test details 
+	Placement Test 
+	Staff / Teacher / Admin / Parent
+	View comprehensive evaluation results, detailed criteria breakdown, examiner notes, play recorded audio/video attachments, and print the official placement evaluation slip. 
+	UC-PT-05 
+	Upload placement test media 
+	Placement Test 
+	Teacher
+	Upload audio recordings, practice performance videos, or photos verifying the student's entry testing performance. 
+	UC-WS-01 
+	View weekly schedule matrix 
+	Weekly Schedule 
+	Parent / Teacher / Staff / Admin 
+	Users view the standardized 7-day weekly timetable grid across 4 time slots. The view displays class code, time slot, room, teacher, and attendance status badges. Overcrowded slots automatically collapse into '+N more classes' buttons to maintain a compact layout. 
+	UC-AT-01 
+	Record batch lesson attendance with Time-Lock guard 
+	Attendance Tracking 
+	Teacher / Staff / Admin 
+	Teachers view the integrated class roster (official children + coordinated makeup children). The system enforces a Time-Lock guard (locking edit mode if the lesson is in the past, future, or before start time). Teachers mark Present or Absent for 100% of the roster and submit batch records. 
+	UC-AT-02 
+	Auto-process makeup attendance outcome 
+	Attendance Tracking 
+	System 
+	When batch attendance is saved: if a makeup child is marked Present, their status becomes COMPLETED. If marked Absent on attempt 1, status becomes MISSED; if missed a 2nd time, the system automatically revokes makeup rights (CANCELLED) and dispatches notifications. 
+	UC-AT-03 
+	Track course attendance & 3-tier warning 
+	Attendance Tracking 
+	Parent / Staff / Admin 
+	Parents and staff inspect total course attendance records across all sessions. The system calculates cumulative absence percentage against total sessions and displays a 3-tier warning banner (NORMAL ≤10%\le 10\%≤10%, WARNING >10%> 10\%>10%, CRITICAL ≥20%\ge 20\%≥20% - exam disqualification risk) along with remaining allowed absences. 
+	UC-AT-04 
+	Real-time attendance alert & badge counter 
+	Attendance Tracking 
+	System / Parent / Staff / Admin 
+	Whenever a child's absence rate crosses the warning threshold (> 10%) or hits the critical limit (≥20%\ge 20\%≥20%), or when a makeup session is missed/cancelled, the system dispatches prioritized notifications and instantly updates the unread bell counter in real time. 
+	UC-AM-06 
+	Mark lesson attendance 
+	Attendance & Make-up 
+	Teacher / Staff / Admin 
+	The teacher views the class roster (including scheduled make-up students) and marks PRESENT/ABSENT within the permitted date. Marking PRESENT automatically completes make-up cases. 
+	UC-AM-07 
+	View weekly schedule & rosters 
+	Attendance & Make-up 
+	Parent / Teacher / Staff / Admin  
+	Parents view the weekly timetable and attendance status of their linked children. Teaching staff and administrators view class rosters and operational timetables. 
+	UC-CO-01 
+	Search and filter courses 
+	Course Management 
+	Staff / Admin 
+	Staff, Admin, and Branch Manager view the course list and filter by keyword, program (discipline), or proficiency level; the system returns course codes, names, durations, session counts, and tuition fees. 
+	UC-CO-02
+	Create course 
+	Course Management 
+	Staff / Admin 
+	Select an academic program; enter the course code, course name, level, duration in weeks, total sessions, tuition fee, and description; the system validates uniqueness and persists the course. 
+	UC-CO-03 
+	Update course 
+	Course Management 
+	Staff / Admin
+	Select an existing course; edit curriculum details, session counts, standard tuition fee, or description; the system validates restrictions and updates the record. 
+	UC-CO-04 
+	Delete course 
+	Course Management 
+	Staff / Admin 
+	Select a course with no linked classes and confirm deletion; the system validates that no classes reference the course, deletes the record, and reloads the course list. 
+	
+
+4.1 Class Management
+  
+
+
+
+4.2 Course Enrollment
+  
+ 
+4.3 Facility Lookup & Update 
+  
+
+4.4 Placement Test
+  
+
+4.5 Attendance
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4.6 Course Management
+  
+
+4.5 Attendance Tracking & Weekly Schedule 
+  
+
+ 
+5. System Functionalities
+The system supports course and class management, placement assessment, enrollment, tuition collection, weekly schedules, attendance, absence and make-up lessons, facility lookup and administrative control. Screens and operations are assigned to the six system roles: Admin, Staff, Branch Manager, Teacher, Parent and Student.
+5.1 Screens Flow
+  
+
+Figure 5.1a  Screen flow for Admin
+
+
+5.1 Screens Flow
+  
+
+Figure 5.1b  Screen flow for Staff, Branch Manager and Teacher
+
+
+5.1 Screens Flow
+  
+
+Figure 5.1c  Screen flow for Parent and Student
+
+
+5.2 Screen Authorization
+
+
+Screen
+	Admin
+	Staff
+	Branch
+Manager
+	Teacher
+	Parent
+	Student
+	Home and Change Password
+	X
+	X
+	X
+	X
+	X
+	X
+	View role menu / change own password / logout
+	X
+	X
+	X
+	X
+	X
+	X
+	Course Management
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	View, search and filter courses
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Create or update a course
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Delete a course with no linked classes
+	X
+	X
+	
+
+	
+
+	
+
+	
+
+	Class Management
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Search by keyword, course, branch or status
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Create or edit class details
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Assign teacher / room and generate lessons
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Course Enrollment
+	X
+	X
+	X
+	
+
+	X
+	
+
+	View own children, open classes and recommendations
+	
+
+	
+
+	
+
+	
+
+	X
+	
+
+	Submit / track own enrollment requests
+	
+
+	
+
+	
+
+	
+
+	X
+	
+
+	Cancel an eligible owned request
+	
+
+	
+
+	
+
+	
+
+	X
+	
+
+	View pending requests and refresh placement
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Assign a class or reject a request
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Open the created invoice in Tuition Payment
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Placement Test
+	X
+	X
+	X
+	X
+	
+
+	
+
+	View schedules and result details
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Create a test schedule / upload attachment
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Save assessment and recommended course
+	
+
+	
+
+	
+
+	X
+	
+
+	
+
+	
+
+
+
+5.2 Screen Authorization
+Screen
+	Admin
+	Staff
+	Branch
+Manager
+	Teacher
+	Parent
+	Student
+	Weekly Schedule
+	X
+	X
+	X
+	X
+	X
+	X
+	View operational schedules / filter lessons
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	View own assigned teaching schedule
+	
+
+	
+
+	
+
+	X
+	
+
+	
+
+	View schedule and attendance of linked children
+	
+
+	
+
+	
+
+	
+
+	X
+	
+
+	View own linked student schedule and attendance
+	
+
+	
+
+	
+
+	
+
+	
+
+	X
+	Create a class and generate lesson schedule
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Open Lesson Attendance
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Lesson Attendance
+	X
+	X
+	X
+	X
+	
+
+	
+
+	View the lesson roster
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Save batch attendance
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Absence and Make-up
+	X
+	X
+	X
+	X
+	X
+	X
+	Submit absence request within own data scope
+	X
+	X
+	X
+	X
+	X
+	X
+	Read requests and make-up cases of linked children
+	
+
+	
+
+	
+
+	
+
+	X
+	
+
+	Read own linked requests and make-up cases
+	
+
+	
+
+	
+
+	
+
+	
+
+	X
+	View personnel request and make-up lists
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Review a pending absence request
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Arrange / cancel / resolve make-up case
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Mark make-up attendance / complete case
+	X
+	X
+	X
+	X
+	
+
+	
+
+	Branch Facility
+	X
+	X
+	X
+	X
+	X
+	X
+	View branches, rooms and equipment
+	X
+	X
+	X
+	X
+	X
+	X
+	Update room or equipment information / status
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+5.2 Screen Authorization
+Screen
+	Admin
+	Staff
+	Branch
+Manager
+	Teacher
+	Parent
+	Student
+	Tuition Payment
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Search invoice / view details / generate QR
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Collect cash or submit manual bank payment
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Create PayOS link / check payment status
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Change approved discount with a reason
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	View own collection history and statistics
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Cash Handover
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	View own expected cash and statements
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Submit or resubmit own statement
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	View own reconciliation history
+	X
+	X
+	X
+	
+
+	
+
+	
+
+	Admin Finance
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	View report and filter all collections
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Read evidence / approve or reject manual bank payment
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Admin Settlements
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	View all statements and their history
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Confirm or return a submitted statement
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Reopen a confirmed statement with a reason
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Admin Dashboard
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	View administrative totals and pending tasks
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+5.2 Screen Authorization
+Screen
+	Admin
+	Staff
+	Branch
+Manager
+	Teacher
+	Parent
+	Student
+	Admin Users
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Search / filter / page account list
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	View account details and linked profiles
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Create or update an account
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Change role or account status
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Reset a password and require password change
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Admin Audit
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	Search and page administrative audit records
+	X
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+5.3 Non-UI Functions
+#
+	Feature
+	System Function
+	Description
+	1
+	Authentication
+	Authentication and JWT validation
+	POST /api/auth/login verifies an ACTIVE user with BCrypt. JwtService signs a token; JwtAuthenticationFilter validates its signature, expiry and version against the current account on subsequent requests.
+	2
+	Authentication
+	Public parent registration
+	POST /api/auth/register validates username, password and duplicate username/email, rejects a non-PARENT role, hashes the password and issues an authentication response.
+	3
+	Authentication
+	Password and session lifecycle
+	POST /api/auth/change-password locks the account, verifies the old password, increments tokenVersion and clears mustChangePassword. Requests carrying an old token are rejected.
+	
+
+#
+	Feature
+	System Function
+	Description
+	4
+	Course Enrollment
+	Enrollment validation and seat calculation
+	CourseEnrollmentService verifies child ownership, prevents an additional open request, excludes unavailable classes and subtracts both enrolled students and pending-payment reservations from available seats.
+	5
+	Course Enrollment
+	Enrollment cancellation
+	PATCH /api/course-enrollment/requests/{id}/cancel locks the owned request and checks its status, class/enrollment assignment and any linked placement schedule before marking CANCELLED.
+	6
+	Placement Test / Course Enrollment
+	Placement linkage and recommendation
+	Assessment saves the recommended course and result on the schedule. A linked WAITING_PLACEMENT enrollment request becomes READY_FOR_ASSIGNMENT. Recommendation lookup prefers the latest linked schedule and falls back to legacy PlacementTest data only when no linked schedule exists.
+	7
+	Course Enrollment
+	Enrollment decision and invoice creation
+	Staff decision validates request state, OPEN class, compatible course, capacity and duplicate enrollment. Approval creates PENDING_PAYMENT enrollment and an UNPAID invoice with a due date one month later; it does not immediately increase official class occupancy.
+	8
+	Class Management
+	Scheduled lesson generation
+	ClassSchedulingService generates lessons from selected weekdays and times. The session count uses the submitted value, otherwise the course session count, otherwise 12, and must be between 1 and 60. It validates the calculated end date, class readiness, teacher and room suitability, schedule conflicts, and the teacher’s minimum 30-minute break. Generation is request-triggered. 
+	9
+	Weekly Schedule
+	Weekly schedule and roster assembly
+	GET /api/schedule/weekly filters by role and linked student/teacher. ScheduleWeeklyServiceImpl adjusts original and target lessons for make-up cases and assembles the attendance roster with regular and make-up students.
+	#
+	Feature
+	System Function
+	Description
+	10
+	Attendance
+	Attendance persistence and make-up completion
+	POST /api/schedule/lessons/{id}/attendance validates the actor, lesson and submitted roster before saving a batch. PRESENT attendance completes a matching scheduled make-up. The GET attendance-sheet response supplies canEdit and the reason when editing is locked.
+	11
+	Absence and Make-up
+	Absence review and make-up creation
+	Review accepts APPROVED, EXCUSED or REJECTED for a PENDING request. EXCUSED and REJECTED require a note. Only APPROVED creates a pending make-up registration.
+	12
+	Absence and Make-up
+	Make-up candidate selection and resolution
+	The service searches other classes for a compatible session using program/level, or the same course fallback when level data is missing. It removes unusable or full candidates. Personnel can schedule, cancel, mark NO_SLOT or DEFERRED; deferral does not itself enroll a student in a future course.
+	13
+	Branch Facility
+	Facility validation
+	Room updates validate capacity against the maximum enrollment of classes using the room and allow type changes only when the new type remains compatible. MAINTENANCE is blocked while ongoing or upcoming SCHEDULED lessons use the room. Equipment updates save the recorded condition and return applicable shortages and affected-lesson warnings without automatically changing schedules. 
+	14
+	Tuition Payment
+	Discount calculation and approval
+	PaymentCollectionService recalculates finalAmount from the invoice original amount and approved discount. Amounts are non-negative whole VND within the configured validation bound; changing the discount requires ADMIN and a reason.
+	15
+	Tuition Payment
+	Cash and manual bank collection
+	POST /api/tuition-payment/process delegates to PaymentCollectionService. Cash validates tender/change and confirms immediately. Manual bank submission requires a unique reference and owned proof, remains PENDING, and waits for another ADMIN to approve or reject.
+	
+
+#
+	Feature
+	System Function
+	Description
+	16
+	Tuition Payment
+	PayOS link and verified webhook
+	PayOSGateway uses RestClient and HMAC-SHA256. A created online request stores orderCode and expectedAmount. The public webhook checks signature, successful status, order, exact amount and transaction reference. A duplicate of the same confirmed transaction returns its existing receipt.
+	17
+	Tuition Payment
+	Payment finalization
+	A successful confirmation runs finish(): locks related records, marks the invoice PAID, changes the enrollment to ENROLLED, increments occupancy only on the first enrollment transition, and approves its linked pending-payment enrollment request.
+	18
+	Tuition Payment
+	QR generation and status polling
+	The VietQR service constructs a QR image URL and transfer information; it does not receive money. The browser periodically calls invoice status while a payment dialog is active. Polling and payment return pages do not substitute for successful server confirmation.
+	19
+	Financial Reporting
+	Cash handover and financial reporting
+	Expected cash is calculated from successful collections. Submission records expected and declared amounts; a second administrator records actual received cash or returns the statement. Submitted/confirmed days block additional cash collection until returned. Reports and audit are queried on demand.
+	20
+	File Storage
+	Attachment and proof storage
+	Shared FileStorageService writes placement attachments under uploads. FinanceProofService stores PNG/JPEG/PDF proof files up to 5 MB, verifies file signatures and ownership and serves authorized files through the protected proof API.
+	21
+	System Administration
+	Administrative Audit Service
+	Account management records administrative changes with the responsible actor. Administrative audit queries return searchable, paginated records to the Admin Audit screen. Financial operations use a separate finance audit service.
+	
+
+No scheduled batch or cron task is configured in the reviewed Java application. Lesson generation is triggered by a request; payment status polling is triggered by the browser. An invoice due date does not automatically implement 24-hour cancellation, a nightly reconciliation or a refund process.
+
+
+II. Functional Requirements
+1. Class Management
+1.1 Class Lookup
+1.1.1 Class List and Filtering
+  
+
+  
+
+  
+
+
+
+This screen allows authorized staff to view and filter existing classes by class code or name, course, branch, and status. It displays class assignments, schedules, enrollment figures, and available seats. Users can open the class creation or update form from this screen. 
+Users: Staff, Admin, and Branch Manager 
+Related Use Case: UC-CM-01 - Search and filter classes. 
+
+
+Id
+	Field Name
+	Description
+	Filter Fields 
+	1
+	Keyword 
+	Optional text input for searching by part of a class code or class name, ignoring letter case. Leading and trailing spaces are removed. Initially empty. 
+	2
+	Course 
+	Optional dropdown populated with existing courses. Initially displays “All courses”. 
+	3
+	Branch 
+	Optional dropdown populated with available branch options. Initially displays “All branches”. 
+	4
+	Status 
+	Optional dropdown containing PLANNING, OPEN, IN_PROGRESS and FINISHED. Initially displays all statuses. 
+	5
+	Filter button 
+	Applies all specified filter conditions together and reloads the class list. Leaving all filters empty returns all classes. 
+	Class List 
+	6
+	Class code and name 
+	Read-only identification information of each class. 
+	7
+	Course 
+	Read-only name of the course associated with the class. 
+	8
+	Branch and room 
+	Displays the branch and assigned room. Shows a placeholder when no room is assigned. 
+	9
+	Teacher 
+	Displays the assigned teacher or a placeholder when unassigned. 
+	10
+	Schedule 
+	Displays the schedule description and total number of lessons associated with the class. 
+	11
+	Enrollment figures 
+	Displays current enrollment, pending-payment reservations, maximum enrollment, and available seats. Available seats equal maximum enrollment minus current enrollment and pending-payment reservations, with a minimum of zero. 
+	12
+	Training dates 
+	Displays the recorded start and end dates in YYYY-MM-DD format. 
+	13
+	Status 
+	Displays the current class status. 
+	14
+	Edit button 
+	Opens the update form with the selected class information. 
+	15
+	Result count 
+	Displays the number of classes matching the conditions. 
+	General Actions and Messages 
+	16
+	Create class button 
+	Open the class creation form. 
+	17
+	Empty result message 
+	Displayed when no class matches the selected conditions. 
+	18
+	Error message 
+	Displayed when the class list cannot be loaded or refreshed.
+	19
+	Retry button 
+	Displayed with the error message. Reloads the class list using the currently selected filters without resetting them. Disabled while loading. After a successful reload, the error message disappears and the list and result count are updated. 
+	
+
+1.2 Class Maintenance 
+1.2.1 Create Class 
+  
+
+  
+
+  
+
+
+
+
+
+
+
+
+
+
+
+This form allows Staff, Admin, and Branch Manager users to create a class based on an existing course and an active branch. Users enter class information and may assign a suitable teacher, room, and weekly schedule. A PLANNING class may have incomplete assignments, while an OPEN or IN_PROGRESS class must have a teacher, a room, and lessons. The system validates the information, assignment conditions, and schedule conflicts before saving. On success, the form closes and the class list is reloaded. 
+
+
+Related Use Case: UC-CM-02 - Create class. 
+
+
+
+
+Id
+	Field Name
+	Description
+	Class Information 
+	1
+	Course 
+	Required dropdown populated with existing courses. Initially displays “Select a course”. Selecting a course reloads suitable teacher and room options and updates the total sessions from the course when available. 
+	2
+	Branch 
+	Required dropdown populated with active branches. Initially displays “Select a branch”. Selecting a branch reloads suitable room options. 
+	3
+	Class code 
+	Required text input, maximum 50 characters. Must start with a letter or digit and contain only English letters, digits, hyphens, or underscores. The system trims surrounding spaces, converts the code to uppercase, and rejects duplicate codes regardless of letter case. Initially empty. 
+	4
+	Class name 
+	Required text input, maximum 150 characters. Surrounding spaces are removed before submission. Initially empty. 
+	5
+	Maximum enrollment 
+	Required integer input. The interface accepts values from 1 to 100. Initially set to 8. Changing this value reloads suitable room options. 
+	6
+	Status 
+	Required dropdown containing PLANNING, OPEN, IN_PROGRESS, and FINISHED. Initially set to PLANNING. OPEN and IN_PROGRESS require an assigned teacher, an assigned room, and lessons. 
+	7
+	Expected start date 
+	Required date input. Initially set to tomorrow’s date in the Asia/Ho_Chi_Minh time zone. Used as the starting date for lesson generation. 
+	Teacher and Room Assignment 
+	8
+	Teacher 
+	Dropdown populated with ACTIVE teacher accounts whose teaching subject matches the selected course. Initially unselected. Optional for PLANNING classes and required for OPEN or IN_PROGRESS classes. Schedule conflicts are checked when saving. 
+	9
+	Room 
+	Dropdown populated with rooms suitable for the selected course, branch, and maximum enrollment. Suitability includes room type, capacity, maintenance status, and equipment requirements. Initially prompts the user to select a course and branch. Optional for PLANNING classes and required for OPEN or IN_PROGRESS classes. Schedule conflicts are checked when saving. 
+	10
+	View room details link 
+	Displayed when a room is selected. Opens the selected room’s facility details and usage information in a new browser tab. 
+	Schedule Information 
+	11
+	Weekdays 
+	Multiple selection from Monday to Sunday. Monday, Wednesday, and Friday are initially selected. Selecting weekdays enables lesson generation. Clearing all weekdays creates the class without generating lessons, subject to the selected class status. 
+	12
+	Start time 
+	Time input, initially set to 08:00. Required when weekdays are selected. 
+	13
+	End time 
+	Time input, initially set to 10:00. Required when weekdays are selected and must be later than the start time. 
+	14
+	Total sessions 
+	Integer input from 1 to 60. Initially set to 12 and updated from the selected course when available. Users may adjust the value. Determines the number of lessons to generate. 
+	15
+	Expected end date 
+	Automatically calculated and read-only when weekdays are selected. Equals the date of the last generated lesson. Without selected weekdays, users may enter an optional end date that must not precede the start date. If omitted without lesson generation, it defaults to three months after the start date. 
+	16
+	Schedule description 
+	Text input, maximum 200 characters. Automatically generated and read-only when weekdays are selected. When no weekdays are selected, users may enter an optional description. 
+	17
+	Schedule guidance 
+	Explains how selected weekdays and times generate lessons and how clearing all weekdays creates only class information. 
+	Actions and Messages 
+	18
+	Save button 
+	Validates and submits the form. Disabled while saving. On success, the form closes and the class list is reloaded. 
+	19
+	Cancel button 
+	Closes the form without creating a class. 
+	20
+	Close button 
+	Closes the form without creating a class. 
+	21
+	Validation error message 
+	Displays invalid input, incomplete assignments, unsuitable teacher or room conditions, insufficient equipment, or schedule conflicts. The form remains open for correction. 
+	22
+	Success message 
+	Confirms successful class creation and indicates whether lessons were generated. 
+	
+
+1.2.2 Update Class 
+  
+
+
+
+  
+
+  
+
+
+
+
+
+
+
+
+
+This form allows Staff, Admin, and Branch Manager users to update an existing class. The form is populated with the selected class information. Editable fields depend on existing enrollments and lessons. Users may update class information, status, and assignments, subject to validation. Existing lesson dates and schedule settings are locked. Teacher or room changes apply only to SCHEDULED lessons that have not started. On success, the form closes and the class list is reloaded. 
+
+
+Related Use Case: UC-CM-03 - Update class. 
+
+
+Id
+	Field Name
+	Description
+	Class Information 
+	1
+	Course 
+	Required dropdown showing the current course. Disabled on the interface when the class has lessons, current students, or pending-payment reservations. The server also rejects course changes when any enrollment record exists. 
+	2
+	Branch 
+	Required dropdown showing the current branch. Disabled on the interface when the class has lessons, current students, or pending-payment reservations. The server also rejects branch changes when any enrollment record exists. 
+	3
+	Class code 
+	Required editable text input, maximum 50 characters. Initially displays the current code. Must start with a letter or digit and contain only English letters, digits, hyphens, or underscores. The system trims spaces, converts the code to uppercase, and rejects codes used by another class, ignoring letter case. 
+	4
+	Class name 
+	Required editable text input, maximum 150 characters. Initially displays the current class name. Surrounding spaces are removed before submission. 
+	5
+	Maximum enrollment 
+	Required integer input showing the current maximum enrollment. The interface accepts values from 1 to 100. The value must not be lower than current enrollment plus pending-payment reservations. Changes are checked against applicable room capacity and equipment requirements. 
+	6
+	Status 
+	Required dropdown containing PLANNING, OPEN, IN_PROGRESS, and FINISHED. Initially displays the current status. OPEN and IN_PROGRESS require an assigned teacher, an assigned room, and lessons. 
+	7
+	Expected start date 
+	Required date input showing the recorded start date. Editable only when the class has no lessons. Disabled when lessons already exist. 
+	Teacher and Room Assignment 
+	8
+	Teacher 
+	Dropdown showing the current teacher and suitable ACTIVE teachers for the selected course. Users may replace the teacher or clear the selection, subject to class readiness rules. A replacement is checked for suitability and schedule conflicts. 
+	9
+	Room 
+	Dropdown showing the current room and suitable options for the selected course, branch, and maximum enrollment. Users may replace the room or clear the selection, subject to class readiness rules. A replacement is checked for assignment conditions and schedule conflicts. 
+	10
+	View room details link 
+	Displayed when a room is selected. Opens the selected room’s facility details and usage information in a new browser tab. 
+	11
+	Current assignment indicator 
+	If the current teacher or room is missing from the suitable options, an additional option identifies the existing assignment as no longer suitable. 
+	Schedule Information 
+	12
+	Weekdays 
+	Displays weekdays derived from the stored schedule description. Disabled when lessons already exist. For a class without lessons, users may select weekdays to generate lessons. 
+	13
+	Start time 
+	Displays the start time derived from the stored schedule description. Disabled when lessons already exist. Required when generating lessons. 
+	14
+	End time 
+	Displays the end time derived from the stored schedule description. Disabled when lessons already exist. When generating lessons, it must be later than the start time. 
+	15
+	Total sessions 
+	Displays the existing lesson count, or 12 when the class has no lessons. Disabled when lessons already exist. When generating lessons, accepts an integer from 1 to 60. 
+	16
+	Expected end date 
+	Displays the recorded end date. Disabled when lessons already exist. For a class without lessons, it is automatically calculated and read-only when weekdays are selected; otherwise, it is optional and editable. 
+	17
+	Schedule description 
+	Displays the stored schedule description, maximum 200 characters. Disabled when lessons already exist. For a class without lessons, it is automatically generated and read-only when weekdays are selected; otherwise, users may enter a description. 
+	18
+	Schedule guidance 
+	Explains the schedule restrictions for classes with existing lessons and the lesson-generation behavior for classes without lessons. 
+	Actions and Messages 
+	19
+	Save button 
+	Validates and submits the changes. Disabled while saving. On success, the form closes and the class list is reloaded. 
+	20
+	Cancel button 
+	Closes the form without saving the changes. 
+	21
+	Close button 
+	Closes the form without saving the changes. 
+	22
+	Validation error message 
+	Displays input errors, prohibited changes, insufficient capacity or equipment, incomplete assignments, or schedule conflicts. The form remains open for correction. 
+	23
+	Success message 
+	Confirms that the class information was updated successfully. . 
+	
+
+
+
+2. Course Enrollment 
+2.1 Parent Enrollment Requests 
+2.1.1 Submit Enrollment Request 
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+This form allows a Parent to submit an enrollment request for a student linked to their account. The Parent may select a preferred course or request placement-based course selection. The screen displays available classes for reference and existing placement recommendations when applicable. The system validates student ownership and prevents multiple open requests for the same student. After successful submission, the request list is refreshed. 
+Related Use Case: UC-CE-02 - Submit enrollment request. 
+
+
+
+
+id
+	Field Name
+	Description
+	Enrollment Request Information 
+	1
+	Student 
+	Required dropdown populated with students linked to the logged-in Parent. The first student is selected when available. Displays “No students available” when the account has no linked students. 
+	2
+	Preferred course 
+	Required dropdown when Placement Test is turned off. Displays existing course names and tuition fees, with the first course selected when available. Hidden and disabled when Placement Test is turned on. 
+	3
+	Placement Test switch 
+	Initially turned off. When off, the Parent selects a preferred course. When on, the system determines the course from an available placement recommendation or creates a request awaiting placement results. 
+	4
+	Schedule or branch preference 
+	Optional text input, maximum 500 characters. Allows the Parent to describe preferred schedules, branches, or other learning needs. Initially empty. Surrounding spaces are removed before submission. 
+	Placement Recommendation 
+	5
+	Recommendation panel 
+	Displayed when Placement Test is turned on. Loads existing placement information for the selected student. Hidden when Placement Test is turned off. 
+	6
+	Recommended course 
+	Read-only course recommendation returned by the Placement Test module, displayed when available. 
+	7
+	Recommended level and score 
+	Displays the recommended level and score when available. Shows placeholder text for missing information. 
+	8
+	Teacher comment 
+	Displays the teacher’s existing comment when available. 
+	9
+	Placement information message 
+	Indicates whether a recommendation is available, no result is available, or the test has been assessed but a course recommendation is still missing. 
+	Class Reference 
+	10
+	Open classes 
+	Reference dropdown showing OPEN classes with available seats. Without Placement Test, it lists classes of the preferred course. With Placement Test, it lists open classes with recommended-course classes displayed first when a recommendation is available. 
+	11
+	Class reference information 
+	Each option displays the class name, branch, available seats, and teacher and schedule information when available. Selecting an option does not assign or reserve a class. 
+	12
+	Facility preview button 
+	Opens facility information for the selected reference class. Disabled when no reference class is available. 
+	13
+	Empty class message 
+	Indicates that no OPEN class with available seats is available for the current reference list. This does not prevent submission of an otherwise valid enrollment request. 
+	Actions and Messages 
+	14
+	Submit request button 
+	Submits the selected student, placement preference, preferred course when applicable, and optional note. Disabled while the request is being processed. 
+	15
+	Success message 
+	Confirms that the enrollment request was submitted. The note is cleared and the Parent’s request list is refreshed. 
+	16
+	Submission error message 
+	Displays validation or server errors, including invalid student ownership, a missing required course, or an existing open request. 
+	17
+	Recommendation loading error 
+	Indicates that placement recommendations could not be loaded. The Parent may still attempt submission; the server checks placement information again during processing. 
+	
+
+2.1.2 View and Cancel Own Enrollment Requests 
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+
+
+This section allows a Parent to view enrollment requests submitted through their account, ordered from newest to oldest. It displays the student, course and assigned class, submission date, status, and feedback. The Parent can cancel an eligible request after confirmation. The system checks ownership and cancellation eligibility again before updating the request and refreshing the list. 
+
+
+Related Use Cases:  UC-CE-03 - View own enrollment requests;
+       UC-CE-04 - Cancel eligible enrollment request. 
+
+
+
+
+ID
+	Field Name
+	Description
+	Enrollment Request List 
+	1
+	Student 
+	Displays the name of the student associated with the request. Read-only. 
+	2
+	Course 
+	Displays the preferred or placement-recommended course. When unavailable, shows “Based on Placement Test results” for placement requests or an unspecified-course placeholder. 
+	3
+	Assigned class 
+	Displays the assigned class name and code. Shows “Staff has not assigned a class” when no class is assigned. 
+	4
+	Submission date 
+	Displays the request creation date and time. 
+	5
+	Status 
+	Displays the current status as a badge: PENDING, WAITING_PLACEMENT, READY_FOR_ASSIGNMENT, PENDING_PAYMENT, APPROVED, REJECTED, or CANCELLED. 
+	6
+	Feedback 
+	Displays the staff review note when available. Otherwise, displays guidance corresponding to the current request status. 
+	7
+	Cancel request button 
+	Displayed only for requests identified as cancellable by the server. Opens a browser confirmation dialog
+	Cancellation Confirmation 
+	8
+	Confirmation message 
+	Asks the Parent to confirm cancellation of the selected request. 
+	9
+	Confirm action 
+	Submits the cancellation request. The selected request’s Cancel button is disabled while processing. 
+	10
+	Dismiss action 
+	Closes the dialog without changing the request. 
+	General Actions and Messages 
+	11
+	Refresh button 
+	Reloads the Parent’s enrollment page data, including the request list. 
+	12
+	Empty list message 
+	Displayed when the Parent has not submitted any enrollment requests. 
+	13
+	Success message 
+	Confirms successful cancellation. The request list is reloaded to display the updated status. 
+	14
+	Error message 
+	Displays loading or cancellation errors. After cancellation fails, the system attempts to reload the request list. 
+	
+
+2.2 Enrollment Request Processing 
+2.2.1 Review Enrollment Requests  
+  
+
+  
+
+  
+
+
+
+  
+
+This screen allows Staff, Admin, and Branch Manager users to review enrollment requests awaiting processing, ordered from oldest to newest. It displays student and parent information, course preferences, placement information, submission dates, and parent notes. Users may check the latest placement recommendation or open the class-assignment and rejection forms. 
+
+
+Related Use Case: UC-CE-05 - Review and decide enrollment request. 
+
+
+ID
+	Field Name
+	Description
+	Overview 
+	1
+	Pending request count 
+	Displays the total number of requests currently in the processing queue. Includes PENDING, WAITING_PLACEMENT, and READY_FOR_ASSIGNMENT requests. 
+	2
+	Processing guidance 
+	Explains that users should review learning needs and placement results before selecting an available class. Class assignment moves the request to the pending-payment stage. 
+	3
+	Refresh button 
+	Reloads the processing queue, request count, and placement-result summaries. 
+	Enrollment Request List 
+	4
+	Student and parent 
+	Displays the student’s name and the name of the Parent who submitted the request. Read-only. 
+	5
+	Course preference 
+	Displays the preferred or placement-recommended course. Shows a waiting-for-placement placeholder when no course has been determined. 
+	6
+	Placement requirement 
+	Indicates whether the request requires Placement Test. 
+	7
+	Request status 
+	Displays PENDING, WAITING_PLACEMENT, or READY_FOR_ASSIGNMENT as a status badge. 
+	8
+	Placement result summary 
+	Displays the score and recommended level for placement requests with a completed assessment. Indicates when the course recommendation is still missing. 
+	9
+	Submission date 
+	Displays the request creation date and time. Requests are ordered from oldest to newest. 
+	10
+	Parent note 
+	Displays the Parent’s learning needs or preferences. Shows a placeholder when no note is provided. 
+	Actions 
+	11
+	Check placement result button 
+	Displayed for WAITING_PLACEMENT requests. Checks the latest placement recommendation and synchronizes the request when a recommended course is available. Reloads the queue after a successful check. 
+	12
+	Assign class button 
+	Displayed for PENDING and READY_FOR_ASSIGNMENT requests. Opens the class-assignment form for the selected request. 
+	13
+	Reject button 
+	Displayed for each request in the processing queue. Opens the rejection form for the selected request
+	Messages 
+	14
+	Loading indicator 
+	Displayed while the request queue is being loaded 
+	15
+	Empty list message 
+	Indicates that no enrollment requests are currently awaiting processing. 
+	16
+	Placement waiting message 
+	Indicates that the request is still waiting for a completed placement result and course recommendation. 
+	17
+	Placement ready message 
+	Confirms that a course recommendation has been obtained and the request is ready for class assignment. 
+	18
+	Error message 
+	Displays an error when the queue cannot be loaded or the placement-result check fails. 
+	
+
+2.2.2 Assign Class or Reject Request 
+
+
+
+
+  
+
+
+
+  
+
+
+
+This form allows Staff, Admin, and Branch Manager users to assign a suitable class or reject an enrollment request. For class assignment, users select an OPEN class with available seats belonging to the preferred or placement-recommended course. Users may enter an optional review note. Successful assignment creates a pending-payment enrollment and an unpaid invoice, then redirects the user to Tuition Payment. Rejection updates the request to REJECTED and reloads the processing queue. 
+
+
+Related Use Case: UC-CE-05 - Review and decide enrollment request. 
+
+
+
+
+ID
+	Field Name
+	Description
+	Request Information 
+	1
+	Form title 
+	Displays “Assign class to student” or “Reject request”, depending on the selected action. 
+	2
+	Request summary 
+	Displays the selected student’s name and preferred or recommended course. Shows an unspecified-course placeholder when unavailable. Read-only. 
+	Class Assignment 
+	3
+	Available class 
+	Required dropdown for assignment. Lists OPEN classes with available seats belonging to the request’s preferred or recommended course, ordered by start date. The first class is selected when available. 
+	4
+	Class option details 
+	Displays the class name, code, available seats, and teacher, room, and schedule information when available. 
+	5
+	Facility preview button 
+	Opens facility information for the selected class. Disabled while class options are loading or when no class is available. 
+	6
+	Assignment guidance 
+	Explains that the list contains OPEN classes belonging to the preferred or recommended course. 
+	7
+	Empty class message 
+	Indicates that no OPEN class with available seats is available. Class assignment cannot be confirmed. 
+	Review Information 
+	8
+	Review note 
+	Optional multiline text input, maximum 500 characters. Initially empty whenever the form is opened. Allows users to enter feedback or a rejection reason. Surrounding spaces are removed before submission. 
+	Actions and Messages 
+	9
+	Confirm assignment button 
+	Displayed in assignment mode. Disabled while loading classes, when no class is available, or while submitting. Saves the assignment and redirects to Tuition Payment after success. 
+	10
+	Confirm rejection button 
+	Displayed in rejection mode. Submits the rejection decision and optional review note. Disabled while submitting. 
+	11
+	Cancel button 
+	Closes the form without saving a decision. 
+	12
+	Close button 
+	Closes the form without saving a decision. 
+	13
+	Class loading error 
+	Displays an error in the class dropdown when class options cannot be loaded. Assignment confirmation remains disabled. 
+	14
+	Decision error message 
+	Displays an error when the decision cannot be saved. The form remains open. 
+	15
+	Rejection success message 
+	Confirms that the request was rejected. The modal closes and the processing queue is reloaded. 
+	
+
+3. Facility Lookup and Update 
+3.1 Facility Lookup 
+3.1.1 View Rooms by Branch 
+  
+  
+  
+  
+
+
+
+This screen allows authenticated users to view rooms belonging to a selected branch. It displays room identification, type, capacity, recorded status, description, equipment counts, and facility warnings. Users can change the branch or refresh the displayed data. Admin, Staff, Branch Manager, and Teacher users can open room details and usage information. Only Admin can open the room update form. 
+
+
+Related Use Case: UC-BF-01 - View rooms by branch. 
+Field Description
+
+
+
+
+ID
+	Field Name
+	Description
+	Overview 
+	1
+	Branch 
+	Dropdown displaying branch names and addresses. Loads all branches returned by the system, including inactive branches. The first branch is selected when available. Changing the selection reloads the room and equipment data. 
+	2
+	Rooms tab 
+	Displays the room list for the selected branch. Selected by default when the page opens. 
+	3
+	Equipment tab 
+	Switches to the equipment list for the selected branch. 
+	4
+	Refresh button 
+	Reloads room and equipment data for the selected branch. If no branch is selected, attempts to reload the branch list. 
+	Room List 
+	5
+	Room code 
+	Displays the room identification code. Read-only in the list. 
+	6
+	Room name 
+	Displays the recorded room name. 
+	7
+	Room type 
+	Displays the room type using its corresponding display label. 
+	8
+	Maximum capacity 
+	Displays the maximum number of students the room can accommodate. 
+	9
+	Status 
+	Displays the recorded room status as a badge: AVAILABLE, OCCUPIED, or MAINTENANCE. 
+	10
+	Description 
+	Displays the room description or a placeholder when no description is available. 
+	11
+	Equipment condition summary 
+	Displays the number of GOOD equipment items compared with the total equipment count in the room. 
+	12
+	Facility warnings 
+	Displays warnings about branch activity, room maintenance, or room and equipment conditions affecting associated classes. 
+	13
+	Room count badge 
+	Displays the number of rooms in the current branch’s room list. 
+	Actions 
+	14
+	View details and usage button 
+	Visible to Admin, Staff, Branch Manager, and Teacher. Opens room details, equipment information, associated classes, and remaining scheduled lessons. 
+	15
+	Edit room button 
+	Visible only to Admin. Opens the update form populated with the selected room’s information. 
+	16
+	Read-only notice 
+	Displayed to non-Admin users to explain that editing is restricted to Admin. 
+	Messages 
+	17
+	Loading message 
+	Displayed while branches or rooms are being loaded. 
+	18
+	Empty branch message 
+	Indicates that no branches are available. 
+	19
+	Empty room message 
+	Indicates that the selected branch has no rooms. 
+	20
+	Error message 
+	Displays an error when branch or room data cannot be loaded. 
+	21
+	Retry button 
+	Retries the failed branch or room loading operation. 
+	
+
+3.1.2 View Equipment by Branch 
+  
+
+
+
+This screen allows authenticated users to view equipment located in rooms belonging to the selected branch. It displays equipment identification, category, room location, serial number, recorded condition, and description. Users can change the branch or refresh the data. Only Admin can open the equipment update form. 
+
+
+Related Use Case:  UC-BF-02 - View equipment by branch. 
+Field Description
+
+
+ID
+	Field Name
+	Description
+	Branch and View Selection 
+	1
+	Branch 
+	Shared dropdown displaying branch names and addresses. Changing the selected branch reloads its room and equipment data. 
+	2
+	Rooms tab 
+	Switches back to the room list while retaining the selected branch. 
+	3
+	Equipment tab 
+	Displays equipment located in rooms belonging to the selected branch. 
+	4
+	Refresh button 
+	Reloads room and equipment data for the selected branch. If no branch is selected, attempts to reload the branch list. 
+	Equipment Overview 
+	5
+	Equipment count 
+	Displays the total number of equipment items in the selected branch. 
+	6
+	Good equipment summary 
+	Displays the number of GOOD equipment items compared with the total equipment count, in good/total format. 
+	7
+	Equipment count badge 
+	Displays the number of equipment items in the current list. 
+	8
+	Branch subtitle 
+	Identifies the branch whose equipment is currently displayed. 
+	Equipment List 
+	9
+	Equipment code 
+	Displays the equipment identification code. Shows a placeholder when unavailable. 
+	10
+	Equipment name 
+	Displays the recorded equipment name. 
+	11
+	Category 
+	Displays the equipment category using its corresponding display label. 
+	12
+	Room location 
+	Displays the name of the room containing the equipment. 
+	13
+	Serial number 
+	Displays the recorded serial number or a placeholder when unavailable. 
+	14
+	Condition 
+	Displays the recorded equipment status as a badge: GOOD, MAINTENANCE, or BROKEN. 
+	15
+	Technical description 
+	Displays the equipment description or a placeholder when unavailable. 
+	16
+	Edit equipment button 
+	Visible only to Admin. Opens the update form populated with the selected equipment’s information. 
+	Messages 
+	17
+	Loading message 
+	Displayed while equipment data is being loaded. 
+	18
+	Empty list message 
+	Indicates that the selected branch has no equipment items. 
+	19
+	Error message  
+	Displays an error when equipment data cannot be loaded. 
+	20
+	Retry button 
+	Retries loading the equipment list for the selected branch. 
+	21
+	Read-only notice 
+	Shared page notice displayed to non-Admin users, explaining that editing is restricted to Admin. 
+	
+
+3.1.3 View Room Details and Usage 
+  
+
+  
+
+
+
+This dialog allows Admin, Staff, Branch Manager, and Teacher users to inspect a room’s information, equipment, associated classes, and ongoing or upcoming scheduled lessons. It displays facility warnings to support room-condition review. Authorized class-management users may follow class links to inspect the relevant class. The dialog provides read-only information and does not change room assignments or lesson schedules. 
+
+
+Related Use Case: UC-BF-05 - View room details and usage. 
+
+
+ID
+	Field Name
+	Description
+	Room Information  
+	1
+	Dialog title  
+	Displays the selected room’s code and name. 
+	2
+	Room status 
+	Displays the recorded status as a badge: AVAILABLE, OCCUPIED, or MAINTENANCE. 
+	3
+	Room type  
+	Displays the room type using its corresponding display label. 
+	4
+	Capacity  
+	Displays the room’s maximum student capacity. 
+	5
+	Description 
+	Displays the recorded description or a placeholder when unavailable. 
+	6
+	Facility warnings 
+	Displays applicable warnings about branch activity, room maintenance, room suitability, capacity, or equipment requirements. Hidden when no warnings are returned. 
+	Equipment in the Room 
+	7
+	Equipment count 
+	Displays the number of equipment items located in the selected room. 
+	8
+	Equipment code 
+	Displays the equipment code or a placeholder when unavailable. 
+	9
+	Equipment name 
+	Displays the recorded equipment name. 
+	10
+	Category 
+	Displays the equipment category. 
+	11
+	Condition 
+	Displays GOOD, MAINTENANCE, or BROKEN using the corresponding status label. 
+	12
+	Serial number 
+	Displays the serial number or a placeholder when unavailable. 
+	13
+	Equipment description  
+	Displays the description or a placeholder when unavailable. 
+	Classes Using the Room 
+	14
+	Class count 
+	Displays the number of classes returned as using the room. 
+	15
+	Class reference 
+	Displays the class code and name. For Admin, Staff, and Branch Manager, it is a link to the corresponding class in Class Management. For Teacher, it is plain text. 
+	16
+	Course 
+	Displays the class’s course name. 
+	17
+	Maximum enrollment 
+	Displays the class’s maximum enrollment, not its current student count. 
+	18
+	Class status 
+	Displays the recorded class status. 
+	Ongoing and Upcoming Lessons 
+	19
+	Lesson count 
+	Displays the number of remaining SCHEDULED lessons associated with the room, including lessons currently in progress. 
+	20
+	Lesson date 
+	Displays the lesson date in DD/MM/YYYY format. 
+	21
+	Lesson time 
+	Displays the start and end times in HH:mm format. 
+	22
+	Class reference 
+	Displays the lesson’s class code and name. Links to Class Management for Admin, Staff, and Branch Manager. 
+	23
+	Teacher 
+	Displays the lesson’s teacher. If no teacher is stored on the lesson, uses the class teacher. Shows an unassigned placeholder when neither is available. 
+	Actions and Messages 
+	24
+	Close button 
+	Closes the dialog. 
+	25
+	Header close button 
+	Closes the dialog. 
+	26
+	Back to editing button 
+	Displayed when the dialog is opened from the room update form. Returns to the update form while preserving unsaved field values. 
+	27
+	Loading message 
+	Displayed while room details and usage data are being loaded. 
+	28
+	Empty section messages 
+	Displayed separately when no equipment, associated classes, or remaining scheduled lessons are available. 
+	29
+	Error message 
+	Displays an error when room details cannot be loaded. 
+	30
+	Retry button 
+	Retries loading details for the selected room. 
+	
+
+3.2 Facility Update 
+3.2.1 Update Room 
+  
+
+
+
+This form allows Admin to update an existing room’s name, capacity, type, status, and description. It is populated with the selected room’s current information. The system validates the changes against associated classes and remaining scheduled lessons before saving. Admin may inspect room usage while preserving unsaved changes. On success, the form closes, the selected branch’s data is reloaded, and any returned facility warnings are displayed. 
+
+
+Related Use Case: UC-BF-03 - Update room information and status. 
+
+
+
+
+ID
+	Field Name
+	Description
+	Room Information  
+	1
+	Form title  
+	Displays “Edit room” followed by the selected room’s code. 
+	2
+	Room name 
+	Required editable text input, maximum 150 characters. Initially displays the current room name. Surrounding spaces are removed before saving. 
+	3
+	Capacity  
+	Required integer input with a minimum value of 1. Initially displays the current capacity. Must accommodate the maximum enrollment of every class currently using the room. 
+	4
+	Room type  
+	Required dropdown showing the current room type. A type change must remain compatible with the course subject of every class currently using the room. 
+	5
+	Status 
+	Required dropdown containing AVAILABLE, OCCUPIED, and MAINTENANCE. Initially displays the recorded status. Selecting MAINTENANCE is rejected when remaining scheduled lessons use the room. 
+	6
+	Description 
+	Optional multiline text input, maximum 500 characters. Initially displays the current description or an empty value. Surrounding spaces are removed before submission. 
+	7
+	Editing restriction notice 
+	Explains that identification and location fields cannot be changed through this form. The room code and branch remain unchanged. 
+	Actions  
+	8
+	View room usage button 
+	Opens the room details and usage dialog. Unsaved form values are preserved and restored when returning to editing. 
+	9
+	Save changes button 
+	Validates and submits the changes. Displays a saving label while processing. On success, closes the form and reloads room and equipment data for the selected branch. 
+	10
+	Close button  
+	Closes the form without saving. Disabled while saving. 
+	11
+	Header close button 
+	Closes the form without saving. Disabled while saving. 
+	Messages and Processing State  
+	12
+	Validation error message 
+	Displays invalid input or business-rule violations inside the form. The form remains open for correction. 
+	13
+	Success message 
+	Confirms that room changes were saved successfully. 
+	14
+	Facility warnings 
+	Displays warnings returned after a successful update, when applicable. 
+	15
+	Saving state 
+	Disables form controls and branch selection while the update is being processed. The form cannot be dismissed during saving. 
+	
+
+3.2.2 Update Equipment
+  
+
+This form allows Admin to update an existing equipment item’s name, category, condition, serial number, and description. The form is populated with the selected item’s current information. After saving, the system evaluates equipment requirements for classes using the room and returns applicable warnings and an affected-lesson count. The form closes and the selected branch’s data is reloaded. 
+
+
+Related Use Case: UC-BF-04 - Update equipment information and status. 
+
+
+ID
+	Field Name
+	Description
+	Equipment Information 
+	1
+	Form title  
+	Displays “Edit equipment” followed by the equipment code, or its name when the code is unavailable. 
+	2
+	Equipment name 
+	Required editable text input, maximum 150 characters. Initially displays the current name. Surrounding spaces are removed before saving. 
+	3
+	Category  
+	Required dropdown containing supported equipment categories. Initially displays the current category. 
+	4
+	Condition 
+	Required dropdown containing GOOD, MAINTENANCE, and BROKEN. Initially displays the recorded condition. 
+	5
+	Serial number 
+	Optional text input, maximum 100 characters. Initially displays the current serial number or an empty value. Surrounding spaces are removed before submission. 
+	6
+	Description 
+	Optional multiline text input, maximum 500 characters. Initially displays the current description or an empty value. Surrounding spaces are removed before submission. 
+	7
+	Editing restriction notice 
+	Explains that the equipment code, containing room, and branch cannot be changed through this form. 
+	Actions  
+	8
+	Save changes button  
+	Validates and submits the update. Displays a saving label while processing. On success, closes the form and reloads the selected branch’s room and equipment data. 
+	9
+	Close button 
+	Closes the form without saving. Disabled while saving. 
+	10
+	Header close button 
+	Closes the form without saving. Disabled while saving. 
+	Messages and Processing State 
+	11
+	Validation error message  
+	Displays invalid input or update errors inside the form. The form remains open for correction. 
+	12
+	Success message 
+	Confirms that equipment changes were saved successfully. 
+	13
+	Equipment warning message 
+	Displays equipment shortages or other applicable facility warnings after a successful update. 
+	14
+	Affected lesson count 
+	Displays the number of ongoing or upcoming SCHEDULED lessons associated with classes whose equipment requirements are not satisfied after the update, when the count is greater than zero. 
+	15
+	Saving state 
+	Disables form controls and branch selection while saving. The form cannot be dismissed during processing. 
+	
+
+4. Placement Test & Skill Evaluation
+4.1 Placement Lookup
+4.1.1 Placement Test List and Filtering
+
+
+  
+
+This screen allows Staff, Admin, Branch Manager, and Teacher users to view, search, and filter placement test schedules across disciplines (Music, Dance, Martial Arts). The screen provides operational metrics, scheduling details, evaluation scores, recommended proficiency levels, and execution statuses. From this screen, authorized personnel can open the test appointment creation form, access the criteria grading modal, or view the detailed evaluation slip. Teachers with matching subject specialization only see and grade tests within their department.
+Users: Staff, Admin, Branch Manager, and Teacher
+Related Use Case: UC-PT-01 - Search and filter placement tests.
+Field Description
+ID
+	Field Name
+	Description
+	1
+	Total tests 
+	Displays the total count of placement test appointments recorded in the system. 
+	2
+	Scheduled tests 
+	Displays the count of pending appointments currently in SCHEDULED status. 
+	3
+	Completed tests 
+	Displays the count of finished assessments currently in COMPLETED status. 
+	4
+	Average score 
+	Displays the center-wide average score across all completed tests on a 10-point scale. 
+	
+
+	Filter Fields 
+	5
+	Keyword 
+	Optional text input for searching by schedule ID, student name, or test title, ignoring letter case. Leading and trailing spaces are removed. Initially empty. 
+	6
+	Subject 
+	Optional dropdown containing “All Subjects”, Music / Piano (DAN), Dance (MUA), and Martial Arts (VO). Initially displays “All Subjects”. 
+	7
+	Level 
+	Optional dropdown containing “All Levels”, BEGINNER, INTERMEDIATE, and ADVANCED. Initially displays “All Levels”. 
+	8
+	Status 
+	Optional dropdown containing “All Statuses”, SCHEDULED, COMPLETED, and CANCELLED. Initially displays “All Statuses”. 
+	9
+	Evaluated tests switch 
+	Optional checkbox switch. When enabled, filter the list to show only tests evaluated by the logged-in teacher. Initially turned off. 
+	10
+	Refresh button 
+	Applies all filter conditions and reloads the placement schedule list. 
+	
+
+	Placement Schedule List 
+	11
+	Test ID 
+	Read-only identification code of each test formatted as #PT-{id}. 
+	12
+	Student and parent 
+	Displays the candidate student's full name, associated parent name, and parent email address. 
+	13
+	Subject and title 
+	Displays the talent subject badge icon and the recorded test appointment title. 
+	14
+	Campus and room 
+	Displays the hosting branch campus and assigned classroom or studio. 
+	15
+	Schedule time 
+	Displays the recorded test date and time in YYYY-MM-DD HH:mm format. 
+	16
+	Assigned examiner 
+	Displays the teacher who evaluated the test, or a pending placeholder when unassessed. 
+	17
+	Score and level 
+	Displays the composite score (0–100) and recommended proficiency level. Shows a placeholder when unassessed. 
+	18
+	Status 
+	Displays the current status as a badge: SCHEDULED, COMPLETED, or CANCELLED. 
+	19
+	Assess button 
+	Enabled and displayed only for Teacher users whose teaching subject matches the test subject, and when the test is in SCHEDULED status. Open the evaluation form. 
+	20
+	View details button 
+	Opens the comprehensive assessment report modal for the selected test. 
+	
+
+	General Actions and Messages 
+	21
+	New placement test button 
+	Opens the placement test appointment creation form. 
+	22
+	Empty result message 
+	Displayed when no placement test matches the selected filter conditions. 
+	23
+	Error message 
+	Displays an error when the placement test list cannot be loaded from the server. 
+	
+
+
+
+4.1.2 View Placement Test Details
+  
+
+This view allows Staff, Admin, Branch Manager, Teacher, and Parent users to inspect the completed evaluation slip of a placement test. It displays candidate identification, parent contact details, testing session data, assessing teacher credentials, criteria breakdown scores, composite score, and examiner notes. Users can play attached audio or video recordings and print the official evaluation report.
+Users: Staff, Admin, Branch Manager, Teacher, and Parent
+Related Use Case: UC-PT-04 - View placement test details.
+Field Description
+ID
+	Field Name
+	Description
+	
+
+	Candidate and Session Information 
+	1
+	Student profile 
+	Displays candidate full name, schedule code, linked parent name, and parent email. Read-only. 
+	2
+	Session details 
+	Displays test title, subject, branch campus, room, test date and time, and evaluating teacher name. Read-only. 
+	
+
+	Evaluation Scorecard 
+	3
+	Criteria progress bars 
+	Visual progress bars rendering the individual score (0.0 to 10.0 scale) achieved across each of the four subject-specific criteria. 
+	4
+	Overall score 
+	Displays the composite assessment score (0 to 100 points). 
+	5
+	Recommended level 
+	Displays the proficiency level recommended by the teacher (BEGINNER, INTERMEDIATE, or ADVANCED). 
+	6
+	Teacher comment 
+	Displays the qualitative evaluation notes recorded by the teacher. Shows placeholder text when omitted. 
+	7
+	Media attachments 
+	Embedded media player for listening to attached audio recordings or watching audition videos. Displays a placeholder when no file is attached. 
+	
+
+	Actions and Messages 
+	8
+	Print report button 
+	Invokes browser printing (window.print()) to produce an official hard-copy evaluation report. 
+	9
+	Close button 
+	Closes the detail modal without modifying data. 
+	4.2 Placement Test Operations
+4.2.1 Create Placement Test Schedule
+  
+
+This form allows Staff, Admin, Branch Manager, and Parent users to schedule a placement test appointment for a candidate. Users enter candidate information, select the subject discipline, specify the branch and room, and designate the appointment date and time. The interface enforces real-time validation to prevent selecting past dates or times. On success, the schedule is saved in SCHEDULED status, the form closes, and the schedule list is reloaded.
+Users: Staff, Admin, Branch Manager, and Parent
+Related Use Case: UC-PT-02 - Create placement test schedule.
+
+
+Field Description
+ID
+	Field Name
+	Description
+	
+
+	Candidate and Subject Information 
+	1
+	Student full name 
+	Required text input, maximum 100 characters. Full name of the candidate taking the assessment. Surrounding spaces are removed before submission. Initially empty. 
+	2
+	Subject 
+	Required dropdown containing Music / Piano (DAN), Dance (MUA), and Martial Arts (VO). The selected subject determines eligible assessing teachers. 
+	3
+	Appointment title 
+	Required text input, maximum 150 characters. Summarizes the testing objective (e.g., “Entrance Piano Aptitude Assessment”). Surrounding spaces are removed. Initially empty. 
+	
+
+	Venue and Schedule Information 
+	4
+	Branch 
+	Required dropdown populated with active branches. Initially displays the first active branch. 
+	5
+	Room name  
+	Required text input, maximum 100 characters. Name of the room or studio allocated for testing (e.g., “Music Studio 101”, “Ballet Studio 202”). 
+	6
+	Test date 
+	Required time input. When the selected test date is today, the interface rejects past times and sets the minimum time bound to the current time plus 15 minutes. Initially set to 09:30. 
+	7
+	Note 
+	Optional text area, maximum 500 characters. Allows recording candidate background, learning preferences, or audition requests. Initially empty. 
+	8
+	Media attachments 
+	Embedded media player for listening to attached audio recordings or watching audition videos. Displays a placeholder when no file is attached. 
+	
+
+	Actions and Messages 
+	9
+	Save button 
+	Validates and submits the appointment. Disabled while saving. On success, the form closes and the schedule list is reloaded. 
+	10
+	Cancel button  
+	Closes the form without saving changes. 
+	11
+	Close button 
+	Closes the form without saving changes. 
+	12
+	Past time warning message 
+	Warning notification displayed when an invalid past date or time is selected, automatically adjusting the input to a valid future time. 
+	13
+	Validation error message 
+	Displays error details when required fields are missing or invalid. The form remains open for correction. 
+	14
+	Success message 
+	Confirms that the placement test appointment was created successfully. 
+	4.2.2 Evaluate and Grade Placement Test
+  
+
+This form allows Teacher users to grade candidate performance and recommend a curriculum level. The form loads four evaluation criteria customized to the test's subject discipline. The teacher adjusts criteria ratings, uploads multimedia audition evidence, and enters qualitative notes. Access is restricted to teachers whose teaching subject matches the test subject. On success, the schedule transitions to COMPLETED, the form closes, and the schedule list is reloaded.
+Users: Teacher (with matching subject specialization)
+Related Use Cases: UC-PT-03 - Assess and grade placement test; UC-PT-05 - Upload placement test media.
+Field Description
+ID
+	Field Name
+	Description
+	
+
+	Candidate Context 
+	1
+	Candidate summary  
+	Read-only display of candidate full name, schedule ID, and appointment subject. 
+	2
+	Average score 
+	Live indicator displaying the arithmetic mean of all criteria ratings on a 0.0 to 10.0 scale. 
+	3
+	Backend composite score 
+	Live indicator displaying the composite score on a 0 to 100 integer scale (Average×10\text{Average} \times 10Average×10). 
+	
+
+	Assessment Criteria 
+	4
+	Music criteria 
+	Displayed when subject is Music (DAN):
+1. Pitch & Ear Training - slider rating from 0.0 to 10.0.
+2. Rhythm & Metronome - slider rating from 0.0 to 10.0.
+3. Hand Technique & Posture - slider rating from 0.0 to 10.0.
+4. Sight Reading & Theory - slider rating from 0.0 to 10.0. 
+	5
+	Dance criteria 
+	Displayed when subject is Dance (MUA):
+1. Flexibility & Agility - slider rating from 0.0 to 10.0.
+2. Musicality & Rhythm - slider rating from 0.0 to 10.0.
+3. Posture & Technique - slider rating from 0.0 to 10.0.
+4. Stage Presence - slider rating from 0.0 to 10.0. 
+	6
+	Martial Arts criteria 
+	Displayed when subject is Martial Arts (VO):
+1. Stamina & Strength - slider rating from 0.0 to 10.0.
+2. Reflexes & Speed - slider rating from 0.0 to 10.0.
+3. Stances & Technique - slider rating from 0.0 to 10.0.
+4. Martial Discipline - slider rating from 0.0 to 10.0. 
+	
+
+	Recommendation and Media Evidence 
+	7
+	Recommended level 
+	Required dropdown containing BEGINNER, INTERMEDIATE, and ADVANCED. Used by Academic Staff to select an appropriate class during enrollment. Initially unselected. 
+	8
+	Attachment file 
+	Optional file input accepting audio, video, or image files up to 50 MB. Upon selection, uploads the file to physical storage and stores the returned file URL. 
+	9
+	Upload progress 
+	Displays real-time upload progress and confirmation messages for attached media files. 
+	10
+	Teacher comment 
+	Optional text area, maximum 2000 characters. Evaluation comments, candidate strengths, weaknesses, and learning roadmap recommendations. Initially empty. 
+	
+
+	Actions and Messages 
+	11
+	Save button 
+	Submits the evaluation, scores, recommended level, and media attachment. Disabled while saving. On success, the form closes and the schedule list is reloaded. 
+	12
+	Cancel button 
+	Closes the form without saving evaluation changes. 
+	13
+	Close button 
+	Closes the form without saving evaluation changes. 
+	14
+	Subject mismatch error 
+	Access-denied alert displayed when a teacher attempts to evaluate a test belonging to another department. 
+	15
+	Role permission error 
+	Access-denied alert displayed when non-teacher accounts attempt to submit an assessment. 
+	16
+	Success message 
+	Confirms that the candidate evaluation was submitted successfully. 
+	5. Course Management
+5.1 Course Lookup
+5.1.1 Course List and Filtering
+  
+
+This screen allows Staff, Admin, and Branch Manager users to view, search, and filter existing courses across academic programs (such as Piano, Guitar, Dance, and Martial Arts). It displays course codes, course names, curriculum levels, planned durations in weeks, total session counts, standard tuition fees, and active class counts. Users can open the course creation form, the update form, or initiate course deletion from this screen.
+Users: Staff, Admin, and Branch Manager
+Related Use Case: UC-CO-01 - Search and filter courses.
+Field Description
+ID
+	Field Name
+	Description
+	
+
+	Filter Fields 
+	1
+	Keyword 
+	Optional text input for searching by part of a course code or course name, ignoring letter case. Leading and trailing spaces are removed. Initially empty. 
+	2
+	Program 
+	Optional dropdown populated with existing training programs / disciplines (e.g., “Music / Piano”, “Guitar”, “Dance & Ballet”, “Martial Arts”). Initially displays “All programs”. 
+	3
+	Level 
+	Optional dropdown containing available proficiency levels (e.g., “Khởi động”, “Cơ bản”, “Grade 1”, “Trung cấp”, “Nâng cao”). Initially displays “All levels”. 
+	4
+	Filter button 
+	Filter button 
+	
+
+	Course List 
+	5
+	Course code 
+	Read-only unique identification code of each course (e.g., PIA-G1, GUI-BASIC, MA-INTER). 
+	6
+	Course name 
+	Read-only display name of the course. 
+	7
+	Program 
+	Displays the parent program / talent discipline associated with the course. 
+	8
+	Level 
+	Displays the learning or proficiency level assigned to the course. 
+	9
+	Duration 
+	Displays the planned course duration in weeks (e.g., 12 weeks, 16 weeks, 20 weeks). 
+	10
+	Total sessions 
+	Displays the planned number of teaching sessions in the course curriculum (e.g., 24 sessions, 32 sessions). Used as the default session count when generating class lessons. 
+	11
+	Tuition fee 
+	Displays the standard course tuition fee formatted in VND (e.g., 3,600,000 ₫, 4,800,000 ₫). 
+	12
+	Linked classes count 
+	Displays the number of classes currently associated with this course. 
+	13
+	Description 
+	Displays the overview of course objectives or a placeholder when no description is provided. 
+	14
+	Edit button 
+	Opens the update form with the selected course’s information. 
+	15
+	Delete button 
+	Enabled only for courses with zero linked classes. Opens the deletion confirmation dialog. For courses with linked classes, the button is disabled or hidden. 
+	16
+	Result count 
+	Displays the total number of courses matching the query conditions. 
+	
+
+	General Actions and Messages 
+	17
+	Create course button 
+	Opens the course creation form. 
+	18
+	Refresh button 
+	Reloads the course list and filter criteria from the server. 
+	19
+	Empty result message 
+	Displayed when no course matches the specified search and filter conditions. 
+	20
+	Error message 
+	Displays an error when the course list or program filter options cannot be loaded from the server.  
+	5.2 Course Maintenance
+5.2.1 Create Course  
+This form allows Staff, Admin, and Branch Manager users to create a new course under an existing academic program. Users enter curriculum specifications including the course code, name, level, duration in weeks, total sessions, standard tuition fee, and a syllabus description. The system validates the uniqueness of the course code and ensures all numerical inputs are positive before persisting the record. On success, the form closes and the course list is reloaded.
+Users: Staff, Admin, and Branch Manager
+Related Use Case: UC-CO-02 - Create course.
+
+
+Field Description
+ID
+	Field Name
+	Description
+	
+
+	Program and Identification 
+	1
+	Program 
+	Required dropdown populated with active academic programs (e.g., Piano, Guitar, Dance, Martial Arts). Initially displays “Select a program”. 
+	2
+	Course code 
+	Required text input, maximum 50 characters. Must start with an uppercase letter or digit and contain only letters, numbers, hyphens, or underscores (e.g., PIA-G2). The system trims spaces, converts the code to uppercase, and rejects duplicate codes regardless of letter case. Initially empty. 
+	3
+	Course name  
+	Required text input, maximum 150 characters. Full descriptive title of the course. Surrounding spaces are removed before submission. Initially empty. 
+	4
+	Level 
+	Optional text or dropdown input, maximum 50 characters. Defines the curriculum tier (e.g., “Cơ bản”, “Grade 1”, “Trung cấp”, “Nâng cao”). Initially empty. 
+	
+
+	Curriculum and Tuition Information 
+	5
+	Duration in weeks 
+	Required positive integer input. Planned course length in weeks (e.g., 12 to 24 weeks). Defaults to 16. 
+	6
+	Total sessions 
+	Required positive integer input from 1 to 60. Specifies the standard number of teaching lessons in the syllabus. Used to auto-fill class creation lesson generation. Defaults to 32. 
+	7
+	Tuition fee 
+	Required decimal/number input. Standard tuition amount in VND. Must be a non-negative whole amount. Formatted with thousand separators on blur. Initially empty. 
+	8
+	Description 
+	Optional text area, maximum 500 characters. Allows recording candidate background, learning preferences, or audition requests. Initially empty. 
+	
+
+	Actions and Messages 
+	9
+	Save button 
+	Validates and submits the course creation payload. Disabled while saving. On success, the form closes and the course list is reloaded. 
+	10
+	Cancel button  
+	Closes the form without creating a course. 
+	11
+	Close button 
+	Closes the form without creating a course. 
+	12
+	Duplicate code error message 
+	Displayed when the entered course code already exists in the system. 
+	13
+	Validation error message 
+	Displays invalid input, negative values, or missing required fields. The form remains open for correction. 
+	14
+	Success message 
+	Confirms that the new course was created successfully. 
+	
+
+
+
+5.2.2 Update Course
+  
+
+This form allows Staff, Admin, and Branch Manager users to update an existing course. The form is pre-populated with the selected course’s information. Editable fields depend on whether the course currently has linked classes. The course code and parent program are locked when classes reference the course. Users may adjust curriculum duration, total sessions, tuition fees, and syllabus descriptions subject to validation. On success, the form closes and the course list is reloaded.
+Users: Staff, Admin, and Branch Manager
+Related Use Case: UC-CO-03 - Update course.
+Field Description
+ID
+	Field Name
+	Description
+	
+
+	Program and Identification 
+	1
+	Program 
+	Required dropdown showing the current academic program. Disabled on the interface when classes are linked to the course. The server also rejects program changes when any class record exists. 
+	2
+	Course code 
+	Required text input, maximum 50 characters. Initially displays the current code. Locked and disabled when linked classes exist. If editable (no linked classes), duplicate codes are rejected. 
+	3
+	Course name  
+	Required editable text input, maximum 150 characters. Initially displays the current course name. Surrounding spaces are removed before submission. 
+	4
+	Level 
+	Optional text input, maximum 50 characters. Initially displays the current level. Editable. 
+	
+
+	Curriculum and Tuition Information 
+	5
+	Duration in weeks  
+	Required positive integer input showing the current duration. Editable. Changes do not retroactively alter the end dates of existing classes. 
+	6
+	Total sessions 
+	Required positive integer input showing the standard session count. Editable. Updates apply to future classes created from this course; existing classes retain their generated lessons. 
+	7
+	Tuition fee 
+	Required decimal/number input showing the current standard tuition fee. Editable. Updated tuition fees apply to future enrollment requests and do not alter existing unpaid or paid invoices. 
+	8
+	Description 
+	Optional multiline text input, maximum 1000 characters. Initially displays the current description. Editable. 
+	
+
+	Actions and Messages 
+	9
+	Save button 
+	Validates and submits the modifications. Disabled while saving. On success, the form closes and the course list is reloaded. 
+	10
+	Cancel button  
+	Closes the form without saving changes. 
+	11
+	Close button 
+	Closes the form without saving changes. 
+	12
+	Validation error message 
+	Displays invalid input, negative values, or prohibited changes to locked fields. The form remains open for correction. 
+	13
+	Success message 
+	Confirms that the course information was updated successfully. 
+	
+
+5.2.3 Delete Course
+  
+
+This dialog allows Admin and Staff users to delete an obsolete course from the system. Course deletion is strictly guarded: the server and client verify that the course has zero linked classes (classes.course_id). If any class exists, deletion is rejected with an explanatory message. Once confirmed, the system deletes the course record, closes the dialog, and reloads the course list.
+Users: Admin and Staff
+Related Use Case: UC-CO-04 - Delete course.
+Field Description
+ID
+	Field Name
+	Description
+	
+
+	Deletion Information 
+	1
+	Confirmation message 
+	Displays a warning asking the user to confirm deletion of the specified course code and course name. 
+	2
+	Linked classes check 
+	Read-only check indicating that the course has no active, planning, or finished classes linked to it. 
+	3
+	Deletion restriction warning 
+	Displayed when attempting to delete a course with existing linked classes. Informs the user that classes must be deleted or reassigned before the course can be removed. 
+	
+
+	Actions and Messages 
+	4
+	Confirm delete button 
+	Submits the deletion request to the server. Disabled while processing or when linked classes exist. On success, the dialog closes and the course list is reloaded. 
+	5
+	Cancel button 
+	Closes the confirmation dialog without deleting the course. 
+	6
+	Delete success message 
+	Confirms that the course was deleted successfully. 
+	7
+	Delete rejection error message  
+	Displays an error explaining that the course cannot be deleted because one or more classes are currently referencing it. 
+	6. Attendance_Tracking & Weekly_Schedule
+
+
+III. System Design
+1. Software Architecture
+1.1 Overall Architectural Diagram
+  
+
+Figure III.1  Overall architectural diagram
+The feature modules execute inside one Spring Boot application. The presentation uses static HTML and JavaScript, with optional separate local serving on port 5500 and backend APIs on port 8080. PayOS is external; application persistence targets Microsoft SQL Server. HTTP is used locally; HTTPS is used for the PayOS API.
+1.2 Component Descriptions
+No
+	Component
+	Description
+	01
+	Presentation Logic Layer
+	REST controllers receive requests, validate request DTOs and call application services. Academic, operations and administration controllers share the same Spring Boot application.
+	02
+	User Interface
+	HTML, CSS, vanilla JavaScript and Bootstrap under com_fe. The shared Home and sidebar expose role-specific screens; api.js sends JSON/multipart requests with a stored Bearer JWT.
+	03
+	Auth Middleware
+	Spring Security filter chain with stateless JWT authentication and role checks. BCrypt verifies passwords; account status, token version and mandatory password change are checked before protected operations.
+	04
+	Common Services
+	CurrentUserService supplies the current domain user. Shared FileStorageService stores generic placement attachments. Common exception handling converts failures to HTTP error responses.
+	05
+	Service Layer
+	Implements course/class validation, enrollment decisions, placement recommendations, schedules, attendance, make-up, payment confirmation, reporting, account management and reconciliation.
+	06
+	Model / Domain Classes
+	Shared JPA entities include User, Student, Course, ClassEntity, Enrollment, EnrollmentRequest, Lesson, Invoice, Payment and related records. Shared enums define roles and workflow states.
+	07
+	Data Access Layer
+	Spring Data JPA repositories and Hibernate access SQL Server. Services use EntityManager for selected locks and coordinated updates; limited tuition legacy logic uses JdbcTemplate.
+	08
+	Integration and File Services
+	PayOSGateway creates signed payment links and validates webhook signatures. FinanceProofService stores and authorizes payment evidence separately from generic attachments.
+	09
+	Microsoft SQL Server
+	Stores persistent academic, operational, account and financial records through the backend persistence layer. H2 is also declared for alternative/test configuration.
+	10
+	Local File Storage
+	Stores placement attachments and financial evidence. Finance proof retrieval uses an authenticated owner/Admin API; this is not a cloud object-storage service.
+	11
+	PayOS Payment Gateway
+	External payment service returning checkout links/QR data and signed transaction notifications. PaymentCollectionService verifies order, amount and reference before finalizing the invoice and enrollment.
+	12
+	VietQR Image Service
+	External image endpoint used by a generated QR URL. Displaying a QR image does not confirm that money has been received.
+	
+
+2. Code Package Design
+2.1 Package Diagram
+  
+
+Figure III.2  UML package view of the implemented code
+
+
+2.2 Package Descriptions
+No
+	Package
+	Description
+	01
+	Control
+	Contains feature controller packages. Controllers bind and validate incoming API requests, enforce method authorization where declared, invoke the appropriate service and return response DTOs.
+	02
+	Service
+	Contains features.<feature>.service and service.impl where present. These classes validate business rules, ownership and transitions and coordinate persistence and integration. ClassManagementService and CourseEnrollmentService are concrete services without a separate Impl class.
+	03
+	Data Access Layer
+	Contains feature repository packages and shared.entity, plus placement_test.entity. Repositories provide queries and persistence; entity classes represent shared business data. Services may reuse repositories from another feature.
+	04
+	Support Layer
+	Contains request/response DTOs, shared.dto.PageResponse, shared.enums and feature enums, exceptions, mappers and reusable conversion/error definitions. Some services construct response records directly.
+	05
+	Infrastructure Layer
+	Contains shared.config, including WebSecurityConfig, WebMvcConfig, OpenApiConfig and DataInitializer. It configures security, CORS, API documentation and optional startup initialization.
+	06
+	Shared Services and Integration
+	Contains shared.service utilities, authentication/security classes and tuition_payment.gateway.PayOSGateway. Financial proof storage is implemented in financial_reporting.service.impl; it is separate from generic FileStorageService.
+	
+
+
+
+Feature Package Mapping
+Feature package
+	Main responsibility
+	auth / admin_management
+	Authentication, current account, password lifecycle, account administration, dashboard and audit.
+	course_management / class_management
+	Courses, classes, teacher/room assignments and request-triggered lesson generation.
+	branch_facility_enrollment
+	Branch, room and equipment lookup and authorized maintenance.
+	course_enrollment / placement_test
+	Parent requests, test scheduling and assessment, class recommendation, assignment and pending invoice creation.
+	attendance_makeup
+	Weekly schedules, class rosters, attendance, absence review and make-up resolution.
+	tuition_payment / financial_reporting
+	Invoice/QR/status APIs, collection confirmation, evidence, PayOS, reports, audit and cash handover.
+	
+
+Package and Class Naming Conventions
+The Java application root is com.talent.management, located under com_be/src/main/java. Feature package names are lowercase with underscores as used in the source, such as course_enrollment and financial_reporting. shared contains config, entity, enums, dto, service and exception.
+Classes and interfaces use PascalCase. Methods and fields use lowerCamelCase; constants use UPPER_SNAKE_CASE. Common class suffixes are Controller, Service, ServiceImpl, Repository, Mapper, Request, Response and Dto. ClassEntity names a teaching class without conflicting with java.lang.Class.
+com_fe is the editable frontend source: pages contains feature screens; components contains shared HTML; js contains common/page code and admin, finance and tuition-payment folders; css contains common and feature styles. Some screens retain inline JavaScript. scripts/sync-frontend.mjs copies these assets to backend static and legacy webapp locations.
+The root Maven project groups com_be. com_be/pom.xml declares Java 17 and Spring Boot 3.3.4. The retained resources/templates files do not establish a configured Thymeleaf application; the starter is not declared.
+General StudentController CRUD methods remain placeholders in AuthService; the operational features read existing students through repositories. They are not represented as completed student-management screens.
+
+
+3. Database Design
+3.1 Database Schema
+  
+  
+
+
+
+
+3.2 Table Descriptions
+3.2.1 users
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id 
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the user account. 
+	02
+	username 
+	
+
+	
+
+	X
+	X
+	Unique username used to sign in. 
+	03
+	password 
+	
+
+	
+
+	
+
+	X
+	Hashed password used for authentication. 
+	04
+	full_name 
+	
+
+	
+
+	
+
+	X
+	Full name of the account holder. 
+	05
+	email 
+	
+
+	
+
+	
+
+	
+
+	Contact email address of the account holder. 
+	06
+	phone 
+	
+
+	
+
+	
+
+	
+
+	Contact phone number of the account holder. 
+	07
+	role 
+	
+
+	
+
+	
+
+	X
+	Role that determines the user's access permissions. 
+	08
+	status 
+	
+
+	
+
+	
+
+	
+
+	Current status of the user account. 
+	09
+	subject 
+	
+
+	
+
+	
+
+	
+
+	Teaching subject recorded for the user, when applicable. 
+	10
+	avatar_url 
+	
+
+	
+
+	
+
+	
+
+	URL of the user's profile image. 
+	11
+	created_at 
+	
+
+	
+
+	
+
+	
+
+	Date and time when the account was created. 
+	12
+	teaching_subject
+
+
+	
+
+	
+
+	
+
+	
+
+	Specific subjects for class teaching assignments
+	
+
+3.2.2 students
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the student.
+	02
+	parent_id
+	
+
+	X
+	
+
+	
+
+	Parent or guardian account; references users.id.
+	03
+	full_name
+	
+
+	
+
+	
+
+	X
+	Full name of the student.
+	04
+	date_of_birth
+	
+
+	
+
+	
+
+	
+
+	Date of birth of the student.
+	05
+	gender
+	
+
+	
+
+	
+
+	
+
+	Gender recorded in the student profile.
+	06
+	school_name
+	
+
+	
+
+	
+
+	
+
+	Name of the school attended by the student.
+	07
+	notes
+	
+
+	
+
+	
+
+	
+
+	Additional information about the student.
+	08
+	created_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the student profile was created.
+	
+
+3.2.3 branches
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the training branch.
+	02
+	code
+	
+
+	
+
+	X
+	X
+	Unique code identifying the branch.
+	03
+	name
+	
+
+	
+
+	
+
+	X
+	Display name of the branch.
+	04
+	address
+	
+
+	
+
+	
+
+	X
+	Physical address of the branch.
+	05
+	phone
+	
+
+	
+
+	
+
+	
+
+	Contact phone number of the branch.
+	06
+	email
+	
+
+	
+
+	
+
+	
+
+	Contact email address of the branch.
+	07
+	active
+	
+
+	
+
+	
+
+	
+
+	Indicates whether the branch is active.
+	08
+	created_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the branch was created.
+	3.2.4 rooms
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the room or learning area.
+	02
+	branch_id
+	
+
+	X
+	
+
+	X
+	Branch containing the room; references branches.id.
+	03
+	room_code
+	
+
+	
+
+	
+
+	X
+	Code assigned to the room within its branch.
+	04
+	room_name
+	
+
+	
+
+	
+
+	X
+	Display name of the room or learning area.
+	05
+	capacity
+	
+
+	
+
+	
+
+	X
+	Maximum number of students the room can accommodate.
+	06
+	room_type
+	
+
+	
+
+	
+
+	X
+	Type of room or learning area.
+	07
+	status
+	
+
+	
+
+	
+
+	
+
+	Current availability or maintenance status of the room.
+	08
+	description
+	
+
+	
+
+	
+
+	
+
+	Additional details about the room and its facilities.
+	3.2.5 equipments
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the equipment item.
+	02
+	room_id
+	
+
+	X
+	
+
+	X
+	Room containing the equipment; references rooms.id.
+	03
+	name
+	
+
+	
+
+	
+
+	X
+	Display name of the equipment item.
+	04
+	code
+	
+
+	
+
+	
+
+	
+
+	Code assigned to the equipment item.
+	05
+	category
+	
+
+	
+
+	
+
+	X
+	Category of the equipment item.
+	06
+	status
+	
+
+	
+
+	
+
+	
+
+	Current condition or maintenance status of the equipment.
+	07
+	serial_number
+	
+
+	
+
+	
+
+	
+
+	Manufacturer or inventory serial number.
+	08
+	description
+	
+
+	
+
+	
+
+	
+
+	Additional details about the equipment item.
+	3.2.6 programs
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the program or subject area.
+	02
+	code
+	
+
+	
+
+	X
+	X
+	Unique code identifying the program.
+	03
+	name
+	
+
+	
+
+	
+
+	X
+	Display name of the program or subject area.
+	04
+	description
+	
+
+	
+
+	
+
+	
+
+	Overview of the program and its training scope.
+	3.2.7 courses
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the course.
+	02
+	program_id
+	
+
+	X
+	
+
+	X
+	Program offering the course; references programs.id.
+	03
+	code
+	
+
+	
+
+	X
+	X
+	Unique code identifying the course.
+	04
+	name
+	
+
+	
+
+	
+
+	X
+	Display name of the course.
+	05
+	level
+	
+
+	
+
+	
+
+	
+
+	Learning or proficiency level of the course.
+	06
+	duration_weeks
+	
+
+	
+
+	
+
+	
+
+	Planned duration of the course in weeks.
+	07
+	total_sessions
+	
+
+	
+
+	
+
+	
+
+	Planned number of teaching sessions in the course.
+	08
+	tuition_fee
+	
+
+	
+
+	
+
+	X
+	Standard tuition fee of the course.
+	09
+	description
+	
+
+	
+
+	
+
+	
+
+	Overview of course content and objectives.
+	3.2.8 classes
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the class.
+	02
+	course_id
+	
+
+	X
+	
+
+	X
+	Course delivered by the class; references courses.id.
+	03
+	branch_id
+	
+
+	X
+	
+
+	X
+	Branch offering the class; references branches.id.
+	04
+	room_id
+	
+
+	X
+	
+
+	
+
+	Assigned class room; references rooms.id.
+	05
+	teacher_id
+	
+
+	X
+	
+
+	
+
+	Assigned class teacher; references users.id.
+	06
+	class_code
+	
+
+	
+
+	X
+	X
+	Unique code identifying the class.
+	07
+	class_name
+	
+
+	
+
+	
+
+	X
+	Display name of the class.
+	08
+	class_type
+	
+
+	
+
+	
+
+	
+
+	Class format, such as group or one-to-one.
+	09
+	max_students
+	
+
+	
+
+	
+
+	X
+	Maximum number of students allowed in the class.
+	10
+	current_students
+	
+
+	
+
+	
+
+	
+
+	Stored count of students currently enrolled.
+	11
+	start_date
+	
+
+	
+
+	
+
+	
+
+	Start date recorded for the class.
+	12
+	end_date
+	
+
+	
+
+	
+
+	
+
+	End date recorded for the class.
+	13
+	schedule_description
+	
+
+	
+
+	
+
+	
+
+	Text description of the class schedule.
+	14
+	status
+	
+
+	
+
+	
+
+	
+
+	Current lifecycle status of the class.
+	3.2.9 enrollments
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the enrollment.
+	02
+	student_id
+	
+
+	X
+	
+
+	X
+	Enrolled student; references students.id.
+	03
+	class_id
+	
+
+	X
+	
+
+	X
+	Class selected for enrollment; references classes.id.
+	04
+	registered_by_user_id
+	
+
+	X
+	
+
+	
+
+	User who recorded the enrollment; references users.id.
+	05
+	enrollment_date
+	
+
+	
+
+	
+
+	
+
+	Date and time when the enrollment was recorded.
+	06
+	status
+	
+
+	
+
+	
+
+	
+
+	Current enrollment status, including pending payment.
+	07
+	notes
+	
+
+	
+
+	
+
+	
+
+	Additional information about the enrollment.
+	3.2.10 enrollment_requests
+
+
+
+
+
+
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the enrollment request.
+	02
+	student_id
+	
+
+	X
+	
+
+	X
+	Student in the request; references students.id.
+	03
+	class_id
+	
+
+	X
+	
+
+	
+
+	Class assigned during review; references classes.id.
+	04
+	preferred_course_id
+	
+
+	X
+	
+
+	
+
+	Requested or recommended course; references courses.id.
+	05
+	placement_requested
+	
+
+	
+
+	
+
+	X
+	Indicates whether a placement test was requested.
+	06
+	requested_by_user_id
+	
+
+	X
+	
+
+	X
+	User who submitted the request; references users.id.
+	07
+	reviewed_by_user_id
+	
+
+	X
+	
+
+	
+
+	User who reviewed the request; references users.id.
+	08
+	enrollment_id
+	
+
+	X
+	
+
+	
+
+	Resulting enrollment; references enrollments.id.
+	09
+	status
+	
+
+	
+
+	
+
+	X
+	Current processing status of the request.
+	10
+	note
+	
+
+	
+
+	
+
+	
+
+	Note supplied when submitting the request.
+	11
+	review_note
+	
+
+	
+
+	
+
+	
+
+	Comment recorded when reviewing the request.
+	12
+	created_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the request was created.
+	13
+	reviewed_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the request was reviewed.
+	3.2.11 lessons
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the lesson.
+	02
+	class_id
+	
+
+	X
+	
+
+	X
+	Class containing the lesson; references classes.id.
+	03
+	room_id
+	
+
+	X
+	
+
+	
+
+	Room assigned to this lesson; references rooms.id.
+	04
+	teacher_id
+	
+
+	X
+	
+
+	
+
+	Teacher assigned to this lesson; references users.id.
+	05
+	session_number
+	
+
+	
+
+	
+
+	
+
+	Sequence number of the lesson within the class.
+	06
+	lesson_date
+	
+
+	
+
+	
+
+	X
+	Calendar date on which the lesson takes place.
+	07
+	start_time
+	
+
+	
+
+	
+
+	X
+	Scheduled starting time of the lesson.
+	08
+	end_time
+	
+
+	
+
+	
+
+	X
+	Scheduled ending time of the lesson.
+	09
+	title
+	
+
+	
+
+	
+
+	
+
+	Title or topic of the lesson.
+	10
+	lesson_note
+	
+
+	
+
+	
+
+	
+
+	Teaching notes or comments about the lesson.
+	11
+	status
+	
+
+	
+
+	
+
+	
+
+	Current scheduling or completion status of the lesson.
+	3.2.12 attendances
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the attendance record.
+	02
+	lesson_id
+	
+
+	X
+	X
+	X
+	Lesson being attended; references lessons.id.
+	03
+	student_id
+	
+
+	X
+	X
+	X
+	Student being marked; references students.id.
+	04
+	status
+	
+
+	
+
+	
+
+	
+
+	Attendance status recorded for the student.
+	05
+	note
+	
+
+	
+
+	
+
+	
+
+	Additional comment about the attendance record.
+	06
+	marked_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when attendance was marked.
+	3.2.13 teacher_availabilities
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the availability slot.
+	02
+	teacher_id
+	
+
+	X
+	
+
+	X
+	Teacher offering the slot; references users.id.
+	03
+	branch_id
+	
+
+	X
+	
+
+	X
+	Branch associated with the slot; references branches.id.
+	04
+	day_of_week
+	
+
+	
+
+	
+
+	
+
+	Weekday recorded for a recurring availability slot.
+	05
+	available_date
+	
+
+	
+
+	
+
+	
+
+	Specific calendar date recorded for the slot.
+	06
+	start_time
+	
+
+	
+
+	
+
+	X
+	Starting time of the availability slot.
+	07
+	end_time
+	
+
+	
+
+	
+
+	X
+	Ending time of the availability slot.
+	08
+	note
+	
+
+	
+
+	
+
+	
+
+	Additional comment about the teacher's availability.
+	09
+	is_booked
+	
+
+	
+
+	
+
+	
+
+	Indicates whether the availability slot is booked.
+	3.2.14 absence_requests
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the absence request.
+	02
+	student_id
+	
+
+	X
+	
+
+	X
+	Student requesting absence; references students.id.
+	03
+	lesson_id
+	
+
+	X
+	
+
+	X
+	Lesson the student will miss; references lessons.id.
+	04
+	requested_by_user_id
+	
+
+	X
+	
+
+	X
+	User who submitted the request; references users.id.
+	05
+	reason
+	
+
+	
+
+	
+
+	X
+	Reason provided for missing the lesson.
+	06
+	status
+	
+
+	
+
+	
+
+	
+
+	Current review status of the absence request.
+	07
+	approved_by_teacher_id
+	
+
+	X
+	
+
+	
+
+	Teacher who reviewed the request; references users.id.
+	08
+	review_note
+	
+
+	
+
+	
+
+	
+
+	Comment recorded when reviewing the absence request.
+	09
+	reviewed_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the absence request was reviewed.
+	10
+	created_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the absence request was created.
+	3.2.15 makeup_registrations
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the makeup registration.
+	02
+	absence_request_id
+	
+
+	X
+	
+
+	
+
+	Related absence request; references absence_requests.id.
+	03
+	student_id
+	
+
+	X
+	
+
+	X
+	Student requesting a makeup lesson; references students.id.
+	04
+	original_lesson_id
+	
+
+	X
+	
+
+	X
+	Original missed lesson; references lessons.id.
+	05
+	target_lesson_id
+	
+
+	X
+	
+
+	
+
+	Selected makeup lesson; references lessons.id.
+	06
+	status
+	
+
+	
+
+	
+
+	
+
+	Current processing status of the makeup registration.
+	07
+	note
+	
+
+	
+
+	
+
+	
+
+	Additional information about the makeup registration.
+	08
+	created_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the makeup registration was created.
+	3.2.16 placement_tests
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the placement test result.
+	02
+	student_id
+	
+
+	X
+	
+
+	X
+	Assessed student; references students.id.
+	03
+	teacher_id
+	
+
+	X
+	
+
+	X
+	Assessing teacher; references users.id.
+	04
+	program_id
+	
+
+	X
+	
+
+	X
+	Assessed program or subject; references programs.id.
+	05
+	test_date
+	
+
+	
+
+	
+
+	X
+	Date on which the placement test took place.
+	06
+	rhythm_score
+	
+
+	
+
+	
+
+	
+
+	Score recorded for the rhythm assessment criterion.
+	07
+	technique_score
+	
+
+	
+
+	
+
+	
+
+	Score recorded for the technique assessment criterion.
+	08
+	ear_training_score
+	
+
+	
+
+	
+
+	
+
+	Score recorded for the ear-training criterion.
+	09
+	expression_score
+	
+
+	
+
+	
+
+	
+
+	Score recorded for the expression criterion.
+	10
+	total_score
+	
+
+	
+
+	
+
+	
+
+	Overall score recorded for the placement test.
+	11
+	teacher_notes
+	
+
+	
+
+	
+
+	
+
+	Assessment comments recorded by the teacher.
+	12
+	recommended_level
+	
+
+	
+
+	
+
+	
+
+	Learning level recommended after the assessment.
+	13
+	recommended_course_id
+	
+
+	X
+	
+
+	
+
+	Recommended course; references courses.id.
+	14
+	created_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the test result was created.
+	3.2.17 test_attachments
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the test attachment.
+	02
+	placement_test_id
+	
+
+	X
+	
+
+	X
+	Related test result; references placement_tests.id.
+	03
+	file_name
+	
+
+	
+
+	
+
+	X
+	Original or display name of the attached file.
+	04
+	file_url
+	
+
+	
+
+	
+
+	X
+	Location or URL of the attached file.
+	05
+	media_type
+	
+
+	
+
+	
+
+	X
+	Media category of the attached file.
+	06
+	duration_seconds
+	
+
+	
+
+	
+
+	
+
+	Duration of the media file in seconds, when applicable.
+	07
+	description
+	
+
+	
+
+	
+
+	
+
+	Additional information about the attachment.
+	08
+	uploaded_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the attachment was uploaded.
+	3.2.18 placement_schedules
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the placement schedule.
+	02
+	user_id
+	
+
+	X
+	
+
+	
+
+	Parent associated with the schedule; references users.id.
+	03
+	enrollment_request_id
+	
+
+	X
+	X
+	
+
+	Linked request; references enrollment_requests.id.
+	04
+	student_name
+	
+
+	
+
+	
+
+	
+
+	Student name stored with the schedule.
+	05
+	title
+	
+
+	
+
+	
+
+	X
+	Title of the scheduled placement assessment.
+	06
+	room_name
+	
+
+	
+
+	
+
+	X
+	Room name stored as text for the assessment.
+	07
+	branch
+	
+
+	
+
+	
+
+	
+
+	Branch name stored as text for the assessment.
+	08
+	subject
+	
+
+	
+
+	
+
+	
+
+	Subject recorded for the placement assessment.
+	09
+	test_date
+	
+
+	
+
+	
+
+	X
+	Scheduled date and time of the placement assessment.
+	10
+	note
+	
+
+	
+
+	
+
+	
+
+	Additional instructions or scheduling comments.
+	11
+	status
+	
+
+	
+
+	
+
+	X
+	Current status of the placement schedule.
+	12
+	score
+	
+
+	
+
+	
+
+	
+
+	Overall assessment score stored with the schedule.
+	13
+	recommended_level
+	
+
+	
+
+	
+
+	
+
+	Learning level recommended after evaluation.
+	14
+	recommended_course_id
+	
+
+	X
+	
+
+	
+
+	Recommended course; references courses.id.
+	15
+	teacher_note
+	
+
+	
+
+	
+
+	
+
+	Evaluation comments recorded by the teacher.
+	16
+	audio_url
+	
+
+	
+
+	
+
+	
+
+	URL of audio associated with the assessment.
+	17
+	video_url
+	
+
+	
+
+	
+
+	
+
+	URL of video associated with the assessment.
+	18
+	image_url
+	
+
+	
+
+	
+
+	
+
+	URL of an image associated with the assessment.
+	19
+	record_url
+	
+
+	
+
+	
+
+	
+
+	URL of a recording associated with the assessment.
+	20
+	teacher_id
+	
+
+	X
+	
+
+	
+
+	Evaluating teacher; references users.id.
+	21
+	evaluated_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the assessment was evaluated.
+	22
+	created_at
+	
+
+	
+
+	
+
+	X
+	Date and time when the schedule was created.
+	3.2.19 invoices
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the tuition invoice.
+	02
+	invoice_code
+	
+
+	
+
+	X
+	X
+	Unique code identifying the invoice.
+	03
+	student_id
+	
+
+	X
+	
+
+	X
+	Student billed by the invoice; references students.id.
+	04
+	enrollment_id
+	
+
+	X
+	
+
+	
+
+	Related enrollment; references enrollments.id.
+	05
+	original_amount
+	
+
+	
+
+	
+
+	X
+	Tuition amount before applying any discount.
+	06
+	discount_type
+	
+
+	
+
+	
+
+	
+
+	Type of discount applied to the invoice.
+	07
+	discount_amount
+	
+
+	
+
+	
+
+	
+
+	Discount amount recorded for the invoice.
+	08
+	discount_reason
+	
+
+	
+
+	
+
+	
+
+	Explanation for applying the discount.
+	09
+	final_amount
+	
+
+	
+
+	
+
+	X
+	Amount due after applying the discount.
+	10
+	status
+	
+
+	
+
+	
+
+	
+
+	Current payment or cancellation status of the invoice.
+	11
+	due_date
+	
+
+	
+
+	
+
+	
+
+	Date by which payment is due.
+	12
+	notes
+	
+
+	
+
+	
+
+	
+
+	Additional information about the invoice.
+	13
+	created_at
+	
+
+	
+
+	
+
+	
+
+	Date and time when the invoice was created.
+	3.2.20 payments
+
+
+No
+	Field
+	PK
+	FK
+	UN
+	NN
+	Description
+	01
+	id
+	X
+	
+
+	
+
+	X
+	Auto-generated identifier of the payment transaction.
+	02
+	invoice_id
+	
+
+	X
+	
+
+	X
+	Invoice being paid; references invoices.id.
+	03
+	payment_code
+	
+
+	
+
+	X
+	X
+	Unique code identifying the payment transaction.
+	04
+	payment_method
+	
+
+	
+
+	
+
+	X
+	Method used to make the payment.
+	05
+	amount
+	
+
+	
+
+	
+
+	X
+	Payment amount recorded for the transaction.
+	06
+	cash_given
+	
+
+	
+
+	
+
+	
+
+	Cash tendered by the payer, when applicable.
+	07
+	change_amount
+	
+
+	
+
+	
+
+	
+
+	Cash returned to the payer, when applicable.
+	08
+	payment_date
+	
+
+	
+
+	
+
+	
+
+	Date and time when the payment was recorded.
+	09
+	cashier_id
+	
+
+	X
+	
+
+	
+
+	User handling the payment; references users.id.
+	10
+	bank_transaction_id
+	
+
+	
+
+	
+
+	
+
+	Bank or payment gateway transaction reference.
+	11
+	proof_image_url
+	
+
+	
+
+	
+
+	
+
+	URL of an image used as payment evidence.
+	12
+	note
+	
+
+	
+
+	
+
+	
+
+	Additional information about the payment.
+	13
+	status
+	
+
+	
+
+	
+
+	
+
+	Processing result or current status of the payment.
