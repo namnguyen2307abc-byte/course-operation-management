@@ -30,6 +30,9 @@ public class PaymentPostingService {
     private final EntityManager em;
     private final com.talent.management.features.tuition_payment.mapper.TuitionPaymentMapper mapper;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.talent.management.features.notification.service.NotificationService notificationService;
+
     @Transactional
     public com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse
             collectReceipt(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key) {
@@ -108,6 +111,7 @@ public class PaymentPostingService {
         BigDecimal first =
                 installments.findByPlanIdOrderBySequenceNumber(plan.getId()).get(0).getAmountDue();
         Enrollment linked = invoice.getEnrollment();
+        boolean newlyEnrolled = false;
         if (linked != null) {
             Enrollment enrollment =
                     em.find(Enrollment.class, linked.getId(), LockModeType.PESSIMISTIC_WRITE);
@@ -120,10 +124,32 @@ public class PaymentPostingService {
                                 LockModeType.PESSIMISTIC_WRITE);
                 em.refresh(clazz, LockModeType.PESSIMISTIC_WRITE);
                 enrollment.setStatus(EnrollmentStatus.ENROLLED);
+                newlyEnrolled = true;
                 clazz.setCurrentStudents(
                         Optional.ofNullable(clazz.getCurrentStudents()).orElse(0) + 1);
                 requests.findByEnrollmentId(enrollment.getId())
                         .ifPresent(r -> r.setStatus(EnrollmentRequestStatus.APPROVED));
+            }
+        }
+        if (notificationService != null) {
+            String receipt = com.talent.management.features.tuition_payment.mapper.PaymentReference.receipt(payment);
+            String message = String.format(java.util.Locale.forLanguageTag("vi-VN"),
+                    "%s: đã nhận %,.0f đ cho %s; còn phải đóng %,.0f đ.",
+                    receipt, amount, invoice.getStudent().getFullName(), payment.getBalanceAfter());
+            if (invoice.getStudent().getParent() != null) {
+                notificationService.sendNotification(invoice.getStudent().getParent(), cashier,
+                        "Đã nhận học phí", message, "PAYMENT_SUCCESS", payment.getId(),
+                        "/pages/parent-tuition.html?invoiceId=" + invoice.getId());
+            }
+            notificationService.sendToRoles(List.of(Role.ADMIN, Role.STAFF), cashier,
+                    "Đã ghi nhận khoản thu học phí", message, "PAYMENT_SUCCESS", payment.getId(),
+                    "/pages/tuition-receivables.html?invoiceId=" + invoice.getId());
+            if (newlyEnrolled && linked.getClassEntity().getTeacher() != null) {
+                notificationService.sendNotification(linked.getClassEntity().getTeacher(), cashier,
+                        "Học viên nhập học chính thức",
+                        invoice.getStudent().getFullName() + " đã đủ điều kiện học lớp "
+                                + linked.getClassEntity().getClassName() + ".",
+                        "ENROLLMENT_COMPLETED", linked.getId(), "/pages/teacher-classes.html");
             }
         }
         return payment;

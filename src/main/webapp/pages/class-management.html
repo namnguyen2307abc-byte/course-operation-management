@@ -217,14 +217,24 @@
                                 </div>
                             </div>
 
+                            <div class="mt-2 mb-1">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Khung ca học chuẩn (Slots):</label>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill py-0 px-2 fw-semibold" onclick="selectSlotPreset('07:00', '09:00')">Slot 1: 07:00 - 09:00</button>
+                                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill py-0 px-2 fw-semibold" onclick="selectSlotPreset('09:30', '11:30')">Slot 2: 09:30 - 11:30</button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2 fw-semibold" onclick="selectSlotPreset('13:00', '15:00')">Slot 3: 13:00 - 15:00</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2 fw-semibold" onclick="selectSlotPreset('15:30', '17:30')">Slot 4: 15:30 - 17:30</button>
+                                </div>
+                            </div>
+
                             <div class="row g-2 align-items-end mt-1">
                                 <div class="col-6 col-md-3">
                                     <label for="startTime" class="form-label">Giờ bắt đầu</label>
-                                    <input id="startTime" type="time" class="form-control form-control-sm" value="08:00">
+                                    <input id="startTime" type="time" class="form-control form-control-sm" value="07:00">
                                 </div>
                                 <div class="col-6 col-md-3">
                                     <label for="endTime" class="form-label">Giờ kết thúc</label>
-                                    <input id="endTime" type="time" class="form-control form-control-sm" value="10:00">
+                                    <input id="endTime" type="time" class="form-control form-control-sm" value="09:00">
                                 </div>
                                 <div class="col-6 col-md-2">
                                     <label for="totalSessions" class="form-label">Tổng buổi</label>
@@ -333,6 +343,13 @@
         }
 
         // Tự động ghép chuỗi mô tả lịch học
+        function selectSlotPreset(start, end) {
+            $('startTime').value = start;
+            $('endTime').value = end;
+            autoUpdateScheduleDesc();
+            updateCalculatedEndDate();
+        }
+
         function autoUpdateScheduleDesc() {
             if (existingHasLessons) return;
             const dayNames = {1:'T2', 2:'T3', 3:'T4', 4:'T5', 5:'T6', 6:'T7', 7:'CN'};
@@ -582,8 +599,8 @@
             $('classModalTitle').textContent = 'Tạo lớp học mới & Xếp lịch';
             $('status').value = 'PLANNING';
             $('totalSessions').value = '12';
-            $('startTime').value = '08:00';
-            $('endTime').value = '10:00';
+            $('startTime').value = '07:00';
+            $('endTime').value = '09:00';
             $('startDate').value = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(Date.now() + 86400000));
             document.querySelectorAll('.dow-check').forEach(c => c.checked = false);
             $('dow1').checked = true;

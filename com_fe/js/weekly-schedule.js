@@ -21,6 +21,9 @@ let modalCreateClassObj = null;
 // Danh sách bộ lọc
 let filterTeacherId = '';
 let filterStudentId = '';
+let quickSearchKeyword = '';
+let expandAllCells = false;
+const MAX_VISIBLE_CARDS_PER_CELL = 2;
 
 // =============================================================================
 // KHỞI TẠO KHI TẢI TRANG
@@ -67,9 +70,12 @@ function initNavbarAndRoleBadge() {
         })
         .catch(e => console.error("Lỗi nạp footer:", e));
 
-    // Cập nhật huy hiệu vai trò
+    // Cập nhật huy hiệu vai trò và tiêu đề động theo Role
     const roleBadge = document.getElementById('currentUserRoleBadge');
     const btnCreateClass = document.getElementById('btnOpenCreateClassModal');
+    const heroBreadcrumb = document.getElementById('heroBreadcrumbCurrent');
+    const heroTitle = document.getElementById('heroTitleText');
+    const heroSubtitle = document.getElementById('heroSubtitleText');
 
     if (!currentUser) {
         if (roleBadge) {
@@ -80,18 +86,40 @@ function initNavbarAndRoleBadge() {
     }
 
     const role = currentUser.role || 'TEACHER';
-    if (roleBadge) {
-        if (role === 'TEACHER') {
+    if (role === 'TEACHER') {
+        document.title = 'Thời Khóa Biểu Giảng Dạy - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Thời Khóa Biểu Giảng Dạy';
+        if (heroTitle) heroTitle.textContent = 'Thời Khóa Biểu Giảng Dạy';
+        if (heroSubtitle) heroSubtitle.textContent = 'Xem lịch dạy các lớp theo ca trong tuần, theo dõi sĩ số và bấm trực tiếp vào ca để thực hiện điểm danh học viên.';
+        if (roleBadge) {
             roleBadge.innerHTML = '<i class="bi bi-mortarboard-fill me-1"></i>Giáo Viên: ' + (currentUser.fullName || currentUser.username);
             roleBadge.className = 'badge bg-warning text-dark px-3 py-2 rounded-pill small';
-        } else if (role === 'PARENT') {
+        }
+    } else if (role === 'PARENT') {
+        document.title = 'Lịch Học Của Con - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Lịch Học Của Con';
+        if (heroTitle) heroTitle.textContent = 'Lịch Học Của Con';
+        if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi thời khóa biểu và chuyên cần của con theo từng ca học và ngày trong tuần.';
+        if (roleBadge) {
             roleBadge.innerHTML = '<i class="bi bi-people-fill me-1"></i>Phụ Huynh: ' + (currentUser.fullName || currentUser.username);
             roleBadge.className = 'badge bg-success px-3 py-2 rounded-pill small';
-        } else if (role === 'STUDENT') {
+        }
+    } else if (role === 'STUDENT') {
+        document.title = 'Lịch Học Cá Nhân - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Lịch Học';
+        if (heroTitle) heroTitle.textContent = 'Lịch Học Cá Nhân';
+        if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi thời khóa biểu các ca học và điểm danh chuyên cần của bạn.';
+        if (roleBadge) {
             roleBadge.innerHTML = '<i class="bi bi-person-fill me-1"></i>Học Viên: ' + (currentUser.fullName || currentUser.username);
             roleBadge.className = 'badge bg-info text-dark px-3 py-2 rounded-pill small';
-        } else {
-            roleBadge.innerHTML = '<i class="bi bi-shield-check me-1"></i>Quản Trị Viên / Giáo Vụ';
+        }
+    } else {
+        document.title = 'Thời Khóa Biểu Trung Tâm - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Thời Khóa Biểu Trung Tâm';
+        if (heroTitle) heroTitle.textContent = 'Thời Khóa Biểu Trung Tâm';
+        if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi toàn bộ lịch học trung tâm theo 4 slot khung giờ, lọc theo giáo viên và quản lý điểm danh ca học.';
+        if (roleBadge) {
+            roleBadge.innerHTML = '<i class="bi bi-shield-check me-1"></i>' + (role === 'ADMIN' ? 'Quản Trị Viên' : 'Giáo Vụ');
             roleBadge.className = 'badge bg-danger px-3 py-2 rounded-pill small';
         }
     }
@@ -224,6 +252,10 @@ function renderWeeklyMatrix(data) {
     }
 
     // 4. Vẽ từng hàng Slot (Slot 1 đến Slot 4)
+    const expandBtn = document.getElementById('btnToggleExpandCells');
+    if (expandBtn && data.currentUserRole !== 'STUDENT' && data.currentUserRole !== 'PARENT') {
+        expandBtn.classList.remove('d-none');
+    }
     const tbody = document.getElementById('timetableBody');
     if (!tbody) return;
 
@@ -253,14 +285,42 @@ function renderWeeklyMatrix(data) {
             const isToday = (colDateStr === todayStr);
 
             const key = `${slot.slotNumber}_${dayIndex}`;
-            const lessonsInCell = cellLessonsMap[key] || [];
+            const rawLessonsInCell = cellLessonsMap[key] || [];
+            const lessonsInCell = quickSearchKeyword
+                ? rawLessonsInCell.filter(l => {
+                    const kw = quickSearchKeyword.toLowerCase();
+                    return (l.className && l.className.toLowerCase().includes(kw))
+                        || (l.classCode && l.classCode.toLowerCase().includes(kw))
+                        || (l.roomName && l.roomName.toLowerCase().includes(kw))
+                        || (l.teacherName && l.teacherName.toLowerCase().includes(kw));
+                })
+                : rawLessonsInCell;
 
             html += `<td class="${isToday ? 'today-column' : ''}">`;
 
+            const isParentOrStudent = (data.currentUserRole === 'STUDENT' || data.currentUserRole === 'PARENT');
             if (lessonsInCell.length > 0) {
-                lessonsInCell.forEach(l => {
-                    html += renderLessonCard(l, data.currentUserRole);
-                });
+                if (isParentOrStudent || expandAllCells || lessonsInCell.length <= MAX_VISIBLE_CARDS_PER_CELL) {
+                    lessonsInCell.forEach(l => {
+                        html += renderLessonCard(l, data.currentUserRole);
+                    });
+                } else {
+                    const visibleLessons = lessonsInCell.slice(0, MAX_VISIBLE_CARDS_PER_CELL);
+                    const hiddenLessons = lessonsInCell.slice(MAX_VISIBLE_CARDS_PER_CELL);
+                    visibleLessons.forEach(l => {
+                        html += renderLessonCard(l, data.currentUserRole);
+                    });
+                    html += `<div id="cellMore_${key}" class="d-none">`;
+                    hiddenLessons.forEach(l => {
+                        html += renderLessonCard(l, data.currentUserRole);
+                    });
+                    html += `</div>`;
+                    html += `
+                        <button type="button" class="btn-cell-more" id="btnCellMore_${key}" onclick="event.stopPropagation(); toggleCellMore('${key}', ${hiddenLessons.length})">
+                            <i class="bi bi-layers-fill me-1"></i>+${hiddenLessons.length} lớp khác &#9662;
+                        </button>
+                    `;
+                }
             }
 
             html += `</td>`;
@@ -277,8 +337,13 @@ function renderLessonCard(lesson, userRole) {
     const isToday = Boolean(lesson.today ?? lesson.isToday);
     const isPast = Boolean(lesson.past ?? lesson.isPast);
 
-    const slotClass = `slot-${lesson.slotNumber || 1}`;
+    const slotNum = lesson.slotNumber || 1;
+    const slotClass = `slot-${slotNum}`;
     let stateClass = isToday ? 'state-today' : '';
+
+    const slotBorder = lesson.slotBorderColor || (slotNum === 1 ? '#0284c7' : slotNum === 2 ? '#059669' : slotNum === 3 ? '#ea580c' : '#7c3aed');
+    const slotBg = lesson.slotBgColor || (slotNum === 1 ? '#f0f9ff' : slotNum === 2 ? '#f0fdf4' : slotNum === 3 ? '#ffedd5' : '#f3e8ff');
+    const slotInlineStyle = `style="--accent: ${slotBorder}; --accent-soft: ${slotBg}; border-left: 4.5px solid ${slotBorder} !important;"`;
 
     // 1. DÀNH CHO HỌC VIÊN HOẶC PHỤ HUYNH
     // Không cho phép bấm link vào trang điểm danh, cập nhật ngay trạng thái điểm danh
@@ -287,20 +352,25 @@ function renderLessonCard(lesson, userRole) {
         let stuBadge = '';
         if (lesson.attendanceStatus === 'PRESENT') {
             stateClass = 'state-done';
-            stuBadge = '<span class="stu-badge present"><i class="bi bi-check-circle-fill"></i> Present</span>';
+            stuBadge = '<span class="stu-badge present"><i class="bi bi-check-circle-fill"></i> Có mặt</span>';
         } else if (lesson.attendanceStatus && String(lesson.attendanceStatus).includes('ABSENT')) {
             stateClass = 'state-absent';
-            stuBadge = '<span class="stu-badge absent"><i class="bi bi-x-circle-fill"></i> Absent</span>';
+            stuBadge = '<span class="stu-badge absent"><i class="bi bi-x-circle-fill"></i> Vắng mặt</span>';
         } else {
-            stuBadge = `<span class="stu-badge pending"><i class="bi bi-clock"></i> ${isToday || isPast ? 'Chưa điểm danh' : 'Chưa diễn ra'}</span>`;
+            stuBadge = `<span class="stu-badge pending"><i class="bi bi-clock"></i> ${isToday || isPast ? 'Chưa điểm danh' : 'Sắp diễn ra'}</span>`;
         }
-        const personalRows = personalMarks.map(mark => {
-            const status = mark.status === 'PRESENT' ? 'Có mặt' : mark.status === 'ABSENT' ? 'Vắng mặt' : (isToday || isPast ? 'Chưa điểm danh' : 'Chưa diễn ra');
-            return `<div class="lesson-meta"><i class="bi bi-person-check"></i><span>${escapeHtml(mark.fullName)}: <strong>${status}</strong></span></div>`;
-        }).join('');
+        let personalRows = '';
+        if (personalMarks.length > 1) {
+            personalRows = personalMarks.map(mark => {
+                const status = mark.status === 'PRESENT' ? 'Có mặt' : mark.status === 'ABSENT' ? 'Vắng mặt' : (isToday || isPast ? 'Chưa điểm danh' : 'Sắp diễn ra');
+                return `<div class="lesson-meta"><i class="bi bi-person-check"></i><span>${escapeHtml(mark.fullName)}: <strong>${status}</strong></span></div>`;
+            }).join('');
+        } else if (personalMarks.length === 1 && userRole === 'PARENT') {
+            personalRows = `<div class="lesson-meta"><i class="bi bi-person"></i><span>${escapeHtml(personalMarks[0].fullName)}</span></div>`;
+        }
 
         return `
-            <div class="lesson-card ${slotClass} ${stateClass} student-card" title="${escapeHtml(lesson.className)}">
+            <div class="lesson-card ${slotClass} ${stateClass} student-card" ${slotInlineStyle} title="${escapeHtml(lesson.className)}">
                 <div class="lesson-card-top">
                     <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
                     ${personalMarks.length > 1 ? '' : stuBadge}
@@ -328,55 +398,121 @@ function renderLessonCard(lesson, userRole) {
         `;
     }
 
-    // 2. DÀNH CHO GIÁO VIÊN / ADMIN / STAFF
-    // Phòng học là link dẫn vào danh sách lớp để điểm danh, bỏ thanh "Chưa điểm danh"
+    // 2. DÀNH CHO GIÁO VIÊN / ADMIN / STAFF (GIAO DIỆN GỌN GÀNG, CHỐNG TRÀN Ô)
+    const now = new Date();
+    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    let slotStartTime = '';
+    if (lesson.startTime) {
+        slotStartTime = String(lesson.startTime).substring(0, 5);
+    } else if (lesson.timeRange && lesson.timeRange.includes('-')) {
+        slotStartTime = lesson.timeRange.split('-')[0].trim();
+    }
+    const isBeforeSlot = Boolean(isToday && slotStartTime && currentTimeStr < slotStartTime);
+
+    let badgeHtml = '';
     if (lesson.attendanceCompleted) {
         stateClass = 'state-done';
+        badgeHtml = '<span class="stu-badge present" title="Đã hoàn thành điểm danh"><i class="bi bi-check2-circle"></i>Đã ĐD</span>';
+    } else if (isToday) {
+        if (isBeforeSlot && userRole === 'TEACHER') {
+            badgeHtml = `<span class="stu-badge" style="background:#f1f5f9; color:#475569; font-weight:600;" title="Chưa tới giờ vào ca (${escapeAttr(slotStartTime)})"><i class="bi bi-clock"></i>${escapeHtml(slotStartTime)}</span>`;
+        } else {
+            badgeHtml = '<span class="stu-badge" style="background:#fef3c7; color:#92400e; font-weight:700;" title="Ca học hôm nay cần điểm danh"><i class="bi bi-pencil-square"></i>Cần ĐD</span>';
+        }
     } else if (isPast) {
         stateClass = 'state-missed';
+        badgeHtml = '<span class="stu-badge" style="background:#fee2e2; color:#991b1b; font-weight:700;" title="Buổi học đã qua chưa điểm danh"><i class="bi bi-exclamation-circle"></i>Chưa ĐD</span>';
+    } else {
+        badgeHtml = '<span class="stu-badge pending" title="Buổi học sắp diễn ra"><i class="bi bi-clock"></i>Sắp tới</span>';
     }
 
     const href = `lesson-attendance.html?lessonId=${lesson.lessonId}`;
+    const actionText = lesson.attendanceCompleted ? 'Đã lưu' : (isBeforeSlot && userRole === 'TEACHER' ? 'Chi tiết' : 'Điểm danh');
+    const actionPillClass = lesson.attendanceCompleted ? 'pill-done' : (isBeforeSlot && userRole === 'TEACHER' ? 'pill-view' : 'pill-go');
+    const sessionBadge = lesson.sessionNumber ? ` • B${lesson.sessionNumber}` : '';
 
     return `
-        <div class="lesson-card ${slotClass} ${stateClass}">
+        <div class="lesson-card ${slotClass} ${stateClass} teacher-class-card" 
+             onclick="window.location.href='${href}'" 
+             ${slotInlineStyle} 
+             title="${escapeAttr(lesson.className || '')} (${escapeAttr(lesson.classCode || '')}) - Phòng: ${escapeAttr(lesson.roomName || 'Chưa xếp')} - GV: ${escapeAttr(lesson.teacherName || '—')}">
             <div class="lesson-card-top">
-                <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
-                ${lesson.attendanceCompleted ? '<span class="stu-badge present"><i class="bi bi-check2-circle"></i> Đã điểm danh</span>' : ''}
+                <span class="lesson-code" title="${escapeAttr(lesson.classCode || '')}">${escapeHtml(lesson.classCode || 'LỚP')}</span>
+                ${badgeHtml}
             </div>
 
-            <div class="lesson-title" title="${escapeHtml(lesson.className)}">
+            <div class="lesson-title fw-bold text-dark" title="${escapeAttr(lesson.className)}">
                 ${escapeHtml(lesson.className)}
             </div>
 
             <div class="lesson-meta">
                 <i class="bi bi-clock"></i>
-                <span>${escapeHtml(lesson.timeRange)}</span>
-                ${lesson.sessionNumber ? `<span>• Buổi ${lesson.sessionNumber}</span>` : ''}
+                <span>${escapeHtml(lesson.timeRange)}${escapeHtml(sessionBadge)}</span>
             </div>
 
             <div class="lesson-meta">
                 <i class="bi bi-geo-alt text-primary"></i>
-                <a class="lesson-room-link" href="${href}" title="Bấm vào phòng học để xem danh sách & điểm danh">
-                    ${escapeHtml(lesson.roomName || 'Chưa xếp phòng')}
-                </a>
+                <span>${escapeHtml(lesson.roomName || 'Chưa xếp phòng')}</span>
             </div>
 
+            ${userRole !== 'TEACHER' ? `
             <div class="lesson-meta">
                 <i class="bi bi-person"></i>
                 <span>${escapeHtml(lesson.teacherName || '—')}</span>
             </div>
+            ` : ''}
 
-            <div class="lesson-meta">
-                <i class="bi bi-people"></i>
-                <span>Sĩ số: <strong>${lesson.totalStudents || 0}</strong> học viên</span>
+            <div class="tc-card-footer">
+                <span class="tc-student-count" title="Sĩ số lớp">
+                    <i class="bi bi-people-fill"></i>${lesson.totalStudents || 0} HV
+                </span>
+                <span class="tc-action-pill ${actionPillClass}">
+                    ${actionText} <i class="bi bi-arrow-right-short"></i>
+                </span>
             </div>
         </div>
     `;
 }
 
+function toggleCellMore(key, hiddenCount) {
+    const moreEl = document.getElementById(`cellMore_${key}`);
+    const btnEl = document.getElementById(`btnCellMore_${key}`);
+    if (!moreEl || !btnEl) return;
+    const isHidden = moreEl.classList.contains('d-none');
+    moreEl.classList.toggle('d-none', !isHidden);
+    if (isHidden) {
+        btnEl.innerHTML = '<i class="bi bi-chevron-up me-1"></i>Thu gọn &#9652;';
+    } else {
+        btnEl.innerHTML = `<i class="bi bi-layers-fill me-1"></i>+${hiddenCount} lớp khác &#9662;`;
+    }
+}
+
+function onQuickSearchScheduleChange() {
+    const input = document.getElementById('scheduleQuickSearchInput');
+    quickSearchKeyword = input ? input.value.trim() : '';
+    if (currentScheduleData) {
+        renderWeeklyMatrix(currentScheduleData);
+    }
+}
+
+function toggleExpandAllCells() {
+    expandAllCells = !expandAllCells;
+    const btn = document.getElementById('btnToggleExpandCells');
+    if (btn) {
+        btn.innerHTML = expandAllCells
+            ? '<i class="bi bi-arrows-collapse me-1"></i>Thu gọn ô'
+            : '<i class="bi bi-arrows-expand me-1"></i>Mở rộng ô';
+        btn.className = expandAllCells
+            ? 'btn btn-primary btn-sm rounded-pill px-2.5'
+            : 'btn btn-outline-secondary btn-sm rounded-pill px-2.5';
+    }
+    if (currentScheduleData) {
+        renderWeeklyMatrix(currentScheduleData);
+    }
+}
+
 // =============================================================================
-// MODAL TẠO LỚP HỌC MỚI & TỰ ĐỘNG SINH DANH SÁCH BUỔI HỌC (LESSON GENERATOR)
+// MODAL TẠO LỚP HỌC MỚI MODAL TẠO LỚP HỌC MỚI & TỰ ĐỘNG SINH DANH SÁCH BUỔI HỌC (LESSON GENERATOR)
 // =============================================================================
 function openCreateClassModal() {
     if (!modalCreateClassObj) return;
@@ -407,8 +543,19 @@ async function loadCreateClassDependencies() {
         const courseSelect = document.getElementById('newCourseSelect');
         if (courseSelect && courses) {
             courseSelect.innerHTML = '<option value="">-- Chọn khóa học --</option>' +
-                courses.map(c => `<option value="${c.id}">${c.name} (${c.level || 'Cơ bản'})</option>`).join('');
-            if (courses.length > 0) courseSelect.value = courses[0].id;
+                courses.map(c => `<option value="${c.id}" data-sessions="${c.totalSessions || 12}">${c.name} (${c.level || 'Cơ bản'} - ${c.totalSessions || 12} buổi)</option>`).join('');
+            if (courses.length > 0) {
+                courseSelect.value = courses[0].id;
+                const totalInput = document.getElementById('newTotalSessions');
+                if (totalInput && courses[0].totalSessions) totalInput.value = courses[0].totalSessions;
+            }
+            courseSelect.onchange = function() {
+                const opt = courseSelect.options[courseSelect.selectedIndex];
+                const totalInput = document.getElementById('newTotalSessions');
+                if (opt && opt.dataset.sessions && totalInput) {
+                    totalInput.value = opt.dataset.sessions;
+                }
+            };
         }
 
         // Nạp cơ sở
@@ -447,7 +594,7 @@ async function onNewBranchChanged() {
     }
 
     try {
-        const rooms = await callApi(`/api/branch-facility/branches/${branchId}/rooms`).catch(() => []);
+        const rooms = await callApi(`/api/branches/${branchId}/rooms`).catch(() => []);
         if (rooms && rooms.length > 0) {
             roomSelect.innerHTML = '<option value="">-- Chọn phòng học --</option>' +
                 rooms.map(r => `<option value="${r.id}">${r.roomName} (${r.roomCode})</option>`).join('');
@@ -467,27 +614,61 @@ async function submitCreateClass() {
     const branchId = document.getElementById('newBranchSelect').value;
     const roomId = document.getElementById('newRoomSelect').value;
     const teacherId = document.getElementById('newTeacherSelect').value;
-    const maxStudents = parseInt(document.getElementById('newMaxStudents').value) || 8;
+    const maxStudents = parseInt(document.getElementById('newMaxStudents').value, 10);
     const startDate = document.getElementById('newStartDate').value;
-    const totalSessions = parseInt(document.getElementById('newTotalSessions').value) || 12;
+    const totalSessions = parseInt(document.getElementById('newTotalSessions').value, 10);
     const startTimeStr = document.getElementById('newStartTime').value;
     const endTimeStr = document.getElementById('newEndTime').value;
     const scheduleDesc = document.getElementById('newScheduleDesc').value.trim();
 
+    if (!courseId) {
+        showToast('error', 'Thiếu thông tin', 'Vui lòng chọn khóa học!');
+        return;
+    }
+    if (!branchId) {
+        showToast('error', 'Thiếu thông tin', 'Vui lòng chọn cơ sở đào tạo!');
+        return;
+    }
+    if (!classCode || classCode.length > 50) {
+        showToast('error', 'Mã lớp không hợp lệ', 'Vui lòng nhập mã lớp (tối đa 50 ký tự)!');
+        return;
+    }
+    if (!className || className.length > 150) {
+        showToast('error', 'Tên lớp không hợp lệ', 'Vui lòng nhập tên lớp học (tối đa 150 ký tự)!');
+        return;
+    }
+    if (!startDate) {
+        showToast('error', 'Thiếu ngày bắt đầu', 'Vui lòng chọn ngày bắt đầu khai giảng lớp!');
+        return;
+    }
+    if (isNaN(maxStudents) || maxStudents < 1 || maxStudents > 100) {
+        showToast('error', 'Sĩ số không hợp lệ', 'Sĩ số tối đa phải nằm trong khoảng từ 1 đến 100 học viên!');
+        return;
+    }
+    if (isNaN(totalSessions) || totalSessions < 1 || totalSessions > 60) {
+        showToast('error', 'Số buổi không hợp lệ', 'Tổng số buổi học phải nằm trong khoảng từ 1 đến 60 buổi!');
+        return;
+    }
+    if (!startTimeStr || !endTimeStr || endTimeStr <= startTimeStr) {
+        showToast('error', 'Giờ học không hợp lệ', 'Giờ kết thúc phải lớn hơn giờ bắt đầu!');
+        return;
+    }
+
     // Lấy danh sách thứ trong tuần
     const checkedDays = Array.from(document.querySelectorAll('input[name="daysOfWeek"]:checked'))
-        .map(el => parseInt(el.value));
+        .map(el => parseInt(el.value, 10))
+        .filter(d => d >= 1 && d <= 7);
 
     if (checkedDays.length === 0) {
-        alert("Vui lòng chọn ít nhất một thứ trong tuần để sinh lịch học!");
+        showToast('error', 'Chưa chọn thứ học', 'Vui lòng chọn ít nhất một thứ trong tuần để sinh lịch học!');
         return;
     }
 
     const payload = {
-        courseId: parseInt(courseId),
-        branchId: parseInt(branchId),
-        roomId: roomId ? parseInt(roomId) : null,
-        teacherId: teacherId ? parseInt(teacherId) : null,
+        courseId: parseInt(courseId, 10),
+        branchId: parseInt(branchId, 10),
+        roomId: roomId ? parseInt(roomId, 10) : null,
+        teacherId: teacherId ? parseInt(teacherId, 10) : null,
         classCode: classCode,
         className: className,
         maxStudents: maxStudents,
@@ -546,12 +727,16 @@ async function loadFilterOptions() {
             group.classList.remove('d-none');
             let children = [];
             try {
-                children = await callApi('/api/attendance-makeup/students', 'GET', null, false, false);
+                children = await callApi('/api/schedule/students', 'GET', null, false, false);
             } catch (err) {
                 try {
-                    children = await callApi('/api/course-enrollment/children', 'GET', null, false, false);
+                    children = await callApi('/api/attendance-makeup/students', 'GET', null, false, false);
                 } catch (err2) {
-                    children = [];
+                    try {
+                        children = await callApi('/api/course-enrollment/children', 'GET', null, false, false);
+                    } catch (err3) {
+                        children = [];
+                    }
                 }
             }
             if (children && children.length > 0) {

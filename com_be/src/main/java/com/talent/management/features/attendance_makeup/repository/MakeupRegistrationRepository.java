@@ -15,7 +15,7 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
     /** Tìm tất cả yêu cầu học bù sắp xếp giảm dần theo thời gian tạo */
     List<MakeupRegistration> findAllByOrderByCreatedAtDesc();
 
-    /** Lọc yêu cầu học bù theo trạng thái (PENDING, SCHEDULED, COMPLETED, CANCELLED) */
+    /** Lọc yêu cầu học bù theo trạng thái (PENDING, SCHEDULED, COMPLETED, MISSED, CANCELLED) */
     List<MakeupRegistration> findByStatusOrderByCreatedAtDesc(MakeupStatus status);
 
     /** Tìm yêu cầu học bù theo học viên */
@@ -25,7 +25,11 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
     List<MakeupRegistration> findByStudentIdAndStatusOrderByCreatedAtDesc(Long studentId, MakeupStatus status);
 
     /** Tìm yêu cầu học bù theo đơn nghỉ liên kết (nếu cần truy xuất đơn lẻ) */
-    Optional<MakeupRegistration> findByAbsenceRequestId(Long absenceRequestId);
+    Optional<MakeupRegistration> findFirstByAbsenceRequestIdOrderByIdDesc(Long absenceRequestId);
+
+    default Optional<MakeupRegistration> findByAbsenceRequestId(Long absenceRequestId) {
+        return findFirstByAbsenceRequestIdOrderByIdDesc(absenceRequestId);
+    }
 
     /**
      * BATCH FETCH — Fix N+1 query trong getAbsenceRequests().
@@ -46,8 +50,11 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
     Optional<MakeupRegistration> findFirstByTargetLessonIdAndStudentIdAndStatus(
             Long targetLessonId, Long studentId, MakeupStatus status);
 
+    Optional<MakeupRegistration> findFirstByTargetLessonIdAndStudentIdAndStatusIn(
+            Long targetLessonId, Long studentId, Collection<MakeupStatus> statuses);
+
     /**
-     * Tìm ca bù theo ID và trong tập trạng thái cho phép hủy (PENDING, SCHEDULED).
+     * Tìm ca bù theo ID và trong tập trạng thái cho phép hủy (PENDING, SCHEDULED, MISSED).
      * Dùng để validate trước khi cancel.
      */
     Optional<MakeupRegistration> findByIdAndStatusIn(Long id, List<MakeupStatus> statuses);
@@ -57,7 +64,7 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
      */
     List<MakeupRegistration> findByTargetLessonIdAndStatus(Long targetLessonId, MakeupStatus status);
 
-    /** Học viên bù được xếp vào buổi học này (gồm cả ca đã hoàn thành để không biến mất khỏi bảng điểm danh) */
+    /** Học viên bù được xếp vào buổi học này (gồm cả ca đã hoàn thành/bỏ lỡ để không biến mất khỏi bảng điểm danh) */
     List<MakeupRegistration> findByTargetLessonIdAndStatusIn(Long targetLessonId, Collection<MakeupStatus> statuses);
 
     /** Học viên đã được chuyển khỏi buổi học gốc sang ca bù */
@@ -75,4 +82,3 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
     /** Đếm số học viên bù đang chiếm chỗ trong một buổi học */
     long countByTargetLessonIdAndStatusIn(Long targetLessonId, Collection<MakeupStatus> statuses);
 }
-

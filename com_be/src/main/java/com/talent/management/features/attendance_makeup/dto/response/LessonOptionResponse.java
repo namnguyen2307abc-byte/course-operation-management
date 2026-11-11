@@ -29,4 +29,6 @@ public class LessonOptionResponse {
     private Integer maxStudents;
     private Integer occupiedSeats;
     private Integer availableSeats;
+    private Boolean exactSessionMatch;
+    private String matchTypeLabel;
 }

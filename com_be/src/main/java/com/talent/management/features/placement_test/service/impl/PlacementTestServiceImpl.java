@@ -38,6 +38,9 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
     private final PlacementScheduleMapper scheduleMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.talent.management.features.notification.service.NotificationService notificationService;
     private final EnrollmentRequestRepository enrollmentRequestRepository;
     private final CourseRepository courseRepository;
 
@@ -160,6 +163,21 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             enrollmentRequest.setStatus(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT);
             enrollmentRequestRepository.save(enrollmentRequest);
         }
+        if (notificationService != null) {
+            String recCourseName = recommendedCourse != null ? recommendedCourse.getName() : "Theo đề xuất giáo viên";
+            if (saved.getParent() != null) {
+                notificationService.sendNotification(
+                        saved.getParent(), null,
+                        "Đã có kết quả đánh giá đầu vào (Placement Test)",
+                        "Bé " + saved.getStudentName() + " đã hoàn thành bài kiểm tra đầu vào (Điểm: " + saved.getScore() + "). Khóa học đề xuất: " + recCourseName + ".",
+                        "PLACEMENT_COMPLETED", saved.getId(), "/pages/course-enrollment.html");
+            }
+            notificationService.sendToRoles(
+                    List.of(com.talent.management.shared.enums.Role.STAFF, com.talent.management.shared.enums.Role.ADMIN), null,
+                    "Đã có kết quả Placement Test — Chờ xếp lớp",
+                    "Học viên " + saved.getStudentName() + " đạt " + saved.getScore() + " điểm (Đề xuất: " + recCourseName + "), sẵn sàng xếp lớp.",
+                    "PLACEMENT_COMPLETED", saved.getId(), "/pages/course-enrollment.html");
+        }
         return scheduleMapper.toResponse(saved);
     }
 
@@ -192,6 +210,20 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             userRepository.findByUsername(parentUsername).ifPresent(schedule::setParent);
         }
         PlacementSchedule saved = scheduleRepository.save(schedule);
+        if (notificationService != null) {
+            if (saved.getParent() != null) {
+                notificationService.sendNotification(
+                        saved.getParent(), null,
+                        "Đã xếp lịch kiểm tra đầu vào (Placement Test)",
+                        "Bé " + saved.getStudentName() + " đã được hẹn lịch đánh giá năng khiếu đầu vào vào lúc " + saved.getTestDate() + ".",
+                        "PLACEMENT_SCHEDULED", saved.getId(), "/pages/course-enrollment.html");
+            }
+            notificationService.sendToRoles(
+                    List.of(com.talent.management.shared.enums.Role.TEACHER, com.talent.management.shared.enums.Role.STAFF), null,
+                    "Lịch đánh giá đầu vào mới",
+                    "Học viên " + saved.getStudentName() + " có lịch kiểm tra năng khiếu vào lúc " + saved.getTestDate() + ".",
+                    "PLACEMENT_SCHEDULED", saved.getId(), "/pages/placement-test.html");
+        }
         return scheduleMapper.toResponse(saved);
     }
 

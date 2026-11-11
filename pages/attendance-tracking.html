@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điểm Danh & Tiến Độ Khóa Học - Học Viện Talent</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/schedule.css">
+    <style>
+        .schedule-hero {
+            background: linear-gradient(135deg, #143c34 0%, #1e5346 55%, #2a6f5d 100%) !important;
+            box-shadow: 0 10px 25px -5px rgba(20, 60, 52, 0.28) !important;
+        }
+        .btn-primary {
+            background-color: #1e5346 !important;
+            border-color: #1e5346 !important;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #143c34 !important;
+            border-color: #143c34 !important;
+        }
+        .tracking-table a, .tracking-table .text-primary {
+            color: #184e40 !important;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .tracking-table a:hover {
+            color: #143c34 !important;
+            text-decoration: underline;
+        }
+        .tracking-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        .tracking-table thead th {
+            background-color: #f1f4f9;
+            color: #475569;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 12px 16px;
+            border-top: none;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .tracking-table tbody td {
+            padding: 14px 16px;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+        }
+        .tracking-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        .badge-date-pill {
+            background-color: #eaf3ec;
+            color: #174638;
+            border: 1px solid #c7dec1;
+            font-weight: 600;
+            font-size: 0.82rem;
+            padding: 5px 10px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-slot-pill {
+            background-color: #fff7ed;
+            color: #c2410c;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-status-present {
+            background-color: #ecfdf5;
+            color: #059669;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-status-present::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .badge-status-absent {
+            background-color: #fef2f2;
+            color: #dc2626;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-status-absent::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .badge-status-unmarked {
+            background-color: #f3f4f6;
+            color: #6b7280;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-status-unmarked::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            background-color: #9ca3af;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .attendance-banner-alert {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 18px;
+            font-size: 0.95rem;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .kpi-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px 18px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: transform 0.15s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+        }
+        .kpi-title {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+
+        #currentUserRoleBadge {
+            background-color: #e3efdf !important;
+            color: #143c34 !important;
+            font-weight: 700 !important;
+            border: 1px solid rgba(20, 60, 52, 0.15) !important;
+        }
+        .text-primary {
+            color: #1e5346 !important;
+        }
+
+    </style>
+<script src="../js/auth.js"></script>
+</head>
+<body class="has-workspace-sidebar">
+
+    <!-- Navbar & Sidebar Container -->
+    <div id="navbar-container">
+        <!-- workspace-shell:start -->
+        <a class="skip-content" href="#main-content">Đến nội dung chính</a>
+        <header class="workspace-topbar">
+            <button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false">
+                <i class="bi bi-list"></i>
+            </button>
+            <span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span>
+            <span class="workspace-context">Không gian làm việc</span>
+        </header>
+        <aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
+            <a class="sidebar-brand" data-app-path="/index.html" href="/index.html">
+                <span class="brand-mark"><i class="bi bi-stars"></i></span>
+                <span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span>
+            </a>
+            <nav id="workspaceNavigation" class="workspace-navigation"></nav>
+            <div class="sidebar-bottom">
+                <div class="sidebar-profile">
+                    <span class="profile-initial" id="sidebarAvatar">T</span>
+                    <div>
+                        <strong id="sidebarUserName"></strong>
+                        <small id="sidebarUserRole"></small>
+                    </div>
+                </div>
+                <button type="button" class="sidebar-logout" onclick="logout()">
+                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                </button>
+            </div>
+        </aside>
+        <button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
+        <!-- workspace-shell:end -->
+    </div>
+
+
+    <main class="container-fluid px-lg-4 my-4" id="main-content">
+        <!-- Toast Thông Báo -->
+        <div class="toast-container-custom" id="toastContainer"></div>
+
+        <!-- HERO: Tiêu đề trang -->
+        <header class="schedule-hero mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <nav class="hero-breadcrumb" aria-label="breadcrumb">
+                        <ol class="breadcrumb small mb-1">
+                            <li class="breadcrumb-item"><a href="../index.html">Trang Chủ</a></li>
+                            <li class="breadcrumb-item"><a href="weekly-schedule.html">Lịch học</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Điểm Danh</li>
+                        </ol>
+                    </nav>
+                    <h1 class="hero-title">
+                        <i class="bi bi-check2-square text-success"></i>
+                        <span>Điểm Danh & Tiến Độ Khóa Học</span>
+                    </h1>
+                    <p class="hero-sub mb-0">
+                        Theo dõi chi tiết tiến độ buổi học của khóa, lịch sử điểm danh từng ca, số buổi vắng và tỷ lệ chuyên cần.
+                    </p>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <span id="currentUserRoleBadge" class="badge bg-light text-dark px-3 py-2 rounded-pill fw-bold shadow-sm">Đang xác thực...</span>
+                    <button class="btn btn-outline-light btn-sm px-3 rounded-pill fw-semibold" onclick="loadAttendanceTracking()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- BỘ LỌC CHỌN HỌC VIÊN VÀ KHÓA HỌC -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5" id="colStudentSelect">
+                        <label class="form-label small fw-bold text-secondary mb-1">
+                            <i class="bi bi-person-circle me-1 text-primary"></i>Học Viên / Con:
+                        </label>
+                        <select id="studentSelect" class="form-select form-control-modern" onchange="onStudentChange()">
+                            <option value="">-- Đang tải danh sách học viên... --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold text-secondary mb-1">
+                            <i class="bi bi-journal-bookmark me-1 text-primary"></i>Khóa Học & Lớp Học Ghi Danh:
+                        </label>
+                        <select id="classSelect" class="form-select form-control-modern" onchange="onClassChange()">
+                            <option value="">-- Vui lòng chọn học viên trước --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 text-md-end">
+                        <button class="btn btn-primary w-100 rounded-pill py-2 shadow-sm fw-semibold" onclick="loadAttendanceTracking()">
+                            <i class="bi bi-search me-1"></i> Tra cứu
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- THÔNG TIN TỔNG QUAN KHÓA HỌC (KPIS) -->
+        <div id="kpiContainer" class="row g-3 mb-4 d-none">
+            <div class="col-6 col-md-3">
+                <div class="kpi-card border-start border-4" style="border-left-color: #1e5346 !important;">
+                    <div class="kpi-title"><i class="bi bi-journal-check me-1"></i>Tổng số buổi</div>
+                    <div class="kpi-value" style="color: #174638;" id="kpiTotalSessions">--</div>
+                    <div class="small text-muted mt-1" id="kpiCourseInfo">Khóa học</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card border-start border-success border-4">
+                    <div class="kpi-title"><i class="bi bi-check-circle me-1"></i>Đã có mặt</div>
+                    <div class="kpi-value text-success" id="kpiAttended">--</div>
+                    <div class="small text-muted mt-1">Đúng tiến độ</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card border-start border-danger border-4">
+                    <div class="kpi-title"><i class="bi bi-x-circle me-1"></i>Số buổi vắng</div>
+                    <div class="kpi-value text-danger" id="kpiAbsent">--</div>
+                    <div class="small text-muted mt-1" id="kpiAbsentRate">Tỷ lệ: 0%</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card border-start border-secondary border-4">
+                    <div class="kpi-title"><i class="bi bi-clock-history me-1"></i>Chưa điểm danh</div>
+                    <div class="kpi-value text-secondary" id="kpiUnmarked">--</div>
+                    <div class="small text-muted mt-1">Sắp diễn ra</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BANNER THÔNG BÁO TỔNG KẾT THEO ẢNH MẪU -->
+        <div id="attendanceAlertBanner" class="attendance-banner-alert mb-3 shadow-sm d-none">
+            <i class="bi bi-info-circle text-primary fs-5"></i>
+            <span id="attendanceAlertText" class="fw-semibold">
+                Đang nạp dữ liệu điểm danh...
+            </span>
+        </div>
+
+        <!-- BẢNG CHI TIẾT ĐIỂM DANH TỪNG BUỔI THEO ẢNH MẪU -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
+            <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-list-check me-2 text-primary"></i>Bảng Chi Tiết Điểm Danh Theo Buổi
+                </h6>
+                <div class="small text-muted" id="classHeaderLabel">
+                    --
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table tracking-table mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="min-width: 170px;">Ngày học</th>
+                            <th style="min-width: 140px;">Slot học</th>
+                            <th style="min-width: 100px;">Phòng</th>
+                            <th style="min-width: 140px;">Giảng viên</th>
+                            <th style="min-width: 130px;">Lớp học</th>
+                            <th style="min-width: 150px;">Trạng thái</th>
+                            <th style="min-width: 160px;">Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                                Vui lòng chọn học viên và khóa học để xem bảng điểm danh.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- THANH PHÂN TRANG (PAGINATION) -->
+            <div id="attendancePaginationWrapper" class="card-footer bg-white py-3 px-4 border-top d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 d-none">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <span class="small text-secondary" id="attendancePageInfo">Hiển thị 0 - 0 / 0 buổi</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="attendancePageSizeSelect" class="small text-muted mb-0">Số dòng:</label>
+                        <select id="attendancePageSizeSelect" class="form-select form-select-sm rounded-pill" style="width: auto;" onchange="onAttendancePageSizeChange()">
+                            <option value="8">8 buổi / trang</option>
+                            <option value="10" selected>10 buổi / trang</option>
+                            <option value="16">16 buổi / trang</option>
+                            <option value="50">Tất cả</option>
+                        </select>
+                    </div>
+                </div>
+                <nav aria-label="Phân trang bảng điểm danh">
+                    <ul class="pagination pagination-sm mb-0 gap-1" id="attendancePaginationList"></ul>
+                </nav>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer container -->
+    <div id="footer-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/api.js"></script>
+
+    <script>
+        // Fallback tự động đảm bảo callApi luôn sẵn sàng
+        if (typeof callApi === 'undefined') {
+            const isDev = window.location.port !== "8080" && window.location.port !== "";
+            const BASE_URL = isDev ? `http://${window.location.hostname || 'localhost'}:8080` : "";
+
+            window.callApi = async function(endpoint, method = "GET", body = null, isFormData = false) {
+                const token = localStorage.getItem("token");
+                const headers = {};
+                if (token) headers["Authorization"] = "Bearer " + token;
+                if (!isFormData) headers["Content-Type"] = "application/json";
+
+                const options = {
+                    method: method,
+                    headers: headers,
+                    body: isFormData ? body : (body ? JSON.stringify(body) : null)
+                };
+
+                const response = await fetch(BASE_URL + endpoint, options);
+                if (response.status === 401) {
+                    localStorage.removeItem("token");
+                    window.location.href = window.location.pathname.includes('/com_fe/') ? "/com_fe/login.html" : "/login.html";
+                    return null;
+                }
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.message || `Lỗi yêu cầu: ${response.status}`);
+                }
+                const text = await response.text();
+                return text ? JSON.parse(text) : null;
+            };
+        }
+    </script>
+    <script src="../js/attendance-tracking.js"></script>
+</body>
+</html>

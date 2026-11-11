@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thời Khóa Biểu Tuần & Điểm Danh - Học Viện Talent</title>
+    <title>Lịch Học - Học Viện Talent</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -14,6 +14,85 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/schedule.css">
+    <style>
+        .schedule-hero {
+            background: linear-gradient(135deg, #143c34 0%, #1e5346 55%, #2a6f5d 100%) !important;
+            box-shadow: 0 10px 25px -5px rgba(20, 60, 52, 0.28) !important;
+        }
+        .btn-primary {
+            background-color: #1e5346 !important;
+            border-color: #1e5346 !important;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #143c34 !important;
+            border-color: #143c34 !important;
+        }
+        .timetable-table thead th {
+            background: linear-gradient(180deg, #143c34, #1b4d42) !important;
+            color: #f8fafc !important;
+        }
+        .timetable-table thead th.col-slot {
+            background: linear-gradient(180deg, #0f2e27, #143c34) !important;
+        }
+        .timetable-table thead th.today-header {
+            background: linear-gradient(180deg, #1e5e4d, #2a7a65) !important;
+            color: #fff !important;
+        }
+        .timetable-table tbody td.today-column {
+            background: linear-gradient(180deg, #f2f8f5, #eaf4ef) !important;
+        }
+
+        #currentUserRoleBadge {
+            background-color: #e3efdf !important;
+            color: #143c34 !important;
+            font-weight: 700 !important;
+            border: 1px solid rgba(20, 60, 52, 0.15) !important;
+        }
+        #weekDisplayTitle {
+            color: #174638 !important;
+        }
+        .week-nav-btn.btn-primary {
+            background-color: #1e5346 !important;
+            border-color: #1e5346 !important;
+        }
+        .week-nav-btn.btn-primary:hover {
+            background-color: #143c34 !important;
+            border-color: #143c34 !important;
+        }
+        .lesson-card {
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+            transition: all 0.2s ease;
+        }
+        .lesson-card:hover {
+            box-shadow: 0 8px 18px -6px rgba(20, 60, 52, 0.18);
+        }
+        .stu-badge.present {
+            background: #dcfce7 !important;
+            color: #15803d !important;
+            font-weight: 700 !important;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 0.72rem;
+        }
+        .stu-badge.absent {
+            background: #fee2e2 !important;
+            color: #b91c1c !important;
+            font-weight: 700 !important;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 0.72rem;
+        }
+        .stu-badge.pending {
+            background: #f1f5f9 !important;
+            color: #64748b !important;
+            font-weight: 600 !important;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 0.72rem;
+        }
+
+    </style>
 <script src="../js/auth.js"></script>
 </head>
 <body class="has-workspace-sidebar">
@@ -41,14 +120,14 @@
                     <nav class="hero-breadcrumb" aria-label="breadcrumb">
                         <ol class="breadcrumb small mb-1">
                             <li class="breadcrumb-item"><a href="../index.html">Trang Chủ</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Thời Khóa Biểu Tuần</li>
+                            <li class="breadcrumb-item active" aria-current="page" id="heroBreadcrumbCurrent">Thời Khóa Biểu Tuần</li>
                         </ol>
                     </nav>
                     <h1 class="hero-title">
                         <i class="bi bi-calendar3"></i>
-                        <span>Thời Khóa Biểu Tuần</span>
+                        <span id="heroTitleText">Thời Khóa Biểu Tuần</span>
                     </h1>
-                    <p class="hero-sub mb-0">
+                    <p class="hero-sub mb-0" id="heroSubtitleText">
                         Theo dõi lịch dạy, ca học theo 4 Slot khung giờ và xem / thực hiện điểm danh học viên trực tiếp.
                     </p>
                 </div>
@@ -66,9 +145,9 @@
 
         <!-- Chú giải trạng thái -->
         <div class="schedule-legend">
-            <span class="lg-item"><span class="lg-dot" style="background:#2563eb;"></span> Hôm nay</span>
-            <span class="lg-item"><span class="lg-dot" style="background:#10b981;"></span> Đã điểm danh (Present)</span>
-            <span class="lg-item"><span class="lg-dot" style="background:#ef4444;"></span> Vắng mặt (Absent)</span>
+            <span class="lg-item"><span class="lg-dot" style="background:#1e5e4d;"></span> Hôm nay</span>
+            <span class="lg-item"><span class="lg-dot" style="background:#10b981;"></span> Đã điểm danh</span>
+            <span class="lg-item"><span class="lg-dot" style="background:#ef4444;"></span> Vắng mặt</span>
             <span class="lg-item"><span class="lg-dot" style="background:#f59e0b;"></span> Buổi qua chưa điểm danh</span>
             <span class="lg-item"><span class="lg-dot" style="background:#94a3b8;"></span> Sắp diễn ra</span>
         </div>
@@ -101,17 +180,24 @@
                 </div>
 
                 <!-- Cụm bộ lọc cho Admin / Giáo viên -->
-                <div class="col-lg-4 col-12 d-flex justify-content-lg-end gap-2 align-items-center">
-                    <div class="d-none" id="teacherFilterGroup" style="min-width: 190px;">
+                <div class="col-lg-4 col-12 d-flex justify-content-lg-end gap-2 align-items-center flex-wrap">
+                    <div class="input-group input-group-sm" style="max-width: 195px;" id="quickSearchScheduleGroup">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="scheduleQuickSearchInput" class="form-control border-start-0 ps-0" placeholder="Lọc lớp, phòng..." oninput="onQuickSearchScheduleChange()">
+                    </div>
+                    <div class="d-none" id="teacherFilterGroup" style="min-width: 165px;">
                         <select id="teacherFilterSelect" class="form-select form-select-sm form-control-modern" onchange="onTeacherFilterChange()">
                             <option value="">-- Tất cả giáo viên --</option>
                         </select>
                     </div>
-                    <div class="d-none" id="childFilterGroup" style="min-width: 190px;">
+                    <div class="d-none" id="childFilterGroup" style="min-width: 175px;">
                         <select id="childFilterSelect" class="form-select form-select-sm form-control-modern" onchange="onChildFilterChange()">
                             <option value="">-- Lịch tất cả các con --</option>
                         </select>
                     </div>
+                    <button type="button" id="btnToggleExpandCells" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 d-none" onclick="toggleExpandAllCells()" title="Thu gọn hoặc mở rộng các ô có nhiều lớp học">
+                        <i class="bi bi-arrows-expand me-1"></i>Mở rộng ô
+                    </button>
                 </div>
             </div>
         </div>
@@ -206,7 +292,7 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold text-secondary">Tổng Số Buổi Học <span class="text-danger">*</span>:</label>
-                                <input type="number" id="newTotalSessions" class="form-control form-control-modern" value="12" min="1" max="48" required>
+                                <input type="number" id="newTotalSessions" class="form-control form-control-modern" value="12" min="1" max="60" required>
                             </div>
 
                             <!-- Chọn các thứ trong tuần -->
@@ -296,40 +382,7 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/api.js"></script>
-    <script src="/js/api.js"></script>
-    <script>
-        // Fallback tự động đảm bảo callApi luôn sẵn sàng
-        if (typeof callApi === 'undefined') {
-            const isDev = window.location.port !== "8080" && window.location.port !== "";
-            const BASE_URL = isDev ? `http://${window.location.hostname || 'localhost'}:8080` : "";
 
-            window.callApi = async function(endpoint, method = "GET", body = null, isFormData = false) {
-                const token = localStorage.getItem("token");
-                const headers = {};
-                if (token) headers["Authorization"] = "Bearer " + token;
-                if (!isFormData) headers["Content-Type"] = "application/json";
-
-                const options = {
-                    method: method,
-                    headers: headers,
-                    body: isFormData ? body : (body ? JSON.stringify(body) : null)
-                };
-
-                const response = await fetch(BASE_URL + endpoint, options);
-                if (response.status === 401) {
-                    localStorage.removeItem("token");
-                    window.location.href = window.location.pathname.includes('/com_fe/') ? "/com_fe/login.html" : "/login.html";
-                    return null;
-                }
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.message || `Lỗi yêu cầu: ${response.status}`);
-                }
-                const text = await response.text();
-                return text ? JSON.parse(text) : null;
-            };
-        }
-    </script>
 
 
     <script src="../js/weekly-schedule.js"></script>

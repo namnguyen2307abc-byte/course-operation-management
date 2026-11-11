@@ -8,15 +8,73 @@ import com.talent.management.shared.entity.AbsenceRequest;
 import com.talent.management.shared.entity.Lesson;
 import com.talent.management.shared.entity.MakeupRegistration;
 import com.talent.management.shared.entity.Student;
+import com.talent.management.shared.enums.MakeupStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class AttendanceMakeupMapper {
 
+    public static final int MAX_MAKEUP_RETRIES = 2;
+    private static final Pattern RETRY_TAG_PATTERN = Pattern.compile("\\[Lần bù:\\s*(\\d+)/(\\d+)(?:\\s*-\\s*KHÓA)?\\]\\s*");
+
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    /**
+     * Trích xuất số lần đã xếp lịch học bù từ MakeupRegistration (tối đa 2 lần).
+     */
+    public static int extractRetryCount(MakeupRegistration mr) {
+        if (mr == null) return 0;
+        if (mr.getNote() != null) {
+            Matcher matcher = RETRY_TAG_PATTERN.matcher(mr.getNote());
+            if (matcher.find()) {
+                try {
+                    return Integer.parseInt(matcher.group(1));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        if (mr.getTargetLesson() != null || mr.getStatus() == MakeupStatus.SCHEDULED
+                || mr.getStatus() == MakeupStatus.COMPLETED || mr.getStatus() == MakeupStatus.MISSED) {
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Kiểm tra ca học bù đã vượt quá giới hạn số lần bù (2 lần) hay chưa.
+     */
+    public static boolean isLimitExceeded(MakeupRegistration mr) {
+        if (mr == null) return false;
+        if (mr.getNote() != null && mr.getNote().contains("- KHÓA]")) {
+            return true;
+        }
+        int retry = extractRetryCount(mr);
+        return retry >= MAX_MAKEUP_RETRIES && (mr.getStatus() == MakeupStatus.MISSED || mr.getStatus() == MakeupStatus.CANCELLED);
+    }
+
+    /**
+     * Loại bỏ tag [Lần bù: X/Y] cũ khỏi chuỗi note để gắn tag mới sạch sẽ.
+     */
+    public static String stripRetryTag(String note) {
+        if (note == null) return "";
+        return RETRY_TAG_PATTERN.matcher(note).replaceFirst("").trim();
+    }
+
+    /**
+     * Tạo chuỗi note chuẩn kèm tag [Lần bù: X/2].
+     */
+    public static String buildRetryNote(int retryCount, boolean locked, String body) {
+        String cleanBody = stripRetryTag(body);
+        String tag = locked
+                ? String.format("[Lần bù: %d/%d - KHÓA] ", retryCount, MAX_MAKEUP_RETRIES)
+                : String.format("[Lần bù: %d/%d] ", retryCount, MAX_MAKEUP_RETRIES);
+        return tag + cleanBody;
+    }
 
     /**
      * Chuyển đổi AbsenceRequest entity sang AbsenceRequestResponse DTO
@@ -64,6 +122,8 @@ public class AttendanceMakeupMapper {
                 .createdAt(ar.getCreatedAt())
                 .makeupRegistrationId(mr != null ? mr.getId() : null)
                 .makeupStatus(mr != null ? mr.getStatus() : null)
+                .makeupRetryCount(mr != null ? extractRetryCount(mr) : 0)
+                .makeupMaxRetries(MAX_MAKEUP_RETRIES)
                 .makeupTargetDate(makeupDateStr)
                 .makeupTargetClassName(mr != null && mr.getTargetLesson() != null && mr.getTargetLesson().getClassEntity() != null
                         ? mr.getTargetLesson().getClassEntity().getClassName() : null)
@@ -91,6 +151,9 @@ public class AttendanceMakeupMapper {
             targetTimeSlot = targetLesson.getStartTime().format(TIME_FMT) + " - " + targetLesson.getEndTime().format(TIME_FMT);
         }
 
+        int retryCount = extractRetryCount(mr);
+        boolean limitExceeded = isLimitExceeded(mr);
+
         return MakeupRegistrationResponse.builder()
                 .id(mr.getId())
                 .absenceRequestId(mr.getAbsenceRequest() != null ? mr.getAbsenceRequest().getId() : null)
@@ -105,6 +168,8 @@ public class AttendanceMakeupMapper {
                 .originalEndTime(origLesson != null ? origLesson.getEndTime() : null)
                 .originalTimeSlot(origTimeSlot)
                 .originalClassName(origLesson != null && origLesson.getClassEntity() != null ? origLesson.getClassEntity().getClassName() : null)
+                .originalTeacherId(origLesson != null && origLesson.getTeacher() != null ? origLesson.getTeacher().getId() : null)
+                .originalTeacherName(origLesson != null && origLesson.getTeacher() != null ? origLesson.getTeacher().getFullName() : null)
                 .targetLessonId(targetLesson != null ? targetLesson.getId() : null)
                 .targetSessionNumber(targetLesson != null ? targetLesson.getSessionNumber() : null)
                 .targetLessonDate(targetLesson != null ? targetLesson.getLessonDate() : null)
@@ -113,8 +178,12 @@ public class AttendanceMakeupMapper {
                 .targetTimeSlot(targetTimeSlot)
                 .targetClassName(targetLesson != null && targetLesson.getClassEntity() != null ? targetLesson.getClassEntity().getClassName() : null)
                 .targetRoomName(targetLesson != null && targetLesson.getRoom() != null ? targetLesson.getRoom().getRoomName() : null)
+                .targetTeacherId(targetLesson != null && targetLesson.getTeacher() != null ? targetLesson.getTeacher().getId() : null)
                 .targetTeacherName(targetLesson != null && targetLesson.getTeacher() != null ? targetLesson.getTeacher().getFullName() : null)
                 .status(mr.getStatus())
+                .retryCount(retryCount)
+                .maxRetries(MAX_MAKEUP_RETRIES)
+                .limitExceeded(limitExceeded)
                 .note(mr.getNote())
                 .createdAt(mr.getCreatedAt())
                 .build();
@@ -140,14 +209,17 @@ public class AttendanceMakeupMapper {
      * Chuyển đổi Lesson sang LessonOptionResponse DTO
      */
     public LessonOptionResponse toLessonOption(Lesson l) {
-        return toLessonOption(l, null);
+        return toLessonOption(l, null, true, null);
     }
 
     /**
      * Chuyển đổi Lesson sang LessonOptionResponse DTO kèm thông tin level và số chỗ còn trống.
-     * @param occupiedSeats số học viên đang chiếm chỗ (sĩ số lớp + học viên bù); null nếu không cần tính
      */
     public LessonOptionResponse toLessonOption(Lesson l, Integer occupiedSeats) {
+        return toLessonOption(l, occupiedSeats, true, null);
+    }
+
+    public LessonOptionResponse toLessonOption(Lesson l, Integer occupiedSeats, boolean exactSessionMatch, String matchTypeLabel) {
         if (l == null) return null;
 
         String timeSlot = null;
@@ -176,6 +248,8 @@ public class AttendanceMakeupMapper {
                 .maxStudents(maxStudents)
                 .occupiedSeats(occupiedSeats)
                 .availableSeats(available)
+                .exactSessionMatch(exactSessionMatch)
+                .matchTypeLabel(matchTypeLabel)
                 .build();
     }
 }

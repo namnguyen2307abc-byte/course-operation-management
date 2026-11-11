@@ -12,6 +12,8 @@ public interface ManagedClassLessonRepository extends JpaRepository<Lesson, Long
     boolean existsByClassEntityId(Long classId);
     int countByClassEntityId(Long classId);
     List<Lesson> findByClassEntityId(Long classId);
+    List<Lesson> findByClassEntityIdOrderByLessonDateAscStartTimeAsc(Long classId);
+
     @Query("""
             select l from Lesson l left join l.teacher t left join l.classEntity.teacher defaultTeacher
             where (t.id = :teacherId or (l.teacher is null and defaultTeacher.id = :teacherId))
@@ -26,6 +28,5 @@ public interface ManagedClassLessonRepository extends JpaRepository<Lesson, Long
               and l.lessonDate between :fromDate and :toDate
             """)
     List<Lesson> findByRoomIdAndLessonDateBetween(@Param("roomId") Long roomId,
-                                                  @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+                                                   @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
 }
-

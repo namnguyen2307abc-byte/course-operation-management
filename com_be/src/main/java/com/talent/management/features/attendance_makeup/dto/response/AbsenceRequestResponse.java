@@ -50,6 +50,8 @@ public class AbsenceRequestResponse {
     // Thông tin học bù liên quan (nếu có)
     private Long makeupRegistrationId;
     private MakeupStatus makeupStatus;
+    private Integer makeupRetryCount;
+    private Integer makeupMaxRetries;
     private String makeupTargetDate;
     private String makeupTargetClassName;
     private String makeupNote;

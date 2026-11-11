@@ -32,6 +32,8 @@ public class MakeupRegistrationResponse {
     private LocalTime originalEndTime;
     private String originalTimeSlot;
     private String originalClassName;
+    private Long originalTeacherId;
+    private String originalTeacherName;
 
     // Buổi học bù (target) được xếp
     private Long targetLessonId;
@@ -42,10 +44,14 @@ public class MakeupRegistrationResponse {
     private String targetTimeSlot;
     private String targetClassName;
     private String targetRoomName;
+    private Long targetTeacherId;
     private String targetTeacherName;
 
-    // Trạng thái & ghi chú
+    // Trạng thái, giới hạn số lần bù & ghi chú
     private MakeupStatus status;
+    private Integer retryCount;
+    private Integer maxRetries;
+    private Boolean limitExceeded;
     private String note;
     private LocalDateTime createdAt;
 }

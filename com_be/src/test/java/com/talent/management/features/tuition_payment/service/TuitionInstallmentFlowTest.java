@@ -71,6 +71,7 @@ class TuitionInstallmentFlowTest {
     @Autowired PaymentRepository payments;
     @MockBean CurrentUserService current;
     @MockBean PayOSGateway payos;
+    @MockBean com.talent.management.features.notification.service.NotificationService notificationService;
     User parent, other, staff, manager;
     Invoice invoice;
     ClassEntity clazz;
@@ -155,6 +156,24 @@ class TuitionInstallmentFlowTest {
                                         .simulated(true)
                                         .build());
         when(payos.verifyWebhookSignature(any())).thenReturn(true);
+    }
+
+    @Test
+    void installmentNotificationsUseBalanceAndDoNotDuplicateEnrollmentOrReplays() {
+        User teacher = user("teacher-notice", Role.TEACHER);
+        clazz.setTeacher(teacher);
+        configure();
+        posting.cash(invoice.getId(), money(3000000), money(3000000), "notice-first");
+        posting.cash(invoice.getId(), money(3000000), money(3000000), "notice-first");
+        verify(notificationService).sendNotification(eq(parent), eq(staff), eq("Đã nhận học phí"),
+                contains("còn phải đóng 3.000.000"), eq("PAYMENT_SUCCESS"), anyLong(),
+                eq("/pages/parent-tuition.html?invoiceId=" + invoice.getId()));
+        posting.cash(invoice.getId(), money(3000000), money(3000000), "notice-last");
+        verify(notificationService, times(1)).sendNotification(eq(teacher), eq(staff),
+                eq("Học viên nhập học chính thức"), anyString(), eq("ENROLLMENT_COMPLETED"), anyLong(), anyString());
+        verify(notificationService, times(2)).sendNotification(eq(parent), eq(staff),
+                eq("Đã nhận học phí"), anyString(), eq("PAYMENT_SUCCESS"), anyLong(), anyString());
+        assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
     }
 
     @Test
