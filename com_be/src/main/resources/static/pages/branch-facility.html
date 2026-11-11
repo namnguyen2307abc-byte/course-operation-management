@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/list-pagination.css">
     <style>
         .nav-pills-custom .nav-link {
             border-radius: 10px;
@@ -179,6 +180,13 @@
 
 
         <div id="roomsView" class="card-modern p-4 mb-4">
+            <form id="roomFilters" class="list-filters mb-3">
+                <label>Tìm phòng<input id="roomKeyword" class="form-control" maxlength="100" placeholder="Mã hoặc tên phòng"></label>
+                <label>Trạng thái<select id="roomStatusFilter" class="form-select"><option value="">Tất cả</option><option value="AVAILABLE">Sẵn sàng</option><option value="OCCUPIED">Đang sử dụng</option><option value="MAINTENANCE">Bảo trì</option></select></label>
+                <label>Loại phòng<select id="roomTypeFilter" class="form-select"><option value="">Tất cả</option></select></label>
+                <label>Sắp xếp<select id="roomOrder" class="form-select"><option value="code">Mã phòng A–Z</option><option value="name">Tên phòng A–Z</option></select></label>
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Lọc</button>
+            </form>
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="fw-bold mb-0 text-dark">
@@ -209,10 +217,18 @@
                     </tbody>
                 </table>
             </div>
+            <div id="roomPager"></div>
         </div>
 
 
         <div id="equipmentsView" class="card-modern p-4 mb-4 d-none">
+            <form id="equipmentFilters" class="list-filters mb-3">
+                <label>Tìm thiết bị<input id="equipmentKeyword" class="form-control" maxlength="100" placeholder="Mã, tên hoặc mã phòng"></label>
+                <label>Tình trạng<select id="equipmentStatusFilter" class="form-select"><option value="">Tất cả</option><option value="GOOD">Hoạt động tốt</option><option value="MAINTENANCE">Bảo trì</option><option value="BROKEN">Hỏng</option></select></label>
+                <label>Phân loại<select id="equipmentCategoryFilter" class="form-select"><option value="">Tất cả</option></select></label>
+                <label>Sắp xếp<select id="equipmentOrder" class="form-select"><option value="code">Mã thiết bị A–Z</option><option value="name">Tên thiết bị A–Z</option></select></label>
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Lọc</button>
+            </form>
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="fw-bold mb-0 text-dark">
@@ -244,6 +260,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="equipmentPager"></div>
         </div>
     </main>
 
@@ -297,6 +314,7 @@
     <script src="../js/api.js"></script>
 
     <script src="../js/request-feedback.js"></script>
+    <script src="../js/list-pagination.js"></script>
     <script src="../js/branch-facility.js"></script>
 </body>
 </html>

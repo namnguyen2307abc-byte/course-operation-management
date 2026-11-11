@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
 
-@RestControllerAdvice(assignableTypes = BranchFacilityController.class)
+@RestControllerAdvice(assignableTypes = {BranchFacilityController.class, FacilityBrowsingController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class BranchFacilityExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)

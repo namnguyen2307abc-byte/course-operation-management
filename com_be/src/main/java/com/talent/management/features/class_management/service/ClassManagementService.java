@@ -11,6 +11,9 @@ import com.talent.management.features.class_management.repository.ManagedClassEn
 import com.talent.management.features.class_management.repository.ManagedClassLessonRepository;
 import com.talent.management.features.class_management.repository.ManagedClassRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
+import com.talent.management.shared.dto.PageResponse;
+import com.talent.management.shared.service.ListPaging;
+import org.springframework.data.domain.Sort;
 import com.talent.management.shared.entity.Branch;
 import com.talent.management.shared.entity.ClassEntity;
 import com.talent.management.shared.entity.Course;
@@ -57,6 +60,7 @@ public class ClassManagementService {
                 options.add(new ClassTeacherOption(teacher.getId(), teacher.getFullName(), schedulingService.teacherSubject(teacher)));
             }
         }
+        options.sort(Comparator.comparing(ClassTeacherOption::fullName).thenComparing(ClassTeacherOption::id));
         return options;
     }
 
@@ -75,6 +79,7 @@ public class ClassManagementService {
                         room.getCapacity(), room.getRoomType()));
             }
         }
+        options.sort(Comparator.comparing(ClassRoomOption::roomCode).thenComparing(ClassRoomOption::id));
         return options;
     }
 
@@ -89,6 +94,21 @@ public class ClassManagementService {
     @Transactional(readOnly = true)
     public ManagedClassResponse get(Long id) {
         return toResponse(findClass(id));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ManagedClassResponse> searchPage(
+            String keyword, Long courseId, Long branchId, String status, int page, int size, String order) {
+        Sort sort = switch (order) {
+            case "newest" -> Sort.by("id").descending();
+            case "code" -> Sort.by("classCode", "id");
+            case "startDate" -> Sort.by("startDate", "id");
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thứ tự hiển thị lớp không hợp lệ");
+        };
+        var pageable = ListPaging.request(page, size, sort);
+        var result = classRepository.searchPage(ListPaging.keyword(keyword),
+                courseId, branchId, parseStatus(status), pageable).map(this::toResponse);
+        return PageResponse.from(result);
     }
 
     @Transactional

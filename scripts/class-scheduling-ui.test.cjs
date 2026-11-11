@@ -31,7 +31,7 @@ test('class form filters assignments, calculates end date and displays a schedul
                 const url = new URL(request.url());
                 let body = [];
                 let status = 200;
-                if (url.pathname === '/api/class-management/classes') body = classRows;
+                if (url.pathname === '/api/class-management/classes/page') body = { items: classRows, page: 0, size: 10, totalElements: classRows.length, totalPages: classRows.length ? 1 : 0 };
                 if (url.pathname === '/api/course-enrollment/courses') body = [
                     { id: 1, code: 'PIANO', name: 'Piano', totalSessions: 4 },
                     { id: 2, code: 'GUITAR', name: 'Guitar', totalSessions: 4 }

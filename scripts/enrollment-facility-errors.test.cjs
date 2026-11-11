@@ -55,9 +55,14 @@ function screen(kind) {
                 : pathname === '/api/branches' ? [{ id: 1, name: 'Demo branch' }]
                 : pathname.endsWith('/rooms') ? [room]
                 : pathname.endsWith('/equipments') ? [equipment]
-                : pathname.endsWith('/usage') ? { room, classes: [], equipments: [] }
+                : pathname.endsWith('/overview') ? { room, warnings: [] }
+                : pathname.endsWith('/detail') ? room
                 : pathname.endsWith('/decision') ? { invoiceId: 99, invoiceCode: 'INV-DEMO' }
                 : pathname.endsWith('/staff/requests') ? [] : { warnings: [] };
+            if (pathname.endsWith('/page')) {
+                const items = pathname.endsWith('/rooms/page') ? [room] : pathname.endsWith('/equipments/page') ? [equipment] : [];
+                body = { items, page: 0, size: 10, totalElements: items.length, totalPages: items.length ? 1 : 0 };
+            }
             if (failure) body = { message: failure.message || technical, details: failure.details };
             const status = failure?.status || 200;
             return { status, ok: status < 400,
@@ -67,6 +72,7 @@ function screen(kind) {
     });
     vm.runInContext(read('js/api.js'), ctx);
     vm.runInContext(read('js/request-feedback.js'), ctx);
+    vm.runInContext(read('js/list-pagination.js'), ctx);
     if (kind === 'enrollment') {
         const script = [...read('pages/course-enrollment.html').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match => match[1]).join('\n');
         vm.runInContext(script, ctx);
@@ -145,9 +151,9 @@ test('facility branches, rooms, equipment and usage failures have friendly retri
     assert.equal(element('statBranchesCount').textContent, '—');
     assert.equal(element('branchSelect').disabled, true);
     const cases = [
-        ['/api/branches/1/rooms', () => ctx.loadRooms('1'), 'roomTableBody', /Chưa tải được danh sách phòng học/],
-        ['/api/branches/1/equipments', () => ctx.loadEquipments('1'), 'equipmentTableBody', /Chưa tải được danh sách thiết bị/],
-        ['/api/branches/rooms/7/usage', () => ctx.loadRoomUsage('7'), 'roomUsageBody', /Chưa tải được chi tiết phòng/]
+        ['/api/branches/1/rooms/page', () => ctx.loadRooms('1'), 'roomTableBody', /Chưa tải được danh sách phòng học/],
+        ['/api/branches/1/equipments/page', () => ctx.loadEquipments('1'), 'equipmentTableBody', /Chưa tải được danh sách thiết bị/],
+        ['/api/branches/rooms/7/overview', () => ctx.loadRoomUsage('7'), 'roomUsageBody', /Chưa tải được chi tiết phòng/]
     ];
     vm.runInContext("usageRoomId = '7';", ctx);
     for (const [endpoint, load, target, message] of cases) {

@@ -11,6 +11,17 @@ import java.time.LocalTime;
 import java.util.List;
 
 public interface FacilityLessonRepository extends JpaRepository<Lesson, Long> {
+    @EntityGraph(attributePaths = {"classEntity", "classEntity.course", "classEntity.teacher", "teacher"})
+    @Query("""
+            select l from Lesson l left join l.room r left join l.classEntity.room defaultRoom
+            where (r.id = :roomId or (l.room is null and defaultRoom.id = :roomId))
+              and l.status = com.talent.management.shared.enums.LessonStatus.SCHEDULED
+              and (l.lessonDate > :today or (l.lessonDate = :today and l.endTime > cast(:now as LocalTime)))
+            """)
+    org.springframework.data.domain.Page<Lesson> findRemainingRoomLessons(@Param("roomId") Long roomId,
+            @Param("today") LocalDate today, @Param("now") LocalTime now,
+            org.springframework.data.domain.Pageable pageable);
+
     @EntityGraph(attributePaths = {"classEntity", "classEntity.course", "teacher"})
     @Query("""
             select l from Lesson l left join l.room r left join l.classEntity.room defaultRoom

@@ -2,6 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/list-pagination.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng Ký Lớp Học - Talent Academy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -175,6 +176,12 @@
                 <div class="p-3 p-md-4 border-bottom">
                     <h5 class="fw-bold mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Yêu cầu của gia đình</h5>
                     <div class="text-muted small">Trạng thái mới nhất của các yêu cầu đã gửi.</div>
+                    <form id="myRequestFilters" class="list-filters">
+                        <label>Tìm kiếm<input id="myRequestKeyword" class="form-control form-control-sm" maxlength="100" placeholder="Học viên, khóa học, lớp"></label>
+                        <label>Trạng thái<select id="myRequestStatus" class="form-select form-select-sm"><option value="">Tất cả trạng thái</option><option value="WAITING_PLACEMENT">Chờ Placement Test</option><option value="READY_FOR_ASSIGNMENT">Chờ xếp lớp</option><option value="PENDING_PAYMENT">Chờ thanh toán</option><option value="APPROVED">Đã ghi danh</option><option value="REJECTED">Từ chối</option><option value="CANCELLED">Đã hủy</option><option value="PENDING">Chờ duyệt</option></select></label>
+                        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Lọc</button>
+                    </form>
+                    <div id="myRequestPager"></div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -193,7 +200,7 @@
                     <div class="stat-card">
                         <div class="stat-icon-wrapper stat-icon-amber"><i class="bi bi-hourglass-split"></i></div>
                         <div class="stat-value" id="pendingCount">—</div>
-                        <div class="stat-label">Yêu cầu chờ duyệt</div>
+                        <div class="stat-label">Yêu cầu chờ duyệt phù hợp bộ lọc</div>
                     </div>
                 </div>
                 <div class="col-md-8 d-flex align-items-center">
@@ -207,6 +214,12 @@
                 <div class="p-3 p-md-4 border-bottom">
                     <h5 class="fw-bold mb-1"><i class="bi bi-inbox text-primary me-2"></i>Danh sách chờ xử lý</h5>
                     <div class="text-muted small">Yêu cầu cũ nhất được hiển thị trước.</div>
+                    <form id="staffRequestFilters" class="list-filters">
+                        <label>Tìm kiếm<input id="staffRequestKeyword" class="form-control form-control-sm" maxlength="100" placeholder="Học viên, khóa học, lớp"></label>
+                        <label>Trạng thái<select id="staffRequestStatus" class="form-select form-select-sm"><option value="">Tất cả đơn chờ xử lý</option><option value="WAITING_PLACEMENT">Chờ Placement Test</option><option value="READY_FOR_ASSIGNMENT">Chờ xếp lớp</option><option value="PENDING">Chờ duyệt</option></select></label>
+                        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Lọc</button>
+                    </form>
+                    <div id="staffRequestPager"></div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -283,6 +296,7 @@
     <script src="../js/api.js"></script>
 
     <script src="../js/request-feedback.js"></script>
+    <script src="../js/list-pagination.js"></script>
     <script>
         checkAuth();
 
@@ -294,6 +308,15 @@
         let pendingRequestMap = new Map();
         let availableClassMap = new Map();
         let recommendedClassIds = new Set();
+        const myPager = createListPager('myRequestPager', loadMyRequests);
+        const staffPager = createListPager('staffRequestPager', loadPendingRequests);
+        let myListVersion = 0;
+        let staffListVersion = 0;
+        let previewVersion = 0;
+        let previewRoomId = null;
+        let previewPager = null;
+        document.getElementById('myRequestFilters').addEventListener('submit', event => { event.preventDefault(); myPager.reset(); loadMyRequests(); });
+        document.getElementById('staffRequestFilters').addEventListener('submit', event => { event.preventDefault(); staffPager.reset(); loadPendingRequests(); });
 
         updateNavbarUser();
         fetch('../components/footer.html')
@@ -303,6 +326,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             decisionModal = new bootstrap.Modal(document.getElementById('decisionModal'));
             facilityModal = new bootstrap.Modal(document.getElementById('facilityModal'));
+            document.getElementById('facilityModal').addEventListener('hide.bs.modal', () => { ++previewVersion; });
             document.getElementById('refreshBtn').addEventListener('click', loadPageData);
             document.getElementById('childSelect').addEventListener('change', updatePlacementMode);
             document.getElementById('courseSelect').addEventListener('change', updatePlacementMode);
@@ -348,14 +372,13 @@
         async function loadParentData() {
             document.getElementById('pageNotice').classList.add('d-none');
             try {
-                const [children, courses, requests] = await Promise.all([
+                const [children, courses] = await Promise.all([
                     callApi('/api/course-enrollment/children', 'GET', null, false, false),
-                    callApi('/api/course-enrollment/courses', 'GET', null, false, false),
-                    callApi('/api/course-enrollment/requests/my', 'GET', null, false, false)
+                    callApi('/api/course-enrollment/courses', 'GET', null, false, false)
                 ]);
                 renderChildren(children || []);
                 renderCourses(courses || []);
-                renderMyRequests(requests || []);
+                await loadMyRequests();
                 await updatePlacementMode();
             } catch (error) {
                 showNotice('Chưa tải được thông tin đăng ký. Vui lòng nhấn Làm mới để thử lại.', 'danger');
@@ -534,6 +557,8 @@
         async function openFacilityPreview(classId) {
             const selectedClass = availableClassMap.get(classId);
             if (!selectedClass) return;
+            const version = ++previewVersion;
+            previewRoomId = selectedClass.roomId;
 
             document.getElementById('facilityClassName').textContent = `${selectedClass.className} - ${selectedClass.classCode}`;
             const body = document.getElementById('facilityModalBody');
@@ -552,14 +577,12 @@
             }
 
             try {
-                const [branches, rooms, equipments] = await Promise.all([
+                const [branches, room] = await Promise.all([
                     callApi('/api/branches', 'GET', null, false, false),
-                    callApi(`/api/branches/${selectedClass.branchId}/rooms`, 'GET', null, false, false),
-                    callApi(`/api/branches/${selectedClass.branchId}/equipments`, 'GET', null, false, false)
+                    selectedClass.roomId ? callApi(`/api/branches/rooms/${selectedClass.roomId}/detail`, 'GET', null, false, false) : null
                 ]);
+                if (version !== previewVersion) return;
                 const branch = (branches || []).find(item => item.id === selectedClass.branchId);
-                const room = (rooms || []).find(item => item.id === selectedClass.roomId);
-                const roomEquipments = (equipments || []).filter(item => item.roomId === selectedClass.roomId);
 
                 body.innerHTML = `
                     <div class="row g-3 mb-4">
@@ -594,13 +617,35 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="fw-bold"><i class="bi bi-music-note-list text-primary me-2"></i>Thiết bị trong phòng</div>
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">${roomEquipments.length} thiết bị</span>
+                        <span id="previewEquipmentCount" class="badge bg-primary-subtle text-primary border border-primary-subtle">—</span>
                     </div>
-                    ${renderFacilityEquipments(roomEquipments, selectedClass.roomId)}
+                    <div id="previewEquipmentBody"></div><div id="previewEquipmentPager"></div>
                 `;
+                previewPager = createListPager('previewEquipmentPager', loadPreviewEquipment);
+                await loadPreviewEquipment();
             } catch (error) {
+                if (version !== previewVersion) return;
                 body.innerHTML = `<div class="alert alert-danger mb-0" role="alert">${escapeHtml(requestErrorMessage(error, 'Chưa tải được thông tin cơ sở vật chất. Vui lòng đóng cửa sổ và mở lại để thử lại.'))}</div>`;
             }
+        }
+
+        async function loadPreviewEquipment() {
+            const version = previewVersion;
+            const pager = previewPager;
+            if (!previewRoomId) {
+                document.getElementById('previewEquipmentBody').innerHTML = renderFacilityEquipments([], null);
+                return;
+            }
+            pager.busy(true);
+            try {
+                const result = await callApi(`/api/branches/rooms/${previewRoomId}/equipments/page?${pager.params()}`, 'GET', null, false, false);
+                if (version !== previewVersion || pager !== previewPager) return;
+                if (!pager.accept(result)) return;
+                document.getElementById('previewEquipmentCount').textContent = `${result.totalElements} thiết bị`;
+                document.getElementById('previewEquipmentBody').innerHTML = renderFacilityEquipments(result.items, previewRoomId);
+            } catch (error) {
+                if (version === previewVersion) { pager.fail(); document.getElementById('previewEquipmentBody').textContent = requestErrorMessage(error, 'Chưa tải được thiết bị. Vui lòng mở lại thông tin phòng.'); }
+            } finally { if (version === previewVersion && pager === previewPager) pager.busy(false); }
         }
 
         function renderFacilityEquipments(equipments, roomId) {
@@ -644,8 +689,8 @@
                 });
                 document.getElementById('requestNote').value = '';
                 showNotice('Đã gửi nhu cầu học. Phòng đào tạo sẽ kiểm tra và xếp lớp phù hợp.', 'success');
-                const requests = await callApi('/api/course-enrollment/requests/my');
-                renderMyRequests(requests || []);
+                myPager.reset();
+                await loadMyRequests();
             } catch (error) {
                 showNotice(error.message, 'danger');
             } finally {
@@ -656,7 +701,7 @@
         function renderMyRequests(requests) {
             const body = document.getElementById('myRequestTableBody');
             if (!requests.length) {
-                body.innerHTML = '<tr><td colspan="6" class="empty-state">Gia đình chưa gửi yêu cầu đăng ký nào.</td></tr>';
+                body.innerHTML = '<tr><td colspan="6" class="empty-state">Không có yêu cầu đăng ký phù hợp với bộ lọc.</td></tr>';
                 return;
             }
             body.innerHTML = requests.map(item => `
@@ -673,6 +718,19 @@
                         ? `<button type="button" class="btn btn-outline-danger btn-sm text-nowrap" data-cancel-request="${item.id}"><i class="bi bi-x-circle me-1"></i>Hủy đơn</button>`
                         : ''}</td>
                 </tr>`).join('');
+        }
+
+        async function loadMyRequests() {
+            const version = ++myListVersion;
+            myPager.busy(true);
+            try {
+                const params = myPager.params({ keyword: document.getElementById('myRequestKeyword').value.trim(), status: document.getElementById('myRequestStatus').value });
+                const result = await callApi('/api/course-enrollment/requests/my/page?' + params, 'GET', null, false, false);
+                if (version !== myListVersion || !myPager.accept(result)) return;
+                renderMyRequests(result.items);
+            } catch (error) {
+                if (version === myListVersion) { myPager.fail(); document.getElementById('myRequestTableBody').innerHTML = '<tr><td colspan="6" class="empty-state text-danger">Chưa tải được yêu cầu. Vui lòng nhấn Làm mới để thử lại.</td></tr>'; }
+            } finally { if (version === myListVersion) myPager.busy(false); }
         }
 
         async function cancelRequest(requestId) {
@@ -693,8 +751,7 @@
                 showNotice(messages[error.message] || 'Chưa xác nhận được kết quả hủy yêu cầu. Vui lòng nhấn Làm mới để kiểm tra trạng thái.', 'danger');
             }
             try {
-                const requests = await callApi('/api/course-enrollment/requests/my', 'GET', null, false, false);
-                renderMyRequests(requests || []);
+                await loadMyRequests();
             } catch (error) {
                 if (cancelled) {
                     showNotice('Đã hủy yêu cầu đăng ký nhưng chưa tải lại được danh sách. Vui lòng nhấn Làm mới để cập nhật.', 'warning');
@@ -705,13 +762,18 @@
         }
 
         async function loadPendingRequests() {
+            const version = ++staffListVersion;
+            staffPager.busy(true);
             const body = document.getElementById('pendingTableBody');
             document.getElementById('pendingCount').innerText = '—';
             pendingRequestMap = new Map();
             body.innerHTML = '<tr><td colspan="5" class="empty-state"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải yêu cầu...</td></tr>';
             try {
-                const requests = await callApi('/api/course-enrollment/staff/requests', 'GET', null, false, false);
-                document.getElementById('pendingCount').innerText = requests ? requests.length : 0;
+                const params = staffPager.params({ keyword: document.getElementById('staffRequestKeyword').value.trim(), status: document.getElementById('staffRequestStatus').value });
+                const result = await callApi('/api/course-enrollment/staff/requests/page?' + params, 'GET', null, false, false);
+                if (version !== staffListVersion || !staffPager.accept(result)) return;
+                const requests = result.items;
+                document.getElementById('pendingCount').innerText = result.totalElements;
                 if (!requests || requests.length === 0) {
                     pendingRequestMap = new Map();
                     body.innerHTML = '<tr><td colspan="5" class="empty-state">Không có yêu cầu nào đang chờ duyệt.</td></tr>';
@@ -726,6 +788,7 @@
                             return [item.id, null];
                         }
                     })));
+                if (version !== staffListVersion) return;
                 pendingRequestMap = new Map(requests.map(item => [item.id, item]));
                 body.innerHTML = requests.map(item => `
                     <tr>
@@ -750,10 +813,12 @@
                         </td>
                     </tr>`).join('');
             } catch (error) {
+                if (version !== staffListVersion) return;
+                staffPager.fail();
                 document.getElementById('pendingCount').innerText = '—';
                 pendingRequestMap = new Map();
                 body.innerHTML = '<tr><td colspan="5" class="empty-state text-danger" role="alert">Chưa tải được danh sách yêu cầu. Vui lòng nhấn Làm mới để thử lại.</td></tr>';
-            }
+            } finally { if (version === staffListVersion) staffPager.busy(false); }
         }
 
         async function refreshPlacement(requestId) {

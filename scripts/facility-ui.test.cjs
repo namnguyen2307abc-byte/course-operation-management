@@ -68,11 +68,12 @@ async function facilityPage(role = 'ADMIN', viewport = { width: 1440, height: 10
         if (method !== 'OPTIONS') state.requests.push({ pathname, method, payload });
         let result = method === 'OPTIONS' ? { status: 204, body: null } : await state.intercept({ pathname, method, payload });
         if (!result && method === 'GET' && pathname === '/api/branches') result = { body: [{ id: 1, name: 'Cơ sở A', address: 'Quận 1' }, { id: 2, name: 'Cơ sở B', address: 'Quận 2' }] };
-        if (!result && method === 'GET' && /^\/api\/branches\/\d+\/rooms$/.test(pathname)) {
+        if (!result && method === 'GET' && pathname.endsWith('/counts')) result = { body: { rooms: 2, equipment: 1, goodEquipment: state.broken ? 0 : 1 } };
+        if (!result && method === 'GET' && /^\/api\/branches\/\d+\/rooms\/page$/.test(pathname)) {
             result = { body: pathname.includes('/1/') ? state.rooms : [{ ...state.rooms[0], id: 21, branchId: 2, roomName: 'Phòng cơ sở B' }] };
         }
-        if (!result && method === 'GET' && /^\/api\/branches\/\d+\/equipments$/.test(pathname)) result = { body: pathname.includes('/1/') ? [state.equipment] : [] };
-        if (!result && method === 'GET' && /^\/api\/branches\/rooms\/\d+\/usage$/.test(pathname)) {
+        if (!result && method === 'GET' && /^\/api\/branches\/\d+\/equipments\/page$/.test(pathname)) result = { body: pathname.includes('/1/') ? [state.equipment] : [] };
+        if (!result && method === 'GET' && /^\/api\/branches\/rooms\/\d+\/(overview|equipments\/page|classes\/page|lessons\/page)$/.test(pathname)) {
             const id = Number(pathname.split('/')[4]);
             result = { body: {
                 room: id === 21 ? { ...state.rooms[0], id: 21, branchId: 2, roomName: 'Phòng cơ sở B' } : state.rooms.find(room => room.id === id), equipments: id === 11 ? [state.equipment] : [],
@@ -84,6 +85,9 @@ async function facilityPage(role = 'ADMIN', viewport = { width: 1440, height: 10
                     { id: 91, classId: 71, classCode: 'SWIM-01', className: 'Bơi cơ bản', lessonDate: '2027-02-03', startTime: '08:00:00', endTime: '09:00:00', teacherName: 'Thầy Minh' }
                 ] : []
             } };
+            if (pathname.endsWith('/equipments/page')) result.body = result.body.equipments;
+            if (pathname.endsWith('/classes/page')) result.body = result.body.classes;
+            if (pathname.endsWith('/lessons/page')) result.body = result.body.upcomingLessons.sort((a, b) => a.lessonDate.localeCompare(b.lessonDate));
         }
         if (!result && method === 'PUT' && pathname === '/api/branches/rooms/11') {
             if (state.roomConflict) result = { status: 409, body: { message: 'Không thể bảo trì: lớp SWIM-01 có buổi học ngày 03/02/2027.' } };
@@ -97,6 +101,12 @@ async function facilityPage(role = 'ADMIN', viewport = { width: 1440, height: 10
             result = { body: { ...state.equipment, warnings: state.broken ? ['Đã lưu thiết bị hỏng; cần thay thế trước buổi học.'] : [], affectedLessonCount: state.broken ? 2 : 0 } };
         }
         if (!result) { state.unexpected.push(`${method} ${pathname}`); result = { status: 404, body: { message: 'Unexpected mocked endpoint' } }; }
+        if (pathname.endsWith('/page') && Array.isArray(result.body)) {
+            const params = new URL(request.url()).searchParams;
+            const page = Number(params.get('page') || 0), size = Number(params.get('size') || 10);
+            const items = result.body;
+            result.body = { items: items.slice(page * size, (page + 1) * size), page, size, totalElements: items.length, totalPages: Math.ceil(items.length / size) };
+        }
         await route.fulfill({ status: result.status || 200, contentType: 'application/json', body: method === 'OPTIONS' ? '' : JSON.stringify(result.body),
             headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,PUT,OPTIONS' } });
     });
@@ -217,7 +227,7 @@ test('usage and class links respect role boundaries; only Admin edits', async ()
             } else {
                 await page.evaluate(() => { openRoomUsage('11'); openFacilityEditor('room', '11'); });
                 assert.equal(await page.locator('.modal.show').count(), 0);
-                assert.equal(state.requests.filter(request => request.pathname.endsWith('/usage')).length, 0);
+                assert.equal(state.requests.filter(request => request.pathname.endsWith('/overview')).length, 0);
             }
             assert.deepEqual(state.errors, []);
             assert.deepEqual(state.unexpected, []);
@@ -230,7 +240,7 @@ test('usage errors retry locally, stale room/usage responses cannot replace curr
     try {
         await page.locator('[data-room-usage="11"]').waitFor();
         let failure = 503;
-        state.intercept = async ({ pathname }) => pathname.endsWith('/11/usage') && failure
+        state.intercept = async ({ pathname }) => pathname.endsWith('/11/overview') && failure
             ? { status: failure, body: { message: failure === 403 ? 'Không có quyền xem lịch phòng' : 'Lịch phòng tạm thời không tải được' } } : null;
         await page.locator('[data-room-usage="11"]').click();
         await page.locator('#roomUsageBody').getByText('Chưa tải được chi tiết phòng và lịch sử dụng. Vui lòng thử lại.').waitFor();
@@ -247,7 +257,7 @@ test('usage errors retry locally, stale room/usage responses cannot replace curr
         const oldRooms = deferred(), roomsStarted = deferred();
         let holdRooms = true;
         state.intercept = async ({ pathname }) => {
-            if (pathname === '/api/branches/1/rooms' && holdRooms) {
+            if (pathname === '/api/branches/1/rooms/page' && holdRooms) {
                 holdRooms = false;
                 roomsStarted.resolve();
                 await oldRooms.promise;
@@ -261,7 +271,7 @@ test('usage errors retry locally, stale room/usage responses cannot replace curr
         await page.locator('#roomTableBody').getByText('Phòng cơ sở B').waitFor();
         await page.locator('#branchSelect').selectOption('1');
         await page.locator('[data-room-usage="11"]').waitFor();
-        const oldRoomResponse = page.waitForResponse(response => response.url().endsWith('/api/branches/1/rooms') && response.status() === 500);
+        const oldRoomResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/branches/1/rooms/page' && response.status() === 500);
         oldRooms.resolve();
         await oldRoomResponse;
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -270,7 +280,7 @@ test('usage errors retry locally, stale room/usage responses cannot replace curr
 
         const oldUsage = deferred(), usageStarted = deferred();
         state.intercept = async ({ pathname }) => {
-            if (pathname.endsWith('/11/usage')) {
+            if (pathname.endsWith('/11/overview')) {
                 usageStarted.resolve();
                 await oldUsage.promise;
                 return { status: 500, body: { message: 'Stale usage failure' } };
@@ -284,7 +294,7 @@ test('usage errors retry locally, stale room/usage responses cannot replace curr
         await page.locator('#roomUsageModal').waitFor({ state: 'hidden' });
         await page.locator('[data-room-usage="12"]').click();
         await page.locator('#roomUsageTitle').getByText('SPORT · Sân thể thao').waitFor();
-        const oldUsageResponse = page.waitForResponse(response => response.url().endsWith('/11/usage') && response.status() === 500);
+        const oldUsageResponse = page.waitForResponse(response => response.url().endsWith('/11/overview') && response.status() === 500);
         oldUsage.resolve();
         await oldUsageResponse;
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -305,14 +315,14 @@ test('roomId links open usage directly and select its branch only for authorized
                 await page.locator('#roomUsageTitle').getByText('POOL · Phòng cơ sở B').waitFor();
                 await page.locator('[data-room-usage="21"]').waitFor({ state: 'attached' });
                 assert.equal(await page.locator('#branchSelect').inputValue(), '2', role);
-                assert.equal(state.requests.filter(request => request.pathname === '/api/branches/rooms/21/usage').length, 1, role);
+                assert.equal(state.requests.filter(request => request.pathname === '/api/branches/rooms/21/overview').length, 1, role);
                 assert.equal(await page.locator('#backToFacilityEditBtn').isVisible(), false);
                 await checkLayout(page, '#roomUsageModal');
             } else {
                 await page.locator('#facilityNotice').getByText('Bạn không có quyền xem lịch sử dụng phòng.').waitFor();
                 assert.equal(await page.locator('#branchSelect').inputValue(), '1', role);
                 assert.equal(await page.locator('.modal.show').count(), 0);
-                assert.equal(state.requests.some(request => request.pathname.endsWith('/usage')), false, role);
+                assert.equal(state.requests.some(request => request.pathname.endsWith('/overview')), false, role);
             }
             assert.deepEqual(state.errors, []);
             assert.deepEqual(state.unexpected, []);
@@ -321,7 +331,7 @@ test('roomId links open usage directly and select its branch only for authorized
 });
 
 test('branch, room and equipment failures expose working retries', async () => {
-    const remainingFailures = new Set(['/api/branches', '/api/branches/1/rooms', '/api/branches/1/equipments']);
+    const remainingFailures = new Set(['/api/branches', '/api/branches/1/rooms/page', '/api/branches/1/equipments/page']);
     const { page, state } = await facilityPage('ADMIN', undefined, state => {
         state.intercept = async ({ pathname }) => {
             if (!remainingFailures.delete(pathname)) return null;
