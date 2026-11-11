@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Học phí của con · Talent Center</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../css/style.css"><link rel="stylesheet" href="../css/tuition-ledger.css">
+<script defer src="../js/api.js"></script>
+<script defer src="../js/libs/qrcode.min.js"></script>
+<script defer src="../js/tuition-payment/installment-api.js"></script>
+<script defer src="../js/tuition-payment/installment-receipt.js"></script>
+<script defer src="../js/tuition-payment/installment-pagination.js"></script>
+<script defer src="../js/tuition-payment/installment-page.js"></script>
+<script src="../js/auth.js"></script>
+</head>
+<body data-tuition-view="parent" class="has-workspace-sidebar">
+<div id="navbar-container"><!-- workspace-shell:start -->
+<a class="skip-content" href="#main-content">Đến nội dung chính</a>
+<header class="workspace-topbar"><button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false"><i class="bi bi-list"></i></button><span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span><span class="workspace-context">Không gian làm việc</span></header>
+<aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
+<a class="sidebar-brand" data-app-path="/index.html" href="/index.html"><span class="brand-mark"><i class="bi bi-stars"></i></span><span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span></a>
+<nav id="workspaceNavigation" class="workspace-navigation"></nav>
+<div class="sidebar-bottom"><div class="sidebar-profile"><span class="profile-initial" id="sidebarAvatar">T</span><div><strong id="sidebarUserName"></strong><small id="sidebarUserRole"></small></div></div><button type="button" class="sidebar-logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button></div>
+</aside>
+<button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
+<!-- workspace-shell:end --></div>
+<script src="../js/workspace-shell.js"></script>
+<main id="main-content" class="tuition-ledger">
+<header class="ledger-page-heading"><p class="eyebrow">HỌC PHÍ & LỊCH THANH TOÁN</p><h1>Học phí của con</h1>
+<p class="text-secondary">Theo dõi lịch đóng, thanh toán trực tuyến và xem biên lai của từng con.</p></header>
+<p id="feedback" hidden role="status" class="alert"></p>
+<section id="notices" hidden aria-label="Thông báo học phí"></section>
+<div id="summary" class="ledger-summary"></div>
+<div class="ledger-toolbar" role="search" aria-label="Lọc hóa đơn">
+<label>Tìm học viên, lớp hoặc mã hóa đơn<input id="keyword" class="form-control" type="search" placeholder="Nhập để lọc"></label>
+<label>Tình trạng<select id="state" class="form-select"><option value="">Tất cả</option><option value="outstanding">Còn phải đóng</option><option value="overdue">Quá hạn</option><option value="paid">Đã đóng đủ</option><option value="review">Cần đối chiếu</option></select></label>
+<button id="refresh" class="btn btn-outline-success"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Tải lại</button>
+</div>
+<section id="records" aria-live="polite"></section>
+<section id="changes" class="ledger-internal" hidden aria-label="Đề nghị gia hạn"></section>
+<section id="reversals" class="ledger-internal" hidden aria-label="Điều chỉnh khoản thu nhầm"></section>
+
+<dialog id="action-dialog" aria-labelledby="action-title">
+<form id="action-form"><h2 id="action-title"></h2><div id="action-content"></div>
+<p id="action-error" class="text-danger" role="alert"></p>
+<div class="dialog-actions"><button id="close-action" type="button" class="btn btn-outline-secondary">Đóng</button>
+<button id="submit-action" class="btn btn-success" type="submit">Xác nhận</button></div>
+</form></dialog>
+</main></body></html>
