@@ -13,6 +13,18 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ManagedClassRepository extends JpaRepository<ClassEntity, Long> {
+    @EntityGraph(attributePaths = {"course", "branch", "teacher", "room"})
+    @Query("""
+            select c from ClassEntity c where (:courseId is null or c.course.id = :courseId)
+              and (:branchId is null or c.branch.id = :branchId)
+              and (:status is null or c.status = :status)
+              and (lower(c.classCode) like concat('%', :keyword, '%') escape '!'
+                or lower(c.className) like concat('%', :keyword, '%') escape '!')
+            """)
+    org.springframework.data.domain.Page<ClassEntity> searchPage(@Param("keyword") String keyword,
+            @Param("courseId") Long courseId, @Param("branchId") Long branchId,
+            @Param("status") ClassStatus status, org.springframework.data.domain.Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from ClassEntity c where c.id = :id")
     Optional<ClassEntity> findByIdForUpdate(@Param("id") Long id);

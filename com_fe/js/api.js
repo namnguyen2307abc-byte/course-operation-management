@@ -50,7 +50,9 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
             const fields = errData.details ? Object.values(errData.details).join('; ') : '';
-            throw new Error(fields || errData.message || `Lỗi yêu cầu: ${response.status}`);
+            const error = new Error(fields || errData.message || `Lỗi yêu cầu: ${response.status}`);
+            error.status = response.status;
+            throw error;
         }
 
         

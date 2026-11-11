@@ -24,6 +24,10 @@ import com.talent.management.shared.entity.User;
 import com.talent.management.shared.enums.ClassStatus;
 import com.talent.management.shared.enums.EnrollmentStatus;
 import com.talent.management.shared.service.CurrentUserService;
+import com.talent.management.shared.dto.PageResponse;
+import com.talent.management.shared.service.ListPaging;
+import org.springframework.data.domain.Sort;
+import java.util.Comparator;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
 import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
@@ -79,6 +83,7 @@ public class CourseEnrollmentService {
     public List<ChildResponse> getMyChildren() {
         User parent = currentUserService.getCurrentUser();
         return studentRepository.findByParentId(parent.getId()).stream()
+                .sorted(Comparator.comparing(Student::getFullName).thenComparing(Student::getId))
                 .map(mapper::toChildResponse)
                 .toList();
     }
@@ -97,6 +102,7 @@ public class CourseEnrollmentService {
         }
 
         return classRepository.findByCourseIdAndStatusOrderByStartDateAsc(courseId, ClassStatus.OPEN).stream()
+                .sorted(Comparator.comparing(ClassEntity::getStartDate, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(ClassEntity::getId))
                 .map(this::toClassResponseWithSeats)
                 .filter(item -> item.availableSeats() > 0)
                 .toList();
@@ -189,6 +195,25 @@ public class CourseEnrollmentService {
         return requestRepository.findByRequestedByIdOrderByCreatedAtDesc(parent.getId()).stream()
                 .map(request -> mapper.toRequestResponse(request, isCancellable(request)))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<EnrollmentRequestResponse> searchRequests(
+            boolean own, String keyword, EnrollmentRequestStatus status, int page, int size) {
+        var statuses = own ? EnumSet.allOf(EnrollmentRequestStatus.class) : EnumSet.copyOf(ACTIONABLE_REQUEST_STATUSES);
+        if (status != null) {
+            if (!statuses.contains(status)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không thuộc hàng chờ xử lý");
+            }
+            statuses = EnumSet.of(status);
+        }
+        var direction = own ? Sort.Direction.DESC : Sort.Direction.ASC;
+        var pageable = ListPaging.request(page, size, Sort.by(direction, "createdAt", "id"));
+        Long parentId = own ? currentUserService.getCurrentUser().getId() : null;
+        var result = requestRepository.searchPage(parentId, statuses,
+                ListPaging.keyword(keyword), pageable)
+                .map(request -> mapper.toRequestResponse(request, own && isCancellable(request)));
+        return PageResponse.from(result);
     }
 
     @Transactional

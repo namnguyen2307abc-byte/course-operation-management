@@ -21,6 +21,14 @@ const editElement = facilityElement('editFacilityModal');
 const usageElement = facilityElement('roomUsageModal');
 const editModal = new bootstrap.Modal(editElement);
 const usageModal = new bootstrap.Modal(usageElement);
+const roomPager = createListPager('roomPager', () => loadRooms(selectedBranchId()));
+const equipmentPager = createListPager('equipmentPager', () => loadEquipments(selectedBranchId()));
+let usagePagers = {};
+let countRequest = 0;
+facilityElement('roomTypeFilter').innerHTML += editOptions(roomTypes);
+facilityElement('equipmentCategoryFilter').innerHTML += editOptions(equipmentTypes);
+facilityElement('roomFilters').addEventListener('submit', event => { event.preventDefault(); roomPager.reset(); loadRooms(selectedBranchId()); });
+facilityElement('equipmentFilters').addEventListener('submit', event => { event.preventDefault(); equipmentPager.reset(); loadEquipments(selectedBranchId()); });
 
 function canEditFacility() { return getCurrentUser()?.role === 'ADMIN'; }
 function canViewRoomUsage() { return ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER'].includes(getCurrentUser()?.role); }
@@ -39,15 +47,26 @@ async function facilityRequest(endpoint, method = 'GET', payload = null) {
     let response;
     try {
         response = await fetch(BASE_URL + endpoint, { method, headers, body: payload === null ? null : JSON.stringify(payload) });
-    } catch {
+    } catch (error) {
+        console.error('Facility request failed:', error);
         throw new Error('Không kết nối được máy chủ. Vui lòng thử lại.');
     }
-    const data = await response.json().catch(() => null);
+    let data;
+    try {
+        data = await response.json();
+    } catch (error) {
+        console.error('Invalid facility response:', error);
+        const invalid = new Error('Phản hồi không hợp lệ.');
+        invalid.status = response.ok ? 502 : response.status;
+        throw invalid;
+    }
     if (!response.ok) {
         const fallback = response.status === 403 ? 'Bạn không có quyền xem hoặc sửa dữ liệu này.'
             : response.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Không tải hoặc lưu được dữ liệu.';
-        const error = new Error(data?.message || fallback);
+        const fields = data?.details ? Object.values(data.details).join('; ') : '';
+        const error = new Error(fields || data?.message || fallback);
         error.status = response.status;
+        console.error('Facility request failed:', error);
         throw error;
     }
     return data;
@@ -79,6 +98,8 @@ async function loadBranches() {
     const select = facilityElement('branchSelect');
     select.disabled = true;
     select.innerHTML = '<option value="">Đang tải danh sách cơ sở...</option>';
+    branches = [];
+    for (const id of ['statBranchesCount', 'statRoomsCount', 'statEquipmentCount', 'statGoodCount']) facilityElement(id).textContent = '—';
     facilityElement('facilityLoadError').classList.add('d-none');
     try {
         const result = await facilityRequest('/api/branches');
@@ -98,7 +119,7 @@ async function loadBranches() {
         if (request !== branchRequest) return;
         select.innerHTML = '<option value="">Không tải được cơ sở</option>';
         const alert = facilityElement('facilityLoadError');
-        alert.innerHTML = `${escapeHtml(error.message)} <button type="button" class="btn btn-sm btn-outline-danger" data-facility-retry="branches">Thử lại</button>`;
+        alert.innerHTML = `${escapeHtml(requestErrorMessage(error, 'Chưa tải được danh sách cơ sở. Vui lòng thử lại.'))} <button type="button" class="btn btn-sm btn-outline-danger" data-facility-retry="branches">Thử lại</button>`;
         alert.classList.remove('d-none');
         tableMessage('roomTableBody', 7, 'Không tải được danh sách cơ sở.');
         tableMessage('equipmentTableBody', 8, 'Không tải được danh sách cơ sở.');
@@ -118,6 +139,8 @@ function switchTab(tab) {
 }
 
 function onBranchChange() {
+    roomPager.reset();
+    equipmentPager.reset();
     returnToEditor = false;
     usageRoomId = null;
     usageSelectsBranch = false;
@@ -141,6 +164,11 @@ function loadCurrentTabData() {
         ++equipmentRequest;
         rooms = [];
         equipments = [];
+        for (const pager of [roomPager, equipmentPager]) {
+            pager.reset();
+            pager.accept({ items: [], page: 0, size: pager.state.size, totalElements: 0, totalPages: 0 });
+            pager.busy(false);
+        }
         tableMessage('roomTableBody', 7, 'Không có phòng học.');
         tableMessage('equipmentTableBody', 8, 'Không có thiết bị.');
         for (const id of ['statRoomsCount', 'statEquipmentCount', 'statGoodCount']) facilityElement(id).textContent = '0';
@@ -148,6 +176,22 @@ function loadCurrentTabData() {
     }
     loadRooms(branchId);
     loadEquipments(branchId);
+    loadCounts(branchId);
+}
+
+async function loadCounts(branchId) {
+    const request = ++countRequest;
+    for (const id of ['statRoomsCount', 'statEquipmentCount', 'statGoodCount']) facilityElement(id).textContent = '—';
+    try {
+        const data = await facilityRequest(`/api/branches/${encodeURIComponent(branchId)}/counts`);
+        if (request !== countRequest || selectedBranchId() !== branchId) return;
+        facilityElement('statRoomsCount').textContent = String(data.rooms);
+        facilityElement('statEquipmentCount').textContent = String(data.equipment);
+        facilityElement('statGoodCount').textContent = `${data.goodEquipment}/${data.equipment}`;
+    } catch (error) {
+        if (request !== countRequest || selectedBranchId() !== branchId) return;
+        console.warn('Không tải được thống kê cơ sở:', error);
+    }
 }
 
 function roomActions(room) {
@@ -157,21 +201,22 @@ function roomActions(room) {
 }
 
 async function loadRooms(branchId) {
+    if (!branchId) return;
     const request = ++roomRequest;
+    roomPager.busy(true);
     rooms = [];
     facilityElement('roomCountBadge').textContent = 'Đang tải...';
-    facilityElement('statRoomsCount').textContent = '--';
     tableMessage('roomTableBody', 7, 'Đang tải danh sách phòng học...');
     try {
-        const result = await facilityRequest(`/api/branches/${encodeURIComponent(branchId)}/rooms`);
+        const params = roomPager.params({ keyword: facilityElement('roomKeyword').value.trim(), status: facilityElement('roomStatusFilter').value, type: facilityElement('roomTypeFilter').value, order: facilityElement('roomOrder').value });
+        const result = await facilityRequest(`/api/branches/${encodeURIComponent(branchId)}/rooms/page?${params}`);
         if (request !== roomRequest || selectedBranchId() !== branchId) return;
-        if (!Array.isArray(result)) throw new Error('Danh sách phòng học không hợp lệ.');
-        rooms = result;
-        facilityElement('roomCountBadge').textContent = `${rooms.length} Phòng học`;
-        facilityElement('statRoomsCount').textContent = String(rooms.length);
+        if (!roomPager.accept(result)) return;
+        rooms = result.items;
+        facilityElement('roomCountBadge').textContent = `${result.totalElements} Phòng học`;
         const branch = branches.find(item => String(item.id) === branchId);
         facilityElement('roomsSubtitle').textContent = `Danh sách phòng học tại ${branch?.name || ''}`;
-        if (!rooms.length) return tableMessage('roomTableBody', 7, 'Chưa có phòng học nào tại cơ sở này');
+        if (!rooms.length) return tableMessage('roomTableBody', 7, 'Không có phòng học phù hợp với bộ lọc.');
         facilityElement('roomTableBody').innerHTML = rooms.map(room => `<tr>
             <td><code class="fw-bold">${escapeHtml(room.roomCode)}</code></td>
             <td class="fw-bold text-dark">${escapeHtml(room.roomName)}</td>
@@ -184,29 +229,31 @@ async function loadRooms(branchId) {
             <td>${roomActions(room)}</td></tr>`).join('');
     } catch (error) {
         if (request !== roomRequest || selectedBranchId() !== branchId) return;
+        roomPager.fail();
         facilityElement('roomCountBadge').textContent = 'Chưa tải được';
-        tableMessage('roomTableBody', 7, error.message, 'rooms');
+        tableMessage('roomTableBody', 7, requestErrorMessage(error, 'Chưa tải được danh sách phòng học. Vui lòng thử lại.'), 'rooms');
+    } finally {
+        if (request === roomRequest) roomPager.busy(false);
     }
 }
 
 async function loadEquipments(branchId) {
+    if (!branchId) return;
     const request = ++equipmentRequest;
+    equipmentPager.busy(true);
     equipments = [];
     facilityElement('equipmentCountBadge').textContent = 'Đang tải...';
-    facilityElement('statEquipmentCount').textContent = '--';
-    facilityElement('statGoodCount').textContent = '--';
     tableMessage('equipmentTableBody', 8, 'Đang tải danh sách thiết bị...');
     try {
-        const result = await facilityRequest(`/api/branches/${encodeURIComponent(branchId)}/equipments`);
+        const params = equipmentPager.params({ keyword: facilityElement('equipmentKeyword').value.trim(), status: facilityElement('equipmentStatusFilter').value, category: facilityElement('equipmentCategoryFilter').value, order: facilityElement('equipmentOrder').value });
+        const result = await facilityRequest(`/api/branches/${encodeURIComponent(branchId)}/equipments/page?${params}`);
         if (request !== equipmentRequest || selectedBranchId() !== branchId) return;
-        if (!Array.isArray(result)) throw new Error('Danh sách thiết bị không hợp lệ.');
-        equipments = result;
-        facilityElement('equipmentCountBadge').textContent = `${equipments.length} Thiết bị`;
-        facilityElement('statEquipmentCount').textContent = String(equipments.length);
-        facilityElement('statGoodCount').textContent = `${equipments.filter(item => item.status === 'GOOD').length}/${equipments.length}`;
+        if (!equipmentPager.accept(result)) return;
+        equipments = result.items;
+        facilityElement('equipmentCountBadge').textContent = `${result.totalElements} Thiết bị`;
         const branch = branches.find(item => String(item.id) === branchId);
         facilityElement('equipmentsSubtitle').textContent = `Thiết bị tại ${branch?.name || ''}`;
-        if (!equipments.length) return tableMessage('equipmentTableBody', 8, 'Chưa có thiết bị nào tại cơ sở này');
+        if (!equipments.length) return tableMessage('equipmentTableBody', 8, 'Không có thiết bị phù hợp với bộ lọc.');
         facilityElement('equipmentTableBody').innerHTML = equipments.map(item => `<tr>
             <td><code>${escapeHtml(item.code || '—')}</code></td><td class="fw-bold text-dark">${escapeHtml(item.name)}</td>
             <td>${escapeHtml(equipmentTypes[item.category] || item.category)}</td><td>${escapeHtml(item.roomName)}</td>
@@ -216,8 +263,11 @@ async function loadEquipments(branchId) {
             </tr>`).join('');
     } catch (error) {
         if (request !== equipmentRequest || selectedBranchId() !== branchId) return;
+        equipmentPager.fail();
         facilityElement('equipmentCountBadge').textContent = 'Chưa tải được';
-        tableMessage('equipmentTableBody', 8, error.message, 'equipments');
+        tableMessage('equipmentTableBody', 8, requestErrorMessage(error, 'Chưa tải được danh sách thiết bị. Vui lòng thử lại.'), 'equipments');
+    } finally {
+        if (request === equipmentRequest) equipmentPager.busy(false);
     }
 }
 
@@ -240,25 +290,51 @@ function lessonDateLabel(value) {
 
 function renderRoomUsage(data) {
     const room = data.room;
-    const equipmentRows = (data.equipments || []).map(item => `<tr><td>${escapeHtml(item.code || '—')}</td><td>${escapeHtml(item.name)}</td>
-        <td>${escapeHtml(equipmentTypes[item.category] || item.category)}</td><td>${statusBadge(item.status, equipmentStatuses)}</td>
-        <td>${escapeHtml(item.serialNumber || '—')}</td><td>${escapeHtml(item.description || '—')}</td></tr>`);
-    const classRows = (data.classes || []).map(item => `<tr><td>${classReference(item)}</td><td>${escapeHtml(item.courseName || '—')}</td>
-        <td>${Number(item.maxStudents) || 0}</td><td>${statusBadge(item.status, classStatuses)}</td></tr>`);
-    const lessons = [...(data.upcomingLessons || [])].sort((a, b) => `${a.lessonDate} ${a.startTime}`.localeCompare(`${b.lessonDate} ${b.startTime}`));
-    const lessonRows = lessons.map(item => `<tr><td>${escapeHtml(lessonDateLabel(item.lessonDate))}</td>
-        <td class="text-nowrap">${escapeHtml(item.startTime?.slice(0, 5) || '—')} – ${escapeHtml(item.endTime?.slice(0, 5) || '—')}</td>
-        <td>${classReference({ ...item, id: item.classId })}</td><td>${escapeHtml(item.teacherName || 'Chưa phân công')}</td></tr>`);
-    const total = Number.isInteger(data.upcomingLessonCount) ? data.upcomingLessonCount : lessons.length;
     facilityElement('roomUsageTitle').textContent = `${room.roomCode || ''} · ${room.roomName || 'Chi tiết phòng'}`;
     facilityElement('roomUsageBody').innerHTML = `<section aria-label="Thông tin phòng">
         <div class="d-flex flex-wrap gap-2 align-items-center mb-2">${statusBadge(room.status, roomStatuses)}<span>${escapeHtml(roomTypes[room.roomType] || room.roomType)}</span><span>· ${Number(room.capacity) || 0} học viên</span></div>
         <p class="text-muted mb-0">${escapeHtml(room.description || 'Chưa có mô tả.')}</p></section>
         ${warningList(data.warnings) ? `<div class="alert alert-warning mt-3" role="alert"><strong>Cảnh báo</strong>${warningList(data.warnings)}</div>` : ''}
-        <section><h6>Thiết bị trong phòng (${equipmentRows.length})</h6>${usageTable(['Mã', 'Thiết bị', 'Phân loại', 'Tình trạng', 'Số sê-ri', 'Mô tả'], equipmentRows, 'Phòng chưa có thiết bị.')}</section>
-        <section><h6>Lớp đang sử dụng phòng (${classRows.length})</h6>${usageTable(['Lớp', 'Khóa học', 'Sĩ số tối đa', 'Trạng thái'], classRows, 'Chưa có lớp đang sử dụng phòng.')}</section>
-        <section><h6>Buổi học sắp tới (${total})</h6>${usageTable(['Ngày', 'Giờ học', 'Lớp', 'Giáo viên'], lessonRows, 'Chưa có buổi học sắp tới.')}
-        ${total > lessons.length ? `<p class="small text-muted mt-2 mb-0">Hiển thị ${lessons.length}/${total} buổi học.</p>` : ''}</section>`;
+        ${['equipments', 'classes', 'lessons'].map((kind, index) => `<section><h6>${['Thiết bị trong phòng', 'Lớp đang sử dụng phòng', 'Buổi học sắp tới'][index]}</h6><div id="usage-${kind}-body"></div><div id="usage-${kind}-pager"></div></section>`).join('')}`;
+    usagePagers = {};
+    for (const kind of ['equipments', 'classes', 'lessons']) {
+        usagePagers[kind] = createListPager(`usage-${kind}-pager`, () => loadUsagePage(kind));
+        loadUsagePage(kind);
+    }
+}
+
+async function loadUsagePage(kind) {
+    const pager = usagePagers[kind];
+    const request = usageRequest;
+    const id = usageRoomId;
+    const body = facilityElement(`usage-${kind}-body`);
+    body.textContent = 'Đang tải...';
+    pager.busy(true);
+    try {
+        const data = await facilityRequest(`/api/branches/rooms/${encodeURIComponent(id)}/${kind}/page?${pager.params()}`);
+        if (request !== usageRequest || usagePagers[kind] !== pager || !pager.accept(data)) return;
+        let headers, rows, empty;
+        if (kind === 'equipments') {
+            headers = ['Mã', 'Thiết bị', 'Phân loại', 'Tình trạng', 'Số sê-ri', 'Mô tả'];
+            empty = 'Phòng chưa có thiết bị.';
+            rows = data.items.map(item => `<tr><td>${escapeHtml(item.code || '—')}</td><td>${escapeHtml(item.name)}</td><td>${escapeHtml(equipmentTypes[item.category] || item.category)}</td><td>${statusBadge(item.status, equipmentStatuses)}</td><td>${escapeHtml(item.serialNumber || '—')}</td><td>${escapeHtml(item.description || '—')}</td></tr>`);
+        } else if (kind === 'classes') {
+            headers = ['Lớp', 'Khóa học', 'Sĩ số tối đa', 'Trạng thái'];
+            empty = 'Chưa có lớp đang sử dụng phòng.';
+            rows = data.items.map(item => `<tr><td>${classReference(item)}</td><td>${escapeHtml(item.courseName || '—')}</td><td>${Number(item.maxStudents) || 0}</td><td>${statusBadge(item.status, classStatuses)}</td></tr>`);
+        } else {
+            headers = ['Ngày', 'Giờ học', 'Lớp', 'Giáo viên'];
+            empty = 'Chưa có buổi học sắp tới.';
+            rows = data.items.map(item => `<tr><td>${escapeHtml(lessonDateLabel(item.lessonDate))}</td><td class="text-nowrap">${escapeHtml(item.startTime?.slice(0, 5) || '—')} – ${escapeHtml(item.endTime?.slice(0, 5) || '—')}</td><td>${classReference(item)}</td><td>${escapeHtml(item.teacherName || 'Chưa phân công')}</td></tr>`);
+        }
+        body.innerHTML = usageTable(headers, rows, empty);
+    } catch (error) {
+        if (request !== usageRequest || usagePagers[kind] !== pager) return;
+        pager.fail();
+        body.innerHTML = `<p class="text-danger">${escapeHtml(requestErrorMessage(error, 'Chưa tải được dữ liệu. Vui lòng thử lại.'))}</p><button class="btn btn-sm btn-outline-secondary" data-usage-retry="${kind}"><i class="bi bi-arrow-clockwise"></i> Thử lại</button>`;
+    } finally {
+        if (request === usageRequest && usagePagers[kind] === pager) pager.busy(false);
+    }
 }
 
 async function loadRoomUsage(id) {
@@ -267,25 +343,27 @@ async function loadRoomUsage(id) {
     const selectRoomBranch = usageSelectsBranch;
     facilityElement('roomUsageBody').innerHTML = '<p class="text-muted" role="status">Đang tải chi tiết phòng & lịch sử dụng...</p>';
     try {
-        if (!canViewRoomUsage()) throw new Error('Bạn không có quyền xem lịch sử dụng phòng.');
-        const data = await facilityRequest(`/api/branches/rooms/${encodeURIComponent(id)}/usage`);
+        if (!canViewRoomUsage()) throw Object.assign(new Error('Bạn không có quyền xem lịch sử dụng phòng.'), { status: 403 });
+        const data = await facilityRequest(`/api/branches/rooms/${encodeURIComponent(id)}/overview`);
         if (request !== usageRequest || usageRoomId !== id || branchId !== selectedBranchId()) return;
         if (!data?.room) throw new Error('Không tải được thông tin phòng.');
         if (selectRoomBranch) {
             const roomBranchId = String(data.room.branchId ?? '');
             if (!branches.some(branch => String(branch.id) === roomBranchId)) {
-                throw new Error('Cơ sở của phòng không nằm trong danh sách được phép truy cập.');
+                throw Object.assign(new Error('Cơ sở của phòng không nằm trong danh sách được phép truy cập.'), { status: 403 });
             }
             if (branchId !== roomBranchId) {
                 facilityElement('branchSelect').value = roomBranchId;
                 branchId = roomBranchId;
+                roomPager.reset();
+                equipmentPager.reset();
                 loadCurrentTabData();
             }
         }
         renderRoomUsage(data);
     } catch (error) {
         if (request !== usageRequest || usageRoomId !== id || branchId !== selectedBranchId()) return;
-        facilityElement('roomUsageBody').innerHTML = `<div class="alert alert-danger" role="alert">${escapeHtml(error.message)}</div>
+        facilityElement('roomUsageBody').innerHTML = `<div class="alert alert-danger" role="alert">${escapeHtml(requestErrorMessage(error, 'Chưa tải được chi tiết phòng và lịch sử dụng. Vui lòng thử lại.'))}</div>
             <button type="button" class="btn btn-outline-secondary" data-facility-retry="usage"><i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại</button>`;
     }
 }
@@ -354,7 +432,7 @@ function setFacilitySaving(saving) {
 
 async function saveFacility(event) {
     event.preventDefault();
-    if (!editing || savingFacility || !editElement.classList.contains('show')) return;
+    if (!editing || savingFacility || facilityElement('saveFacilityBtn').disabled || !editElement.classList.contains('show')) return;
     if (!canEditFacility()) return showEditError('Quyền chỉnh sửa thuộc quản trị viên.');
     const context = editing;
     if (context.branchId !== selectedBranchId()) return showEditError('Cơ sở đã thay đổi. Vui lòng mở lại thông tin.');
@@ -380,7 +458,8 @@ async function saveFacility(event) {
         showFacilityNotice(isRoom ? 'Đã lưu thay đổi phòng học.' : 'Đã lưu thay đổi thiết bị.', warnings);
         loadCurrentTabData();
     } catch (error) {
-        if (editing === context && selectedBranchId() === context.branchId) showEditError(error.message || 'Không lưu được thay đổi.');
+        if (editing === context && selectedBranchId() === context.branchId) showEditError(requestErrorMessage(error,
+            `Chưa xác nhận được việc lưu ${isRoom ? 'phòng học' : 'thiết bị'}. Vui lòng giữ lại nội dung đã nhập và tải lại danh sách để kiểm tra trước khi lưu lại.`));
     } finally {
         setFacilitySaving(false);
     }
@@ -397,6 +476,8 @@ facilityElement('equipmentTableBody').addEventListener('click', event => {
     if (button) openFacilityEditor('equipment', button.dataset.editEquipment);
 });
 document.addEventListener('click', event => {
+    const usageRetry = event.target.closest('[data-usage-retry]')?.dataset.usageRetry;
+    if (usageRetry && usagePagers[usageRetry]) loadUsagePage(usageRetry);
     const retry = event.target.closest('[data-facility-retry]')?.dataset.facilityRetry;
     if (retry === 'branches') loadBranches();
     if (retry === 'rooms' && selectedBranchId()) loadRooms(selectedBranchId());
@@ -413,6 +494,9 @@ facilityElement('viewRoomUsageBtn').addEventListener('click', () => {
     editModal.hide();
 });
 editElement.addEventListener('hide.bs.modal', event => { if (savingFacility) event.preventDefault(); });
+// Bootstrap ignores hide() while the opening transition is still running.
+editElement.addEventListener('show.bs.modal', () => { facilityElement('saveFacilityBtn').disabled = true; });
+editElement.addEventListener('shown.bs.modal', () => { facilityElement('saveFacilityBtn').disabled = savingFacility; });
 usageElement.addEventListener('hide.bs.modal', () => { ++usageRequest; });
 usageElement.addEventListener('hidden.bs.modal', () => {
     usageRoomId = null;

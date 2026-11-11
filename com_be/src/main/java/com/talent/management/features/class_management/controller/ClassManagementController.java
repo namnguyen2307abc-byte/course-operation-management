@@ -45,6 +45,15 @@ public class ClassManagementController {
         return service.get(id);
     }
 
+    @GetMapping("/page")
+    public com.talent.management.shared.dto.PageResponse<ManagedClassResponse> searchPage(
+            @RequestParam(required = false) String keyword, @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) Long branchId, @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "newest") String order) {
+        return service.searchPage(keyword, courseId, branchId, status, page, size, order);
+    }
+
     @PostMapping
     public ResponseEntity<ManagedClassResponse> create(@Valid @RequestBody ClassUpsertRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));

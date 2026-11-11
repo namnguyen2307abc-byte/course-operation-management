@@ -15,6 +15,7 @@ async function openPage({ failClasses = false, failOptions = false } = {}) {
         const node = { value: '', innerHTML: '', textContent: '', disabled: false,
             className: tag[0].match(/\bclass="([^"]*)"/)?.[1] || '', handlers: {}, attributes: {},
             addEventListener(type, handler) { this.handlers[type] = handler; },
+            querySelectorAll: () => [],
             setAttribute(name, value) { this.attributes[name] = value; } };
         node.classList = {
             contains(name) { return node.className.split(/\s+/).includes(name); },
@@ -39,15 +40,17 @@ async function openPage({ failClasses = false, failOptions = false } = {}) {
             if (url.includes('footer.html')) return { text: async () => '' };
             const parsed = new URL(url);
             state.requests.push({ url: parsed, options });
-            const classes = parsed.pathname === '/api/class-management/classes';
+            const classes = parsed.pathname === '/api/class-management/classes/page';
             if (classes && state.failClasses) throw new TypeError('Failed to fetch');
             const failed = !classes && state.failOptions;
-            const body = classes ? state.rows : failed ? { message: 'Internal database details' } : [{ id: 1, code: 'ONE', name: 'Option' }];
+            const body = classes ? { items: state.rows, page: 0, size: 10, totalElements: state.rows.length, totalPages: state.rows.length ? 1 : 0 }
+                : failed ? { message: 'Internal database details' } : [{ id: 1, code: 'ONE', name: 'Option' }];
             return { status: failed ? 500 : 200, ok: !failed,
                 json: async () => body, text: async () => JSON.stringify(body) };
         }
     });
     vm.runInContext(fs.readFileSync(path.join(root, 'js/api.js'), 'utf8'), ctx);
+    vm.runInContext(fs.readFileSync(path.join(root, 'js/list-pagination.js'), 'utf8'), ctx);
     vm.runInContext(pageScript, ctx);
     await new Promise(resolve => setImmediate(resolve));
     return { state, nodes, ctx, visible: id => !nodes.get(id).classList.contains('d-none') };

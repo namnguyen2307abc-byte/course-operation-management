@@ -14,6 +14,19 @@ import java.util.Optional;
 
 @Repository
 public interface RoomRepository extends JpaRepository<Room, Long> {
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "branch")
+    @Query("""
+            select r from Room r where r.branch.id = :branchId
+              and (:status is null or r.status = :status) and (:type is null or r.roomType = :type)
+              and (lower(r.roomCode) like concat('%', :keyword, '%') escape '!'
+                or lower(r.roomName) like concat('%', :keyword, '%') escape '!')
+            """)
+    org.springframework.data.domain.Page<Room> searchPage(@Param("branchId") Long branchId,
+            @Param("keyword") String keyword, @Param("status") RoomStatus status,
+            @Param("type") com.talent.management.shared.enums.RoomType type,
+            org.springframework.data.domain.Pageable pageable);
+
+    long countByBranchId(Long branchId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from Room r where r.id = :id")

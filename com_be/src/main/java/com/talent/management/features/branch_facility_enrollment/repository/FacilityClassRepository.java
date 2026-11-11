@@ -19,6 +19,19 @@ public interface FacilityClassRepository extends JpaRepository<ClassEntity, Long
                    where l.classEntity = c and (lessonRoom.id = :roomId or (l.room is null and r.id = :roomId))
                    and l.status = com.talent.management.shared.enums.LessonStatus.SCHEDULED
                    and (l.lessonDate > :today or (l.lessonDate = :today and l.endTime > cast(:now as LocalTime))))
+            """)
+    org.springframework.data.domain.Page<ClassEntity> findClassesUsingRoom(@Param("roomId") Long roomId,
+            @Param("today") LocalDate today, @Param("now") LocalTime now,
+            org.springframework.data.domain.Pageable pageable);
+
+    @EntityGraph(attributePaths = {"course", "course.program"})
+    @Query("""
+            select c from ClassEntity c left join c.room r
+            where (c.status <> com.talent.management.shared.enums.ClassStatus.FINISHED and r.id = :roomId)
+               or exists (select l.id from Lesson l left join l.room lessonRoom
+                   where l.classEntity = c and (lessonRoom.id = :roomId or (l.room is null and r.id = :roomId))
+                   and l.status = com.talent.management.shared.enums.LessonStatus.SCHEDULED
+                   and (l.lessonDate > :today or (l.lessonDate = :today and l.endTime > cast(:now as LocalTime))))
             order by c.classCode
             """)
     List<ClassEntity> findClassesUsingRoom(@Param("roomId") Long roomId,

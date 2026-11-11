@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -58,6 +59,7 @@ public class BranchFacilityServiceImpl implements BranchFacilityService {
     @Override
     public List<BranchResponse> getAllBranches() {
         return branchRepository.findAll().stream()
+                .sorted(Comparator.comparing(Branch::getCode).thenComparing(Branch::getId))
                 .map(branchFacilityMapper::toBranchResponse)
                 .toList();
     }
@@ -65,6 +67,7 @@ public class BranchFacilityServiceImpl implements BranchFacilityService {
     @Override
     public List<BranchOptionResponse> getBranchOptions() {
         return branchRepository.findByActiveTrue().stream()
+                .sorted(Comparator.comparing(Branch::getCode).thenComparing(Branch::getId))
                 .map(branchFacilityMapper::toBranchOptionResponse)
                 .toList();
     }
@@ -105,6 +108,7 @@ public class BranchFacilityServiceImpl implements BranchFacilityService {
     @Override
     public List<RoomOptionResponse> getRoomOptions(Long branchId) {
         return roomRepository.findByBranchId(branchId).stream()
+                .sorted(Comparator.comparing(Room::getRoomCode).thenComparing(Room::getId))
                 .map(branchFacilityMapper::toRoomOptionResponse)
                 .toList();
     }
