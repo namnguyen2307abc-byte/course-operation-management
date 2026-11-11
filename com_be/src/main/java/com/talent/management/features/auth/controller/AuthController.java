@@ -36,8 +36,20 @@ public class AuthController {
     }
 
     @GetMapping("/users")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'BRANCH_MANAGER')")
     @Operation(summary = "Lấy danh sách người dùng theo Role", description = "Lọc danh sách giáo viên, phụ huynh hoặc nhân viên")
     public ResponseEntity<List<UserDto>> getUsersByRole(@RequestParam(required = false) Role role) {
         return ResponseEntity.ok(authService.getUsersByRole(role));
+    }
+
+    @GetMapping("/me")
+    public AuthResponse me(org.springframework.security.core.Authentication authentication) {
+        return authService.me(authentication.getName());
+    }
+
+    @PostMapping("/change-password")
+    public AuthResponse changePassword(org.springframework.security.core.Authentication authentication,
+            @Valid @RequestBody com.talent.management.features.auth.dto.ChangePasswordRequest request) {
+        return authService.changePassword(authentication.getName(), request);
     }
 }

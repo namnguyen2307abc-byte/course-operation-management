@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 @Data
 @Builder
@@ -21,4 +22,8 @@ public class RoomResponse {
     private RoomType roomType;
     private RoomStatus status;
     private String description;
+    @Builder.Default
+    private List<String> warnings = List.of();
+    private int goodEquipmentCount;
+    private int totalEquipmentCount;
 }

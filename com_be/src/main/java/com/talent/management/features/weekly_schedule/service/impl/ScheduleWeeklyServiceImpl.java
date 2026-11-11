@@ -12,8 +12,8 @@ import com.talent.management.features.weekly_schedule.service.ScheduleWeeklyServ
 import com.talent.management.features.auth.repository.StudentRepository;
 import com.talent.management.features.auth.repository.UserRepository;
 import com.talent.management.features.branch_facility_enrollment.repository.BranchRepository;
-import com.talent.management.features.branch_facility_enrollment.repository.RoomRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
+import com.talent.management.features.class_management.service.ClassSchedulingService;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
@@ -48,9 +48,9 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final BranchRepository branchRepository;
-    private final RoomRepository roomRepository;
     private final CurrentUserService currentUserService;
     private final AttendanceTrackingService attendanceTrackingService;
+    private final ClassSchedulingService schedulingService;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_VN_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -77,9 +77,9 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
         switch (userRole) {
             case STUDENT -> {
-                // Tìm học viên theo tài khoản (fallback sang parentId nếu dữ liệu demo liên kết qua parent)
-                Optional<Student> studentOpt = studentRepository.findByAccountId(currentUser.getId())
-                        .or(() -> studentRepository.findByParentId(currentUser.getId()).stream().findFirst());
+                // Tìm học viên theo tài khoản
+                Optional<Student> studentOpt = studentRepository.findByAccountId(currentUser.getId());
+                // Do not trust an arbitrary studentId when the account has no linked profile.
                 Long effectiveStudentId = studentOpt.map(Student::getId).orElse(null);
                 if (effectiveStudentId != null) {
                     viewedStudentIds.add(effectiveStudentId);
@@ -420,92 +420,9 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 .orElseThrow(
                         () -> new AttendanceMakeupException("Không tìm thấy cơ sở với ID: " + request.getBranchId()));
 
-        Room room = null;
-        if (request.getRoomId() != null) {
-            room = roomRepository.findById(request.getRoomId())
-                    .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy phòng học."));
-            if (room.getBranch() == null || !branch.getId().equals(room.getBranch().getId())) {
-                throw new AttendanceMakeupException("Phòng học được chọn không thuộc cơ sở " + branch.getName() + ".");
-            }
-            if (room.getStatus() == RoomStatus.MAINTENANCE) {
-                throw new AttendanceMakeupException("Phòng học '" + room.getRoomName() + "' đang bảo trì, không thể xếp lớp.");
-            }
-            if (room.getCapacity() != null && room.getCapacity() > 0 && request.getMaxStudents() > room.getCapacity()) {
-                throw new AttendanceMakeupException("Sĩ số tối đa (" + request.getMaxStudents()
-                        + ") vượt quá sức chứa của phòng '" + room.getRoomName() + "' (" + room.getCapacity() + " chỗ)!");
-            }
-        }
-
-        User teacher = null;
-        if (request.getTeacherId() != null) {
-            teacher = userRepository.findById(request.getTeacherId())
-                    .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy giáo viên."));
-            if (teacher.getRole() != Role.TEACHER) {
-                throw new AttendanceMakeupException("Tài khoản được phân công phải có vai trò Giáo viên (TEACHER).");
-            }
-            if (teacher.getStatus() != null && teacher.getStatus() != UserStatus.ACTIVE) {
-                throw new AttendanceMakeupException("Tài khoản giáo viên '" + teacher.getFullName() + "' hiện không hoạt động.");
-            }
-        }
-
-        // Tính trước các ngày diễn ra buổi học để kiểm tra trùng lịch Giáo viên & Phòng học
-        int totalSessions = Math.min(request.getTotalSessions(), 60);
-        Set<Integer> targetDays = new HashSet<>(request.getDaysOfWeek());
-        List<LocalDate> plannedDates = new ArrayList<>();
-        LocalDate cursorDate = request.getStartDate();
-        int safetyLoop = 0;
-        while (plannedDates.size() < totalSessions && safetyLoop < totalSessions * 7 + 14) {
-            if (targetDays.contains(cursorDate.getDayOfWeek().getValue())) {
-                plannedDates.add(cursorDate);
-            }
-            cursorDate = cursorDate.plusDays(1);
-            safetyLoop++;
-        }
-
-        if (plannedDates.isEmpty()) {
-            throw new AttendanceMakeupException("Không thể sinh lịch học với các thứ đã chọn.");
-        }
-
-        // Kiểm tra xung đột lịch dạy của Giáo viên & Phòng học (Double-booking Conflict Guard)
-        if (teacher != null || room != null) {
-            LocalDate firstDate = plannedDates.get(0);
-            LocalDate lastDate = plannedDates.get(plannedDates.size() - 1);
-            Set<LocalDate> plannedDateSet = new HashSet<>(plannedDates);
-
-            List<Lesson> existingInRange = attendanceLessonRepository
-                    .findByLessonDateBetweenOrderByLessonDateAscStartTimeAsc(firstDate, lastDate);
-
-            for (Lesson existing : existingInRange) {
-                if (existing.getStatus() == LessonStatus.CANCELLED) continue;
-                if (!plannedDateSet.contains(existing.getLessonDate())) continue;
-                if (existing.getStartTime() == null || existing.getEndTime() == null) continue;
-
-                boolean timeOverlaps = request.getStartTime().isBefore(existing.getEndTime())
-                        && request.getEndTime().isAfter(existing.getStartTime());
-                if (!timeOverlaps) continue;
-
-                String existingClassLabel = existing.getClassEntity() != null
-                        ? existing.getClassEntity().getClassName()
-                        : existing.getTitle();
-                String dateStr = existing.getLessonDate().format(DATE_VN_FMT);
-                String slotStr = existing.getStartTime().format(TIME_FMT) + " - " + existing.getEndTime().format(TIME_FMT);
-
-                if (teacher != null && existing.getTeacher() != null
-                        && teacher.getId().equals(existing.getTeacher().getId())) {
-                    throw new AttendanceMakeupException(
-                            "Trùng lịch giáo viên: Giáo viên " + teacher.getFullName()
-                                    + " đã có ca dạy lớp '" + existingClassLabel
-                                    + "' vào ngày " + dateStr + " (" + slotStr + ")!");
-                }
-                if (room != null && existing.getRoom() != null
-                        && room.getId().equals(existing.getRoom().getId())) {
-                    throw new AttendanceMakeupException(
-                            "Trùng lịch phòng học: Phòng '" + room.getRoomName()
-                                    + "' đã được xếp cho lớp '" + existingClassLabel
-                                    + "' vào ngày " + dateStr + " (" + slotStr + ")!");
-                }
-            }
-        }
+        User teacher = schedulingService.getTeacher(request.getTeacherId());
+        Room room = schedulingService.getRoom(request.getRoomId());
+        schedulingService.validateAssignments(course, branch, teacher, room, request.getMaxStudents());
 
         // 1. Lưu ClassEntity
         ClassEntity classEntity = ClassEntity.builder()
@@ -518,32 +435,16 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
                 .classType(request.getMaxStudents() <= 1 ? ClassType.ONE_ON_ONE : ClassType.GROUP)
                 .maxStudents(request.getMaxStudents())
                 .currentStudents(0)
-                .startDate(plannedDates.get(0))
-                .endDate(plannedDates.get(plannedDates.size() - 1))
-                .scheduleDescription(request.getScheduleDescription() != null ? request.getScheduleDescription().trim() : null)
+                .startDate(request.getStartDate())
+                .scheduleDescription(schedulingService.describeSchedule(request.getDaysOfWeek(), request.getStartTime(), request.getEndTime()))
                 .status(ClassStatus.OPEN)
                 .build();
 
+        List<Lesson> lessons = schedulingService.generateLessons(classEntity, request.getDaysOfWeek(),
+                request.getStartTime(), request.getEndTime(), request.getTotalSessions(), null);
+        schedulingService.validateReadiness(ClassStatus.OPEN, !lessons.isEmpty(), teacher, room);
+        schedulingService.validateLessonConflicts(lessons);
         ClassEntity savedClass = attendanceClassRepository.save(classEntity);
-
-        // 2. Sinh danh sách N buổi học (Lessons)
-        List<Lesson> lessons = new ArrayList<>(plannedDates.size());
-        for (int i = 0; i < plannedDates.size(); i++) {
-            int sessionNumber = i + 1;
-            Lesson lesson = Lesson.builder()
-                    .classEntity(savedClass)
-                    .room(room)
-                    .teacher(teacher)
-                    .sessionNumber(sessionNumber)
-                    .lessonDate(plannedDates.get(i))
-                    .startTime(request.getStartTime())
-                    .endTime(request.getEndTime())
-                    .title("Buổi " + sessionNumber + ": " + savedClass.getClassName())
-                    .lessonNote("Tự động sinh lịch học theo thời khóa biểu")
-                    .status(LessonStatus.SCHEDULED)
-                    .build();
-            lessons.add(lesson);
-        }
         attendanceLessonRepository.saveAll(lessons);
 
         log.info("Tạo thành công lớp [{}] (#{}) với {} buổi học tự động sinh bởi [{}]",

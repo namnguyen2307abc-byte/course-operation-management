@@ -58,6 +58,8 @@ public class Invoice {
 
     private LocalDate dueDate;
 
+    private LocalDateTime reservationDeadline;
+
     @Column(length = 500)
     private String notes;
 

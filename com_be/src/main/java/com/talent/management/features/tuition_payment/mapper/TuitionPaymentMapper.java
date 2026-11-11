@@ -84,7 +84,7 @@ public class TuitionPaymentMapper {
 
         return PaymentReceiptResponse.builder()
                 .paymentId(payment.getId())
-                .paymentCode(payment.getPaymentCode())
+                .paymentCode(PaymentReference.receipt(payment))
                 .invoiceCode(invoice != null ? invoice.getInvoiceCode() : "")
                 .studentId(student != null ? student.getId() : null)
                 .studentName(student != null ? student.getFullName() : "")
@@ -99,14 +99,16 @@ public class TuitionPaymentMapper {
                 .discountReason(invoice != null ? invoice.getDiscountReason() : null)
                 .discountType(invoice != null && invoice.getDiscountType() != null ? invoice.getDiscountType().name() : "NONE")
                 .finalAmount(payment.getAmount())
+                .totalTuition(invoice != null ? invoice.getFinalAmount() : payment.getAmount())
+                .remainingAfter(payment.getBalanceAfter())
                 .cashGiven(actualCashGiven)
                 .changeAmount(actualChangeAmount)
                 .paymentMethod(payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : "")
-                .cashierName(cashier != null ? cashier.getFullName() : "Thu Ngân Quầy")
+                .cashierName(cashier != null ? cashier.getFullName() : "PayOS tự động")
                 .paymentDate(payment.getPaymentDate())
                 .bankTransactionId(payment.getBankTransactionId())
                 .enrollmentStatus(enrollment != null && enrollment.getStatus() != null ? enrollment.getStatus().name() : "ENROLLED")
-                .message("Thanh toán thành công! Học viên đã chính thức được ghi danh vào lớp học.")
+                .message("Đã ghi nhận khoản thu. Vui lòng kiểm tra lịch kỳ và số tiền còn thiếu.")
                 .build();
     }
 }

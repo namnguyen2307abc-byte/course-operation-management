@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>
+            Nhật ký quản trị · Talent Center
+        </title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+        <link rel="stylesheet" href="../css/style.css">
+        <link rel="stylesheet" href="../css/admin.css">
+        <script defer src="../js/api.js">
+        </script>
+
+        <script defer src="../js/admin/admin-service.js">
+        </script>
+        <script defer src="../js/admin/admin-audit.js">
+        </script>
+<script src="../js/auth.js"></script>
+</head>
+    <body class="has-workspace-sidebar">
+        <div id="navbar-container"><!-- workspace-shell:start -->
+<a class="skip-content" href="#main-content">Đến nội dung chính</a>
+<header class="workspace-topbar"><button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false"><i class="bi bi-list"></i></button><span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span><span class="workspace-context">Không gian làm việc</span></header>
+<aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
+<a class="sidebar-brand" data-app-path="/index.html" href="/index.html"><span class="brand-mark"><i class="bi bi-stars"></i></span><span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span></a>
+<nav id="workspaceNavigation" class="workspace-navigation"></nav>
+<div class="sidebar-bottom"><div class="sidebar-profile"><span class="profile-initial" id="sidebarAvatar">T</span><div><strong id="sidebarUserName"></strong><small id="sidebarUserRole"></small></div></div><button type="button" class="sidebar-logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button></div>
+</aside>
+<button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
+<!-- workspace-shell:end --></div>
+<script src="../js/workspace-shell.js"></script>
+<main id="main-content" class="admin-shell" tabindex="-1">
+            <header class="admin-heading">
+                <div>
+                    <p class="eyebrow">
+                        QUẢN TRỊ HỆ THỐNG
+                    </p>
+                    <h1>
+                        Nhật ký quản trị
+                    </h1>
+                    <p>
+                        Tra cứu ai đã thay đổi tài khoản, thay đổi gì và vào thời điểm nào.
+                    </p>
+                </div>
+            </header>
+            <nav class="admin-tabs" aria-label="Quản trị hệ thống">
+                <a href="admin-dashboard.html">
+                    Tổng quan quản trị
+                </a>
+                <a href="admin-users.html">
+                    Quản lý tài khoản
+                </a>
+                <a href="admin-audit.html" aria-current="page">
+                    Nhật ký quản trị
+                </a>
+            </nav>
+            <p id="adminMessage" role="alert" hidden>
+            </p>
+            <section class="admin-panel">
+                <form id="auditFilters" class="admin-toolbar">
+                    <div class="admin-search">
+                        <label class="form-label" for="keyword">
+                            Tài khoản thực hiện / bị tác động
+                        </label>
+                        <input id="keyword" class="form-control" maxlength="100" placeholder="Tên đăng nhập">
+                    </div>
+                    <div>
+                        <label class="form-label" for="actionFilter">
+                            Thao tác
+                        </label>
+                        <select id="actionFilter" class="form-select">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="targetId">
+                            ID tài khoản
+                        </label>
+                        <input id="targetId" class="form-control" type="number" min="1" placeholder="Tất cả">
+                    </div>
+                    <div>
+                        <label class="form-label" for="fromDate">
+                            Từ ngày
+                        </label>
+                        <input class="form-control" type="date" id="fromDate">
+                    </div>
+                    <div>
+                        <label class="form-label" for="toDate">
+                            Đến ngày
+                        </label>
+                        <input class="form-control" type="date" id="toDate">
+                    </div>
+                    <button class="btn btn-primary">
+                        Lọc nhật ký
+                    </button>
+                </form>
+                <div class="table-responsive">
+                    <table id="auditTable" class="table admin-table align-middle">
+                        <thead>
+                            <tr>
+                                <th>
+                                    Thời gian
+                                </th>
+                                <th>
+                                    Người thực hiện
+                                </th>
+                                <th>
+                                    Tài khoản bị tác động
+                                </th>
+                                <th>
+                                    Thao tác
+                                </th>
+                                <th>
+                                    Nội dung
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditBody">
+                            <tr>
+                                <td colspan="5" class="admin-empty">
+                                    Đang tải nhật ký…
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="admin-pagination">
+                    <span id="pageInfo" aria-live="polite">
+                    </span>
+                    <div>
+                        <button id="previousPage" class="btn btn-outline-secondary btn-sm" disabled>
+                            Trước
+                        </button>
+                        <button id="nextPage" class="btn btn-outline-secondary btn-sm" disabled>
+                            Sau
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <p class="admin-hint">
+                Nhật ký bắt đầu được ghi từ khi chức năng quản trị được triển khai. Không lưu mật khẩu hoặc token.
+            </p>
+        </main>
+    </body>
+</html>

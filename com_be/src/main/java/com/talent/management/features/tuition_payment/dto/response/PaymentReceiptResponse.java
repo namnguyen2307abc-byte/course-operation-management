@@ -36,6 +36,8 @@ public class PaymentReceiptResponse {
     private String discountReason;
     private String discountType;
     private BigDecimal finalAmount;
+    private BigDecimal totalTuition;
+    private BigDecimal remainingAfter;
     
     // Thanh toán
     private BigDecimal cashGiven;
