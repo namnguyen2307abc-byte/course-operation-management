@@ -49,25 +49,36 @@ public class PayOSGateway {
         this.restClient = RestClient.create();
     }
 
-    public PayOSPaymentLinkResponse createPaymentLink(Invoice invoice, BigDecimal customAmount) {
-        BigDecimal paymentAmount = customAmount != null ? customAmount : invoice.getFinalAmount();
-        long amount = paymentAmount.setScale(0, RoundingMode.HALF_UP).longValueExact();
-        long orderCode = buildOrderCode(Instant.now().getEpochSecond(), invoice.getId());
+    @Value("${tuition.simulation.enabled:false}")
+    private boolean simulation;
 
+    @Value("${tuition.public-base-url:http://127.0.0.1}")
+    private String publicBaseUrl;
+
+    public PayOSPaymentLinkResponse createPaymentLink(Invoice invoice, BigDecimal amount) {
+        return createPaymentLink(invoice, amount, buildOrderCode(Instant.now().getEpochSecond(), invoice.getId()), false);
+    }
+
+    public PayOSPaymentLinkResponse createPaymentLink(Invoice invoice, BigDecimal paymentAmount, long orderCode, boolean parent) {
+        long amount = paymentAmount.longValueExact();
+        String route = parent ? "/pages/parent-tuition.html" : "/pages/tuition-receivables.html";
+        String returnTarget = publicBaseUrl + route + "?invoiceId=" + invoice.getId();
+        String cancelTarget = returnTarget;
         String description = buildPayOSDescription(invoice);
 
-        // Kiểm tra xem cấu hình PayOS có hợp lệ không
+        if (simulation) return PayOSPaymentLinkResponse.builder()
+                .orderCode(orderCode).amount(paymentAmount).status("PENDING")
+                .transferContent(description).simulated(true).build();
         if (clientId == null || clientId.isBlank() || apiKey == null || apiKey.isBlank() || checksumKey == null || checksumKey.isBlank()) {
-            log.warn("Thiếu cấu hình PayOS (Client ID / API Key / Checksum Key). Chuyển sang chế độ Smart Simulator.");
-            return createSimulatedPaymentResponse(invoice, paymentAmount, orderCode, description);
+            throw new IllegalStateException("Chưa cấu hình PayOS. Liên hệ trung tâm hoặc thanh toán tại quầy.");
         }
 
         Map<String, Object> signaturePayload = new LinkedHashMap<>();
         signaturePayload.put("amount", amount);
-        signaturePayload.put("cancelUrl", cancelUrl + "&invoiceCode=" + invoice.getInvoiceCode());
+        signaturePayload.put("cancelUrl", cancelTarget);
         signaturePayload.put("description", description);
         signaturePayload.put("orderCode", orderCode);
-        signaturePayload.put("returnUrl", returnUrl + "&invoiceCode=" + invoice.getInvoiceCode());
+        signaturePayload.put("returnUrl", returnTarget);
 
         Map<String, Object> requestBody = new LinkedHashMap<>(signaturePayload);
         requestBody.put("signature", sign(signaturePayload, checksumKey.trim()));
@@ -116,16 +127,23 @@ public class PayOSGateway {
                             .simulated(false)
                             .build();
                 }
-            } else {
-                log.warn("PayOS phản hồi mã lỗi: code={}, desc={}. Chuyển sang fallback Simulator.", 
-                        response != null ? response.get("code") : "NULL", 
-                        response != null ? response.get("desc") : "NULL");
             }
+            throw new IllegalStateException("Cổng thanh toán chưa tạo được QR. Cần kiểm tra mã đơn trước khi thử lại.");
         } catch (RestClientException ex) {
-            log.error("Gọi API PayOS thất bại do lỗi mạng hoặc cấu hình: {}. Chuyển sang Smart Simulator fallback.", ex.getMessage());
+            throw new IllegalStateException("Chưa xác định kết quả tạo QR. Trung tâm cần kiểm tra với PayOS.", ex);
         }
+    }
 
-        return createSimulatedPaymentResponse(invoice, paymentAmount, orderCode, description);
+    public void cancelPayment(long orderCode) {
+        Map<String,Object> response = restClient.post().uri(createPaymentUrl + "/" + orderCode + "/cancel")
+                .header("x-client-id", clientId.trim()).header("x-api-key", apiKey.trim())
+                .body(Map.of("cancellationReason", "Doi phuong thuc thanh toan"))
+                .retrieve().body(new ParameterizedTypeReference<>() {});
+        if (response == null || !"00".equals(String.valueOf(response.get("code")))
+                || !(response.get("data") instanceof Map<?,?> data)
+                || !"CANCELLED".equals(String.valueOf(data.get("status")))) {
+            throw new IllegalStateException("Chưa hủy được QR ở cổng thanh toán. Cần kiểm tra ngân hàng trước khi thu lại.");
+        }
     }
 
     public boolean verifyWebhookSignature(Map<String, Object> body) {
@@ -138,31 +156,8 @@ public class PayOSGateway {
             return false;
         }
 
-        // Tự động chấp thuận ping test kiểm tra Webhook URL từ hệ thống PayOS (/confirm-webhook)
-        Object reference = dataMap.get("reference");
-        Object orderCode = dataMap.get("orderCode");
-        Object desc = dataMap.get("description");
-        if ("TF230204212323".equals(String.valueOf(reference))
-                || "123".equals(String.valueOf(orderCode))
-                || (desc != null && String.valueOf(desc).contains("VQRIO123"))) {
-            log.info("PayOS gửi ping kiểm tra kết nối Webhook URL (/confirm-webhook), tự động xác thực thành công.");
-            return true;
-        }
-
-        if (!body.containsKey("signature")) {
-            return false;
-        }
-
+        if (checksumKey == null || checksumKey.isBlank() || !body.containsKey("signature")) return false;
         String receivedSignature = String.valueOf(body.get("signature"));
-        if ("SIMULATED".equalsIgnoreCase(receivedSignature) || "TEST".equalsIgnoreCase(receivedSignature)) {
-            log.info("Bypass xác thực chữ ký PayOS cho test/simulation token.");
-            return true;
-        }
-
-        if (checksumKey == null || checksumKey.isBlank()) {
-            return true;
-        }
-
         Map<String, Object> sortedMap = new TreeMap<>();
         dataMap.forEach((k, v) -> {
             String valStr = (v == null || "null".equals(v) || "undefined".equals(v)) ? "" : String.valueOf(v);
@@ -172,7 +167,7 @@ public class PayOSGateway {
         String calculatedSignature = sign(sortedMap, checksumKey.trim());
         boolean matches = Objects.equals(receivedSignature, calculatedSignature);
         if (!matches) {
-            log.warn("Xác thực chữ ký PayOS thất bại! Nhận: {}, Tính toán: {}", receivedSignature, calculatedSignature);
+            log.warn("Xác thực chữ ký PayOS thất bại.");
         }
         return matches;
     }
@@ -200,28 +195,6 @@ public class PayOSGateway {
                 Math.multiplyExact(epochSecond, ORDER_CODE_SUFFIX_BASE),
                 Math.floorMod(invoiceId, ORDER_CODE_SUFFIX_BASE)
         );
-    }
-
-    private PayOSPaymentLinkResponse createSimulatedPaymentResponse(Invoice invoice, BigDecimal amount, long orderCode, String description) {
-        // Mã VietQR chuẩn Napas liên kết tài khoản MBBank đăng ký trên cổng PayOS
-        String vietQrUrl = String.format(
-                "https://img.vietqr.io/image/970422-0777560391-compact2.png?amount=%s&addInfo=%s&accountName=HOANG%%20DUC%%20THUAN",
-                amount.setScale(0, RoundingMode.HALF_UP).toString(),
-                description
-        );
-        return PayOSPaymentLinkResponse.builder()
-                .orderCode(orderCode)
-                .checkoutUrl(vietQrUrl)
-                .qrCode(vietQrUrl)
-                .paymentLinkId("PAYOS-" + orderCode)
-                .amount(amount)
-                .accountName("HOANG DUC THUAN (Trung tâm năng khiếu)")
-                .accountNumber("0777560391")
-                .bin("970422")
-                .transferContent(description)
-                .status("PENDING")
-                .simulated(true)
-                .build();
     }
 
     private String buildPayOSDescription(Invoice invoice) {

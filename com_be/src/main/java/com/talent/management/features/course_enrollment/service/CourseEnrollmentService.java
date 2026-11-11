@@ -339,7 +339,7 @@ public class CourseEnrollmentService {
                 .discountAmount(BigDecimal.ZERO)
                 .finalAmount(tuitionFee)
                 .status(InvoiceStatus.UNPAID)
-                .dueDate(LocalDate.now().plusMonths(1))
+                .dueDate(LocalDate.now())
                 .notes("Hóa đơn học phí lớp " + classEntity.getClassName() + " từ yêu cầu đăng ký #" + request.getId())
                 .createdAt(LocalDateTime.now())
                 .build();

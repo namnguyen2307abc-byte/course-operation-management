@@ -1,7 +1,7 @@
 import { POS_TABS } from './constants.js?v=20260927_v3';
 import { getDashboardStats, searchPendingInvoices, getPaymentHistoryReport, getCashiers } from './service.js?v=20260927_v3';
 import { renderDashboardStats, renderPendingTable, renderHistoryDashboard, renderReceiptModal, switchPosTab, populateCashierDropdown } from './ui.js?v=20260927_v3';
-import { initPaymentModal, openPaymentModal } from './modal-payment.js?v=20260927_v3';
+import { openPaymentModal } from './modal-payment.js?v=20260927_v3';
 
 // Application State
 let activeTab = POS_TABS.PENDING;
@@ -34,7 +34,7 @@ function updateSearchPlaceholder() {
     if (activeTab === POS_TABS.PENDING) {
         input.placeholder = "Tra cứu hóa đơn chờ thu: Gõ SĐT phụ huynh, tên học sinh hoặc mã hóa đơn (INV-...)...";
     } else {
-        input.placeholder = "Tra cứu lịch sử đã thu: Gõ SĐT, tên học sinh, tên thu ngân, mã phiếu (PAY-...) hoặc mã HĐ...";
+        input.placeholder = "Tra cứu lịch sử đã thu: Gõ SĐT, tên học sinh, tên thu ngân, mã phiếu (PT-...) hoặc mã HĐ...";
     }
 }
 
@@ -158,38 +158,22 @@ async function clearSearch() {
 }
 
 /**
- * Đảm bảo tài khoản thu ngân đăng nhập để test thuận tiện
- */
-async function ensureCashierAuth() {
-    if (!localStorage.getItem('token') || !localStorage.getItem('user')) {
-        try {
-            const loginRes = await fetch("http://localhost:8080/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: "cashier_mai", password: "123456" })
-            });
-            if (loginRes.ok) {
-                const data = await loginRes.json();
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("user", JSON.stringify(data));
-            }
-        } catch (e) {
-            console.warn("Auto-login cashier error:", e);
-        }
-    }
-}
-
-/**
  * Khởi động ứng dụng
  */
 async function bootstrapApp() {
-    await ensureCashierAuth();
+    if (!checkAuth()) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') !== 'history') {
+        const id = params.get('invoiceId') || sessionStorage.getItem('autoOpenInvoiceId');
+        const page = getCurrentUser().role === 'PARENT' ? 'parent-tuition' : 'tuition-receivables';
+        window.location.replace(appPath('/pages/' + page + '.html') + (id ? '?invoiceId=' + encodeURIComponent(id) : ''));
+        return;
+    }
+    activeTab = POS_TABS.HISTORY;
+    switchPosTab(activeTab);
+    document.getElementById('posTabs').hidden = true;
+    updateSearchPlaceholder();
     await loadNavbar();
-
-    // Khởi tạo controller modal thu tiền
-    initPaymentModal(() => {
-        refreshData();
-    });
 
     // Gắn sự kiện thanh tìm kiếm
     document.getElementById('btnSearch')?.addEventListener('click', handleSearch);

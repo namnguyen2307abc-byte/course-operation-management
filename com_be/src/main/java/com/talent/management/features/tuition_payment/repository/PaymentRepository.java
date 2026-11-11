@@ -13,16 +13,18 @@ import java.util.Optional;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
+    Optional<Payment> findByRequestKey(String requestKey);
+
     List<Payment> findByInvoiceId(Long invoiceId);
 
     Optional<Payment> findFirstByInvoiceIdOrderByIdDesc(Long invoiceId);
 
     List<Payment> findAllByOrderByPaymentDateDesc();
 
-    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = 'SUCCESS' AND p.paymentDate >= :since")
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = 'SUCCESS' AND p.paymentDate >= :since AND NOT EXISTS (SELECT r.id FROM TuitionReversal r WHERE r.payment=p AND r.status='APPROVED')")
     BigDecimal sumAmountSince(@org.springframework.data.repository.query.Param("since") LocalDateTime since);
 
-    @Query("SELECT COUNT(p) FROM Payment p WHERE p.status = 'SUCCESS' AND p.paymentDate >= :since")
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.status = 'SUCCESS' AND p.paymentDate >= :since AND NOT EXISTS (SELECT r.id FROM TuitionReversal r WHERE r.payment=p AND r.status='APPROVED')")
     long countPaymentsSince(@org.springframework.data.repository.query.Param("since") LocalDateTime since);
 
     @Query("SELECT p FROM Payment p " +

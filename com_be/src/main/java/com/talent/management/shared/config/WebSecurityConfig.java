@@ -44,6 +44,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/WEB-INF/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/tuition-payment/payos-webhook").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/parent-tuition/**").hasRole("PARENT")
                 .requestMatchers("/api/tuition-payment/fix-font", "/api/tuition-payment/*/bank-webhook-simulate").hasRole("ADMIN")
                 .requestMatchers("/api/tuition-payment/**").hasAnyRole("ADMIN", "STAFF", "BRANCH_MANAGER")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/branches/**").permitAll()

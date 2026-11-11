@@ -888,8 +888,8 @@
 
                     // Điều hướng sang quầy thu phí học phí, tự động mở modal thu tiền như ảnh 2
                     const paymentPage = window.location.pathname.includes('/com_fe/') 
-                        ? '/com_fe/pages/tuition-payment.html' 
-                        : '/pages/tuition-payment.html';
+                        ? '/com_fe/pages/tuition-receivables.html'
+                        : '/pages/tuition-receivables.html';
                     window.location.href = `${paymentPage}?invoiceId=${invoiceId}&invoiceCode=${encodeURIComponent(invoiceCode)}`;
                     return;
                 }

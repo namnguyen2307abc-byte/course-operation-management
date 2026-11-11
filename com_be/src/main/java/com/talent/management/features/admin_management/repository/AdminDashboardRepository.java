@@ -24,7 +24,7 @@ public class AdminDashboardRepository {
         result.put("branches", count("select count(b) from Branch b"));
         result.put("rooms", count("select count(r) from Room r"));
         result.put("equipment", count("select count(e) from Equipment e"));
-        result.put("unpaidInvoices", count("select count(i) from Invoice i where i.status = 'UNPAID'"));
+        result.put("unpaidInvoices", count("select count(i) from Invoice i where i.status in ('UNPAID','PARTIALLY_PAID')"));
         return result;
     }
     public Map<String, Long> roles() { return grouped("select u.role, count(u) from User u group by u.role"); }
@@ -36,15 +36,10 @@ public class AdminDashboardRepository {
         result.put("makeupNoSlot", count("select count(m) from MakeupRegistration m where m.status = 'NO_SLOT'"));
         return result;
     }
-    public BigDecimal outstanding(LocalDate overdueBefore) {
-        var query = em.createQuery("select coalesce(sum(i.finalAmount), 0) from Invoice i where i.status = 'UNPAID'"
-                + (overdueBefore == null ? "" : " and i.dueDate < :today"), BigDecimal.class);
-        if (overdueBefore != null) query.setParameter("today", overdueBefore);
-        return query.getSingleResult();
-    }
     public List<RevenuePoint> revenue(LocalDate from, LocalDate to) {
         return em.createQuery("select year(p.paymentDate), month(p.paymentDate), day(p.paymentDate), sum(p.amount) "
                 + "from Payment p where p.status = 'SUCCESS' and p.paymentDate >= :from and p.paymentDate < :to "
+                + "and not exists (select r.id from TuitionReversal r where r.payment=p and r.status='APPROVED') "
                 + "group by year(p.paymentDate), month(p.paymentDate), day(p.paymentDate) "
                 + "order by year(p.paymentDate), month(p.paymentDate), day(p.paymentDate)", Object[].class)
                 .setParameter("from", from.atStartOfDay()).setParameter("to", to.plusDays(1).atStartOfDay())
@@ -52,7 +47,7 @@ public class AdminDashboardRepository {
                         ((Number) r[1]).intValue(), ((Number) r[2]).intValue()), (BigDecimal) r[3])).toList();
     }
     public long transactions(LocalDate from, LocalDate to) {
-        return em.createQuery("select count(p) from Payment p where p.status = 'SUCCESS' and p.paymentDate >= :from and p.paymentDate < :to", Long.class)
+        return em.createQuery("select count(p) from Payment p where p.status = 'SUCCESS' and p.paymentDate >= :from and p.paymentDate < :to and not exists (select r.id from TuitionReversal r where r.payment=p and r.status='APPROVED')", Long.class)
                 .setParameter("from", from.atStartOfDay()).setParameter("to", to.plusDays(1).atStartOfDay()).getSingleResult();
     }
     public List<UpcomingTest> upcomingTests(LocalDateTime now) {
