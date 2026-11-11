@@ -13,6 +13,9 @@ import java.util.Optional;
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
+    @Query("select i.id from Invoice i where i.status in (com.talent.management.shared.enums.InvoiceStatus.UNPAID, com.talent.management.shared.enums.InvoiceStatus.PARTIALLY_PAID) order by i.id")
+    List<Long> findReminderInvoiceIds();
+
     Optional<Invoice> findByInvoiceCode(String invoiceCode);
 
     List<Invoice> findByStatusOrderByCreatedAtDesc(InvoiceStatus status);

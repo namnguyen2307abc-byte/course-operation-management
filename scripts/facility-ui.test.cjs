@@ -67,6 +67,7 @@ async function facilityPage(role = 'ADMIN', viewport = { width: 1440, height: 10
         const payload = method === 'PUT' ? request.postDataJSON() : null;
         if (method !== 'OPTIONS') state.requests.push({ pathname, method, payload });
         let result = method === 'OPTIONS' ? { status: 204, body: null } : await state.intercept({ pathname, method, payload });
+        if (!result && method === 'GET' && pathname === '/api/parent-tuition/notifications') result = { body: [] };
         if (!result && method === 'GET' && pathname === '/api/branches') result = { body: [{ id: 1, name: 'Cơ sở A', address: 'Quận 1' }, { id: 2, name: 'Cơ sở B', address: 'Quận 2' }] };
         if (!result && method === 'GET' && /^\/api\/branches\/\d+\/rooms$/.test(pathname)) {
             result = { body: pathname.includes('/1/') ? state.rooms : [{ ...state.rooms[0], id: 21, branchId: 2, roomName: 'Phòng cơ sở B' }] };

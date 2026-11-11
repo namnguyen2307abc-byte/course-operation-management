@@ -57,6 +57,12 @@ public class Payment {
     @Column(length = 500)
     private String note;
 
+    @Column(length = 100)
+    private String requestKey;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal balanceAfter;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default

@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 @Service @RequiredArgsConstructor @Transactional(readOnly = true)
 public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final AdminDashboardRepository repository;
+    private final com.talent.management.features.tuition_payment.service.TuitionPlanService tuitionLedger;
     @Override
     public AdminDashboardResponse overview(LocalDate from, LocalDate to) {
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
@@ -28,6 +29,6 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) chart.add(new RevenuePoint(day, amounts.getOrDefault(day, BigDecimal.ZERO)));
         BigDecimal revenue = chart.stream().map(RevenuePoint::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new AdminDashboardResponse(from, to, repository.overview(), repository.roles(), repository.requestStatuses(), repository.queues(),
-                revenue, repository.transactions(from, to), repository.outstanding(null), repository.outstanding(now.toLocalDate()), chart, repository.upcomingTests(now));
+                revenue, repository.transactions(from, to), tuitionLedger.outstanding(null), tuitionLedger.outstanding(now.toLocalDate()), chart, repository.upcomingTests(now));
     }
 }
