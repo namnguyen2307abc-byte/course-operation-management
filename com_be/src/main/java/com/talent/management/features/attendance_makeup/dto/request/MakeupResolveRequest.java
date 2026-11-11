@@ -6,9 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO xử lý ca bù không tìm được lớp phù hợp:
+ * DTO báo chưa có lớp học bù phù hợp:
  *  - PATCH /makeup-requests/{id}/no-slot  → báo phụ huynh chưa có lớp bù (NO_SLOT)
- *  - PATCH /makeup-requests/{id}/defer    → chuyển sang khóa học kỳ sau (DEFERRED)
  */
 @Data
 @Builder

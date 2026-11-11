@@ -28,7 +28,27 @@ public interface AttendanceEnrollmentRepository extends JpaRepository<Enrollment
     default List<Enrollment> findActiveEnrollmentsByClassId(Long classId) {
         return findEnrollmentsByClassIdAndStatusIn(
                 classId,
-                List.of(EnrollmentStatus.ENROLLED, EnrollmentStatus.PENDING_PAYMENT)
+                List.of(EnrollmentStatus.ENROLLED)
+        );
+    }
+
+    @Query("SELECT e FROM Enrollment e " +
+           "JOIN FETCH e.classEntity c " +
+           "JOIN FETCH e.student s " +
+           "WHERE c.id IN :classIds " +
+           "AND e.status IN :statuses " +
+           "ORDER BY s.fullName ASC")
+    List<Enrollment> findEnrollmentsByClassIdInAndStatusIn(
+            @Param("classIds") Collection<Long> classIds,
+            @Param("statuses") Collection<EnrollmentStatus> statuses);
+
+    default List<Enrollment> findActiveEnrollmentsByClassIds(Collection<Long> classIds) {
+        if (classIds == null || classIds.isEmpty()) {
+            return List.of();
+        }
+        return findEnrollmentsByClassIdInAndStatusIn(
+                classIds,
+                List.of(EnrollmentStatus.ENROLLED)
         );
     }
 

@@ -91,3 +91,41 @@ test('notification bell filters alerts, escapes content and marks all read on mo
   assert.equal(marked,true);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
+
+const absence={id:5,studentId:1,studentName:'Minh An',parentName:'Phụ huynh A',className:'Piano',
+ lessonDate:'2099-12-31',timeSlot:'07:00 - 09:00',lessonTitle:'Buổi 3',reason:'Gia đình có việc',
+ status:'PENDING',createdAt:'2026-11-11T10:00:00'};
+test('parent notification deep link opens absence details and may cancel a pending request',async()=>{
+ let cancelled=false;
+ const {page,errors}=await open('PARENT','absence-makeup.html?tab=ABSENCE&absenceId=5',(u,req)=>{
+  if(u.pathname==='/api/attendance-makeup/absence-requests')return cancelled?[]:[absence];
+  if(u.pathname==='/api/attendance-makeup/absence-requests/5'){
+   if(req.method()==='DELETE'){cancelled=true;return {};}
+   return absence;
+  }
+ },390);
+ try{
+  await page.locator('#modalDetail.show').waitFor();
+  assert.match(await page.locator('#detailModalBody').textContent(),/Minh An/);
+  assert.equal(await page.locator('#detailModalFooter').getByRole('button',{name:'Duyệt',exact:true}).count(),0);
+  await page.locator('#detailModalFooter').getByRole('button',{name:'Hủy đơn',exact:true}).click();
+  await page.locator('#modalResolveNote.show').waitFor();
+  await page.locator('#btnConfirmResolve').click();
+  await page.waitForFunction(()=>document.querySelector('#absenceTableBody').textContent.includes('Không có đơn'));
+  assert.equal(cancelled,true);assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+test('staff sees pending requests first, can approve and has no excused or deferred actions',async()=>{
+ const {page,errors}=await open('STAFF','absence-makeup.html',(u)=>{
+  if(u.pathname==='/api/attendance-makeup/absence-requests')return [
+   {...absence,id:6,status:'APPROVED',createdAt:'2026-11-11T12:00:00'},absence];
+ });
+ try{
+  await page.locator('#absenceTableBody tr').first().waitFor();
+  assert.match(await page.locator('#absenceTableBody tr').first().textContent(),/#5/);
+  assert.equal(await page.locator('#absenceTableBody tr').first().locator('button[onclick^="openApproveModal"]').count(),1);
+  assert.equal(await page.getByText('Miễn bù',{exact:true}).count(),0);
+  assert.equal(await page.getByText('Chuyển kỳ sau',{exact:true}).count(),0);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});

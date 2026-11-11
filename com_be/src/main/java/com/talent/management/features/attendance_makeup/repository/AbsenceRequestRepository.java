@@ -3,6 +3,8 @@ package com.talent.management.features.attendance_makeup.repository;
 import com.talent.management.shared.entity.AbsenceRequest;
 import com.talent.management.shared.enums.AbsenceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -10,6 +12,10 @@ import java.util.Optional;
 
 @Repository
 public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, Long> {
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select ar from AbsenceRequest ar where ar.id = :id")
+    Optional<AbsenceRequest> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Tìm tất cả yêu cầu nghỉ học sắp xếp giảm dần theo thời gian tạo
@@ -42,14 +48,16 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
     List<AbsenceRequest> findByStudentParentIdAndStatusOrderByCreatedAtDesc(Long parentId, AbsenceStatus status);
 
     /**
-     * Tìm yêu cầu nghỉ thuộc các lớp/buổi do giáo viên phụ trách
+     * Tìm yêu cầu nghỉ thuộc các lớp/buổi do giáo viên phụ trách (cả giáo viên buổi học hoặc giáo viên chủ nhiệm lớp)
      */
-    List<AbsenceRequest> findByLessonTeacherIdOrderByCreatedAtDesc(Long teacherId);
+    @Query("SELECT DISTINCT ar FROM AbsenceRequest ar WHERE (ar.lesson.teacher.id = :teacherId OR ar.lesson.classEntity.teacher.id = :teacherId) ORDER BY ar.createdAt DESC")
+    List<AbsenceRequest> findByTeacherIdOrderByCreatedAtDesc(@Param("teacherId") Long teacherId);
 
     /**
-     * Lọc yêu cầu nghỉ của giáo viên theo trạng thái
+     * Lọc yêu cầu nghỉ thuộc các lớp/buổi do giáo viên phụ trách theo trạng thái
      */
-    List<AbsenceRequest> findByLessonTeacherIdAndStatusOrderByCreatedAtDesc(Long teacherId, AbsenceStatus status);
+    @Query("SELECT DISTINCT ar FROM AbsenceRequest ar WHERE (ar.lesson.teacher.id = :teacherId OR ar.lesson.classEntity.teacher.id = :teacherId) AND ar.status = :status ORDER BY ar.createdAt DESC")
+    List<AbsenceRequest> findByTeacherIdAndStatusOrderByCreatedAtDesc(@Param("teacherId") Long teacherId, @Param("status") AbsenceStatus status);
 
     /**
      * Kiểm tra xem học viên đã có yêu cầu nghỉ cho buổi học này chưa

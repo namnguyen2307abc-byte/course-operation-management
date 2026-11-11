@@ -2,7 +2,6 @@ package com.talent.management.features.attendance_makeup.controller;
 
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceRequestCreateRequest;
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest;
-import com.talent.management.features.attendance_makeup.dto.request.AttendanceMarkRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupCancelRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupResolveRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupScheduleRequest;
@@ -68,20 +67,32 @@ public class AbsenceMakeupController {
         return ResponseEntity.ok(absenceMakeupService.getAbsenceRequestById(id));
     }
 
+    @Operation(summary = "Giai đoạn 1: Phụ huynh hủy đơn xin nghỉ đang chờ duyệt (PENDING)")
+    @PatchMapping("/absence-requests/{id}/cancel")
+    public ResponseEntity<Void> cancelAbsenceRequest(@PathVariable Long id) {
+        absenceMakeupService.cancelAbsenceRequest(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/absence-requests/{id}")
+    public ResponseEntity<Void> deletePendingAbsenceRequest(@PathVariable Long id) {
+        absenceMakeupService.cancelAbsenceRequest(id);
+        return ResponseEntity.ok().build();
+    }
+
     // =========================================================================
     // GIAI ĐOẠN 2: GIÁO VIÊN XÉT DUYỆT
     // =========================================================================
 
     /**
-     * Endpoint duy nhất xét duyệt đơn nghỉ — thay thế 3 endpoint cũ
-     * (PUT /approve, PUT /special-approve, PUT /reject).
+     * Endpoint duy nhất xét duyệt đơn nghỉ.
      *
-     * Body: { "decision": "APPROVED" | "EXCUSED" | "REJECTED", "reviewNote": "..." }
+     * Body: { "decision": "APPROVED" | "REJECTED", "reviewNote": "..." }
      *
-     * Phân quyền: TEACHER, ADMIN
+     * Phân quyền: TEACHER phụ trách lớp/buổi, STAFF, ADMIN (can thiệp khi khẩn cấp)
      */
-    @Operation(summary = "Giai đoạn 2: Giáo viên xét duyệt đơn nghỉ (TEACHER / ADMIN) — " +
-               "APPROVED: cần bù | EXCUSED: miễn bù | REJECTED: từ chối")
+    @Operation(summary = "Giai đoạn 2: Xét duyệt đơn nghỉ (TEACHER / STAFF / ADMIN) — " +
+               "APPROVED: đồng ý (tạo ca bù) | REJECTED: từ chối")
     @PatchMapping("/absence-requests/{id}/review")
     public ResponseEntity<AbsenceRequestResponse> reviewAbsenceRequest(
             @PathVariable Long id,
@@ -131,25 +142,9 @@ public class AbsenceMakeupController {
         return ResponseEntity.ok(absenceMakeupService.markNoSlotAvailable(id, request));
     }
 
-    @Operation(summary = "Giai đoạn 3: Buổi quan trọng không bù được — chuyển khóa học kỳ sau (STAFF / ADMIN) → DEFERRED")
-    @PatchMapping("/makeup-requests/{id}/defer")
-    public ResponseEntity<MakeupRegistrationResponse> deferToNextTerm(
-            @PathVariable Long id,
-            @RequestBody MakeupResolveRequest request) {
-        return ResponseEntity.ok(absenceMakeupService.deferToNextTerm(id, request));
-    }
-
     // =========================================================================
-    // GIAI ĐOẠN 4: GIÁO VIÊN ĐIỂM DANH & HOÀN THÀNH
+    // GIAI ĐOẠN 4: HOÀN THÀNH HỌC BÙ THỦ CÔNG
     // =========================================================================
-
-    @Operation(summary = "Giai đoạn 4: Điểm danh buổi học bù (TEACHER / STAFF / ADMIN) — " +
-               "Nếu PRESENT và có ca SCHEDULED → tự động COMPLETED")
-    @PostMapping("/attendance/mark")
-    public ResponseEntity<Void> markAttendance(@Valid @RequestBody AttendanceMarkRequest request) {
-        absenceMakeupService.markAttendance(request);
-        return ResponseEntity.ok().build();
-    }
 
     @Operation(summary = "Giai đoạn 4: Hoàn thành ca học bù thủ công qua ID (TEACHER / STAFF / ADMIN)")
     @PutMapping("/makeup-requests/{id}/complete")

@@ -349,40 +349,53 @@ function renderLessonCard(lesson, userRole) {
     // Không cho phép bấm link vào trang điểm danh, cập nhật ngay trạng thái điểm danh
     if (userRole === 'STUDENT' || userRole === 'PARENT') {
         const personalMarks = lesson.studentAttendances || [];
+        let effectiveStatus = lesson.attendanceStatus;
+        if (isPast && (!effectiveStatus || effectiveStatus === 'NOT_MARKED')) {
+            effectiveStatus = 'ABSENT';
+        }
         let stuBadge = '';
-        if (lesson.attendanceStatus === 'PRESENT') {
+        if (effectiveStatus === 'PRESENT') {
             stateClass = 'state-done';
             stuBadge = '<span class="stu-badge present"><i class="bi bi-check-circle-fill"></i> Có mặt</span>';
-        } else if (lesson.attendanceStatus && String(lesson.attendanceStatus).includes('ABSENT')) {
+        } else if (effectiveStatus && String(effectiveStatus).includes('ABSENT')) {
             stateClass = 'state-absent';
             stuBadge = '<span class="stu-badge absent"><i class="bi bi-x-circle-fill"></i> Vắng mặt</span>';
         } else {
-            stuBadge = `<span class="stu-badge pending"><i class="bi bi-clock"></i> ${isToday || isPast ? 'Chưa điểm danh' : 'Sắp diễn ra'}</span>`;
+            stuBadge = `<span class="stu-badge pending"><i class="bi bi-clock"></i> ${isToday ? 'Chưa điểm danh' : 'Sắp diễn ra'}</span>`;
         }
         let personalRows = '';
         if (personalMarks.length > 1) {
             personalRows = personalMarks.map(mark => {
-                const status = mark.status === 'PRESENT' ? 'Có mặt' : mark.status === 'ABSENT' ? 'Vắng mặt' : (isToday || isPast ? 'Chưa điểm danh' : 'Sắp diễn ra');
+                const status = mark.status === 'PRESENT'
+                    ? 'Có mặt'
+                    : (mark.status === 'ABSENT' || isPast ? 'Vắng mặt' : (isToday ? 'Chưa điểm danh' : 'Sắp diễn ra'));
                 return `<div class="lesson-meta"><i class="bi bi-person-check"></i><span>${escapeHtml(mark.fullName)}: <strong>${status}</strong></span></div>`;
             }).join('');
         } else if (personalMarks.length === 1 && userRole === 'PARENT') {
             personalRows = `<div class="lesson-meta"><i class="bi bi-person"></i><span>${escapeHtml(personalMarks[0].fullName)}</span></div>`;
         }
 
+        const makeupTag = lesson.makeupSession
+            ? '<span class="stu-badge makeup-tag" title="Buổi học bù"><i class="bi bi-arrow-repeat"></i>Học bù</span>'
+            : '';
+        const sessionText = lesson.sessionNumber ? ` • B${lesson.sessionNumber}` : '';
+
         return `
-            <div class="lesson-card ${slotClass} ${stateClass} student-card" ${slotInlineStyle} title="${escapeHtml(lesson.className)}">
+            <div class="lesson-card ${slotClass} ${stateClass} student-card" ${slotInlineStyle} title="${escapeAttr(lesson.className)}">
                 <div class="lesson-card-top">
-                    <span class="lesson-code">${escapeHtml(lesson.classCode || 'LỚP')}</span>
-                    ${personalMarks.length > 1 ? '' : stuBadge}
+                    <span class="lesson-code" title="${escapeAttr(lesson.classCode || 'LỚP')}">${escapeHtml(lesson.classCode || 'LỚP')}</span>
+                    <div class="d-flex flex-wrap align-items-center gap-1">
+                        ${makeupTag}
+                        ${personalMarks.length > 1 ? '' : stuBadge}
+                    </div>
                 </div>
 
-                <div class="lesson-title" title="${escapeHtml(lesson.className)}">${escapeHtml(lesson.className)}</div>
+                <div class="lesson-title" title="${escapeAttr(lesson.className)}">${escapeHtml(lesson.className)}</div>
                 ${personalRows}
 
                 <div class="lesson-meta">
                     <i class="bi bi-clock"></i>
-                    <span>${escapeHtml(lesson.timeRange)}</span>
-                    ${lesson.sessionNumber ? `<span>• Buổi ${lesson.sessionNumber}</span>` : ''}
+                    <span>${escapeHtml(lesson.timeRange)}${escapeHtml(sessionText)}</span>
                 </div>
 
                 <div class="lesson-meta">
@@ -390,7 +403,7 @@ function renderLessonCard(lesson, userRole) {
                     <span>${escapeHtml(lesson.roomName || '—')}</span>
                 </div>
 
-                <div class="lesson-meta">
+                <div class="lesson-meta mb-0">
                     <i class="bi bi-person"></i>
                     <span>${escapeHtml(lesson.teacherName || '—')}</span>
                 </div>
@@ -409,8 +422,15 @@ function renderLessonCard(lesson, userRole) {
     }
     const isBeforeSlot = Boolean(isToday && slotStartTime && currentTimeStr < slotStartTime);
 
+    const makeupInCount = lesson.makeupInCount || 0;
+    const makeupOutCount = lesson.makeupOutCount || 0;
+    const isTransferredEmpty = (lesson.totalStudents || 0) === 0 && makeupOutCount > 0;
+
     let badgeHtml = '';
-    if (lesson.attendanceCompleted) {
+    if (isTransferredEmpty) {
+        stateClass = '';
+        badgeHtml = '<span class="stu-badge pending" title="Học viên đã chuyển sang buổi học bù khác"><i class="bi bi-arrow-left-right"></i>Trống (Bù)</span>';
+    } else if (lesson.attendanceCompleted) {
         stateClass = 'state-done';
         badgeHtml = '<span class="stu-badge present" title="Đã hoàn thành điểm danh"><i class="bi bi-check2-circle"></i>Đã ĐD</span>';
     } else if (isToday) {
@@ -421,21 +441,47 @@ function renderLessonCard(lesson, userRole) {
         }
     } else if (isPast) {
         stateClass = 'state-missed';
-        badgeHtml = '<span class="stu-badge" style="background:#fee2e2; color:#991b1b; font-weight:700;" title="Buổi học đã qua chưa điểm danh"><i class="bi bi-exclamation-circle"></i>Chưa ĐD</span>';
+        badgeHtml = '<span class="stu-badge" style="background:#fee2e2; color:#991b1b; font-weight:700;" title="Buổi học đã qua chưa điểm danh (học viên mặc định tính vắng mặt)"><i class="bi bi-exclamation-circle"></i>Chưa ĐD</span>';
     } else {
         badgeHtml = '<span class="stu-badge pending" title="Buổi học sắp diễn ra"><i class="bi bi-clock"></i>Sắp tới</span>';
     }
 
     const href = `lesson-attendance.html?lessonId=${lesson.lessonId}`;
-    const actionText = lesson.attendanceCompleted ? 'Đã lưu' : (isBeforeSlot && userRole === 'TEACHER' ? 'Chi tiết' : 'Điểm danh');
-    const actionPillClass = lesson.attendanceCompleted ? 'pill-done' : (isBeforeSlot && userRole === 'TEACHER' ? 'pill-view' : 'pill-go');
+    const actionText = isTransferredEmpty ? 'Chi tiết' : (lesson.attendanceCompleted ? 'Đã lưu' : (isBeforeSlot && userRole === 'TEACHER' ? 'Chi tiết' : 'Điểm danh'));
+    const actionPillClass = isTransferredEmpty ? 'pill-view' : (lesson.attendanceCompleted ? 'pill-done' : (isBeforeSlot && userRole === 'TEACHER' ? 'pill-view' : 'pill-go'));
     const sessionBadge = lesson.sessionNumber ? ` • B${lesson.sessionNumber}` : '';
+
+    const makeupInTip = (lesson.makeupInDetails || []).join(', ');
+    const makeupOutTip = (lesson.makeupOutDetails || []).join(', ');
+    const makeupBadgeLine = (makeupInCount > 0 || makeupOutCount > 0) ? `
+        <div class="d-flex flex-wrap gap-1 mt-1" style="font-size: 0.68rem;">
+            ${makeupInCount > 0 ? `<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-1.5 py-0.5 rounded-pill" title="Học viên học bù vào lớp: ${escapeAttr(makeupInTip)}">+${makeupInCount} bù vào</span>` : ''}
+            ${makeupOutCount > 0 ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-1.5 py-0.5 rounded-pill" title="Học viên chuyển sang học bù lớp khác: ${escapeAttr(makeupOutTip)}">-${makeupOutCount} chuyển bù</span>` : ''}
+        </div>` : '';
+
+    // Hiển thị danh sách học viên thực tế của buổi học cho GV / Admin / Staff
+    const sessionRoster = lesson.studentAttendances || [];
+    const rosterTitleTip = sessionRoster.map(s => s.fullName).join(', ');
+    let sessionRosterHtml = '';
+    if (sessionRoster.length > 0) {
+        const visibleRoster = sessionRoster.slice(0, 2).map(s => {
+            const isMk = String(s.fullName || '').includes('(Học bù)');
+            const shortName = String(s.fullName || '').replace(' (Học bù)', '');
+            return `<span class="d-inline-flex align-items-center gap-1 text-truncate" style="max-width:100%;" title="${escapeAttr(s.fullName)}">
+                <i class="bi ${isMk ? 'bi-person-plus-fill text-info' : 'bi-person-fill text-secondary'}"></i>
+                <span class="text-truncate">${escapeHtml(shortName)}</span>${isMk ? '<span class="badge bg-info-subtle text-info-emphasis px-1" style="font-size:0.62rem;">Bù</span>' : ''}
+            </span>`;
+        }).join('');
+        const extraCount = sessionRoster.length - 2;
+        const extraHtml = extraCount > 0 ? `<span class="text-muted" style="font-size:0.68rem;">+${extraCount} HV khác</span>` : '';
+        sessionRosterHtml = `<div class="lesson-meta flex-column align-items-start gap-0 mt-1" style="font-size:0.72rem;" title="${escapeAttr(rosterTitleTip)}">${visibleRoster}${extraHtml}</div>`;
+    }
 
     return `
         <div class="lesson-card ${slotClass} ${stateClass} teacher-class-card" 
              onclick="window.location.href='${href}'" 
              ${slotInlineStyle} 
-             title="${escapeAttr(lesson.className || '')} (${escapeAttr(lesson.classCode || '')}) - Phòng: ${escapeAttr(lesson.roomName || 'Chưa xếp')} - GV: ${escapeAttr(lesson.teacherName || '—')}">
+             title="${escapeAttr(lesson.className || '')} (${escapeAttr(lesson.classCode || '')}) - Phòng: ${escapeAttr(lesson.roomName || 'Chưa xếp')} - GV: ${escapeAttr(lesson.teacherName || '—')}${rosterTitleTip ? ' - HV: ' + escapeAttr(rosterTitleTip) : ''}">
             <div class="lesson-card-top">
                 <span class="lesson-code" title="${escapeAttr(lesson.classCode || '')}">${escapeHtml(lesson.classCode || 'LỚP')}</span>
                 ${badgeHtml}
@@ -462,8 +508,11 @@ function renderLessonCard(lesson, userRole) {
             </div>
             ` : ''}
 
+            ${sessionRosterHtml}
+            ${makeupBadgeLine}
+
             <div class="tc-card-footer">
-                <span class="tc-student-count" title="Sĩ số lớp">
+                <span class="tc-student-count" title="${rosterTitleTip ? 'Học viên buổi này: ' + escapeAttr(rosterTitleTip) : 'Sĩ số lớp'}">
                     <i class="bi bi-people-fill"></i>${lesson.totalStudents || 0} HV
                 </span>
                 <span class="tc-action-pill ${actionPillClass}">

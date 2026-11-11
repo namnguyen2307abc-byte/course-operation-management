@@ -108,10 +108,12 @@ class ScheduleWeeklyFlowTest {
                         .status(MakeupStatus.SCHEDULED).build()));
         var result = service.getWeeklySchedule(today, null, null, null).getLessons();
         assertThat(result).extracting("lessonId").containsExactlyInAnyOrder(100L, 200L);
-        assertThat(result.stream().filter(l -> l.getLessonId() == 100L).findFirst().orElseThrow().getStudentAttendances())
-                .extracting("studentId").containsExactly(2L);
-        assertThat(result.stream().filter(l -> l.getLessonId() == 200L).findFirst().orElseThrow().getStudentAttendances())
-                .extracting("studentId").containsExactly(1L);
+        var origSlot = result.stream().filter(l -> l.getLessonId() == 100L).findFirst().orElseThrow();
+        var makeupSlot = result.stream().filter(l -> l.getLessonId() == 200L).findFirst().orElseThrow();
+        assertThat(origSlot.isMakeupSession()).isFalse();
+        assertThat(origSlot.getStudentAttendances()).extracting("studentId").containsExactly(2L);
+        assertThat(makeupSlot.isMakeupSession()).isTrue();
+        assertThat(makeupSlot.getStudentAttendances()).extracting("studentId").containsExactly(1L);
     }
 
     @Test void teacherCannotMarkBeforeStartAndCancelledLessonCannotBeMarkedByAdmin() {
@@ -303,5 +305,97 @@ class ScheduleWeeklyFlowTest {
         assertThatThrownBy(() -> attendanceService.getStudentAttendanceTracking(9L, 50L))
                 .isInstanceOf(AttendanceMakeupException.class)
                 .hasMessageContaining("Bạn chỉ có quyền xem thông tin con của mình");
+    }
+
+    @Test void teacherScheduleHidesEmptyLessonWhenAllStudentsTransferredOut() {
+        Lesson oneOnOneLesson = Lesson.builder().id(300L).teacher(teacher).lessonDate(today).sessionNumber(11)
+                .startTime(LocalTime.of(18, 0)).endTime(LocalTime.of(19, 30)).status(LessonStatus.SCHEDULED)
+                .classEntity(ClassEntity.builder().id(30L).className("Piano 1-1 Bé Bảo Nam").currentStudents(1).build())
+                .build();
+        Lesson targetLesson = Lesson.builder().id(301L).teacher(User.builder().id(88L).role(Role.TEACHER).build())
+                .lessonDate(today.plusDays(1)).sessionNumber(11)
+                .classEntity(ClassEntity.builder().id(31L).className("Piano Grade 1 - Đống Đa").build())
+                .build();
+
+        when(currentUser.getCurrentUser()).thenReturn(teacher);
+        when(lessons.findByTeacherIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(eq(teacher.getId()), any(), any()))
+                .thenReturn(List.of(oneOnOneLesson));
+        when(enrollments.findEnrollmentsByClassIdInAndStatusIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of(Enrollment.builder().classEntity(oneOnOneLesson.getClassEntity()).student(child).build()));
+        when(makeups.findByOriginalLessonIdInAndStatusIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of(MakeupRegistration.builder().student(child)
+                        .originalLesson(oneOnOneLesson).targetLesson(targetLesson)
+                        .status(MakeupStatus.SCHEDULED).build()));
+        when(makeups.findByTargetLessonIdInAndStatusIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of());
+
+        var result = service.getWeeklySchedule(today, null, null, null).getLessons();
+        assertThat(result).isEmpty();
+    }
+
+    @Test void teacherScheduleUpdatesPerSessionRosterWhenStudentsTransferInAndOut() {
+        ClassEntity groupClass = ClassEntity.builder().id(40L).className("Piano Nhóm T2").currentStudents(2).build();
+        Lesson groupLesson = Lesson.builder().id(400L).teacher(teacher).lessonDate(today).sessionNumber(5)
+                .startTime(LocalTime.of(18, 0)).endTime(LocalTime.of(19, 30)).status(LessonStatus.SCHEDULED)
+                .classEntity(groupClass).build();
+        Student makeupGuest = Student.builder().id(3L).fullName("Bé Khách Bù").build();
+        Lesson otherLesson = Lesson.builder().id(401L)
+                .classEntity(ClassEntity.builder().id(41L).className("Piano 1-1 Khác").build()).build();
+
+        when(currentUser.getCurrentUser()).thenReturn(teacher);
+        when(lessons.findByTeacherIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(eq(teacher.getId()), any(), any()))
+                .thenReturn(List.of(groupLesson));
+        when(enrollments.findEnrollmentsByClassIdInAndStatusIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of(
+                        Enrollment.builder().classEntity(groupClass).student(child).build(),
+                        Enrollment.builder().classEntity(groupClass).student(sibling).build()));
+        when(makeups.findByOriginalLessonIdInAndStatusIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of(MakeupRegistration.builder().student(child)
+                        .originalLesson(groupLesson).targetLesson(otherLesson)
+                        .status(MakeupStatus.SCHEDULED).build()));
+        when(makeups.findByTargetLessonIdInAndStatusIn(anyCollection(), anyCollection()))
+                .thenReturn(List.of(MakeupRegistration.builder().student(makeupGuest)
+                        .originalLesson(otherLesson).targetLesson(groupLesson)
+                        .status(MakeupStatus.SCHEDULED).build()));
+
+        var result = service.getWeeklySchedule(today, null, null, null).getLessons();
+        assertThat(result).hasSize(1);
+        var slot = result.get(0);
+        assertThat(slot.getTotalStudents()).isEqualTo(2);
+        assertThat(slot.getMakeupOutCount()).isEqualTo(1);
+        assertThat(slot.getMakeupInCount()).isEqualTo(1);
+        assertThat(slot.getStudentAttendances())
+                .extracting(StudentLessonAttendanceResponse::fullName)
+                .containsExactly("Bé B", "Bé Khách Bù (Học bù)");
+        verify(enrollments).findEnrollmentsByClassIdInAndStatusIn(anyCollection(), eq(List.of(EnrollmentStatus.ENROLLED)));
+    }
+
+    @Test void pastUnmarkedLessonDefaultsToAbsentOnScheduleAndTracking() {
+        Lesson pastLesson = lesson(500);
+        pastLesson.setLessonDate(today.minusDays(2));
+        pastLesson.setClassEntity(ClassEntity.builder().id(55L).className("Piano Lớp Cũ")
+                .course(Course.builder().id(1L).totalSessions(5).name("Piano").build()).build());
+
+        parentSchedule(child);
+        when(lessons.findLessonsByStudentIdAndDateBetween(eq(1L), any(), any())).thenReturn(List.of(pastLesson));
+        when(records.findByLessonIdIn(anyList())).thenReturn(List.of());
+
+        var slot = service.getWeeklySchedule(today.minusDays(2), null, null, null).getLessons().get(0);
+        assertThat(slot.getAttendanceStatus()).isEqualTo("ABSENT");
+        assertThat(slot.getStudentAttendances()).extracting(StudentLessonAttendanceResponse::status)
+                .containsExactly("ABSENT");
+
+        when(students.findById(1L)).thenReturn(Optional.of(child));
+        when(classes.findById(55L)).thenReturn(Optional.of(pastLesson.getClassEntity()));
+        when(enrollments.findEnrollmentsByStudentIdAndStatusIn(eq(1L), any()))
+                .thenReturn(List.of(Enrollment.builder().student(child).classEntity(pastLesson.getClassEntity()).status(EnrollmentStatus.ENROLLED).build()));
+        when(lessons.findByClassEntityIdOrderBySessionNumberAscLessonDateAscStartTimeAsc(55L))
+                .thenReturn(List.of(pastLesson));
+        when(makeups.findByStudentIdOrderByCreatedAtDesc(1L)).thenReturn(List.of());
+
+        var tracking = attendanceService.getStudentAttendanceTracking(1L, 55L);
+        assertThat(tracking.getAbsentCount()).isEqualTo(1);
+        assertThat(tracking.getLessons().get(0).getStatus()).isEqualTo("ABSENT");
+        assertThat(tracking.getLessons().get(0).getStatusLabel()).isEqualTo("Vắng mặt");
     }
 }

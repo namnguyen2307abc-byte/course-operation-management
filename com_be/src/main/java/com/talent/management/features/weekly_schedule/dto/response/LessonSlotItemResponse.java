@@ -50,4 +50,11 @@ public class LessonSlotItemResponse {
     private int totalStudents;
     private int presentCount;
     private int absentCount;
+
+    // Thông tin học bù hiển thị trên card lịch dạy / thời khóa biểu
+    private int makeupInCount;
+    private List<String> makeupInDetails;
+    private int makeupOutCount;
+    private List<String> makeupOutDetails;
+    private boolean makeupSession; // Buổi học bù (dành cho thẻ lịch học sinh/phụ huynh)
 }

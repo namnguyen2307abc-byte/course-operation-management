@@ -51,7 +51,7 @@ test('merged sidebar keeps weekly schedule and class management with role restri
     assert.equal(ctx.getCurrentUser(), null);
     assert.equal(ctx.sanitizeUserData({username:'teacher_demo',role:'ROLE_PARENT'}).role, 'PARENT');
 });
-test('weekly cards distinguish unmarked past lessons and show each child separately', () => {
+test('weekly cards default unmarked past lessons to absent and show each child separately', () => {
     const ctx = context(); vm.runInContext(read('js/weekly-schedule.js'), ctx);
     const lesson = {lessonId:1, past:true, attendanceStatus:'NOT_MARKED', studentAttendances:[
         {studentId:1,fullName:'Bé A',status:'PRESENT'}, {studentId:2,fullName:'Bé B',status:'ABSENT'}]};
@@ -59,7 +59,7 @@ test('weekly cards distinguish unmarked past lessons and show each child separat
     assert.match(html, /Bé A: <strong>Có mặt/);
     assert.match(html, /Bé B: <strong>Vắng mặt/);
     assert.doesNotMatch(html, /lesson-attendance.html/);
-    assert.match(ctx.renderLessonCard({...lesson, studentAttendances:[]}, 'PARENT'), /Chưa điểm danh/);
+    assert.match(ctx.renderLessonCard({...lesson, studentAttendances:[]}, 'PARENT'), /Vắng mặt/);
 });
 test('editing class schedule parses legacy Vietnamese labels and saved times', () => {
     const ctx = context(); vm.runInContext(read('js/class-management-form.js'), ctx);
