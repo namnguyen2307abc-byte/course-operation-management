@@ -21,6 +21,8 @@ public class PlacementAssessmentRequest {
     @NotNull(message = "Vui lòng chọn trình độ gợi ý")
     private PlacementLevel recommendedLevel;
 
+    private Long recommendedCourseId;
+
     private String teacherNote;
 
     private String audioUrl;

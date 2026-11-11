@@ -23,7 +23,6 @@ import com.talent.management.shared.enums.PaymentStatus;
 import com.talent.management.shared.enums.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import jakarta.annotation.PostConstruct;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +53,9 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     private final PayOSGateway payOSGateway;
     private final JdbcTemplate jdbcTemplate;
     private final com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository enrollmentRequestRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.talent.management.features.notification.service.NotificationService notificationService;
 
     private static final String ACADEMY_BANK_ID = "970405";
     private static final String ACADEMY_BANK_NAME = "Ngân hàng Nông nghiệp & PTNT (Agribank)";
@@ -262,7 +264,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
             // Cập nhật trạng thái yêu cầu đăng ký (nếu có) thành APPROVED
             try {
                 enrollmentRequestRepository.findByEnrollmentId(enrollment.getId()).ifPresent(req -> {
-                    req.setStatus(com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus.APPROVED);
+                    req.setStatus(com.talent.management.shared.enums.EnrollmentRequestStatus.APPROVED);
                     enrollmentRequestRepository.save(req);
                 });
             } catch (Exception ex) {
@@ -281,6 +283,30 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
         log.info("Xử lý thanh toán thành công cho hóa đơn: {}, mã giao dịch: {}, thu ngân: {}", 
                 invoice.getInvoiceCode(), paymentCode, cashier != null ? cashier.getUsername() : "SYSTEM");
 
+        if (notificationService != null && invoice.getStudent() != null) {
+            Student st = invoice.getStudent();
+            String clsName = (enrollment != null && enrollment.getClassEntity() != null)
+                    ? enrollment.getClassEntity().getClassName() : "khóa học";
+            if (st.getParent() != null) {
+                notificationService.sendNotification(
+                        st.getParent(), cashier,
+                        "Thanh toán học phí & Nhập học thành công",
+                        "Hóa đơn #" + invoice.getInvoiceCode() + " của bé " + st.getFullName() + " đã thanh toán thành công (" + formatCurrency(finalAmount) + ", Mã GD: " + paymentCode + "). Bé đã chính thức nhập học lớp " + clsName + "!",
+                        "PAYMENT_SUCCESS", invoice.getId(), "/pages/attendance-tracking.html");
+            }
+            if (enrollment != null && enrollment.getClassEntity() != null && enrollment.getClassEntity().getTeacher() != null) {
+                notificationService.sendNotification(
+                        enrollment.getClassEntity().getTeacher(), cashier,
+                        "Học viên mới chính thức vào lớp",
+                        "Học viên " + st.getFullName() + " đã hoàn tất học phí và chính thức nhập học lớp " + clsName + " của bạn.",
+                        "ENROLLMENT_COMPLETED", enrollment.getId(), "/pages/weekly-schedule.html");
+            }
+            notificationService.sendToRoles(
+                    List.of(Role.ADMIN, Role.STAFF), cashier,
+                    "Thu học phí thành công: " + invoice.getInvoiceCode(),
+                    "Đã thu " + formatCurrency(finalAmount) + " của học viên " + st.getFullName() + " — Lớp " + clsName + " (Mã phiếu: " + paymentCode + ").",
+                    "PAYMENT_SUCCESS", invoice.getId(), "/pages/tuition-payment.html");
+        }
         return tuitionPaymentMapper.toPaymentReceiptResponse(payment, cashGiven, changeAmount);
     }
 

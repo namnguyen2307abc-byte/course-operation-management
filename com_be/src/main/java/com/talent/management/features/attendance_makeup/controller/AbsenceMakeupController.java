@@ -4,6 +4,7 @@ import com.talent.management.features.attendance_makeup.dto.request.AbsenceReque
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest;
 import com.talent.management.features.attendance_makeup.dto.request.AttendanceMarkRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupCancelRequest;
+import com.talent.management.features.attendance_makeup.dto.request.MakeupResolveRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupScheduleRequest;
 import com.talent.management.features.attendance_makeup.dto.response.AbsenceRequestResponse;
 import com.talent.management.features.attendance_makeup.dto.response.LessonOptionResponse;
@@ -122,6 +123,22 @@ public class AbsenceMakeupController {
         return ResponseEntity.ok(absenceMakeupService.cancelMakeup(id, request));
     }
 
+    @Operation(summary = "Giai đoạn 3: Không có lớp bù phù hợp — báo phụ huynh (STAFF / ADMIN) → NO_SLOT")
+    @PatchMapping("/makeup-requests/{id}/no-slot")
+    public ResponseEntity<MakeupRegistrationResponse> markNoSlotAvailable(
+            @PathVariable Long id,
+            @RequestBody MakeupResolveRequest request) {
+        return ResponseEntity.ok(absenceMakeupService.markNoSlotAvailable(id, request));
+    }
+
+    @Operation(summary = "Giai đoạn 3: Buổi quan trọng không bù được — chuyển khóa học kỳ sau (STAFF / ADMIN) → DEFERRED")
+    @PatchMapping("/makeup-requests/{id}/defer")
+    public ResponseEntity<MakeupRegistrationResponse> deferToNextTerm(
+            @PathVariable Long id,
+            @RequestBody MakeupResolveRequest request) {
+        return ResponseEntity.ok(absenceMakeupService.deferToNextTerm(id, request));
+    }
+
     // =========================================================================
     // GIAI ĐOẠN 4: GIÁO VIÊN ĐIỂM DANH & HOÀN THÀNH
     // =========================================================================
@@ -145,7 +162,7 @@ public class AbsenceMakeupController {
     // =========================================================================
 
     @Operation(summary = "Danh sách học viên để chọn xin nghỉ — PARENT lấy con mình")
-    @GetMapping("/students")
+    @GetMapping({"/students", "/students/my-children"})
     public ResponseEntity<List<StudentOptionResponse>> getSelectableStudents() {
         return ResponseEntity.ok(absenceMakeupService.getSelectableStudents());
     }

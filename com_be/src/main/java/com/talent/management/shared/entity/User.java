@@ -49,6 +49,9 @@ public class User {
     @Column(length = 500)
     private String avatarUrl;
 
+    @Column(length = 100)
+    private String subject;
+
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }

@@ -59,4 +59,14 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
      * Kiểm tra xem học viên đã có yêu cầu nghỉ cho buổi học này chưa
      */
     Optional<AbsenceRequest> findByStudentIdAndLessonId(Long studentId, Long lessonId);
+
+    /**
+     * Lấy tất cả yêu cầu nghỉ học của một buổi học
+     */
+    List<AbsenceRequest> findByLessonId(Long lessonId);
+
+    /**
+     * Lấy tất cả yêu cầu nghỉ học của nhiều buổi học
+     */
+    List<AbsenceRequest> findByLessonIdIn(List<Long> lessonIds);
 }

@@ -4,6 +4,7 @@ import com.talent.management.features.attendance_makeup.dto.request.AbsenceReque
 import com.talent.management.features.attendance_makeup.dto.request.AbsenceReviewRequest;
 import com.talent.management.features.attendance_makeup.dto.request.AttendanceMarkRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupCancelRequest;
+import com.talent.management.features.attendance_makeup.dto.request.MakeupResolveRequest;
 import com.talent.management.features.attendance_makeup.dto.request.MakeupScheduleRequest;
 import com.talent.management.features.attendance_makeup.dto.response.AbsenceRequestResponse;
 import com.talent.management.features.attendance_makeup.dto.response.LessonOptionResponse;
@@ -65,6 +66,12 @@ public interface AbsenceMakeupService {
 
     /** Hủy ca học bù — Nhân viên/Admin hủy ca PENDING hoặc SCHEDULED → CANCELLED */
     MakeupRegistrationResponse cancelMakeup(Long id, MakeupCancelRequest request);
+
+    /** Không có lớp bù phù hợp — báo phụ huynh (PENDING/NO_SLOT → NO_SLOT) */
+    MakeupRegistrationResponse markNoSlotAvailable(Long id, MakeupResolveRequest request);
+
+    /** Buổi quan trọng không bù được — chuyển sang khóa học kỳ sau (PENDING/NO_SLOT → DEFERRED) */
+    MakeupRegistrationResponse deferToNextTerm(Long id, MakeupResolveRequest request);
 
     // ==========================================
     // GIAI ĐOẠN 4: GIÁO VIÊN ĐIỂM DANH & HOÀN THÀNH

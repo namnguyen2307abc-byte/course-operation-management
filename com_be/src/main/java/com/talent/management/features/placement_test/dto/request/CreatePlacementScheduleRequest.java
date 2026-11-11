@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 @Builder
 public class CreatePlacementScheduleRequest {
 
+    private Long enrollmentRequestId;
+
     @NotBlank(message = "Tên học viên không được để trống")
     private String studentName;
 
@@ -26,6 +28,8 @@ public class CreatePlacementScheduleRequest {
 
     @NotNull(message = "Ngày thi không được để trống")
     private LocalDateTime testDate;
+
+    private String subject;
 
     private String note;
 }

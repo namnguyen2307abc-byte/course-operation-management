@@ -8,9 +8,9 @@ import com.talent.management.features.course_enrollment.dto.response.ClassRespon
 import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
-import com.talent.management.features.course_enrollment.entity.EnrollmentRequest;
+import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.features.course_enrollment.enums.EnrollmentDecision;
-import com.talent.management.features.course_enrollment.enums.EnrollmentRequestStatus;
+import com.talent.management.shared.enums.EnrollmentRequestStatus;
 import com.talent.management.features.course_enrollment.mapper.CourseEnrollmentMapper;
 import com.talent.management.features.course_enrollment.repository.ClassRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
@@ -26,6 +26,7 @@ import com.talent.management.shared.enums.EnrollmentStatus;
 import com.talent.management.shared.service.CurrentUserService;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
+import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
 import com.talent.management.features.tuition_payment.repository.InvoiceRepository;
 import com.talent.management.shared.entity.Invoice;
 import com.talent.management.shared.enums.DiscountType;
@@ -71,7 +72,11 @@ public class CourseEnrollmentService {
     private final EnrollmentRequestRepository requestRepository;
     private final CourseEnrollmentMapper mapper;
     private final PlacementTestService placementTestService;
+    private final PlacementScheduleRepository placementScheduleRepository;
     private final InvoiceRepository invoiceRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.talent.management.features.notification.service.NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<ChildResponse> getMyChildren() {
@@ -178,15 +183,60 @@ public class CourseEnrollmentService {
                 .note(normalize(input.note()))
                 .build();
 
-        return mapper.toRequestResponse(requestRepository.save(request));
+        EnrollmentRequest savedReq = requestRepository.save(request);
+        if (notificationService != null) {
+            String courseTitle = preferredCourse != null ? preferredCourse.getName() : "Đăng ký kiểm tra đầu vào (Placement Test)";
+            notificationService.sendNotification(
+                    parent, parent,
+                    "Đã tiếp nhận yêu cầu đăng ký khóa học",
+                    "Yêu cầu đăng ký [" + courseTitle + "] cho bé " + child.getFullName() + " đã được hệ thống ghi nhận và đang chờ bộ phận giáo vụ xử lý.",
+                    "ENROLLMENT_REQUEST_CREATED", savedReq.getId(), "/pages/course-enrollment.html");
+            notificationService.sendToRoles(
+                    List.of(com.talent.management.shared.enums.Role.STAFF, com.talent.management.shared.enums.Role.ADMIN), parent,
+                    "Yêu cầu đăng ký khóa học mới",
+                    "Phụ huynh " + parent.getFullName() + " vừa gửi yêu cầu đăng ký [" + courseTitle + "] cho học viên " + child.getFullName() + ".",
+                    "ENROLLMENT_REQUEST_CREATED", savedReq.getId(), "/pages/course-enrollment.html");
+        }
+        return mapper.toRequestResponse(savedReq);
     }
 
     @Transactional(readOnly = true)
     public List<EnrollmentRequestResponse> getMyRequests() {
         User parent = currentUserService.getCurrentUser();
         return requestRepository.findByRequestedByIdOrderByCreatedAtDesc(parent.getId()).stream()
-                .map(mapper::toRequestResponse)
+                .map(request -> mapper.toRequestResponse(request, isCancellable(request)))
                 .toList();
+    }
+
+    @Transactional
+    public EnrollmentRequestResponse cancelRequest(Long requestId) {
+        User parent = currentUserService.getCurrentUser();
+        EnrollmentRequest request = requestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký"));
+        if (!Objects.equals(request.getRequestedBy().getId(), parent.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký");
+        }
+        if (!isCancellable(request)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu đã được xếp lịch kiểm tra hoặc xử lý, không thể tự hủy");
+        }
+        request.setStatus(EnrollmentRequestStatus.CANCELLED);
+        return mapper.toRequestResponse(requestRepository.save(request));
+    }
+
+    private boolean isCancellable(EnrollmentRequest request) {
+        if (request.getEnrollment() != null || request.getClassEntity() != null) {
+            return false;
+        }
+        if (!request.isPlacementRequested()) {
+            return request.getStatus() == EnrollmentRequestStatus.PENDING
+                    || request.getStatus() == EnrollmentRequestStatus.READY_FOR_ASSIGNMENT;
+        }
+        if (request.getStatus() != EnrollmentRequestStatus.WAITING_PLACEMENT
+                || placementScheduleRepository.existsByEnrollmentRequestId(request.getId())) {
+            return false;
+        }
+        return "NOT_AVAILABLE".equals(placementTestService
+                .getLatestRecommendation(request.getStudent().getId()).placementStatus());
     }
 
     @Transactional(readOnly = true)
@@ -290,11 +340,26 @@ public class CourseEnrollmentService {
         request.setClassEntity(classEntity);
         request.setEnrollment(enrollment);
         request.setStatus(EnrollmentRequestStatus.PENDING_PAYMENT);
-        return mapper.toRequestResponse(requestRepository.save(request), savedInvoice.getId(), savedInvoice.getInvoiceCode());
+        EnrollmentRequest approvedReq = requestRepository.save(request);
+        if (notificationService != null) {
+            if (approvedReq.getRequestedBy() != null) {
+                notificationService.sendNotification(
+                        approvedReq.getRequestedBy(), reviewer,
+                        "Xếp lớp thành công — Chờ thanh toán học phí",
+                        "Bé " + approvedReq.getStudent().getFullName() + " đã được xếp vào lớp " + classEntity.getClassName() + " (" + classEntity.getClassCode() + "). Hóa đơn #" + savedInvoice.getInvoiceCode() + " đã được tạo, vui lòng hoàn tất học phí để nhập học chính thức.",
+                        "ENROLLMENT_APPROVED", savedInvoice.getId(), "/pages/course-enrollment.html");
+            }
+            notificationService.sendToRoles(
+                    List.of(com.talent.management.shared.enums.Role.STAFF, com.talent.management.shared.enums.Role.ADMIN), reviewer,
+                    "Hóa đơn học phí mới cần thu (#" + savedInvoice.getInvoiceCode() + ")",
+                    "Học viên " + approvedReq.getStudent().getFullName() + " đã được xếp vào lớp " + classEntity.getClassName() + " — Chờ thu học phí.",
+                    "INVOICE_CREATED", savedInvoice.getId(), "/pages/tuition-payment.html");
+        }
+        return mapper.toRequestResponse(approvedReq, savedInvoice.getId(), savedInvoice.getInvoiceCode());
     }
 
     private EnrollmentRequest getRequestOrThrow(Long requestId) {
-        return requestRepository.findById(requestId)
+        return requestRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký"));
     }
 

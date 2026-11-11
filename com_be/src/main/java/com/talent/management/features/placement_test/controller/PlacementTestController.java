@@ -44,11 +44,13 @@ public class PlacementTestController {
     @GetMapping
     @Operation(summary = "Lấy danh sách tất cả các lịch thi xếp lớp / đánh giá năng khiếu")
     public ResponseEntity<List<PlacementScheduleResponse>> getAllSchedules(
-            @RequestParam(required = false) String parentEmail) {
+            @RequestParam(required = false) String parentEmail,
+            Authentication authentication) {
+        String currentUsername = authentication != null ? authentication.getName() : null;
         if (parentEmail != null && !parentEmail.isBlank()) {
-            return ResponseEntity.ok(placementTestService.getSchedulesForParent(parentEmail));
+            return ResponseEntity.ok(placementTestService.getSchedulesForParent(parentEmail, currentUsername));
         }
-        return ResponseEntity.ok(placementTestService.getAllSchedules());
+        return ResponseEntity.ok(placementTestService.getAllSchedules(currentUsername));
     }
 
     @GetMapping("/{id}")
@@ -60,8 +62,7 @@ public class PlacementTestController {
     @GetMapping("/students/{studentId}/latest-result")
     @Operation(summary = "Lấy kết quả và khóa học đề xuất mới nhất của học viên")
     public ResponseEntity<PlacementRecommendationResponse> getLatestRecommendation(
-            @PathVariable Long studentId
-    ) {
+            @PathVariable Long studentId) {
         return ResponseEntity.ok(placementTestService.getLatestRecommendation(studentId));
     }
 
@@ -75,7 +76,7 @@ public class PlacementTestController {
     }
 
     @PostMapping("/{id}/assess")
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER')")
     @Operation(summary = "Giáo viên / Chuyên môn chấm điểm đánh giá và xếp trình độ cho bài thi (Chỉ dành cho Giáo viên)")
     public ResponseEntity<PlacementScheduleResponse> saveAssessment(
             @PathVariable Long id,

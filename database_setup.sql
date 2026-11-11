@@ -26,15 +26,12 @@ BEGIN
         phone VARCHAR(20) NULL,
         role VARCHAR(30) NOT NULL CONSTRAINT DF_users_role DEFAULT 'PARENT',
         status VARCHAR(30) NOT NULL CONSTRAINT DF_users_status DEFAULT 'ACTIVE',
+        subject VARCHAR(100) NULL,
         avatar_url NVARCHAR(500) NULL,
         created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
         updated_at DATETIME2 NULL DEFAULT GETDATE()
     );
 END
-GO
-
--- Update legacy 'STUDENT' roles to 'PARENT' if any exist
-UPDATE dbo.users SET role = 'PARENT' WHERE role = 'STUDENT';
 GO
 
 -- 3. Create Placement Schedules Table (Lịch Thi Xếp Lớp & Đánh Giá Năng Lực Của Con)
@@ -47,6 +44,7 @@ BEGIN
         title NVARCHAR(150) NOT NULL,
         room_name NVARCHAR(100) NOT NULL,
         branch NVARCHAR(150) NULL,
+        subject VARCHAR(50) NULL,
         test_date DATETIME2 NOT NULL,
         note NVARCHAR(MAX) NULL,
         status VARCHAR(30) NOT NULL CONSTRAINT DF_placement_schedules_status DEFAULT 'SCHEDULED',
@@ -80,20 +78,6 @@ BEGIN
     VALUES ('teacher1@example.com', N'Nguyen Van Teacher', 'teacher1@example.com', '$2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymY0vB1Fz4eO6T.e/3a.m.', 'TEACHER', 'ACTIVE', GETDATE(), GETDATE());
 END
 
--- Giáo viên Múa mẫu (email: teacher_linh@example.com / pass: password123)
-IF NOT EXISTS (SELECT 1 FROM dbo.users WHERE email = 'teacher_linh@example.com')
-BEGIN
-    INSERT INTO dbo.users (username, full_name, email, password, role, status, created_at, updated_at)
-    VALUES ('teacher_linh@example.com', N'Cô Phạm Khánh Linh (GV Múa)', 'teacher_linh@example.com', '$2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymY0vB1Fz4eO6T.e/3a.m.', 'TEACHER', 'ACTIVE', GETDATE(), GETDATE());
-END
-
--- Giáo viên Võ mẫu (email: teacher_long@example.com / pass: password123)
-IF NOT EXISTS (SELECT 1 FROM dbo.users WHERE email = 'teacher_long@example.com')
-BEGIN
-    INSERT INTO dbo.users (username, full_name, email, password, role, status, created_at, updated_at)
-    VALUES ('teacher_long@example.com', N'Thầy Hoàng Phi Long (GV Võ Thuật)', 'teacher_long@example.com', '$2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymY0vB1Fz4eO6T.e/3a.m.', 'TEACHER', 'ACTIVE', GETDATE(), GETDATE());
-END
-
 -- Admin mẫu (email: admin@example.com / pass: adminpassword123)
 IF NOT EXISTS (SELECT 1 FROM dbo.users WHERE email = 'admin@example.com')
 BEGIN
@@ -101,4 +85,3 @@ BEGIN
     VALUES ('admin@example.com', N'Admin User', 'admin@example.com', '$2a$10$e8w.p83W/xXjNq9M9E0tVu3D9vWbB53KzKxJ7W4bO2o1Z8X2X2X2.', 'ADMIN', 'ACTIVE', GETDATE(), GETDATE());
 END
 GO
-

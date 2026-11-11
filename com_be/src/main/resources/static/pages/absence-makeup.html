@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viết Đơn - Học Viện Talent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .nav-pills-custom .nav-link {
+            border-radius: 12px;
+            font-weight: 600;
+            padding: 0.65rem 1.4rem;
+            color: #4b635b;
+            background: #ffffff;
+            border: 1px solid #d5e2dc;
+            margin-right: 0.6rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-pills-custom .nav-link:hover {
+            color: #143c34;
+            border-color: #b7cebf;
+            background: #f0f7f4;
+        }
+        .nav-pills-custom .nav-link.active {
+            background: linear-gradient(135deg, #143c34 0%, #1e5346 100%);
+            color: #ffffff !important;
+            border-color: #143c34;
+            box-shadow: 0 4px 12px rgba(20, 60, 52, 0.25);
+        }
+        .btn-primary {
+            background-color: #1e5346 !important;
+            border-color: #1e5346 !important;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #143c34 !important;
+            border-color: #143c34 !important;
+        }
+        .btn-outline-primary {
+            color: #1e5346 !important;
+            border-color: #b7cebf !important;
+        }
+        .btn-outline-primary:hover {
+            background-color: #e3efdf !important;
+            color: #143c34 !important;
+            border-color: #1e5346 !important;
+        }
+        .filter-box {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .card-modern {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+        }
+        .table-custom {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        .table-custom th {
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.9rem 1rem;
+            white-space: nowrap;
+        }
+        .table-custom td {
+            vertical-align: middle;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            background: #ffffff;
+            transition: background 0.15s ease;
+        }
+        .table-custom tr:last-child td {
+            border-bottom: none;
+        }
+        .table-custom tbody tr:hover td {
+            background-color: #f8fafc !important;
+        }
+        .id-badge {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0.25rem 0.55rem;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            display: inline-block;
+        }
+        .badge-status-modern {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            line-height: 1.25;
+            white-space: nowrap;
+        }
+        .status-pending {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .status-approved {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+        .status-excused {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+        .status-rejected {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        .status-scheduled {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .status-completed {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .status-noslot {
+            background: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+        }
+        .status-deferred {
+            background: #f8fafc;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+        .status-cancelled {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+        .status-missed {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .btn-action-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #475569;
+            font-size: 0.85rem;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            padding: 0;
+            cursor: pointer;
+        }
+        .btn-action-icon:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+        .btn-action-approve {
+            color: #059669;
+            border-color: #a7f3d0;
+            background: #ecfdf5;
+        }
+        .btn-action-approve:hover {
+            background: #10b981;
+            color: #ffffff;
+            border-color: #10b981;
+        }
+        .btn-action-reject {
+            color: #dc2626;
+            border-color: #fecaca;
+            background: #fef2f2;
+        }
+        .btn-action-reject:hover {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+        }
+        .reason-box {
+            padding: 0.35rem 0.65rem;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-size: 0.78rem;
+            line-height: 1.35;
+        }
+        .toast-container-custom {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1090;
+        }
+        .policy-card {
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb;
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+        /* Đồng bộ Hero Banner với màu xanh lá của Sidebar */
+        .schedule-hero {
+            background: linear-gradient(135deg, #143c34 0%, #1e5346 55%, #2a6f5d 100%);
+            color: #ffffff;
+            border-radius: 16px;
+            padding: 22px 28px;
+            box-shadow: 0 10px 25px -5px rgba(20, 60, 52, 0.28);
+        }
+        .hero-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+            letter-spacing: -0.02em;
+        }
+        .hero-sub {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.9rem;
+        }
+        .hero-breadcrumb .breadcrumb-item a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+        }
+        .hero-breadcrumb .breadcrumb-item.active {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+            color: rgba(255, 255, 255, 0.5);
+        }
+    
+        /* KPI Summary Cards */
+        .kpi-card-modern {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 1.15rem 1.25rem;
+            box-shadow: 0 2px 6px -2px rgba(20, 60, 52, 0.05);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .kpi-card-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -8px rgba(20, 60, 52, 0.12);
+            border-color: #cbd5e1;
+        }
+        .kpi-icon-wrap {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .kpi-icon-amber { background: #fef3c7; color: #d97706; }
+        .kpi-icon-green { background: #dcfce7; color: #15803d; }
+        .kpi-icon-forest { background: #e3efdf; color: #143c34; }
+        .kpi-icon-teal { background: #ccfbf1; color: #0f766e; }
+
+        .kpi-badge-amber { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
+        .kpi-badge-green { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
+        .kpi-badge-forest { background: #eaf3ec; color: #174638; border: 1px solid #c7dec1; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
+        .kpi-badge-teal { background: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
+
+        .kpi-number {
+            font-size: 1.85rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-top: 0.35rem;
+        }
+        .text-amber { color: #d97706 !important; }
+        .text-green { color: #15803d !important; }
+        .text-forest { color: #143c34 !important; }
+        .text-teal { color: #0f766e !important; }
+
+        .kpi-caption {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+    </style>
+<script src="../js/auth.js"></script>
+</head>
+<body class="has-workspace-sidebar">
+    <!-- Navbar tự động nạp từ components/navbar.html -->
+    <div id="navbar-container"><!-- workspace-shell:start -->
+<a class="skip-content" href="#main-content">Đến nội dung chính</a>
+<header class="workspace-topbar"><button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false"><i class="bi bi-list"></i></button><span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span><span class="workspace-context">Không gian làm việc</span></header>
+<aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
+<a class="sidebar-brand" data-app-path="/index.html" href="/index.html"><span class="brand-mark"><i class="bi bi-stars"></i></span><span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span></a>
+<nav id="workspaceNavigation" class="workspace-navigation"></nav>
+<div class="sidebar-bottom"><div class="sidebar-profile"><span class="profile-initial" id="sidebarAvatar">T</span><div><strong id="sidebarUserName"></strong><small id="sidebarUserRole"></small></div></div><button type="button" class="sidebar-logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button></div>
+</aside>
+<button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
+<!-- workspace-shell:end --></div>
+<script src="../js/workspace-shell.js"></script>
+<main class="container-fluid px-lg-4 my-4" id="main-content">
+        <!-- Toast Thông Báo Góc Màn Hình -->
+        <div class="toast-container-custom" id="toastContainer"></div>
+
+        <!-- HERO Tiêu đề trang -->
+        <header class="schedule-hero mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <nav class="hero-breadcrumb" aria-label="breadcrumb">
+                        <ol class="breadcrumb small mb-1">
+                            <li class="breadcrumb-item"><a href="../index.html">Trang Chủ</a></li>
+                            <li class="breadcrumb-item active" aria-current="page" id="pageBreadcrumbText">Viết Đơn</li>
+                        </ol>
+                    </nav>
+                    <h1 class="hero-title">
+                        <i class="bi bi-envelope-paper"></i>
+                        <span id="pageTitleText">Viết Đơn</span>
+                    </h1>
+                    <p class="hero-sub mb-0" id="pageHeroDesc">
+                        Quản lý đơn xin nghỉ học và lịch học bù của học viên.
+                    </p>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <span id="userRoleBadge" class="badge bg-light text-dark px-3 py-2 rounded-pill fw-bold shadow-sm">Đang xác thực...</span>
+                    <button class="btn btn-outline-light btn-sm px-3 rounded-pill fw-semibold" onclick="reloadData()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        
+        <!-- 4 Thẻ Thống Kê Nhanh (KPIS) -->
+        <div class="row g-3 mb-4" id="statsRow">
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card-modern">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="kpi-icon-wrap kpi-icon-amber">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <span class="badge kpi-badge-amber">Cần Xử Lý</span>
+                    </div>
+                    <div class="kpi-number text-amber" id="statPendingCount">0</div>
+                    <div class="kpi-caption">ĐƠN NGHỈ CHỜ DUYỆT</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card-modern">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="kpi-icon-wrap kpi-icon-green">
+                            <i class="bi bi-check2-circle"></i>
+                        </div>
+                        <span class="badge kpi-badge-green">Hợp Lệ</span>
+                    </div>
+                    <div class="kpi-number text-green" id="statApprovedCount">0</div>
+                    <div class="kpi-caption">ĐƠN ĐÃ PHÊ DUYỆT</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card-modern">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="kpi-icon-wrap kpi-icon-forest">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <span class="badge kpi-badge-forest">Chờ Bù</span>
+                    </div>
+                    <div class="kpi-number text-forest" id="statMakeupPendingCount">0</div>
+                    <div class="kpi-caption">CA BÙ CHỜ XẾP LỊCH</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <div class="kpi-card-modern">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="kpi-icon-wrap kpi-icon-teal">
+                            <i class="bi bi-award-fill"></i>
+                        </div>
+                        <span class="badge kpi-badge-teal">Hoàn Tất</span>
+                    </div>
+                    <div class="kpi-number text-teal" id="statMakeupCompletedCount">0</div>
+                    <div class="kpi-caption">CA BÙ ĐÃ HOÀN THÀNH</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Điều Hướng 3 Tabs Nghiệp Vụ -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+            <ul class="nav nav-pills nav-pills-custom mb-0" id="makeupTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" id="tabBtnAbsence" onclick="switchMainTab('ABSENCE')">
+                        <i class="bi bi-card-checklist"></i> Xử Lý Đơn
+                    </button>
+                </li>
+                <li class="nav-item" id="tabItemCreate">
+                    <button class="nav-link" id="tabBtnCreate" onclick="switchMainTab('CREATE')">
+                        <i class="bi bi-send-plus"></i> Viết Đơn Xin Nghỉ
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="tabBtnMakeup" onclick="switchMainTab('MAKEUP')">
+                        <i class="bi bi-calendar2-check"></i> Lịch Học Bù
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 1: DANH SÁCH & XỬ LÝ ĐƠN XIN NGHỈ HỌC                          -->
+        <!-- =================================================================== -->
+        <div id="sectionAbsence">
+            <div class="filter-box mb-4">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-funnel me-1 text-primary"></i>Trạng Thái:
+                        </label>
+                        <select id="filterAbsenceStatus" class="form-select form-control-modern" onchange="renderAbsenceTable(true)">
+                            <option value="" selected>Tất Cả Trạng Thái</option>
+                            <option value="PENDING">Chờ Duyệt (PENDING)</option>
+                            <option value="APPROVED">Đã Duyệt (APPROVED)</option>
+                            <option value="EXCUSED">Miễn Học Bù (EXCUSED)</option>
+                            <option value="REJECTED">Từ Chối (REJECTED)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-search me-1 text-primary"></i>Tìm Kiếm:
+                        </label>
+                        <input type="text" id="searchAbsenceInput" class="form-control form-control-modern" 
+                               placeholder="Tìm theo tên học viên, buổi học, lý do..." oninput="renderAbsenceTable(true)">
+                    </div>
+                    <div class="col-md-3 text-md-end pt-md-4" id="createBtnWrapper">
+                        <button class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm" id="btnCreateNewAbsence" onclick="switchMainTab('CREATE')">
+                            <i class="bi bi-plus-circle me-1"></i> Tạo Đơn Mới
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-modern p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-journal-text me-2" style="color: #1e5346;"></i>Danh Sách Đơn Xin Nghỉ
+                    </h5>
+                    <span class="badge px-3 py-1.5 rounded-pill fw-semibold" style="background: #e3efdf; color: #174638; border: 1px solid #c7dec1;" id="absenceCountBadge">0 đơn</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 75px;" class="text-center">Mã Đơn</th>
+                                <th style="min-width: 150px;">Học Viên</th>
+                                <th style="min-width: 230px;">Buổi Học Xin Nghỉ</th>
+                                <th style="min-width: 180px;">Lý Do Xin Nghỉ</th>
+                                <th style="width: 130px;" class="text-center">Trạng Thái</th>
+                                <th style="min-width: 150px;">Học Bù</th>
+                                <th class="text-end" style="width: 110px;">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="absenceTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Phân trang Danh sách đơn xin nghỉ -->
+                <div id="absencePaginationWrapper" class="d-none border-top pt-3 mt-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2 small text-muted">
+                        <span id="absencePaginationInfo">Hiển thị 0 - 0 / 0 đơn</span>
+                        <span class="text-secondary">|</span>
+                        <label for="absencePageSizeSelect" class="mb-0">Số dòng/trang:</label>
+                        <select id="absencePageSizeSelect" class="form-select form-select-sm" style="width: auto;" onchange="onAbsencePageSizeChange()">
+                            <option value="5" selected>5 đơn</option>
+                            <option value="10">10 đơn</option>
+                            <option value="20">20 đơn</option>
+                        </select>
+                    </div>
+                    <nav aria-label="Phân trang đơn xin nghỉ">
+                        <ul class="pagination pagination-sm mb-0 gap-1" id="absencePaginationList"></ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: GỬI YÊU CẦU XIN NGHỈ HỌC                                     -->
+        <!-- =================================================================== -->
+        <div id="sectionCreate" class="d-none">
+            <div class="row g-4 mb-4">
+                <!-- Cột Trái: Biểu Mẫu Tạo Đơn -->
+                <div class="col-lg-7">
+                    <div class="card-modern p-4 h-100">
+                        <h5 class="fw-bold text-dark mb-3">
+                            <i class="bi bi-pencil-square text-primary me-2"></i>Điền Thông Tin Xin Nghỉ Học
+                        </h5>
+
+                        <form id="absenceForm" onsubmit="event.preventDefault(); submitAbsenceRequest();">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-secondary small">
+                                    <i class="bi bi-person-fill text-primary me-1"></i>Học Viên Xin Nghỉ <span class="text-danger">*</span>:
+                                </label>
+                                <select id="createStudentSelect" class="form-select form-control-modern" onchange="onStudentSelectChanged()" required>
+                                    <option value="">-- Đang tải danh sách học viên --</option>
+                                </select>
+                                <div class="form-text small text-muted" id="createStudentInfo">
+                                    Chọn con hoặc học viên cần xin nghỉ để tải lịch học tương ứng.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-secondary small">
+                                    <i class="bi bi-calendar-event text-primary me-1"></i>Buổi Học Muốn Xin Nghỉ <span class="text-danger">*</span>:
+                                </label>
+                                <select id="createLessonSelect" class="form-select form-control-modern" required disabled>
+                                    <option value="">-- Vui lòng chọn học viên trước --</option>
+                                </select>
+                                <div class="form-text small text-muted">
+                                    Chỉ hiển thị các buổi học thuộc lịch đào tạo của học viên.
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-secondary small">
+                                    <i class="bi bi-chat-left-dots text-primary me-1"></i>Lý Do Xin Nghỉ Học <span class="text-danger">*</span>:
+                                </label>
+                                <textarea id="createReasonInput" class="form-control form-control-modern" rows="4" 
+                                          placeholder="Vui lòng nêu rõ lý do xin nghỉ (Ví dụ: Bé bị sốt siêu vi cần nghỉ dưỡng sức, Gia đình có việc đột xuất, Trùng lịch thi ở trường...)" required></textarea>
+                            </div>
+
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" onclick="switchMainTab('ABSENCE')">
+                                    Hủy Bỏ
+                                </button>
+                                <button type="submit" id="btnSubmitAbsence" class="btn btn-primary px-4 rounded-pill shadow-sm">
+                                    <i class="bi bi-send-fill me-1"></i> Gửi Yêu Cầu Xin Nghỉ
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Cột Phải: Quy Định & Hướng Dẫn Nhân Văn -->
+                <div class="col-lg-5">
+                    <div class="card-modern p-4 h-100 bg-white">
+                        <div class="policy-card mb-4">
+                            <div class="d-flex align-items-center gap-2 mb-2 text-warning-emphasis">
+                                <i class="bi bi-heart-pulse-fill fs-5 text-warning"></i>
+                                <h6 class="fw-bold mb-0">Quy Định Xin Nghỉ & Học Bù Học Viện</h6>
+                            </div>
+                            <p class="small text-muted mb-2">
+                                Học viện Talent cam kết bảo vệ tối đa quyền lợi kiến thức và trải nghiệm học tập của học viên:
+                            </p>
+                            <ul class="small text-secondary ps-3 mb-0">
+                                <li class="mb-1"><strong>Thời gian báo trước:</strong> Quý phụ huynh vui lòng gửi đơn trước buổi học ít nhất 12 - 24 giờ.</li>
+                                <li class="mb-1"><strong>Duyệt đơn:</strong> Giáo viên, Nhân viên hoặc Quản trị viên tiếp nhận và xét duyệt đơn xin nghỉ học của phụ huynh.</li>
+                                <li class="mb-1"><strong>Hạn xếp lịch bù:</strong> Ca bù nên được xếp trong vòng 30 ngày kể từ ngày nghỉ.</li>
+                                <li><strong>Giới hạn số lần học bù:</strong> Mỗi buổi nghỉ có phép được hỗ trợ xếp lịch bù <strong>tối đa 02 lần</strong>. Nếu học viên vắng mặt (bỏ lỡ) cả 02 lần học bù, quyền học bù của buổi đó sẽ tự động bị hủy.</li>
+                            </ul>
+                        </div>
+
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="small fw-bold text-dark mb-2">
+                                <i class="bi bi-headset text-primary me-1"></i>Cần Hỗ Trợ Trực Tiếp?
+                            </div>
+                            <p class="small text-muted mb-2">
+                                Nếu có bất kỳ câu hỏi hoặc cần điều phối lịch học gấp, xin liên hệ bộ phận Học vụ hoặc Giáo vụ chi nhánh:
+                            </p>
+                            <div class="d-flex align-items-center gap-3 small">
+                                <div><i class="bi bi-telephone text-success me-1"></i>Hotline: <strong>0243.888.999</strong></div>
+                                <div><i class="bi bi-envelope text-primary me-1"></i>support@talentcenter.edu.vn</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 3: ĐIỀU PHỐI & ĐIỂM DANH HỌC BÙ                                 -->
+        <!-- =================================================================== -->
+        <div id="sectionMakeup" class="d-none">
+            <div class="filter-box mb-4">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-funnel me-1 text-primary"></i>Trạng Thái:
+                        </label>
+                        <select id="filterMakeupStatus" class="form-select form-control-modern" onchange="renderMakeupTable(true)">
+                            <option value="" selected>Tất Cả Trạng Thái</option>
+                            <option value="PENDING">Chờ Xếp Lịch (PENDING)</option>
+                            <option value="NO_SLOT">Chưa Có Lớp Phù Hợp (NO_SLOT)</option>
+                            <option value="DEFERRED">Chuyển Khóa Kỳ Sau (DEFERRED)</option>
+                            <option value="SCHEDULED">Đã Xếp Lịch (SCHEDULED)</option>
+                            <option value="MISSED">Bỏ Lỡ / Vắng Bù (MISSED)</option>
+                            <option value="COMPLETED">Đã Hoàn Thành (COMPLETED)</option>
+                            <option value="CANCELLED">Đã Hủy (CANCELLED)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-search me-1 text-primary"></i>Tìm Kiếm:
+                        </label>
+                        <input type="text" id="searchMakeupInput" class="form-control form-control-modern" 
+                               placeholder="Tìm theo tên học viên, lớp, phòng đàn..." oninput="renderMakeupTable(true)">
+                    </div>
+                    <div class="col-md-2 text-md-end pt-md-4">
+                        <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadMakeupRequests()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-modern p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-calendar2-week me-2" style="color: #1e5346;"></i>Danh Sách Lịch Học Bù
+                    </h5>
+                    <span class="badge px-3 py-1.5 rounded-pill fw-semibold" style="background: #e3efdf; color: #174638; border: 1px solid #c7dec1;" id="makeupCountBadge">0 ca bù</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 75px;" class="text-center">Mã Ca</th>
+                                <th style="min-width: 160px;">Học Viên</th>
+                                <th style="min-width: 200px;">Buổi Nghỉ Gốc</th>
+                                <th style="min-width: 220px;">Ca Học Bù Được Xếp</th>
+                                <th style="width: 130px;" class="text-center">Trạng Thái</th>
+                                <th style="min-width: 160px;">Ghi Chú Điều Phối</th>
+                                <th class="text-end" style="width: 140px;">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="makeupTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Phân trang Danh sách học bù -->
+                <div id="makeupPaginationWrapper" class="d-none border-top pt-3 mt-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2 small text-muted">
+                        <span id="makeupPaginationInfo">Hiển thị 0 - 0 / 0 ca bù</span>
+                        <span class="text-secondary">|</span>
+                        <label for="makeupPageSizeSelect" class="mb-0">Số dòng/trang:</label>
+                        <select id="makeupPageSizeSelect" class="form-select form-select-sm" style="width: auto;" onchange="onMakeupPageSizeChange()">
+                            <option value="5" selected>5 ca bù</option>
+                            <option value="10">10 ca bù</option>
+                            <option value="20">20 ca bù</option>
+                        </select>
+                    </div>
+                    <nav aria-label="Phân trang học bù">
+                        <ul class="pagination pagination-sm mb-0 gap-1" id="makeupPaginationList"></ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal 1: Duyệt Đơn Thường (Approve) -->
+    <div class="modal fade" id="modalApprove" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-success text-white border-0">
+                    <h6 class="modal-title fw-bold">
+                        <i class="bi bi-check-circle-fill me-2"></i>Phê Duyệt Đơn Xin Nghỉ Học
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-secondary mb-3">
+                        Bạn đang thực hiện phê duyệt đơn xin nghỉ của học viên <strong id="approveStudentName" class="text-dark">...</strong>.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">Ghi Chú Duyệt (Tùy Chọn):</label>
+                        <textarea id="approveNoteInput" class="form-control form-control-modern" rows="2" 
+                                  placeholder="Đồng ý cho học viên nghỉ, dặn dò học viên ôn bài ở nhà..."></textarea>
+                    </div>
+                    <div class="alert alert-info py-2 px-3 small mb-0">
+                        <i class="bi bi-info-circle-fill me-1"></i>Hệ thống sẽ <strong>tự động tạo 1 yêu cầu học bù</strong> ở trạng thái Chờ xếp lịch.
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm" onclick="executeApprove()">
+                        <i class="bi bi-check-lg me-1"></i> Xác Nhận Duyệt
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Từ Chối Đơn Nghỉ (Reject) -->
+    <div class="modal fade" id="modalReject" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-danger text-white border-0">
+                    <h6 class="modal-title fw-bold">
+                        <i class="bi bi-x-circle-fill me-2"></i>Từ Chối Đơn Xin Nghỉ Học
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-secondary mb-3">
+                        Từ chối đơn xin nghỉ của học viên <strong id="rejectStudentName" class="text-dark">...</strong>.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">
+                            Lý Do Từ Chối <span class="text-danger">* (Bắt buộc)</span>:
+                        </label>
+                        <textarea id="rejectNoteInput" class="form-control form-control-modern" rows="3" 
+                                  placeholder="Nhập lý do từ chối rõ ràng và lịch sự gửi tới phụ huynh (VD: Đơn gửi sau khi buổi học đã kết thúc không có báo trước, hoặc đã vượt quá số buổi nghỉ cho phép trong tháng)..." required></textarea>
+                        <div class="form-text small text-danger" id="rejectNoteError" style="display: none;">
+                            Vui lòng nhập lý do từ chối!
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-danger rounded-pill px-4 shadow-sm" onclick="executeReject()">
+                        <i class="bi bi-x-lg me-1"></i> Xác Nhận Từ Chối
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: Xếp Lịch Học Bù (Schedule Makeup) -->
+    <div class="modal fade" id="modalSchedule" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white border-0">
+                    <h6 class="modal-title fw-bold">
+                        <i class="bi bi-calendar-plus me-2"></i>Xếp Lịch Học Bù Cho Học Viên
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="row g-2 small align-items-center">
+                            <div class="col-md-5">
+                                <strong>Học viên:</strong> <span id="scheduleStudentName" class="text-primary fw-bold">...</span>
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Buổi nghỉ gốc:</strong> <span id="scheduleOrigLesson">...</span>
+                            </div>
+                            <div class="col-md-3 text-md-end">
+                                <span id="scheduleRetryBadge" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1">Lần xếp bù: 1/2</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="scheduleSmartCoordinationBanner" class="d-none mb-3"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">
+                            Chọn Ca Học Bù Khả Dụng <span class="text-danger">*</span>:
+                        </label>
+                        <select id="scheduleTargetLessonSelect" class="form-select form-control-modern" required>
+                            <option value="">-- Đang tải các ca học bù phù hợp --</option>
+                        </select>
+                        <div class="form-text small text-muted">
+                            Hệ thống ưu tiên đề xuất các ca học cùng khóa đào tạo, cùng giáo viên hoặc phòng đàn tương đương.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">Ghi Chú Điều Phối / Dặn Dò:</label>
+                        <textarea id="scheduleNoteInput" class="form-control form-control-modern" rows="2" 
+                                  placeholder="Ghi chú phòng đàn hoặc bài tập cần chuẩn bị cho ca học bù..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="executeSchedule()">
+                        <i class="bi bi-calendar2-check me-1"></i> Xác Nhận Xếp Lịch Bù
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 5: Xem Chi Tiết Đơn Nghỉ / Học Bù -->
+    <div class="modal fade" id="modalDetail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title fw-bold text-dark">
+                        <i class="bi bi-info-circle text-primary me-2"></i>Chi Tiết Yêu Cầu Học Vụ
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" id="detailModalBody">
+                    <!-- Nội dung chi tiết render động qua JS -->
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer tự động nạp từ components/footer.html -->
+    <div id="footer-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/api.js"></script>
+
+    <script>
+        // Load Navbar và Footer dùng chung
+        updateNavbarUser();
+        fetch('../components/footer.html').then(r => r.text()).then(h => document.getElementById('footer-container').innerHTML = h);
+
+        // Biến lưu trạng thái toàn cục
+        let currentAbsenceList = [];
+        let currentMakeupList = [];
+        let currentStudents = [];
+        let currentUser = null;
+
+        let absencePage = 1;
+        let absencePageSize = 5;
+        let makeupPage = 1;
+        let makeupPageSize = 5;
+
+        let activeReviewId = null;
+        let activeMakeupId = null;
+
+        // Bootstrap Modals
+        let modalApproveObj = null;
+                let modalRejectObj = null;
+        let modalScheduleObj = null;
+        let modalDetailObj = null;
+
+        // =========================================================================
+        // KHỞI TẠO TRANG
+        // =========================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            currentUser = getCurrentUser();
+            initRoleDisplay();
+
+            modalApproveObj = new bootstrap.Modal(document.getElementById('modalApprove'));
+                        modalRejectObj = new bootstrap.Modal(document.getElementById('modalReject'));
+            modalScheduleObj = new bootstrap.Modal(document.getElementById('modalSchedule'));
+            modalDetailObj = new bootstrap.Modal(document.getElementById('modalDetail'));
+
+            reloadData();
+        });
+
+        function initRoleDisplay() {
+            const role = currentUser ? (currentUser.role || 'USER') : 'USER';
+            const isParent = role === 'PARENT';
+
+            // Phân quyền hiển thị: Parent -> "Viết đơn", Teacher / Staff / Admin -> "Xem đơn"
+            const pageTitleEl = document.getElementById('pageTitleText');
+            const breadcrumbEl = document.getElementById('pageBreadcrumbText');
+            const heroDescEl = document.getElementById('pageHeroDesc');
+            const tabItemCreate = document.getElementById('tabItemCreate');
+            const createBtnWrapper = document.getElementById('createBtnWrapper');
+
+            if (isParent) {
+                if (pageTitleEl) pageTitleEl.textContent = 'Viết Đơn';
+                if (breadcrumbEl) breadcrumbEl.textContent = 'Viết Đơn';
+                if (heroDescEl) heroDescEl.textContent = 'Viết đơn xin nghỉ học và theo dõi lịch học bù của học viên.';
+                if (tabItemCreate) tabItemCreate.classList.remove('d-none');
+                if (createBtnWrapper) createBtnWrapper.classList.remove('d-none');
+            } else {
+                if (pageTitleEl) pageTitleEl.textContent = 'Xem Đơn';
+                if (breadcrumbEl) breadcrumbEl.textContent = 'Xem Đơn';
+                if (heroDescEl) heroDescEl.textContent = 'Xem danh sách và xử lý đơn xin nghỉ học, lịch học bù.';
+                // Ẩn tab Viết đơn và nút Tạo đơn mới cho Teacher, Staff, Admin
+                if (tabItemCreate) tabItemCreate.classList.add('d-none');
+                if (createBtnWrapper) createBtnWrapper.classList.add('d-none');
+            }
+
+            const badge = document.getElementById('userRoleBadge');
+            if (!badge) return;
+            if (!currentUser) {
+                badge.innerText = 'Chưa Đăng Nhập';
+                badge.className = 'badge bg-light text-dark px-3 py-2 rounded-pill fw-bold shadow-sm';
+                return;
+            }
+
+            let roleName = 'Người Dùng';
+            if (role === 'PARENT') roleName = 'Phụ huynh';
+            else if (role === 'TEACHER') roleName = 'Giáo viên';
+            else if (role === 'ADMIN' || role === 'BRANCH_MANAGER') roleName = 'Quản trị';
+            else if (role === 'STAFF') roleName = 'Giáo vụ';
+
+            const displayName = currentUser.fullName || currentUser.username || '';
+            badge.innerHTML = `<i class="bi bi-person-fill me-1"></i>${roleName}: ${escapeHtml(displayName)}`;
+            badge.className = 'badge px-3 py-2 rounded-pill fw-bold shadow-sm';
+            badge.style.background = '#e3efdf';
+            badge.style.color = '#143c34';
+            badge.style.border = '1px solid #c7dec1';
+        }
+
+        async function reloadData() {
+            await Promise.all([
+                loadAbsenceRequests(),
+                loadMakeupRequests(),
+                loadSelectableStudents()
+            ]);
+            updateKpiStats();
+        }
+
+        // =========================================================================
+        // CHUYỂN ĐỔI TAB GIAO DIỆN
+        // =========================================================================
+        function switchMainTab(tab) {
+            const secAbsence = document.getElementById('sectionAbsence');
+            const secCreate = document.getElementById('sectionCreate');
+            const secMakeup = document.getElementById('sectionMakeup');
+
+            const btnAbsence = document.getElementById('tabBtnAbsence');
+            const btnCreate = document.getElementById('tabBtnCreate');
+            const btnMakeup = document.getElementById('tabBtnMakeup');
+
+            btnAbsence.classList.remove('active');
+            btnCreate.classList.remove('active');
+            btnMakeup.classList.remove('active');
+
+            secAbsence.classList.add('d-none');
+            secCreate.classList.add('d-none');
+            secMakeup.classList.add('d-none');
+
+            if (tab === 'ABSENCE') {
+                btnAbsence.classList.add('active');
+                secAbsence.classList.remove('d-none');
+                renderAbsenceTable();
+                updateKpiStats();
+            } else if (tab === 'CREATE') {
+                btnCreate.classList.add('active');
+                secCreate.classList.remove('d-none');
+            } else if (tab === 'MAKEUP') {
+                btnMakeup.classList.add('active');
+                secMakeup.classList.remove('d-none');
+                renderMakeupTable();
+                updateKpiStats();
+            }
+        }
+
+        // =========================================================================
+        // CẬP NHẬT THỐNG KÊ (KPIS)
+        // =========================================================================
+                function updateKpiStats() {
+            const pendingAbsence = (currentAbsenceList || []).filter(a => a.status === 'PENDING').length;
+            const approvedAbsence = (currentAbsenceList || []).filter(a => a.status === 'APPROVED' || a.status === 'EXCUSED').length;
+            const pendingMakeup = (currentMakeupList || []).filter(m => m.status === 'PENDING' || m.status === 'NO_SLOT').length;
+            const completedMakeup = (currentMakeupList || []).filter(m => m.status === 'COMPLETED').length;
+
+            const elPending = document.getElementById('statPendingCount');
+            if (elPending) elPending.innerText = pendingAbsence;
+            const elApproved = document.getElementById('statApprovedCount');
+            if (elApproved) elApproved.innerText = approvedAbsence;
+            const elMakeupPending = document.getElementById('statMakeupPendingCount');
+            if (elMakeupPending) elMakeupPending.innerText = pendingMakeup;
+            const elMakeupCompleted = document.getElementById('statMakeupCompletedCount');
+            if (elMakeupCompleted) elMakeupCompleted.innerText = completedMakeup;
+        }
+
+        // =========================================================================
+        // LUỒNG 1 & 2: QUẢN LÝ ĐƠN XIN NGHỈ
+        // =========================================================================
+        async function loadAbsenceRequests() {
+            try {
+                const data = await callApi('/api/attendance-makeup/absence-requests');
+                currentAbsenceList = data || [];
+                renderAbsenceTable();
+            } catch (err) {
+                console.error("Lỗi khi tải đơn xin nghỉ:", err);
+                document.getElementById('absenceTableBody').innerHTML = `
+                    <tr><td colspan="7" class="text-center text-danger py-4">Lỗi tải dữ liệu: ${err.message}</td></tr>
+                `;
+            }
+        }
+
+        function onAbsencePageSizeChange() {
+            const sel = document.getElementById('absencePageSizeSelect');
+            absencePageSize = Number(sel ? sel.value : 5) || 5;
+            absencePage = 1;
+            renderAbsenceTable(false);
+        }
+
+        function goToAbsencePage(page) {
+            absencePage = page;
+            renderAbsenceTable(false);
+        }
+
+        function renderAbsenceTable(resetPage = false) {
+            if (resetPage) absencePage = 1;
+            const tbody = document.getElementById('absenceTableBody');
+            const paginationWrapper = document.getElementById('absencePaginationWrapper');
+            const paginationInfo = document.getElementById('absencePaginationInfo');
+            const paginationList = document.getElementById('absencePaginationList');
+            const statusFilter = document.getElementById('filterAbsenceStatus').value;
+            const searchKeyword = (document.getElementById('searchAbsenceInput').value || '').trim().toLowerCase();
+
+            let filtered = currentAbsenceList;
+            if (statusFilter) {
+                filtered = filtered.filter(a => a.status === statusFilter);
+            }
+            if (searchKeyword) {
+                filtered = filtered.filter(a => 
+                    (a.studentName && a.studentName.toLowerCase().includes(searchKeyword)) ||
+                    (a.className && a.className.toLowerCase().includes(searchKeyword)) ||
+                    (a.reason && a.reason.toLowerCase().includes(searchKeyword)) ||
+                    (a.id && a.id.toString().includes(searchKeyword))
+                );
+            }
+
+            document.getElementById('absenceCountBadge').innerText = `${filtered.length} đơn`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                            Không có đơn xin nghỉ học nào phù hợp với bộ lọc
+                        </td>
+                    </tr>
+                `;
+                if (paginationWrapper) paginationWrapper.classList.add('d-none');
+                return;
+            }
+
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / absencePageSize));
+            if (absencePage > totalPages) absencePage = totalPages;
+            if (absencePage < 1) absencePage = 1;
+
+            const startIdx = (absencePage - 1) * absencePageSize;
+            const endIdx = Math.min(startIdx + absencePageSize, totalItems);
+            const pagedItems = filtered.slice(startIdx, endIdx);
+
+            const isStaffOrTeacher = currentUser && (currentUser.role === 'TEACHER' || currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
+
+            // Giáo viên chỉ được duyệt đơn của buổi học do mình phụ trách (backend cũng kiểm tra lại)
+            const canReviewItem = (item) => {
+                if (!currentUser) return false;
+                if (currentUser.role === 'TEACHER') {
+                    const myId = currentUser.userId ?? currentUser.id;
+                    return myId == null || item.teacherId == null || Number(myId) === Number(item.teacherId);
+                }
+                return ['ADMIN', 'BRANCH_MANAGER', 'STAFF'].includes(currentUser.role);
+            };
+
+            tbody.innerHTML = pagedItems.map(item => {
+                // Status badge
+                let statusBadge = '';
+                if (item.status === 'PENDING') {
+                    statusBadge = '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Duyệt</span>';
+                } else if (item.status === 'APPROVED') {
+                    statusBadge = '<span class="badge-status-modern status-approved"><i class="bi bi-check-circle-fill"></i>Đã Duyệt</span>';
+                } else if (item.status === 'EXCUSED') {
+                    statusBadge = '<span class="badge-status-modern status-excused"><i class="bi bi-shield-check"></i>Miễn Bù</span>';
+                } else if (item.status === 'REJECTED') {
+                    statusBadge = '<span class="badge-status-modern status-rejected"><i class="bi bi-x-circle-fill"></i>Từ Chối</span>';
+                }
+
+                // Makeup badge
+                let makeupBadge = '<span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.74rem;">Không</span>';
+                if (item.makeupStatus === 'PENDING') {
+                    makeupBadge = `<span class="badge-status-modern status-pending" title="${escapeHtml(item.makeupNote || 'Chờ xếp ca bù')}"><i class="bi bi-clock-history"></i>Chờ xếp ca</span>`;
+                } else if (item.makeupStatus === 'SCHEDULED') {
+                    makeupBadge = `<span class="badge-status-modern status-scheduled" title="${escapeHtml(item.makeupNote || ('Đã xếp: ' + (item.makeupTargetDate || '')))}"><i class="bi bi-calendar-check"></i>${item.makeupTargetDate || 'Đã xếp'}</span>`;
+                } else if (item.makeupStatus === 'COMPLETED') {
+                    makeupBadge = `<span class="badge-status-modern status-completed" title="${escapeHtml(item.makeupNote || 'Đã học bù thành công')}"><i class="bi bi-check2-all"></i>Đã học bù</span>`;
+                } else if (item.makeupStatus === 'NO_SLOT') {
+                    makeupBadge = `<span class="badge-status-modern status-noslot" title="${escapeHtml(item.makeupNote || 'Chưa có lớp phù hợp')}"><i class="bi bi-exclamation-triangle"></i>Chưa có lớp</span>`;
+                } else if (item.makeupStatus === 'DEFERRED') {
+                    makeupBadge = `<span class="badge-status-modern status-deferred" title="${escapeHtml(item.makeupNote || 'Chuyển kỳ sau')}"><i class="bi bi-skip-forward"></i>Kỳ sau</span>`;
+                } else if (item.makeupStatus === 'MISSED') {
+                    const retryStr = item.makeupRetryCount ? ` (${item.makeupRetryCount}/${item.makeupMaxRetries || 2})` : '';
+                    makeupBadge = `<span class="badge-status-modern status-missed" title="${escapeHtml(item.makeupNote || 'Học viên vắng mặt tại buổi học bù')}"><i class="bi bi-person-x-fill"></i>Bỏ lỡ bù${retryStr}</span>`;
+                } else if (item.makeupStatus === 'CANCELLED') {
+                    const isLocked = (item.makeupRetryCount >= 2) || (item.makeupNote && item.makeupNote.includes('KHÓA'));
+                    makeupBadge = isLocked
+                        ? `<span class="badge-status-modern status-cancelled" title="${escapeHtml(item.makeupNote || 'Quá 2 lần học bù quy định')}"><i class="bi bi-lock-fill"></i>Khóa bù (2/2)</span>`
+                        : `<span class="badge-status-modern status-cancelled" title="${escapeHtml(item.makeupNote || 'Không cần học bù')}"><i class="bi bi-x-circle"></i>Không bù</span>`;
+                }
+
+                // Date formatting
+                const lessonDateStr = item.lessonDate ? item.lessonDate : '';
+                const timeSlotStr = item.timeSlot ? item.timeSlot : '';
+
+                // Thao tác
+                let actionButtons = `
+                    <button class="btn-action-icon" title="Xem chi tiết" onclick="viewAbsenceDetail(${item.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                `;
+
+                if (canReviewItem(item) && item.status === 'PENDING') {
+                    actionButtons += `
+                        <button class="btn-action-icon btn-action-approve" title="Duyệt đơn" onclick="openApproveModal(${item.id}, '${escapeHtml(item.studentName)}')">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                        <button class="btn-action-icon btn-action-reject" title="Từ chối đơn" onclick="openRejectModal(${item.id}, '${escapeHtml(item.studentName)}')">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    `;
+                }
+
+                return `
+                    <tr>
+                        <td class="text-center"><span class="id-badge">#${item.id}</span></td>
+                        <td>
+                            ${(() => {
+                                const isOut = myId && item.originalTeacherId === myId && item.targetTeacherId !== myId;
+                                const isIn = myId && item.targetTeacherId === myId && item.originalTeacherId !== myId;
+                                let tag = '';
+                                if (isOut) {
+                                    tag = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill mb-1 d-inline-block" style="font-size: 0.68rem;"><i class="bi bi-box-arrow-up-right me-1"></i>Lớp tôi sang lớp khác</span>';
+                                } else if (isIn) {
+                                    tag = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill mb-1 d-inline-block" style="font-size: 0.68rem;"><i class="bi bi-box-arrow-in-down-left me-1"></i>Ngoài bù vào lớp tôi</span>';
+                                }
+                                return tag;
+                            })()}
+                            <div class="fw-bold text-dark" style="font-size: 0.88rem;">${item.studentName || 'Học viên'}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-truncate" style="max-width: 340px; color: #174638;" title="${escapeHtml(item.lessonTitle || (`Buổi ${item.sessionNumber || ''}`))}">
+                                ${escapeHtml(item.lessonTitle || (`Buổi ${item.sessionNumber || ''}`))}
+                            </div>
+                            <div class="text-muted mt-1 d-flex align-items-center gap-2" style="font-size: 0.76rem;">
+                                <span class="badge bg-light text-dark border px-1.5 py-0.5 font-monospace" style="font-size: 0.72rem;">
+                                    <i class="bi bi-calendar3 me-1" style="color: #1e5346;"></i>${lessonDateStr}
+                                </span>
+                                <span class="text-secondary"><i class="bi bi-clock me-1"></i>${timeSlotStr}</span>
+                            </div>
+                            <div class="text-muted mt-0.5 text-truncate" style="font-size: 0.72rem; max-width: 340px;" title="${escapeHtml((item.className || '') + ' • ' + (item.roomName || ''))}">
+                                <i class="bi bi-geo-alt me-1 text-secondary"></i>${escapeHtml(item.className || 'Lớp học')} &bull; ${escapeHtml(item.roomName || 'Phòng đàn')}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="reason-box text-truncate" style="max-width: 250px;" title="${escapeHtml(item.reason || '')}">
+                                ${escapeHtml(item.reason || '-')}
+                            </div>
+                        </td>
+                        <td class="text-center">${statusBadge}</td>
+                        <td class="text-center">${makeupBadge}</td>
+                        <td class="text-end text-nowrap">
+                            <div class="d-inline-flex gap-1 align-items-center justify-content-end">
+                                ${actionButtons}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (paginationWrapper) {
+                paginationWrapper.classList.remove('d-none');
+                if (paginationInfo) {
+                    paginationInfo.textContent = `Hiển thị ${startIdx + 1} - ${endIdx} / ${totalItems} đơn`;
+                }
+                if (paginationList) {
+                    let html = `
+                        <li class="page-item ${absencePage <= 1 ? 'disabled' : ''}">
+                            <button class="page-link rounded-2" type="button" onclick="goToAbsencePage(${absencePage - 1})">&laquo; Trước</button>
+                        </li>
+                    `;
+                    for (let p = 1; p <= totalPages; p++) {
+                        html += `
+                            <li class="page-item ${p === absencePage ? 'active' : ''}">
+                                <button class="page-link rounded-2" type="button" onclick="goToAbsencePage(${p})">${p}</button>
+                            </li>
+                        `;
+                    }
+                    html += `
+                        <li class="page-item ${absencePage >= totalPages ? 'disabled' : ''}">
+                            <button class="page-link rounded-2" type="button" onclick="goToAbsencePage(${absencePage + 1})">Sau &raquo;</button>
+                        </li>
+                    `;
+                    paginationList.innerHTML = html;
+                }
+            }
+        }
+
+        // =========================================================================
+        // HÀNH ĐỘNG DUYỆT / TỪ CHỐI
+        // =========================================================================
+        function openApproveModal(id, studentName) {
+            activeReviewId = id;
+            document.getElementById('approveStudentName').innerText = studentName;
+            document.getElementById('approveNoteInput').value = '';
+            modalApproveObj.show();
+        }
+
+        async function executeApprove() {
+            if (!activeReviewId) return;
+            const note = document.getElementById('approveNoteInput').value;
+            try {
+                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/review`, 'PATCH', {
+                    decision: 'APPROVED',
+                    reviewNote: note
+                });
+                modalApproveObj.hide();
+                showToast('success', 'Đã phê duyệt đơn xin nghỉ học và tự động tạo ca học bù!');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi phê duyệt: ' + err.message);
+            }
+        }
+
+        function openRejectModal(id, studentName) {
+            activeReviewId = id;
+            document.getElementById('rejectStudentName').innerText = studentName;
+            document.getElementById('rejectNoteInput').value = '';
+            document.getElementById('rejectNoteError').style.display = 'none';
+            modalRejectObj.show();
+        }
+
+        async function executeReject() {
+            if (!activeReviewId) return;
+            const note = document.getElementById('rejectNoteInput').value.trim();
+            if (!note) {
+                document.getElementById('rejectNoteError').style.display = 'block';
+                return;
+            }
+
+            try {
+                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/review`, 'PATCH', {
+                    decision: 'REJECTED',
+                    reviewNote: note
+                });
+                modalRejectObj.hide();
+                showToast('warning', 'Đã từ chối đơn xin nghỉ và gửi phản hồi tới phụ huynh.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi từ chối: ' + err.message);
+            }
+        }
+
+        // =========================================================================
+        // FORM TẠO ĐƠN XIN NGHỈ (TAB 2)
+        // =========================================================================
+        async function loadSelectableStudents() {
+            try {
+                const data = await callApi('/api/attendance-makeup/students');
+                currentStudents = data || [];
+
+                const select = document.getElementById('createStudentSelect');
+                if (currentStudents.length === 0) {
+                    select.innerHTML = '<option value="">Không có học viên nào</option>';
+                    return;
+                }
+
+                select.innerHTML = '<option value="">-- Chọn học viên xin nghỉ --</option>' + 
+                    currentStudents.map(s => `
+                        <option value="${s.id}">
+                            ${s.fullName} (${s.currentClassName || 'Đào tạo năng khiếu'})
+                        </option>
+                    `).join('');
+
+                // Nếu là phụ huynh có 1 con -> Tự chọn luôn
+                if (currentUser && currentUser.role === 'PARENT' && currentStudents.length >= 1) {
+                    select.value = currentStudents[0].id;
+                    onStudentSelectChanged();
+                }
+            } catch (err) {
+                console.error("Lỗi khi tải học viên:", err);
+            }
+        }
+
+        async function onStudentSelectChanged() {
+            const studentId = document.getElementById('createStudentSelect').value;
+            const lessonSelect = document.getElementById('createLessonSelect');
+
+            if (!studentId) {
+                lessonSelect.innerHTML = '<option value="">-- Vui lòng chọn học viên trước --</option>';
+                lessonSelect.disabled = true;
+                return;
+            }
+
+            lessonSelect.innerHTML = '<option value="">Đang tải các buổi học...</option>';
+            lessonSelect.disabled = true;
+
+            try {
+                const lessons = await callApi(`/api/attendance-makeup/students/${studentId}/lessons`);
+                if (!lessons || lessons.length === 0) {
+                    lessonSelect.innerHTML = '<option value="">Học viên này chưa có buổi học nào trong lịch</option>';
+                    lessonSelect.disabled = true;
+                    return;
+                }
+
+                lessonSelect.innerHTML = '<option value="">-- Chọn buổi học muốn xin nghỉ --</option>' + 
+                    lessons.map(l => {
+                        const dateStr = l.lessonDate || '';
+                        const timeStr = l.timeSlot || `${l.startTime} - ${l.endTime}`;
+                        const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
+                        const roomStr = l.roomName ? ` [Phòng: ${l.roomName}]` : '';
+                        return `<option value="${l.id}">${dateStr} (${timeStr}) &bull; ${titleStr} - ${l.className || ''}${roomStr}</option>`;
+                    }).join('');
+
+                lessonSelect.disabled = false;
+            } catch (err) {
+                lessonSelect.innerHTML = `<option value="">Lỗi tải buổi học: ${err.message}</option>`;
+                lessonSelect.disabled = true;
+            }
+        }
+
+        async function submitAbsenceRequest() {
+            const studentId = document.getElementById('createStudentSelect').value;
+            const lessonId = document.getElementById('createLessonSelect').value;
+            const reason = document.getElementById('createReasonInput').value.trim();
+
+            if (!studentId || !lessonId || !reason) {
+                showToast('danger', 'Vui lòng điền đầy đủ học viên, buổi học và lý do xin nghỉ!');
+                return;
+            }
+
+            const btnSubmit = document.getElementById('btnSubmitAbsence');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang gửi đơn...';
+
+            try {
+                await callApi('/api/attendance-makeup/absence-requests', 'POST', {
+                    studentId: Number(studentId),
+                    lessonId: Number(lessonId),
+                    reason: reason
+                });
+
+                showToast('success', 'Gửi đơn xin nghỉ học thành công! Giáo viên sẽ tiếp nhận và phản hồi sớm.');
+                document.getElementById('createReasonInput').value = '';
+
+                await reloadData();
+                switchMainTab('ABSENCE');
+            } catch (err) {
+                showToast('danger', 'Lỗi khi gửi đơn: ' + err.message);
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="bi bi-send-fill me-1"></i> Gửi Yêu Cầu Xin Nghỉ';
+            }
+        }
+
+        // =========================================================================
+        // LUỒNG 3 & 4: ĐIỀU PHỐI & ĐIỂM DANH HỌC BÙ (TAB 3)
+        // =========================================================================
+        async function loadMakeupRequests() {
+            try {
+                const data = await callApi('/api/attendance-makeup/makeup-requests');
+                currentMakeupList = data || [];
+                renderMakeupTable();
+            } catch (err) {
+                console.error("Lỗi khi tải danh sách học bù:", err);
+                document.getElementById('makeupTableBody').innerHTML = `
+                    <tr><td colspan="7" class="text-center text-danger py-4">Lỗi tải dữ liệu: ${err.message}</td></tr>
+                `;
+            }
+        }
+
+        function onMakeupPageSizeChange() {
+            const sel = document.getElementById('makeupPageSizeSelect');
+            makeupPageSize = Number(sel ? sel.value : 5) || 5;
+            makeupPage = 1;
+            renderMakeupTable(false);
+        }
+
+        function goToMakeupPage(page) {
+            makeupPage = page;
+            renderMakeupTable(false);
+        }
+
+        function renderMakeupTable(resetPage = false) {
+            if (resetPage) makeupPage = 1;
+            const tbody = document.getElementById('makeupTableBody');
+            const paginationWrapper = document.getElementById('makeupPaginationWrapper');
+            const paginationInfo = document.getElementById('makeupPaginationInfo');
+            const paginationList = document.getElementById('makeupPaginationList');
+            const statusFilter = document.getElementById('filterMakeupStatus').value;
+            const dirFilter = document.getElementById('filterMakeupDirection') ? document.getElementById('filterMakeupDirection').value : '';
+            const searchKeyword = (document.getElementById('searchMakeupInput').value || '').trim().toLowerCase();
+            const myId = currentUser ? currentUser.id : null;
+
+            let filtered = currentMakeupList;
+            if (dirFilter === 'OUT' && myId) {
+                filtered = filtered.filter(m => m.originalTeacherId === myId && m.targetTeacherId !== myId);
+            } else if (dirFilter === 'IN' && myId) {
+                filtered = filtered.filter(m => m.targetTeacherId === myId && m.originalTeacherId !== myId);
+            }
+            if (statusFilter) {
+                filtered = filtered.filter(m => m.status === statusFilter);
+            }
+            if (searchKeyword) {
+                filtered = filtered.filter(m => 
+                    (m.studentName && m.studentName.toLowerCase().includes(searchKeyword)) ||
+                    (m.targetClassName && m.targetClassName.toLowerCase().includes(searchKeyword)) ||
+                    (m.originalClassName && m.originalClassName.toLowerCase().includes(searchKeyword)) ||
+                    (m.note && m.note.toLowerCase().includes(searchKeyword)) ||
+                    (m.id && m.id.toString().includes(searchKeyword))
+                );
+            }
+
+            document.getElementById('makeupCountBadge').innerText = `${filtered.length} ca bù`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                            Không có yêu cầu học bù nào phù hợp
+                        </td>
+                    </tr>
+                `;
+                if (paginationWrapper) paginationWrapper.classList.add('d-none');
+                return;
+            }
+
+            const totalItems = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / makeupPageSize));
+            if (makeupPage > totalPages) makeupPage = totalPages;
+            if (makeupPage < 1) makeupPage = 1;
+
+            const startIdx = (makeupPage - 1) * makeupPageSize;
+            const endIdx = Math.min(startIdx + makeupPageSize, totalItems);
+            const pagedItems = filtered.slice(startIdx, endIdx);
+
+            const isStaffOrTeacher = currentUser && (currentUser.role === 'TEACHER' || currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
+            const isStaffOrAdmin = currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
+
+            tbody.innerHTML = pagedItems.map(item => {
+                const retryCount = item.retryCount || 0;
+                const maxRetries = item.maxRetries || 2;
+                const isLimitExceeded = Boolean(item.limitExceeded) || (retryCount >= maxRetries && (item.status === 'MISSED' || item.status === 'CANCELLED'));
+                const retryTagHtml = retryCount > 0
+                    ? `<div class="mt-1"><span class="badge ${isLimitExceeded ? 'bg-danger-subtle text-danger border-danger-subtle' : (retryCount >= maxRetries ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : 'bg-secondary-subtle text-secondary border-secondary-subtle')} border rounded-pill px-2 py-0.5" style="font-size: 0.68rem;">Lần bù: ${retryCount}/${maxRetries}</span></div>`
+                    : '';
+
+                // Status badge
+                let statusBadge = '';
+                if (item.status === 'PENDING') {
+                    statusBadge = '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Xếp Lịch</span>';
+                } else if (item.status === 'SCHEDULED' || item.status === 'REGISTERED') {
+                    statusBadge = '<span class="badge-status-modern status-scheduled"><i class="bi bi-calendar2-check"></i>Đã Xếp Lịch</span>' + retryTagHtml;
+                } else if (item.status === 'MISSED') {
+                    statusBadge = '<span class="badge-status-modern status-missed"><i class="bi bi-person-x-fill"></i>Bỏ Lỡ Bù</span>' + retryTagHtml;
+                } else if (item.status === 'COMPLETED') {
+                    statusBadge = '<span class="badge-status-modern status-completed"><i class="bi bi-check2-all"></i>Hoàn Thành</span>' + retryTagHtml;
+                } else if (item.status === 'CANCELLED') {
+                    statusBadge = isLimitExceeded
+                        ? '<span class="badge-status-modern status-cancelled"><i class="bi bi-lock-fill"></i>Khóa Bù (Vắng 2/2)</span>' + retryTagHtml
+                        : '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
+                } else if (item.status === 'NO_SLOT') {
+                    statusBadge = '<span class="badge-status-modern status-noslot"><i class="bi bi-exclamation-triangle"></i>Chưa Có Lớp</span>' + retryTagHtml;
+                } else if (item.status === 'DEFERRED') {
+                    statusBadge = '<span class="badge-status-modern status-deferred"><i class="bi bi-skip-forward"></i>Chuyển Kỳ Sau</span>' + retryTagHtml;
+                }
+
+                // Buổi học gốc
+                const origDateStr = item.originalLessonDate || '';
+                const origTimeStr = item.originalTimeSlot || '';
+
+                // Ca bù mục tiêu
+                let targetCell = '<span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.74rem;"><i class="bi bi-clock me-1"></i>Chưa xếp ca bù</span>';
+                if (item.targetLessonId) {
+                    const sessionCompareBadge = (item.originalSessionNumber && item.targetSessionNumber && item.originalSessionNumber !== item.targetSessionNumber)
+                        ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">Ghép linh hoạt #Buổi ${item.targetSessionNumber}</span>`
+                        : (item.targetSessionNumber ? `<span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.65rem;">#Buổi ${item.targetSessionNumber}</span>` : '');
+                    targetCell = `
+                        <div class="fw-semibold text-truncate" style="max-width: 260px; color: #174638;">
+                            ${escapeHtml(item.targetClassName || 'Lớp bù')}${sessionCompareBadge}
+                        </div>
+                        <div class="text-muted mt-1 d-flex align-items-center gap-2" style="font-size: 0.76rem;">
+                            <span class="badge bg-light text-dark border px-1.5 py-0.5 font-monospace" style="font-size: 0.72rem;">
+                                <i class="bi bi-calendar-check me-1 text-success"></i>${item.targetLessonDate || ''}
+                            </span>
+                            <span class="text-secondary"><i class="bi bi-clock me-1"></i>${item.targetTimeSlot || ''}</span>
+                        </div>
+                        <div class="text-muted mt-0.5 text-truncate" style="font-size: 0.72rem; max-width: 220px;">
+                            <i class="bi bi-person me-1 text-secondary"></i>GV: <strong>${escapeHtml(item.targetTeacherName || 'Chưa phân công')}</strong> &bull; ${escapeHtml(item.targetRoomName || 'Phòng đàn')}
+                        </div>
+                    `;
+                }
+
+                // Nút thao tác
+                let actionButtons = `
+                    <button class="btn-action-icon" title="Xem chi tiết ca bù" onclick="viewMakeupDetail(${item.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                `;
+
+                if (item.status === 'PENDING' || item.status === 'NO_SLOT') {
+                    if (isStaffOrAdmin && !isLimitExceeded) {
+                        actionButtons += `
+                            <button class="btn btn-sm btn-primary rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;" title="Xếp học viên vào lớp học bù" onclick="openScheduleModal(${item.id})">
+                                <i class="bi bi-calendar-plus me-1"></i> Xếp Lịch
+                            </button>
+                            <button class="btn-action-icon btn-action-reject" title="Chưa có lớp phù hợp - báo phụ huynh" onclick="markNoSlot(${item.id})">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </button>
+                            <button class="btn-action-icon" title="Chuyển sang kỳ sau" onclick="deferNextTerm(${item.id})">
+                                <i class="bi bi-skip-forward"></i>
+                            </button>
+                            <button class="btn-action-icon" title="Gia đình báo không cần học bù" onclick="familyDeclines(${item.id})">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        `;
+                    }
+                } else if (item.status === 'SCHEDULED' || item.status === 'REGISTERED') {
+                    if (isStaffOrTeacher) {
+                        actionButtons += `
+                            <button class="btn btn-sm btn-success rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;" title="Điểm danh có mặt (Hoàn thành ca bù)" onclick="confirmCompleteMakeup(${item.id})">
+                                <i class="bi bi-check2-all me-1"></i> Có Mặt
+                            </button>
+                        `;
+                    }
+                    if (isStaffOrAdmin) {
+                        if (retryCount < maxRetries) {
+                            actionButtons += `
+                                <button class="btn-action-icon btn-action-primary" title="Đổi ca học bù khác (Còn ${maxRetries - retryCount} lần đổi)" onclick="openScheduleModal(${item.id})">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                            `;
+                        }
+                        actionButtons += `
+                            <button class="btn-action-icon btn-action-reject" title="Hủy ca học bù" onclick="confirmCancelMakeup(${item.id})">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        `;
+                    }
+                } else if (item.status === 'MISSED') {
+                    if (isStaffOrAdmin && !isLimitExceeded && retryCount < maxRetries) {
+                        actionButtons += `
+                            <button class="btn btn-sm btn-warning text-dark rounded-pill px-2.5 py-1 text-nowrap fw-semibold shadow-sm" style="font-size: 0.75rem;" title="Xếp lại lịch học bù lần cuối (Lần ${retryCount + 1}/${maxRetries})" onclick="openScheduleModal(${item.id})">
+                                <i class="bi bi-arrow-repeat me-1"></i> Xếp Lại (${retryCount + 1}/${maxRetries})
+                            </button>
+                            <button class="btn-action-icon btn-action-reject" title="Hủy ca học bù" onclick="confirmCancelMakeup(${item.id})">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        `;
+                    }
+                }
+
+                return `
+                    <tr>
+                        <td class="text-center"><span class="id-badge">#${item.id}</span></td>
+                        <td>
+                            <div class="fw-bold text-dark" style="font-size: 0.88rem;">${item.studentName || 'Học viên'}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-secondary text-truncate" style="max-width: 250px;">
+                                ${escapeHtml(item.originalClassName || 'Lớp học')}
+                            </div>
+                            <div class="text-muted mt-1 d-flex align-items-center gap-2" style="font-size: 0.76rem;">
+                                <span class="badge bg-light text-dark border px-1.5 py-0.5 font-monospace" style="font-size: 0.72rem;">
+                                    <i class="bi bi-calendar3 me-1 text-secondary"></i>${origDateStr}
+                                </span>
+                                <span class="text-secondary"><i class="bi bi-clock me-1"></i>${origTimeStr}</span>
+                            </div>
+                            <div class="text-muted mt-0.5 text-truncate" style="font-size: 0.72rem; max-width: 240px;">
+                                <i class="bi bi-person me-1 text-secondary"></i>GV: <strong>${escapeHtml(item.originalTeacherName || 'Chưa phân công')}</strong>
+                            </div>
+                        </td>
+                        <td>${targetCell}</td>
+                        <td class="text-center">${statusBadge}</td>
+                        <td>
+                            <div class="reason-box text-truncate" style="max-width: 240px;" title="${escapeHtml(item.note || '')}">
+                                ${escapeHtml(item.note || 'Tự động tạo từ đơn nghỉ')}
+                            </div>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <div class="d-inline-flex gap-1 align-items-center justify-content-end">
+                                ${actionButtons}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (paginationWrapper) {
+                paginationWrapper.classList.remove('d-none');
+                if (paginationInfo) {
+                    paginationInfo.textContent = `Hiển thị ${startIdx + 1} - ${endIdx} / ${totalItems} ca bù`;
+                }
+                if (paginationList) {
+                    let html = `
+                        <li class="page-item ${makeupPage <= 1 ? 'disabled' : ''}">
+                            <button class="page-link rounded-2" type="button" onclick="goToMakeupPage(${makeupPage - 1})">&laquo; Trước</button>
+                        </li>
+                    `;
+                    for (let p = 1; p <= totalPages; p++) {
+                        html += `
+                            <li class="page-item ${p === makeupPage ? 'active' : ''}">
+                                <button class="page-link rounded-2" type="button" onclick="goToMakeupPage(${p})">${p}</button>
+                            </li>
+                        `;
+                    }
+                    html += `
+                        <li class="page-item ${makeupPage >= totalPages ? 'disabled' : ''}">
+                            <button class="page-link rounded-2" type="button" onclick="goToMakeupPage(${makeupPage + 1})">Sau &raquo;</button>
+                        </li>
+                    `;
+                    paginationList.innerHTML = html;
+                }
+            }
+        }
+
+        // =========================================================================
+        // XẾP LỊCH HỌC BÙ & ĐIỂM DANH HOÀN THÀNH
+        // =========================================================================
+        async function openScheduleModal(makeupId) {
+            activeMakeupId = makeupId;
+            const item = currentMakeupList.find(m => m.id === makeupId);
+            if (!item) return;
+
+            const currentRetry = item.retryCount || 0;
+            const maxRetries = item.maxRetries || 2;
+            if (item.limitExceeded || currentRetry >= maxRetries) {
+                showToast('danger', `Học viên đã sử dụng hết tối đa ${maxRetries}/${maxRetries} lần xếp lịch học bù theo quy định!`);
+                return;
+            }
+
+            const nextAttempt = currentRetry + 1;
+            const origSessionText = item.originalSessionNumber ? `#Buổi ${item.originalSessionNumber} - ` : '';
+            document.getElementById('scheduleStudentName').innerText = item.studentName || '';
+            document.getElementById('scheduleOrigLesson').innerText = `${origSessionText}${item.originalClassName || ''} (Ngày: ${item.originalLessonDate || ''})`;
+            document.getElementById('scheduleNoteInput').value = (item.note || '').replace(/^\[Lần bù:\s*\d+\/\d+(?:\s*-\s*KHÓA)?\]\s*/, '');
+
+            const retryBadge = document.getElementById('scheduleRetryBadge');
+            if (retryBadge) {
+                retryBadge.className = nextAttempt >= maxRetries
+                    ? 'badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold'
+                    : 'badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-semibold';
+                retryBadge.innerHTML = `<i class="bi bi-repeat me-1"></i>Lần xếp bù: ${nextAttempt}/${maxRetries}${nextAttempt >= maxRetries ? ' (Lần cuối)' : ''}`;
+            }
+
+            const coordBanner = document.getElementById('scheduleSmartCoordinationBanner');
+            if (coordBanner) {
+                coordBanner.className = 'd-none mb-3';
+                coordBanner.innerHTML = '';
+            }
+
+            const select = document.getElementById('scheduleTargetLessonSelect');
+            select.innerHTML = '<option value="">Đang tải các ca học bù phù hợp...</option>';
+            modalScheduleObj.show();
+
+            try {
+                const availableLessons = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/available-lessons`);
+                if (!availableLessons || availableLessons.length === 0) {
+                    select.innerHTML = '<option value="">-- Không còn lớp cùng trình độ nào có lịch sắp tới --</option>';
+                    if (coordBanner) {
+                        coordBanner.className = 'alert alert-danger border-0 rounded-3 p-3 mb-3 small';
+                        coordBanner.innerHTML = `
+                            <div class="fw-bold mb-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>Tất cả các lớp cùng trình độ đã kết thúc hoặc hết chỗ trống!</div>
+                            <div class="text-secondary mb-2">Không tìm thấy buổi học sắp diễn ra ở các lớp song song. Bạn có thể chuyển trạng thái xử lý nhanh ngay bên dưới:</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Báo Chưa Có Lớp (NO_SLOT)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold" onclick="modalScheduleObj.hide(); deferNextTerm(${makeupId});">
+                                    <i class="bi bi-skip-forward me-1"></i>Bảo Lưu Chuyển Kỳ Sau (DEFERRED)
+                                </button>
+                            </div>
+                        `;
+                    }
+                    return;
+                }
+
+                const exactLessons = availableLessons.filter(l => l.exactSessionMatch !== false);
+                const flexLessons = availableLessons.filter(l => l.exactSessionMatch === false);
+
+                if (coordBanner) {
+                    if (exactLessons.length === 0 && flexLessons.length > 0) {
+                        coordBanner.className = 'alert alert-warning border-0 rounded-3 p-3 mb-3 small';
+                        coordBanner.innerHTML = `
+                            <div class="fw-bold text-warning-emphasis mb-1">
+                                <i class="bi bi-lightbulb-fill me-1 text-warning"></i>Điều phối thông minh: Các lớp song song đã dạy qua Buổi #${item.originalSessionNumber || ''}!
+                            </div>
+                            <div class="text-secondary mb-2">
+                                Hiện không còn lớp nào sắp dạy đúng <strong>Buổi #${item.originalSessionNumber || ''}</strong>. Hệ thống đã tự động mở rộng <strong>${flexLessons.length} ca ghép bù linh hoạt</strong> ở các buổi kế tiếp của lớp cùng trình độ để Giáo vụ ghép lớp, hoặc bạn có thể chọn:
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Báo Phụ Huynh Chưa Có Lớp Đúng Bài
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="modalScheduleObj.hide(); deferNextTerm(${makeupId});">
+                                    <i class="bi bi-skip-forward me-1"></i>Chuyển Sang Khóa Kỳ Sau
+                                </button>
+                            </div>
+                        `;
+                    } else if (exactLessons.length > 0) {
+                        coordBanner.className = 'alert alert-success border-0 rounded-3 py-2 px-3 mb-3 small';
+                        coordBanner.innerHTML = `
+                            <i class="bi bi-check-circle-fill me-1"></i>Tìm thấy <strong>${exactLessons.length} ca học đúng bài gốc (#Buổi ${item.originalSessionNumber || ''})</strong> còn chỗ trống${flexLessons.length > 0 ? ` và ${flexLessons.length} ca ghép bù linh hoạt dự phòng` : ''}.
+                        `;
+                    }
+                }
+
+                const renderOption = (l) => {
+                    const dateStr = l.lessonDate || '';
+                    const timeStr = l.timeSlot || `${l.startTime} - ${l.endTime}`;
+                    const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
+                    const teacherStr = l.teacherName ? ` - GV: ${l.teacherName}` : '';
+                    const roomStr = l.roomName ? ` [${l.roomName}]` : '';
+                    const seatStr = (l.availableSeats != null && l.maxStudents != null) ? ` | Còn ${l.availableSeats}/${l.maxStudents} chỗ` : '';
+                    const matchTag = l.exactSessionMatch === false ? ` [Ghép linh hoạt #Buổi ${l.sessionNumber}]` : ` [Đúng bài #Buổi ${l.sessionNumber}]`;
+                    return `<option value="${l.id}">${dateStr} (${timeStr}) • ${l.className || ''}${matchTag} - ${titleStr}${teacherStr}${roomStr}${seatStr}</option>`;
+                };
+
+                let optionsHtml = '<option value="">-- Chọn buổi học để điều phối học bù --</option>';
+                if (exactLessons.length > 0) {
+                    optionsHtml += `<optgroup label="🎯 Ca học ĐÚNG BÀI GỐC (#Buổi ${item.originalSessionNumber || ''} - Ưu tiên)">${exactLessons.map(renderOption).join('')}</optgroup>`;
+                }
+                if (flexLessons.length > 0) {
+                    optionsHtml += `<optgroup label="🔄 Ca GHÉP BÙ LINH HOẠT cùng trình độ (Khi lớp khác đã qua bài gốc)">${flexLessons.map(renderOption).join('')}</optgroup>`;
+                }
+                select.innerHTML = optionsHtml;
+
+                if (item.targetLessonId) {
+                    select.value = item.targetLessonId;
+                }
+            } catch (err) {
+                select.innerHTML = `<option value="">Lỗi tải ca học: ${err.message}</option>`;
+            }
+        }
+
+        async function executeSchedule() {
+            if (!activeMakeupId) return;
+            const targetLessonId = document.getElementById('scheduleTargetLessonSelect').value;
+            const note = document.getElementById('scheduleNoteInput').value.trim();
+
+            if (!targetLessonId) {
+                showToast('danger', 'Vui lòng chọn ca học bù phù hợp!');
+                return;
+            }
+
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${activeMakeupId}/schedule`, 'PUT', {
+                    targetLessonId: Number(targetLessonId),
+                    note: note
+                });
+                modalScheduleObj.hide();
+                showToast('success', 'Đã xếp lịch học bù thành công cho học viên!');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi xếp lịch bù: ' + err.message);
+            }
+        }
+
+        async function confirmCompleteMakeup(makeupId) {
+            if (!confirm('Xác nhận học viên đã có mặt và hoàn thành buổi học bù này? Hệ thống sẽ tự động lưu điểm danh.')) {
+                return;
+            }
+
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/complete`, 'PUT');
+                showToast('success', 'Đã xác nhận hoàn thành ca học bù và ghi nhận điểm danh có mặt!');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi hoàn thành học bù: ' + err.message);
+            }
+        }
+
+        async function confirmCancelMakeup(makeupId) {
+            const reason = prompt("Nhập lý do hủy ca học bù:");
+            if (reason === null) return;
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
+                    reason: reason.trim()
+                });
+                showToast('warning', 'Đã hủy ca học bù thành công.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi hủy ca bù: ' + err.message);
+            }
+        }
+
+        // Gia đình báo không cần học bù nữa -> hủy, phụ huynh thấy trạng thái + ghi chú
+        async function familyDeclines(makeupId) {
+            if (!confirm('Xác nhận gia đình báo KHÔNG CẦN học bù nữa và hủy yêu cầu này?')) return;
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
+                    reason: 'Gia đình báo không cần học bù'
+                });
+                showToast('warning', 'Đã hủy yêu cầu học bù theo đề nghị của gia đình.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi: ' + err.message);
+            }
+        }
+
+        // Không có lớp phù hợp -> báo phụ huynh (ghi chú hiển thị ở tài khoản phụ huynh)
+        async function markNoSlot(makeupId) {
+            const note = prompt('Nội dung báo phụ huynh (VD: Buổi này quan trọng, hiện chưa có lớp cùng level. Nếu bé đi học được vui lòng đến lớp gốc):');
+            if (note === null) return;
+            if (!note.trim()) { showToast('danger', 'Vui lòng nhập nội dung thông báo!'); return; }
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/no-slot`, 'PATCH', { note: note.trim() });
+                showToast('success', 'Đã ghi nhận chưa có lớp phù hợp và thông báo cho phụ huynh.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi: ' + err.message);
+            }
+        }
+
+        // Phụ huynh không thể đi học -> chuyển sang khóa kỳ sau
+        async function deferNextTerm(makeupId) {
+            const note = prompt('Ghi chú chuyển học bù sang khóa kỳ sau:');
+            if (note === null) return;
+            if (!note.trim()) { showToast('danger', 'Vui lòng nhập ghi chú!'); return; }
+            try {
+                await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/defer`, 'PATCH', { note: note.trim() });
+                showToast('success', 'Đã chuyển buổi học bù sang khóa kỳ sau.');
+                await reloadData();
+            } catch (err) {
+                showToast('danger', 'Lỗi: ' + err.message);
+            }
+        }
+
+        // =========================================================================
+        // XEM CHI TIẾT MODAL
+        // =========================================================================
+        async function viewAbsenceDetail(id) {
+            try {
+                const item = await callApi(`/api/attendance-makeup/absence-requests/${id}`);
+                if (!item) return;
+
+                const body = document.getElementById('detailModalBody');
+                body.innerHTML = `
+                    <div class="mb-3 border-bottom pb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-secondary">Đơn #${item.id}</span>
+                            <span class="badge bg-primary">${item.status}</span>
+                        </div>
+                        <h6 class="fw-bold mt-2 mb-1 text-primary">${item.studentName || 'Học viên'}</h6>
+                        <div class="small text-muted">Phụ huynh: ${item.parentName || 'N/A'} - SĐT: ${item.parentPhone || 'N/A'}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Buổi Học Xin Nghỉ:</label>
+                        <div class="small fw-semibold text-dark">${item.lessonTitle || `Buổi ${item.sessionNumber || ''}`}</div>
+                        <div class="small text-secondary">
+                            Ngày: <strong>${item.lessonDate || ''}</strong> (${item.timeSlot || ''}) &bull; Lớp: ${item.className || ''}
+                        </div>
+                        <div class="small text-muted">Phòng đàn: ${item.roomName || 'N/A'} &bull; Giáo viên: ${item.teacherName || 'N/A'}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Lý Do Xin Nghỉ:</label>
+                        <div class="p-2 bg-light rounded text-dark small border">${escapeHtml(item.reason || '')}</div>
+                    </div>
+
+                    ${item.reviewNote ? `
+                        <div class="mb-3">
+                            <label class="small text-muted fw-bold">Ghi Chú Phê Duyệt / Xét Duyệt:</label>
+                            <div class="p-2 bg-light rounded text-primary small border">
+                                <i class="bi bi-chat-left-quote me-1"></i>${escapeHtml(item.reviewNote)}
+                                <div class="text-muted mt-1" style="font-size: 0.72rem;">Người duyệt: ${item.approvedByTeacherName || 'Giáo viên'}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${item.makeupRegistrationId ? `
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="small fw-bold text-success mb-1">
+                                <i class="bi bi-calendar2-check-fill me-1"></i>Ca Học Bù Liên Kết (#${item.makeupRegistrationId})
+                            </div>
+                            <div class="small text-muted">Trạng thái: <strong class="text-primary">${item.makeupStatus || ''}</strong></div>
+                            ${item.makeupTargetDate ? `<div class="small text-secondary">Ngày bù: <strong>${item.makeupTargetDate}</strong></div>` : ''}
+                            ${item.makeupTargetClassName ? `<div class="small text-secondary">Lớp học bù: <strong>${escapeHtml(item.makeupTargetClassName)}</strong></div>` : ''}
+                            ${item.makeupNote ? `<div class="small text-danger mt-1 p-2 bg-white rounded border"><i class="bi bi-bell-fill me-1"></i><strong>Thông báo:</strong> ${escapeHtml(item.makeupNote)}</div>` : ''}
+                        </div>
+                    ` : ''}
+                `;
+                modalDetailObj.show();
+            } catch (err) {
+                showToast('danger', 'Lỗi xem chi tiết: ' + err.message);
+            }
+        }
+
+        async function viewMakeupDetail(id) {
+            try {
+                const item = await callApi(`/api/attendance-makeup/makeup-requests/${id}`);
+                if (!item) return;
+
+                const body = document.getElementById('detailModalBody');
+                body.innerHTML = `
+                    <div class="mb-3 border-bottom pb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-secondary">Ca Bù #${item.id}</span>
+                            <span class="badge bg-primary">${item.status}</span>
+                        </div>
+                        <h6 class="fw-bold mt-2 mb-1 text-primary">${item.studentName || 'Học viên'}</h6>
+                        <div class="small text-muted">Phụ huynh: ${item.parentName || 'N/A'}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Buổi Nghỉ Gốc:</label>
+                        <div class="small text-dark">
+                            Ngày: <strong>${item.originalLessonDate || ''}</strong> (${item.originalTimeSlot || ''})
+                        </div>
+                        <div class="small text-muted">Lớp: ${item.originalClassName || ''}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Ca Học Bù Được Xếp:</label>
+                        ${item.targetLessonId ? `
+                            <div class="small text-success fw-bold">
+                                Ngày bù: ${item.targetLessonDate || ''} (${item.targetTimeSlot || ''})
+                            </div>
+                            <div class="small text-secondary">Lớp: ${item.targetClassName || ''} &bull; Phòng: ${item.targetRoomName || ''}</div>
+                            <div class="small text-muted">Giáo viên phụ trách: ${item.targetTeacherName || 'N/A'}</div>
+                        ` : `<div class="small text-warning">Chưa được xếp buổi học cụ thể</div>`}
+                    </div>
+
+                    ${item.note ? `
+                        <div class="mb-2">
+                            <label class="small text-muted fw-bold">Ghi Chú Điều Phối:</label>
+                            <div class="p-2 bg-light rounded text-dark small border">${escapeHtml(item.note)}</div>
+                        </div>
+                    ` : ''}
+                `;
+                modalDetailObj.show();
+            } catch (err) {
+                showToast('danger', 'Lỗi xem chi tiết: ' + err.message);
+            }
+        }
+
+        // =========================================================================
+        // HÀM TIỆN ÍCH TOAST & XỬ LÝ KÝ TỰ
+        // =========================================================================
+        function showToast(type, message) {
+            const toastContainer = document.getElementById('toastContainer');
+            const toastId = 'toast_' + Date.now();
+            const bgClass = type === 'success' ? 'bg-success' : (type === 'warning' ? 'bg-warning text-dark' : 'bg-danger');
+            const iconClass = type === 'success' ? 'bi-check-circle-fill' : (type === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-x-circle-fill');
+
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0 shadow-lg mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body d-flex align-items-center gap-2">
+                            <i class="bi ${iconClass} fs-5"></i>
+                            <div>${message}</div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            const toastEl = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+            toast.show();
+            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+    </script>
+</body>
+</html>

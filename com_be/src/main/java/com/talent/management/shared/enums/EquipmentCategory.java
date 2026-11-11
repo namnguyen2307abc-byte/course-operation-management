@@ -6,5 +6,8 @@ public enum EquipmentCategory {
     KEYBOARD,
     GUITAR,
     AUDIO,
-    MIRROR
+    MIRROR,
+    CHESS_SET,
+    SPORTS_EQUIPMENT,
+    OTHER
 }

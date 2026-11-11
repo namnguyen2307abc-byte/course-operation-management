@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Cơ Sở & Cơ Sở Vật Chất - Học Viện Talent</title>
+    <title>Cơ sở & cơ sở vật chất - Talent Academy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
     <style>
         .nav-pills-custom .nav-link {
             border-radius: 10px;
@@ -42,12 +42,12 @@
             <div>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb small mb-1">
-                        <li class="breadcrumb-item"><a href="/index.html" class="text-decoration-none">Trang Chủ</a></li>
+                        <li class="breadcrumb-item"><a href="../index.html" class="text-decoration-none">Trang Chủ</a></li>
                         <li class="breadcrumb-item active">Cơ Sở & Cơ Sở Vật Chất</li>
                     </ol>
                 </nav>
-                <h3 class="fw-bold text-dark mb-1">Quản Lý Cơ Sở & Cơ Sở Vật Chất</h3>
-                <p class="text-muted small mb-0">Hệ thống theo dõi chi nhánh, điều phối phòng học đàn Piano và kiểm kê trang thiết bị nhạc cụ.</p>
+                <h3 class="fw-bold text-dark mb-1">Cơ sở & cơ sở vật chất</h3>
+                <p class="text-muted small mb-0">Phòng học và thiết bị phục vụ các bộ môn tại từng cơ sở.</p>
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="reloadData()">
@@ -64,9 +64,9 @@
                         <div class="stat-icon-wrapper stat-icon-blue m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
                             <i class="bi bi-geo-alt"></i>
                         </div>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle">Sẵn sàng</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Cơ sở</span>
                     </div>
-                    <div class="stat-value" id="statBranchesCount">2 Cơ Sở</div>
+                    <div class="stat-value" id="statBranchesCount">--</div>
                     <div class="stat-label">Hệ thống chi nhánh</div>
                 </div>
             </div>
@@ -76,22 +76,22 @@
                         <div class="stat-icon-wrapper stat-icon-amber m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
                             <i class="bi bi-door-open"></i>
                         </div>
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Cách âm</span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Phòng</span>
                     </div>
-                    <div class="stat-value" id="statRoomsCount">4 Phòng</div>
-                    <div class="stat-label">Phòng học âm nhạc</div>
+                    <div class="stat-value" id="statRoomsCount">--</div>
+                    <div class="stat-label">Phòng học tại cơ sở</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="stat-icon-wrapper stat-icon-emerald m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
-                            <i class="bi bi-piano"></i>
+                            <i class="bi bi-tools"></i>
                         </div>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle">Cơ & Điện</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Thiết bị</span>
                     </div>
-                    <div class="stat-value" id="statEquipmentCount">4 Cây Đàn</div>
-                    <div class="stat-label">Grand & Upright Piano</div>
+                    <div class="stat-value" id="statEquipmentCount">--</div>
+                    <div class="stat-label">Thiết bị tại cơ sở</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
@@ -100,10 +100,10 @@
                         <div class="stat-icon-wrapper stat-icon-purple m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
                             <i class="bi bi-shield-check"></i>
                         </div>
-                        <span class="badge bg-info-subtle text-info border border-info-subtle">100%</span>
+                        <span class="badge bg-info-subtle text-info border border-info-subtle">Tình trạng</span>
                     </div>
-                    <div class="stat-value">Đạt Chuẩn</div>
-                    <div class="stat-label">Tình trạng kỹ thuật</div>
+                    <div class="stat-value" id="statGoodCount">--</div>
+                    <div class="stat-label">Thiết bị hoạt động tốt</div>
                 </div>
             </div>
         </div>
@@ -113,7 +113,7 @@
             <div class="row align-items-center g-3">
                 <div class="col-md-5">
                     <label class="form-label small fw-semibold text-secondary mb-1">
-                        <i class="bi bi-building me-1 text-primary"></i>Chọn Chi Nhánh Học Viện:
+                        <i class="bi bi-building me-1 text-primary"></i>Chọn cơ sở:
                     </label>
                     <select id="branchSelect" class="form-select form-control-modern" onchange="onBranchChange()">
                         
@@ -130,7 +130,7 @@
                         </li>
                         <li class="nav-item">
                             <button class="nav-link" id="tabEquipments" onclick="switchTab('EQUIPMENTS')">
-                                <i class="bi bi-music-note-list me-1"></i> Nhạc Cụ & Đàn Piano
+                                <i class="bi bi-tools me-1"></i> Thiết bị học tập
                             </button>
                         </li>
                     </ul>
@@ -160,11 +160,12 @@
                             <th>Sức Chứa Tối Đa</th>
                             <th>Trạng Thái</th>
                             <th>Mô Tả & CSVC</th>
+                            <th class="text-end">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody id="roomTableBody">
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Đang tải danh sách phòng học...</td>
+                            <td colspan="7" class="text-center text-muted py-4">Đang tải danh sách phòng học...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -176,9 +177,9 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="fw-bold mb-0 text-dark">
-                        <i class="bi bi-piano text-warning me-2"></i>Trang Thiết Bị Nhạc Cụ & Đàn Piano Biểu Diễn
+                        <i class="bi bi-tools text-primary me-2"></i>Thiết bị học tập
                     </h5>
-                    <span class="text-muted small" id="equipmentsSubtitle">Kiểm kê nhạc cụ thuộc phòng học tại chi nhánh</span>
+                    <span class="text-muted small" id="equipmentsSubtitle">Thiết bị thuộc các phòng học tại cơ sở</span>
                 </div>
                 <span class="badge bg-warning text-dark px-3 py-2 rounded-pill" id="equipmentCountBadge">0 Thiết bị</span>
             </div>
@@ -187,18 +188,19 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr class="text-muted small">
-                            <th>Mã Nhạc Cụ</th>
-                            <th>Tên Thiết Bị / Cây Đàn</th>
+                            <th>Mã thiết bị</th>
+                            <th>Tên thiết bị</th>
                             <th>Phân Loại</th>
                             <th>Vị Trí Phòng Học</th>
-                            <th>Số Serial Máy</th>
+                            <th>Số sê-ri</th>
                             <th>Tình Trạng</th>
                             <th>Mô Tả Kỹ Thuật</th>
+                            <th class="text-end">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody id="equipmentTableBody">
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">Đang tải danh sách thiết bị...</td>
+                            <td colspan="8" class="text-center text-muted py-4">Đang tải danh sách thiết bị...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -206,20 +208,66 @@
         </div>
     </main>
 
+    <div class="modal fade" id="editFacilityModal" tabindex="-1" aria-labelledby="editFacilityTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="editFacilityForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editFacilityTitle">Sửa thông tin</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="editFacilityError" class="alert alert-danger d-none" role="alert"></div>
+                        <div class="mb-3"><label class="form-label" for="editFacilityName">Tên *</label><input id="editFacilityName" class="form-control" maxlength="150" required></div>
+                        <div class="mb-3" id="roomCapacityField"><label class="form-label" for="editRoomCapacity">Sức chứa *</label><input id="editRoomCapacity" type="number" class="form-control" min="1" step="1"></div>
+                        <div class="mb-3"><label class="form-label" for="editFacilityCategory">Loại *</label><select id="editFacilityCategory" class="form-select" required></select></div>
+                        <div class="mb-3"><label class="form-label" for="editFacilityStatus">Tình trạng *</label><select id="editFacilityStatus" class="form-select" required></select></div>
+                        <div class="mb-3 d-none" id="equipmentSerialField"><label class="form-label" for="editEquipmentSerial">Số sê-ri</label><input id="editEquipmentSerial" class="form-control" maxlength="100"></div>
+                        <div><label class="form-label" for="editFacilityDescription">Mô tả</label><textarea id="editFacilityDescription" class="form-control" maxlength="500" rows="3"></textarea></div>
+                        <p class="text-muted small mt-3 mb-0">Mã, cơ sở và phòng chứa thiết bị không thay đổi tại đây.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" id="saveFacilityBtn" class="btn btn-primary">Lưu thay đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div id="footer-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/auth.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script>
-        fetch('/components/navbar.html').then(r => r.text()).then(h => {
+        fetch('../components/navbar.html').then(r => r.text()).then(h => {
             document.getElementById('navbar-container').innerHTML = h;
             updateNavbarUser();
         });
-        fetch('/components/footer.html').then(r => r.text()).then(h => document.getElementById('footer-container').innerHTML = h);
+        fetch('../components/footer.html').then(r => r.text()).then(h => document.getElementById('footer-container').innerHTML = h);
 
         let branches = [];
-        let currentTab = 'ROOMS'; 
+        let currentTab = 'ROOMS';
+        let rooms = [];
+        let equipments = [];
+        let editing = null;
+        const editModal = new bootstrap.Modal(document.getElementById('editFacilityModal'));
+        const roomTypes = {PIANO_INDIVIDUAL: 'Piano cá nhân', PIANO_GROUP: 'Piano nhóm', DANCE_ROOM: 'Phòng múa', THEORY_ROOM: 'Phòng lý thuyết', GUITAR_ROOM: 'Phòng guitar', MULTIPURPOSE_ROOM: 'Phòng đa năng', CHESS_ROOM: 'Phòng cờ vua', SPORTS_AREA: 'Khu thể thao'};
+        const equipmentTypes = {GRAND_PIANO: 'Đại dương cầm', UPRIGHT_PIANO: 'Piano cơ', KEYBOARD: 'Đàn phím', GUITAR: 'Đàn guitar', AUDIO: 'Âm thanh', MIRROR: 'Gương', CHESS_SET: 'Bộ cờ vua', SPORTS_EQUIPMENT: 'Dụng cụ thể thao', OTHER: 'Khác'};
+        const roomStatuses = {AVAILABLE: 'Sẵn sàng', OCCUPIED: 'Đang sử dụng', MAINTENANCE: 'Bảo trì'};
+        const equipmentStatuses = {GOOD: 'Hoạt động tốt', MAINTENANCE: 'Bảo trì', BROKEN: 'Hỏng'};
+        const canEdit = ['ADMIN'].includes(String(getCurrentUser()?.role || '').toUpperCase().replace('ROLE_', ''));
+
+        function escapeHtml(value) {
+            return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+        }
+
+        function statusBadge(status, labels) {
+            const color = ['AVAILABLE', 'GOOD'].includes(status) ? 'success' : status === 'MAINTENANCE' ? 'warning' : 'secondary';
+            return `<span class="badge bg-${color}-subtle text-${color} border">${escapeHtml(labels[status] || status || 'Chưa rõ')}</span>`;
+        }
 
         
         async function loadBranches() {
@@ -232,7 +280,7 @@
                 }
 
                 select.innerHTML = branches.map(b => `
-                    <option value="${b.id}">${b.name} (${b.address})</option>
+                    <option value="${b.id}">${escapeHtml(b.name)} (${escapeHtml(b.address)})</option>
                 `).join('');
 
                 document.getElementById('statBranchesCount').innerText = `${branches.length} Cơ Sở`;
@@ -278,21 +326,19 @@
         function loadCurrentTabData() {
             const branchId = document.getElementById('branchSelect').value;
             if (!branchId) return;
-
-            if (currentTab === 'ROOMS') {
-                loadRooms(branchId);
-            } else {
-                loadEquipments(branchId);
-            }
+            loadRooms(branchId);
+            loadEquipments(branchId);
         }
 
         
         async function loadRooms(branchId) {
             const tbody = document.getElementById('roomTableBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Đang tải danh sách phòng học...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Đang tải danh sách phòng học...</td></tr>';
 
             try {
-                const rooms = await callApi(`/api/branches/${branchId}/rooms`);
+                const result = await callApi(`/api/branches/${branchId}/rooms`);
+                if (document.getElementById('branchSelect').value !== branchId) return;
+                rooms = result || [];
                 document.getElementById('roomCountBadge').innerText = `${rooms ? rooms.length : 0} Phòng học`;
                 document.getElementById('statRoomsCount').innerText = `${rooms ? rooms.length : 0} Phòng`;
 
@@ -301,89 +347,143 @@
                 document.getElementById('roomsSubtitle').innerText = `Danh sách phòng học tại ${branchName}`;
 
                 if (!rooms || rooms.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Chưa có phòng học nào tại chi nhánh này</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Chưa có phòng học nào tại cơ sở này</td></tr>';
                     return;
                 }
 
                 tbody.innerHTML = rooms.map(r => {
-                    let typeBadge = 'bg-secondary';
-                    let typeText = r.roomType;
-                    if (r.roomType === 'PIANO_INDIVIDUAL') {
-                        typeBadge = 'bg-primary';
-                        typeText = 'Piano Cá Nhân (1-1)';
-                    } else if (r.roomType === 'PIANO_GROUP') {
-                        typeBadge = 'bg-info text-dark';
-                        typeText = 'Piano Lớp Nhóm';
-                    } else if (r.roomType === 'GUITAR_ROOM') {
-                        typeBadge = 'bg-warning text-dark';
-                        typeText = 'Phòng Guitar & Cảm Âm';
-                    }
-
                     return `
                         <tr>
-                            <td><code class="fw-bold">${r.roomCode || ''}</code></td>
-                            <td class="fw-bold text-dark">${r.roomName || ''}</td>
-                            <td><span class="badge ${typeBadge}">${typeText}</span></td>
-                            <td><strong>${r.capacity || 0}</strong> Học viên</td>
-                            <td><span class="badge bg-success-subtle text-success border border-success-subtle">Sẵn sàng</span></td>
-                            <td class="text-muted small">${r.description || 'Tiêu chuẩn cách âm chuyên dụng'}</td>
+                            <td><code class="fw-bold">${escapeHtml(r.roomCode)}</code></td>
+                            <td class="fw-bold text-dark">${escapeHtml(r.roomName)}</td>
+                            <td>${escapeHtml(roomTypes[r.roomType] || r.roomType)}</td>
+                            <td><strong>${Number(r.capacity) || 0}</strong> học viên</td>
+                            <td>${statusBadge(r.status, roomStatuses)}</td>
+                            <td class="text-muted small">${escapeHtml(r.description || '—')}</td>
+                            <td class="text-end">${canEdit ? `<button type="button" class="btn btn-sm btn-outline-primary" data-edit-room="${r.id}" aria-label="Sửa phòng ${escapeHtml(r.roomName)}"><i class="bi bi-pencil"></i></button>` : ''}</td>
                         </tr>
                     `;
                 }).join('');
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Lỗi tải dữ liệu phòng học: ${err.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">${escapeHtml(err.message || 'Không tải được phòng học')}</td></tr>`;
             }
         }
 
         
         async function loadEquipments(branchId) {
             const tbody = document.getElementById('equipmentTableBody');
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Đang tải danh sách nhạc cụ...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Đang tải danh sách thiết bị...</td></tr>';
 
             try {
-                const equipments = await callApi(`/api/branches/${branchId}/equipments`);
-                document.getElementById('equipmentCountBadge').innerText = `${equipments ? equipments.length : 0} Nhạc cụ / Cây đàn`;
-                document.getElementById('statEquipmentCount').innerText = `${equipments ? equipments.length : 0} Cây Đàn`;
+                const result = await callApi(`/api/branches/${branchId}/equipments`);
+                if (document.getElementById('branchSelect').value !== branchId) return;
+                equipments = result || [];
+                document.getElementById('equipmentCountBadge').innerText = `${equipments.length} thiết bị`;
+                document.getElementById('statEquipmentCount').innerText = `${equipments.length} thiết bị`;
+                document.getElementById('statGoodCount').innerText = `${equipments.filter(e => e.status === 'GOOD').length}/${equipments.length}`;
 
                 const selectedOption = document.getElementById('branchSelect').selectedOptions[0];
                 const branchName = selectedOption ? selectedOption.text.split('(')[0].trim() : '';
-                document.getElementById('equipmentsSubtitle').innerText = `Kiểm kê nhạc cụ thuộc các phòng học tại ${branchName}`;
+                document.getElementById('equipmentsSubtitle').innerText = `Thiết bị tại ${branchName}`;
 
-                if (!equipments || equipments.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Chưa có nhạc cụ hoặc đàn piano nào tại chi nhánh này</td></tr>';
+                if (equipments.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Chưa có thiết bị nào tại cơ sở này</td></tr>';
                     return;
                 }
 
                 tbody.innerHTML = equipments.map(e => {
-                    let catBadge = 'bg-secondary';
-                    let catText = e.category;
-                    if (e.category === 'GRAND_PIANO') {
-                        catBadge = 'bg-warning text-dark';
-                        catText = 'Đại Dương Cầm (Grand Piano)';
-                    } else if (e.category === 'UPRIGHT_PIANO') {
-                        catBadge = 'bg-primary';
-                        catText = 'Upright Piano Cơ';
-                    } else if (e.category === 'KEYBOARD') {
-                        catBadge = 'bg-info text-dark';
-                        catText = 'Piano Điện / Keyboard';
-                    }
-
                     return `
                         <tr>
-                            <td><code>${e.code || ''}</code></td>
-                            <td class="fw-bold text-primary">${e.name || ''}</td>
-                            <td><span class="badge ${catBadge}">${catText}</span></td>
-                            <td><i class="bi bi-door-open me-1 text-secondary"></i>${e.roomName || ''}</td>
-                            <td><code class="text-muted">${e.serialNumber || 'N/A'}</code></td>
-                            <td><span class="badge bg-success-subtle text-success border border-success-subtle">Hoạt động tốt</span></td>
-                            <td class="text-muted small">${e.description || ''}</td>
+                            <td><code>${escapeHtml(e.code || '—')}</code></td>
+                            <td class="fw-bold text-dark">${escapeHtml(e.name)}</td>
+                            <td>${escapeHtml(equipmentTypes[e.category] || e.category)}</td>
+                            <td>${escapeHtml(e.roomName)}</td>
+                            <td><code class="text-muted">${escapeHtml(e.serialNumber || '—')}</code></td>
+                            <td>${statusBadge(e.status, equipmentStatuses)}</td>
+                            <td class="text-muted small">${escapeHtml(e.description || '—')}</td>
+                            <td class="text-end">${canEdit ? `<button type="button" class="btn btn-sm btn-outline-primary" data-edit-equipment="${e.id}" aria-label="Sửa thiết bị ${escapeHtml(e.name)}"><i class="bi bi-pencil"></i></button>` : ''}</td>
                         </tr>
                     `;
                 }).join('');
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">Lỗi tải dữ liệu nhạc cụ: ${err.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3">${escapeHtml(err.message || 'Không tải được thiết bị')}</td></tr>`;
             }
         }
+
+        function showEditError(message) {
+            const alert = document.getElementById('editFacilityError');
+            alert.textContent = message;
+            alert.classList.toggle('d-none', !message);
+        }
+
+        function editOptions(labels, selected) {
+            const entries = Object.entries(labels);
+            if (selected && !labels[selected]) entries.push([selected, selected]);
+            return entries.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
+        }
+
+        function openFacilityEditor(kind, id) {
+            if (!canEdit) return;
+            const item = (kind === 'room' ? rooms : equipments).find(entry => String(entry.id) === String(id));
+            if (!item) return;
+            editing = {kind, id};
+            const isRoom = kind === 'room';
+            document.getElementById('editFacilityTitle').textContent = isRoom ? `Sửa phòng ${item.roomCode}` : `Sửa thiết bị ${item.code || item.name}`;
+            document.getElementById('editFacilityName').value = isRoom ? item.roomName : item.name;
+            document.getElementById('editFacilityName').maxLength = isRoom ? 150 : 150;
+            document.getElementById('roomCapacityField').classList.toggle('d-none', !isRoom);
+            document.getElementById('editRoomCapacity').required = isRoom;
+            document.getElementById('editRoomCapacity').value = isRoom ? item.capacity : '';
+            document.getElementById('equipmentSerialField').classList.toggle('d-none', isRoom);
+            document.getElementById('editEquipmentSerial').value = isRoom ? '' : (item.serialNumber || '');
+            const category = document.getElementById('editFacilityCategory');
+            category.innerHTML = editOptions(isRoom ? roomTypes : equipmentTypes, isRoom ? item.roomType : item.category);
+            category.value = isRoom ? item.roomType : item.category;
+            const status = document.getElementById('editFacilityStatus');
+            status.innerHTML = editOptions(isRoom ? roomStatuses : equipmentStatuses, item.status);
+            status.value = item.status;
+            document.getElementById('editFacilityDescription').value = item.description || '';
+            showEditError('');
+            editModal.show();
+        }
+
+        document.getElementById('roomTableBody').addEventListener('click', event => {
+            const button = event.target.closest('[data-edit-room]');
+            if (button) openFacilityEditor('room', button.dataset.editRoom);
+        });
+        document.getElementById('equipmentTableBody').addEventListener('click', event => {
+            const button = event.target.closest('[data-edit-equipment]');
+            if (button) openFacilityEditor('equipment', button.dataset.editEquipment);
+        });
+        document.getElementById('editFacilityForm').addEventListener('submit', async event => {
+            event.preventDefault();
+            if (!editing || !canEdit) return;
+            const isRoom = editing.kind === 'room';
+            const name = document.getElementById('editFacilityName').value.trim();
+            const category = document.getElementById('editFacilityCategory').value;
+            const status = document.getElementById('editFacilityStatus').value;
+            const description = document.getElementById('editFacilityDescription').value.trim();
+            const capacity = Number(document.getElementById('editRoomCapacity').value);
+            if (!name || (isRoom && (!Number.isInteger(capacity) || capacity < 1))) {
+                showEditError('Kiểm tra tên và sức chứa phòng.');
+                return;
+            }
+            const payload = isRoom
+                ? {roomName: name, capacity, roomType: category, status, description}
+                : {name, category, status, serialNumber: document.getElementById('editEquipmentSerial').value.trim(), description};
+            const saveButton = document.getElementById('saveFacilityBtn');
+            saveButton.disabled = true;
+            showEditError('');
+            try {
+                await callApi(isRoom ? `/api/branches/rooms/${editing.id}` : `/api/branches/equipments/${editing.id}`, 'PUT', payload);
+                editModal.hide();
+                loadCurrentTabData();
+            } catch (error) {
+                showEditError(error.message || 'Không lưu được thay đổi.');
+            } finally {
+                saveButton.disabled = false;
+            }
+        });
 
         window.onload = loadBranches;
     </script>
