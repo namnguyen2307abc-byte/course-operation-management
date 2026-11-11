@@ -6,5 +6,7 @@ public enum MakeupStatus {
     COMPLETED,     // Đã hoàn thành (điểm danh PRESENT)
     MISSED,        // Bỏ lỡ / Vắng mặt tại buổi học bù đã xếp (điểm danh ABSENT)
     CANCELLED,     // Đã hủy (kể cả trường hợp gia đình báo không cần học bù)
-    NO_SLOT        // Không có lớp phù hợp — đã báo phụ huynh, chờ phản hồi
+    NO_SLOT,       // Không có lớp phù hợp — đã báo phụ huynh, chờ phản hồi (đi học được hay bảo lưu)
+    DEFERRED,      // Buổi quan trọng không bù được — chuyển sang khóa học kỳ sau
+    REGISTERED     // @Deprecated — giữ lại để tương thích dữ liệu cũ trong DB; không dùng cho logic mới
 }

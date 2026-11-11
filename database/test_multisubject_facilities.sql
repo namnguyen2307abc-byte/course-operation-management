@@ -12,9 +12,9 @@ INSERT INTO @Rooms VALUES
 ('CS02', 'DEMO-GUI-02', N'Phòng Guitar Nhóm 2', 10, 'GUITAR_ROOM', N'Phòng thực hành guitar nhóm, có giá nhạc và âm ly.'),
 ('CS01', 'DEMO-CHS-02', N'Phòng Cờ Vua Chiến Thuật 2', 12, 'CHESS_ROOM', N'Bàn cờ thi đấu và bảng phân tích thế cờ.'),
 ('CS02', 'DEMO-CHS-03', N'Phòng Cờ Vua Đống Đa', 12, 'CHESS_ROOM', N'Phòng học cờ vua với bàn cờ và đồng hồ thi đấu.'),
-('CS01', 'DEMO-SWM-03', N'Bể Bơi Cơ Bản Cầu Giấy', 12, 'SPORTS_AREA', N'Khu học bơi cơ bản có phao và dây phân làn.'),
-('CS02', 'DEMO-SWM-01', N'Bể Bơi Cơ Bản - Làn 1', 12, 'SPORTS_AREA', N'Khu học bơi nhập môn có phao và dụng cụ hỗ trợ.'),
-('CS02', 'DEMO-SWM-02', N'Bể Bơi Kỹ Thuật - Làn 2', 12, 'SPORTS_AREA', N'Khu học bơi kỹ thuật với dây phân làn và bảng tập.' );
+('CS01', 'DEMO-SWM-03', N'Bể Bơi Cơ Bản Cầu Giấy', 12, 'SWIMMING_POOL', N'Khu học bơi cơ bản có phao và dây phân làn.'),
+('CS02', 'DEMO-SWM-01', N'Bể Bơi Cơ Bản - Làn 1', 12, 'SWIMMING_POOL', N'Khu học bơi nhập môn có phao và dụng cụ hỗ trợ.'),
+('CS02', 'DEMO-SWM-02', N'Bể Bơi Kỹ Thuật - Làn 2', 12, 'SWIMMING_POOL', N'Khu học bơi kỹ thuật với dây phân làn và bảng tập.' );
 
 IF EXISTS (
     SELECT 1 FROM @Rooms s

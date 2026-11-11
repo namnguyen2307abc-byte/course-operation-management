@@ -99,7 +99,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
-        long unreadCount = items.stream().filter(i -> !Boolean.TRUE.equals(i.getIsRead())).count();
+        long unreadCount = notificationRepository.countByRecipientIdAndIsReadFalse(currentUser.getId());
 
         Map<String, Object> result = new HashMap<>();
         result.put("unreadCount", unreadCount);

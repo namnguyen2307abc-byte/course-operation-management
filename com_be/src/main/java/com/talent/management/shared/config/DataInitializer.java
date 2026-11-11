@@ -62,6 +62,7 @@ public class DataInitializer {
                         .phone("0988888888")
                         .role(Role.TEACHER)
                         .subject("DAN")
+                        .teachingSubject("PIANO")
                         .status(UserStatus.ACTIVE)
                         .build())
             );

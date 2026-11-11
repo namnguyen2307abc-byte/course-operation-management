@@ -2,6 +2,8 @@ package com.talent.management.features.class_management.controller;
 
 import com.talent.management.features.class_management.dto.ClassUpsertRequest;
 import com.talent.management.features.class_management.dto.ManagedClassResponse;
+import com.talent.management.features.class_management.dto.ClassTeacherOption;
+import com.talent.management.features.class_management.dto.ClassRoomOption;
 import com.talent.management.features.class_management.service.ClassManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,10 +16,21 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/class-management/classes")
-@PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+@PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'BRANCH_MANAGER')")
 @RequiredArgsConstructor
 public class ClassManagementController {
     private final ClassManagementService service;
+
+    @GetMapping("/teachers")
+    public List<ClassTeacherOption> teachers(@RequestParam Long courseId) {
+        return service.getTeacherOptions(courseId);
+    }
+
+    @GetMapping("/rooms")
+    public List<ClassRoomOption> rooms(@RequestParam Long courseId, @RequestParam Long branchId,
+                                       @RequestParam(defaultValue = "1") int maxStudents) {
+        return service.getRoomOptions(courseId, branchId, maxStudents);
+    }
 
     @GetMapping
     public List<ManagedClassResponse> search(@RequestParam(required = false) String keyword,
@@ -30,6 +43,15 @@ public class ClassManagementController {
     @GetMapping("/{id}")
     public ManagedClassResponse get(@PathVariable Long id) {
         return service.get(id);
+    }
+
+    @GetMapping("/page")
+    public com.talent.management.shared.dto.PageResponse<ManagedClassResponse> searchPage(
+            @RequestParam(required = false) String keyword, @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) Long branchId, @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "newest") String order) {
+        return service.searchPage(keyword, courseId, branchId, status, page, size, order);
     }
 
     @PostMapping

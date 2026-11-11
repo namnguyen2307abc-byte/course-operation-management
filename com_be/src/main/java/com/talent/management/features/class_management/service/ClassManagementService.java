@@ -5,10 +5,15 @@ import com.talent.management.features.branch_facility_enrollment.repository.Bran
 import com.talent.management.features.branch_facility_enrollment.repository.RoomRepository;
 import com.talent.management.features.class_management.dto.ClassUpsertRequest;
 import com.talent.management.features.class_management.dto.ManagedClassResponse;
+import com.talent.management.features.class_management.dto.ClassTeacherOption;
+import com.talent.management.features.class_management.dto.ClassRoomOption;
 import com.talent.management.features.class_management.repository.ManagedClassEnrollmentRepository;
 import com.talent.management.features.class_management.repository.ManagedClassLessonRepository;
 import com.talent.management.features.class_management.repository.ManagedClassRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
+import com.talent.management.shared.dto.PageResponse;
+import com.talent.management.shared.service.ListPaging;
+import org.springframework.data.domain.Sort;
 import com.talent.management.shared.entity.Branch;
 import com.talent.management.shared.entity.ClassEntity;
 import com.talent.management.shared.entity.Course;
@@ -18,7 +23,7 @@ import com.talent.management.shared.entity.User;
 import com.talent.management.shared.enums.ClassStatus;
 import com.talent.management.shared.enums.ClassType;
 import com.talent.management.shared.enums.EnrollmentStatus;
-import com.talent.management.shared.enums.LessonStatus;
+import com.talent.management.shared.enums.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,9 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import com.talent.management.shared.enums.LessonStatus;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -43,6 +49,39 @@ public class ClassManagementService {
     private final BranchRepository branchRepository;
     private final UserRepository userRepository;
     private final RoomRepository roomRepository;
+    private final ClassSchedulingService schedulingService;
+
+    @Transactional(readOnly = true)
+    public List<ClassTeacherOption> getTeacherOptions(Long courseId) {
+        Course course = findCourse(courseId);
+        List<ClassTeacherOption> options = new ArrayList<>();
+        for (User teacher : userRepository.findByRole(Role.TEACHER)) {
+            if (schedulingService.isTeacherSuitable(course, teacher)) {
+                options.add(new ClassTeacherOption(teacher.getId(), teacher.getFullName(), schedulingService.teacherSubject(teacher)));
+            }
+        }
+        options.sort(Comparator.comparing(ClassTeacherOption::fullName).thenComparing(ClassTeacherOption::id));
+        return options;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClassRoomOption> getRoomOptions(Long courseId, Long branchId, int maxStudents) {
+        if (maxStudents < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sĩ số tối đa phải lớn hơn 0");
+        }
+        Course course = findCourse(courseId);
+        Branch branch = findBranch(branchId);
+        List<ClassRoomOption> options = new ArrayList<>();
+        if (!Boolean.TRUE.equals(branch.getActive())) return options;
+        for (Room room : roomRepository.findByBranchId(branchId)) {
+            if (schedulingService.isRoomSuitable(course, room, maxStudents)) {
+                options.add(new ClassRoomOption(room.getId(), room.getRoomCode(), room.getRoomName(),
+                        room.getCapacity(), room.getRoomType()));
+            }
+        }
+        options.sort(Comparator.comparing(ClassRoomOption::roomCode).thenComparing(ClassRoomOption::id));
+        return options;
+    }
 
     @Transactional(readOnly = true)
     public List<ManagedClassResponse> search(String keyword, Long courseId, Long branchId, String status) {
@@ -57,27 +96,40 @@ public class ClassManagementService {
         return toResponse(findClass(id));
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<ManagedClassResponse> searchPage(
+            String keyword, Long courseId, Long branchId, String status, int page, int size, String order) {
+        Sort sort = switch (order) {
+            case "newest" -> Sort.by("id").descending();
+            case "code" -> Sort.by("classCode", "id");
+            case "startDate" -> Sort.by("startDate", "id");
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thứ tự hiển thị lớp không hợp lệ");
+        };
+        var pageable = ListPaging.request(page, size, sort);
+        var result = classRepository.searchPage(ListPaging.keyword(keyword),
+                courseId, branchId, parseStatus(status), pageable).map(this::toResponse);
+        return PageResponse.from(result);
+    }
+
     @Transactional
     public ManagedClassResponse create(ClassUpsertRequest request) {
         String code = normalizeCode(request.classCode());
         validateDates(request);
+        validateSchedule(request);
         ClassStatus status = requiredStatus(request.status());
         if (classRepository.existsByClassCodeIgnoreCase(code)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã lớp đã tồn tại");
         }
 
-        User teacher = null;
-        if (request.teacherId() != null) {
-            teacher = userRepository.findById(request.teacherId()).orElse(null);
-        }
-        Room room = null;
-        if (request.roomId() != null) {
-            room = roomRepository.findById(request.roomId()).orElse(null);
-        }
+        Branch branch = findBranch(request.branchId());
+        Course course = findCourse(request.courseId());
+        User teacher = schedulingService.getTeacher(request.teacherId());
+        Room room = schedulingService.getRoom(request.roomId());
+        schedulingService.validateAssignments(course, branch, teacher, room, request.maxStudents());
 
         String scheduleDesc = request.scheduleDescription();
-        if ((scheduleDesc == null || scheduleDesc.isBlank()) && request.daysOfWeek() != null && !request.daysOfWeek().isEmpty()) {
-            scheduleDesc = buildScheduleDescription(request.daysOfWeek(), request.startTime(), request.endTime());
+        if (request.daysOfWeek() != null && !request.daysOfWeek().isEmpty()) {
+            scheduleDesc = schedulingService.describeSchedule(request.daysOfWeek(), request.startTime(), request.endTime());
         }
 
         LocalDate endDate = request.endDate();
@@ -86,8 +138,8 @@ public class ClassManagementService {
         }
 
         ClassEntity entity = ClassEntity.builder()
-                .course(findCourse(request.courseId()))
-                .branch(findBranch(request.branchId()))
+                .course(course)
+                .branch(branch)
                 .teacher(teacher)
                 .room(room)
                 .scheduleDescription(scheduleDesc)
@@ -102,18 +154,14 @@ public class ClassManagementService {
                 .build();
 
         try {
+            List<Lesson> lessons = schedulingService.generateLessons(entity, request.daysOfWeek(),
+                    request.startTime(), request.endTime(), request.totalSessions(), request.endDate());
+            schedulingService.validateReadiness(status, !lessons.isEmpty(), teacher, room);
+            schedulingService.validateLessonConflicts(lessons);
             ClassEntity saved = classRepository.saveAndFlush(entity);
-
-            // Tự động sinh danh sách buổi học (lessons) vào thời khóa biểu nếu chọn lịch
-            if (request.daysOfWeek() != null && !request.daysOfWeek().isEmpty()
-                    && request.startTime() != null && request.endTime() != null) {
-                List<Lesson> lessons = generateLessons(saved, request.daysOfWeek(), request.startTime(), request.endTime(), request.totalSessions());
-                if (!lessons.isEmpty()) {
-                    saved.setEndDate(lessons.get(lessons.size() - 1).getLessonDate());
-                    lessonRepository.saveAll(lessons);
-                    saved = classRepository.saveAndFlush(saved);
-                    log.info("Đã sinh tự động {} buổi học cho lớp {}", lessons.size(), saved.getClassCode());
-                }
+            if (!lessons.isEmpty()) {
+                lessonRepository.saveAll(lessons);
+                log.info("Đã sinh tự động {} buổi học cho lớp {}", lessons.size(), saved.getClassCode());
             }
 
             return toResponse(saved);
@@ -124,18 +172,29 @@ public class ClassManagementService {
 
     @Transactional
     public ManagedClassResponse update(Long id, ClassUpsertRequest request) {
-        ClassEntity entity = findClass(id);
+        ClassEntity entity = classRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp"));
         String code = normalizeCode(request.classCode());
         validateDates(request);
+        validateSchedule(request);
         ClassStatus status = requiredStatus(request.status());
         if (classRepository.existsByClassCodeIgnoreCaseAndIdNot(code, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã lớp đã tồn tại");
+        }
+        boolean hasLessons = lessonRepository.existsByClassEntityId(id);
+        if (hasLessons && (!Objects.equals(entity.getStartDate(), request.startDate())
+                || request.endDate() != null && !Objects.equals(entity.getEndDate(), request.endDate())
+                || request.scheduleDescription() != null && !request.scheduleDescription().isBlank()
+                && !Objects.equals(entity.getScheduleDescription(), request.scheduleDescription().trim())
+                || request.daysOfWeek() != null && !request.daysOfWeek().isEmpty())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Lớp đã có buổi học. Không thể thay đổi ngày hoặc khung lịch tại đây; hãy giữ lịch hiện có.");
         }
         boolean courseOrBranchChanged = !Objects.equals(entity.getCourse().getId(), request.courseId())
                 || !Objects.equals(entity.getBranch().getId(), request.branchId());
         if (courseOrBranchChanged && (entity.getCurrentStudents() != null && entity.getCurrentStudents() > 0
                 || enrollmentRepository.existsByClassEntityId(id)
-                || lessonRepository.existsByClassEntityId(id))) {
+                || hasLessons)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Không thể đổi khóa học hoặc cơ sở khi lớp đã có ghi danh hoặc buổi học");
         }
@@ -146,24 +205,61 @@ public class ClassManagementService {
                     "Sĩ số tối đa không được nhỏ hơn số học viên đã ghi danh và đang chờ thanh toán");
         }
 
+        User previousTeacher = entity.getTeacher();
+        Room previousRoom = entity.getRoom();
+        Long previousTeacherId = previousTeacher == null ? null : previousTeacher.getId();
+        Long previousRoomId = previousRoom == null ? null : previousRoom.getId();
+        boolean capacityChanged = !Objects.equals(request.maxStudents(), entity.getMaxStudents());
+        boolean becomingActive = status != entity.getStatus()
+                && (status == ClassStatus.OPEN || status == ClassStatus.IN_PROGRESS);
         entity.setCourse(findCourse(request.courseId()));
         entity.setBranch(findBranch(request.branchId()));
-        if (request.teacherId() != null) {
-            entity.setTeacher(userRepository.findById(request.teacherId()).orElse(null));
+        if (request.clearTeacher() && request.teacherId() != null || request.clearRoom() && request.roomId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể vừa bỏ vừa chọn cùng một phân công");
         }
-        if (request.roomId() != null) {
-            entity.setRoom(roomRepository.findById(request.roomId()).orElse(null));
+        // Missing IDs preserve older clients; explicit clear flags remove an assignment on the edit form.
+        Long teacherId = request.clearTeacher() ? null : request.teacherId() != null ? request.teacherId() : previousTeacherId;
+        Long roomId = request.clearRoom() ? null : request.roomId() != null ? request.roomId() : previousRoomId;
+        boolean teacherChanged = !Objects.equals(previousTeacherId, teacherId);
+        boolean roomChanged = !Objects.equals(previousRoomId, roomId);
+        List<Lesson> existingLessons = hasLessons && (teacherChanged || roomChanged || capacityChanged || becomingActive)
+                ? lessonRepository.findByClassEntityId(id) : List.of();
+        // Preserve the effective old assignment before changing a default used by legacy lesson rows.
+        for (Lesson lesson : existingLessons) {
+            if (!schedulingService.canReassign(lesson)) {
+                if (teacherChanged && lesson.getTeacher() == null) lesson.setTeacher(previousTeacher);
+                if (roomChanged && lesson.getRoom() == null) lesson.setRoom(previousRoom);
+            }
+        }
+        entity.setTeacher(schedulingService.getTeacher(teacherId));
+        // Lock all involved rooms in ID order so a facility edit cannot invalidate this update midway.
+        Set<Long> roomIds = new TreeSet<>();
+        if (roomId != null) roomIds.add(roomId);
+        for (Lesson lesson : existingLessons) {
+            Room actualRoom = lesson.getRoom() == null ? previousRoom : lesson.getRoom();
+            if (actualRoom != null && isRemainingLesson(lesson)) roomIds.add(actualRoom.getId());
+        }
+        Map<Long, Room> lockedRooms = new HashMap<>();
+        for (Long selectedId : roomIds) lockedRooms.put(selectedId, schedulingService.getRoom(selectedId));
+        entity.setRoom(roomId == null ? null : lockedRooms.get(roomId));
+        if (!hasLessons || courseOrBranchChanged || roomChanged || capacityChanged) {
+            schedulingService.validateAssignments(entity.getCourse(), entity.getBranch(), entity.getTeacher(),
+                    entity.getRoom(), request.maxStudents());
+        } else if (teacherChanged) {
+            schedulingService.validateAssignments(entity.getCourse(), entity.getBranch(), entity.getTeacher(),
+                    null, request.maxStudents());
         }
 
-        if (request.scheduleDescription() != null && !request.scheduleDescription().isBlank()) {
+        if (request.daysOfWeek() != null && !request.daysOfWeek().isEmpty()) {
+            entity.setScheduleDescription(schedulingService.describeSchedule(request.daysOfWeek(), request.startTime(), request.endTime()));
+        } else if (request.scheduleDescription() != null && !request.scheduleDescription().isBlank()) {
             entity.setScheduleDescription(request.scheduleDescription().trim());
-        } else if (request.daysOfWeek() != null && !request.daysOfWeek().isEmpty()) {
-            entity.setScheduleDescription(buildScheduleDescription(request.daysOfWeek(), request.startTime(), request.endTime()));
         }
 
         entity.setClassCode(code);
         entity.setClassName(request.className().trim());
         entity.setMaxStudents(request.maxStudents());
+        entity.setClassType(request.maxStudents() <= 1 ? ClassType.ONE_ON_ONE : ClassType.GROUP);
         entity.setStatus(status);
         entity.setStartDate(request.startDate());
         if (request.endDate() != null) {
@@ -171,85 +267,82 @@ public class ClassManagementService {
         }
 
         try {
+            List<Lesson> changedLessons = new ArrayList<>();
             // Nếu lớp chưa có buổi học và có truyền lịch -> sinh buổi học mới
-            if (!lessonRepository.existsByClassEntityId(id) && request.daysOfWeek() != null && !request.daysOfWeek().isEmpty()
+            if (!hasLessons && request.daysOfWeek() != null && !request.daysOfWeek().isEmpty()
                     && request.startTime() != null && request.endTime() != null) {
-                List<Lesson> lessons = generateLessons(entity, request.daysOfWeek(), request.startTime(), request.endTime(), request.totalSessions());
-                if (!lessons.isEmpty()) {
-                    entity.setEndDate(lessons.get(lessons.size() - 1).getLessonDate());
-                    lessonRepository.saveAll(lessons);
-                }
-            } else if (lessonRepository.existsByClassEntityId(id)) {
-                // Nếu lớp đã có buổi học, đồng bộ giáo viên và phòng học sang các buổi học sắp tới (SCHEDULED)
-                List<Lesson> existingLessons = lessonRepository.findByClassEntityId(id);
-                boolean updated = false;
-                for (Lesson l : existingLessons) {
-                    if (l.getStatus() == LessonStatus.SCHEDULED) {
-                        l.setTeacher(entity.getTeacher());
-                        l.setRoom(entity.getRoom());
-                        updated = true;
-                    }
-                }
-                if (updated) {
-                    lessonRepository.saveAll(existingLessons);
-                }
+                changedLessons = schedulingService.generateLessons(entity, request.daysOfWeek(), request.startTime(),
+                        request.endTime(), request.totalSessions(), request.endDate());
+            } else if (!existingLessons.isEmpty()) {
+                updateLessonAssignments(entity, existingLessons, previousTeacher, previousRoom,
+                        teacherChanged, roomChanged, capacityChanged || becomingActive);
+            } else if (becomingActive) {
+                schedulingService.validateAssignments(entity.getCourse(), entity.getBranch(), entity.getTeacher(),
+                        entity.getRoom(), request.maxStudents());
             }
-
+            schedulingService.validateReadiness(status, hasLessons || !changedLessons.isEmpty(),
+                    entity.getTeacher(), entity.getRoom());
+            schedulingService.validateLessonConflicts(changedLessons);
+            if (!changedLessons.isEmpty()) lessonRepository.saveAll(changedLessons);
             return toResponse(classRepository.saveAndFlush(entity));
         } catch (DataIntegrityViolationException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã lớp đã tồn tại hoặc dữ liệu liên kết không hợp lệ", ex);
         }
     }
 
-    private List<Lesson> generateLessons(ClassEntity classEntity, List<Integer> daysOfWeek,
-                                         LocalTime startTime, LocalTime endTime, Integer totalSessionsReq) {
-        if (daysOfWeek == null || daysOfWeek.isEmpty() || startTime == null || endTime == null) {
-            return Collections.emptyList();
-        }
-        List<Lesson> lessons = new ArrayList<>();
-        LocalDate currentDate = classEntity.getStartDate();
-        int totalSessions = (totalSessionsReq != null && totalSessionsReq > 0) ? Math.min(totalSessionsReq, 60) : 12;
-        int sessionCount = 0;
-        Set<Integer> targetDays = new HashSet<>(daysOfWeek);
-        int safetyLoop = 0;
-
-        while (sessionCount < totalSessions && safetyLoop < 365) {
-            int day = currentDate.getDayOfWeek().getValue();
-            if (targetDays.contains(day)) {
-                sessionCount++;
-                Lesson lesson = Lesson.builder()
-                        .classEntity(classEntity)
-                        .room(classEntity.getRoom())
-                        .teacher(classEntity.getTeacher())
-                        .sessionNumber(sessionCount)
-                        .lessonDate(currentDate)
-                        .startTime(startTime)
-                        .endTime(endTime)
-                        .title("Buổi " + sessionCount + ": " + classEntity.getClassName())
-                        .lessonNote("Lịch học tự động theo phân công lớp")
-                        .status(LessonStatus.SCHEDULED)
-                        .build();
-                lessons.add(lesson);
-            }
-            currentDate = currentDate.plusDays(1);
-            safetyLoop++;
-        }
-        return lessons;
+    private boolean isRemainingLesson(Lesson lesson) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        return lesson.getStatus() == LessonStatus.SCHEDULED
+                && lesson.getLessonDate().atTime(lesson.getEndTime()).isAfter(now);
     }
 
-    private String buildScheduleDescription(List<Integer> daysOfWeek, LocalTime startTime, LocalTime endTime) {
-        if (daysOfWeek == null || daysOfWeek.isEmpty()) return null;
-        Map<Integer, String> dayNames = Map.of(
-                1, "T2", 2, "T3", 3, "T4", 4, "T5", 5, "T6", 6, "T7", 7, "CN"
-        );
-        String days = daysOfWeek.stream()
-                .sorted()
-                .map(d -> dayNames.getOrDefault(d, "T" + d))
-                .collect(Collectors.joining("-"));
-        if (startTime != null && endTime != null) {
-            return String.format("%s (%s - %s)", days, startTime, endTime);
+    private void updateLessonAssignments(ClassEntity entity, List<Lesson> lessons, User oldTeacher, Room oldRoom,
+                                          boolean teacherChanged, boolean roomChanged, boolean validateConditions) {
+        List<Lesson> candidates = new ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (!isRemainingLesson(lesson)) continue;
+            User actualTeacher = lesson.getTeacher() == null ? oldTeacher : lesson.getTeacher();
+            Room actualRoom = lesson.getRoom() == null ? oldRoom : lesson.getRoom();
+            if (schedulingService.canReassign(lesson)) {
+                if (teacherChanged) actualTeacher = entity.getTeacher();
+                if (roomChanged) actualRoom = entity.getRoom();
+            }
+            if (validateConditions || roomChanged || (teacherChanged && entity.getStatus() != ClassStatus.PLANNING)) {
+                schedulingService.validateAssignments(entity.getCourse(), entity.getBranch(), actualTeacher,
+                        actualRoom, entity.getMaxStudents());
+            }
+            candidates.add(Lesson.builder().id(lesson.getId()).classEntity(entity).teacher(actualTeacher).room(actualRoom)
+                    .lessonDate(lesson.getLessonDate()).startTime(lesson.getStartTime()).endTime(lesson.getEndTime())
+                    .status(lesson.getStatus()).build());
         }
-        return days;
+        if (candidates.isEmpty() && validateConditions) {
+            schedulingService.validateAssignments(entity.getCourse(), entity.getBranch(), entity.getTeacher(),
+                    entity.getRoom(), entity.getMaxStudents());
+        }
+        if (!teacherChanged && !roomChanged) return;
+        schedulingService.validateLessonConflicts(candidates);
+
+        // Validate copies first. Then update only the changed assignment, preserving overrides and history.
+        List<Lesson> changed = new ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (schedulingService.canReassign(lesson)) {
+                if (teacherChanged) lesson.setTeacher(entity.getTeacher());
+                if (roomChanged) lesson.setRoom(entity.getRoom());
+                changed.add(lesson);
+            } else {
+                boolean savedFallback = false;
+                if (teacherChanged && lesson.getTeacher() == null && oldTeacher != null) {
+                    lesson.setTeacher(oldTeacher);
+                    savedFallback = true;
+                }
+                if (roomChanged && lesson.getRoom() == null && oldRoom != null) {
+                    lesson.setRoom(oldRoom);
+                    savedFallback = true;
+                }
+                if (savedFallback) changed.add(lesson);
+            }
+        }
+        if (!changed.isEmpty()) lessonRepository.saveAll(changed);
     }
 
     private ManagedClassResponse toResponse(ClassEntity entity) {
@@ -297,6 +390,19 @@ public class ClassManagementService {
     private Branch findBranch(Long id) {
         return branchRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy cơ sở"));
+    }
+
+    private void validateSchedule(ClassUpsertRequest request) {
+        if (request.daysOfWeek() == null || request.daysOfWeek().isEmpty()) return;
+        if (request.daysOfWeek().stream().anyMatch(day -> day == null || day < 1 || day > 7)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thứ trong tuần phải từ 1 đến 7");
+        }
+        if (request.startTime() == null || request.endTime() == null || !request.endTime().isAfter(request.startTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giờ kết thúc phải sau giờ bắt đầu");
+        }
+        if (request.totalSessions() != null && (request.totalSessions() < 1 || request.totalSessions() > 60)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tổng số buổi phải từ 1 đến 60");
+        }
     }
 
     private String normalizeCode(String code) {

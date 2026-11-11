@@ -18,6 +18,7 @@ import com.talent.management.features.placement_test.service.PlacementTestServic
 import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
 import com.talent.management.features.tuition_payment.repository.InvoiceRepository;
 import com.talent.management.shared.entity.ClassEntity;
+import com.talent.management.shared.entity.Branch;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.Enrollment;
 import com.talent.management.shared.entity.Invoice;
@@ -85,6 +86,39 @@ class CourseEnrollmentServiceTest {
     private ClassEntity recommendedClass;
     private ClassResponse recommendedClassResponse;
 
+    private CourseEnrollmentService serviceWithRealClassMapper() {
+        recommendedClass.setBranch(Branch.builder().id(1L).name("Cơ sở A").build());
+        return new CourseEnrollmentService(currentUserService, studentRepository, courseRepository,
+                classRepository, enrollmentRepository, requestRepository, new CourseEnrollmentMapper(),
+                placementTestService, placementScheduleRepository, invoiceRepository);
+    }
+
+    @Test
+    void parentAndStaffSeeSeatsAfterPendingPaymentReservations() {
+        var mappedService = serviceWithRealClassMapper();
+        when(courseRepository.existsById(30L)).thenReturn(true);
+        when(classRepository.findByCourseIdAndStatusOrderByStartDateAsc(30L, ClassStatus.OPEN))
+                .thenReturn(List.of(recommendedClass));
+        when(enrollmentRepository.countByClassEntityIdAndStatus(40L, EnrollmentStatus.PENDING_PAYMENT)).thenReturn(2L);
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(PlacementRecommendationResponse.notAvailable(20L));
+        assertThat(mappedService.getOpenClasses(30L)).extracting(ClassResponse::availableSeats).containsExactly(8);
+        assertThat(mappedService.getClassRecommendations(20L).openClasses())
+                .extracting(ClassResponse::availableSeats).containsExactly(8);
+    }
+
+    @Test
+    void fullyReservedOpenClassIsHiddenFromParentAndStaffOptions() {
+        var mappedService = serviceWithRealClassMapper();
+        recommendedClass.setCurrentStudents(19);
+        when(courseRepository.existsById(30L)).thenReturn(true);
+        when(classRepository.findByCourseIdAndStatusOrderByStartDateAsc(30L, ClassStatus.OPEN))
+                .thenReturn(List.of(recommendedClass));
+        when(enrollmentRepository.countByClassEntityIdAndStatus(40L, EnrollmentStatus.PENDING_PAYMENT)).thenReturn(1L);
+        when(placementTestService.getLatestRecommendation(20L)).thenReturn(PlacementRecommendationResponse.notAvailable(20L));
+        assertThat(mappedService.getOpenClasses(30L)).isEmpty();
+        assertThat(mappedService.getClassRecommendations(20L).openClasses()).isEmpty();
+    }
+
     @BeforeEach
     void setUp() {
         parent = User.builder().id(10L).fullName("Parent").build();
@@ -132,7 +166,7 @@ class CourseEnrollmentServiceTest {
         lenient().when(studentRepository.findByIdAndParentId(20L, 10L)).thenReturn(Optional.of(child));
         lenient().when(classRepository.findByStatusOrderByStartDateAsc(ClassStatus.OPEN))
                 .thenReturn(List.of(recommendedClass));
-        lenient().when(mapper.toClassResponse(recommendedClass)).thenReturn(recommendedClassResponse);
+        lenient().when(mapper.toClassResponse(recommendedClass, 0L)).thenReturn(recommendedClassResponse);
     }
 
     @Test

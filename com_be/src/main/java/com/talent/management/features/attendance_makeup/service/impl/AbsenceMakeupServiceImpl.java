@@ -159,10 +159,14 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
     @Transactional
     public void cancelAbsenceRequest(Long id) {
         User currentUser = currentUserService.getCurrentUser();
-        AbsenceRequest ar = absenceRequestRepository.findById(id)
+        AbsenceRequest ar = absenceRequestRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
 
         validateStudentAccess(currentUser, ar.getStudent());
+
+        if (currentUser.getRole() == Role.TEACHER && !isTeacherOfLesson(currentUser, ar.getLesson())) {
+            throw new AttendanceMakeupException("Chỉ giáo viên phụ trách mới có quyền hủy đơn này.");
+        }
 
         if (ar.getStatus() != AbsenceStatus.PENDING) {
             throw new AttendanceMakeupException("Chỉ có thể hủy đơn khi đang ở trạng thái Chờ duyệt.");
@@ -290,7 +294,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         User currentUser = currentUserService.getCurrentUser();
         validateReviewPermission(currentUser);
 
-        AbsenceRequest ar = absenceRequestRepository.findById(id)
+        AbsenceRequest ar = absenceRequestRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
 
         // Kiểm tra giáo viên: Chỉ giáo viên phụ trách môn và buổi học hôm đó mới được duyệt đơn
@@ -454,6 +458,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             case SCHEDULED -> 3;
             case COMPLETED -> 4;
             case CANCELLED -> 5;
+            default -> 99; // Legacy records remain readable; no new legacy decisions.
         };
     }
 

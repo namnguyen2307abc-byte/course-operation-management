@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 @Data
 @Builder
@@ -23,4 +24,7 @@ public class EquipmentResponse {
     private EquipmentStatus status;
     private String serialNumber;
     private String description;
+    @Builder.Default
+    private List<String> warnings = List.of();
+    private int affectedLessonCount;
 }

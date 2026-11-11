@@ -59,17 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initNavbarAndRoleBadge() {
-    // Nạp navbar từ components/navbar.html
-    fetch('../components/navbar.html')
-        .then(r => r.text())
-        .then(html => {
-            const container = document.getElementById('navbar-container');
-            if (container) {
-                container.innerHTML = html;
-                updateNavbarUser();
-            }
-        })
-        .catch(e => console.error("Lỗi nạp navbar:", e));
+    updateNavbarUser();
 
     // Nạp footer
     fetch('../components/footer.html')
@@ -653,7 +643,7 @@ async function onNewBranchChanged() {
     }
 
     try {
-        const rooms = await callApi(`/api/branch-facility/branches/${branchId}/rooms`).catch(() => []);
+        const rooms = await callApi(`/api/branches/${branchId}/rooms`).catch(() => []);
         if (rooms && rooms.length > 0) {
             roomSelect.innerHTML = '<option value="">-- Chọn phòng học --</option>' +
                 rooms.map(r => `<option value="${r.id}">${r.roomName} (${r.roomCode})</option>`).join('');
@@ -673,27 +663,61 @@ async function submitCreateClass() {
     const branchId = document.getElementById('newBranchSelect').value;
     const roomId = document.getElementById('newRoomSelect').value;
     const teacherId = document.getElementById('newTeacherSelect').value;
-    const maxStudents = parseInt(document.getElementById('newMaxStudents').value) || 8;
+    const maxStudents = parseInt(document.getElementById('newMaxStudents').value, 10);
     const startDate = document.getElementById('newStartDate').value;
-    const totalSessions = parseInt(document.getElementById('newTotalSessions').value) || 12;
+    const totalSessions = parseInt(document.getElementById('newTotalSessions').value, 10);
     const startTimeStr = document.getElementById('newStartTime').value;
     const endTimeStr = document.getElementById('newEndTime').value;
     const scheduleDesc = document.getElementById('newScheduleDesc').value.trim();
 
+    if (!courseId) {
+        showToast('error', 'Thiếu thông tin', 'Vui lòng chọn khóa học!');
+        return;
+    }
+    if (!branchId) {
+        showToast('error', 'Thiếu thông tin', 'Vui lòng chọn cơ sở đào tạo!');
+        return;
+    }
+    if (!classCode || classCode.length > 50) {
+        showToast('error', 'Mã lớp không hợp lệ', 'Vui lòng nhập mã lớp (tối đa 50 ký tự)!');
+        return;
+    }
+    if (!className || className.length > 150) {
+        showToast('error', 'Tên lớp không hợp lệ', 'Vui lòng nhập tên lớp học (tối đa 150 ký tự)!');
+        return;
+    }
+    if (!startDate) {
+        showToast('error', 'Thiếu ngày bắt đầu', 'Vui lòng chọn ngày bắt đầu khai giảng lớp!');
+        return;
+    }
+    if (isNaN(maxStudents) || maxStudents < 1 || maxStudents > 100) {
+        showToast('error', 'Sĩ số không hợp lệ', 'Sĩ số tối đa phải nằm trong khoảng từ 1 đến 100 học viên!');
+        return;
+    }
+    if (isNaN(totalSessions) || totalSessions < 1 || totalSessions > 60) {
+        showToast('error', 'Số buổi không hợp lệ', 'Tổng số buổi học phải nằm trong khoảng từ 1 đến 60 buổi!');
+        return;
+    }
+    if (!startTimeStr || !endTimeStr || endTimeStr <= startTimeStr) {
+        showToast('error', 'Giờ học không hợp lệ', 'Giờ kết thúc phải lớn hơn giờ bắt đầu!');
+        return;
+    }
+
     // Lấy danh sách thứ trong tuần
     const checkedDays = Array.from(document.querySelectorAll('input[name="daysOfWeek"]:checked'))
-        .map(el => parseInt(el.value));
+        .map(el => parseInt(el.value, 10))
+        .filter(d => d >= 1 && d <= 7);
 
     if (checkedDays.length === 0) {
-        alert("Vui lòng chọn ít nhất một thứ trong tuần để sinh lịch học!");
+        showToast('error', 'Chưa chọn thứ học', 'Vui lòng chọn ít nhất một thứ trong tuần để sinh lịch học!');
         return;
     }
 
     const payload = {
-        courseId: parseInt(courseId),
-        branchId: parseInt(branchId),
-        roomId: roomId ? parseInt(roomId) : null,
-        teacherId: teacherId ? parseInt(teacherId) : null,
+        courseId: parseInt(courseId, 10),
+        branchId: parseInt(branchId, 10),
+        roomId: roomId ? parseInt(roomId, 10) : null,
+        teacherId: teacherId ? parseInt(teacherId, 10) : null,
         classCode: classCode,
         className: className,
         maxStudents: maxStudents,
@@ -752,12 +776,16 @@ async function loadFilterOptions() {
             group.classList.remove('d-none');
             let children = [];
             try {
-                children = await callApi('/api/attendance-makeup/students', 'GET', null, false, false);
+                children = await callApi('/api/schedule/students', 'GET', null, false, false);
             } catch (err) {
                 try {
-                    children = await callApi('/api/course-enrollment/children', 'GET', null, false, false);
+                    children = await callApi('/api/attendance-makeup/students', 'GET', null, false, false);
                 } catch (err2) {
-                    children = [];
+                    try {
+                        children = await callApi('/api/course-enrollment/children', 'GET', null, false, false);
+                    } catch (err3) {
+                        children = [];
+                    }
                 }
             }
             if (children && children.length > 0) {

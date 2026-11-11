@@ -2,6 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/list-pagination.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng Ký Lớp Học - Talent Academy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -77,11 +78,21 @@
             .workflow-step { min-width: 100%; }
         }
     </style>
+<script src="../js/auth.js"></script>
 </head>
-<body>
-    <div id="navbar-container"></div>
-
-    <main class="container my-4">
+<body class="has-workspace-sidebar">
+    <div id="navbar-container"><!-- workspace-shell:start -->
+<a class="skip-content" href="#main-content">Đến nội dung chính</a>
+<header class="workspace-topbar"><button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false"><i class="bi bi-list"></i></button><span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span><span class="workspace-context">Không gian làm việc</span></header>
+<aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
+<a class="sidebar-brand" data-app-path="/index.html" href="/index.html"><span class="brand-mark"><i class="bi bi-stars"></i></span><span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span></a>
+<nav id="workspaceNavigation" class="workspace-navigation"></nav>
+<div class="sidebar-bottom"><div class="sidebar-profile"><span class="profile-initial" id="sidebarAvatar">T</span><div><strong id="sidebarUserName"></strong><small id="sidebarUserRole"></small></div></div><button type="button" class="sidebar-logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button></div>
+</aside>
+<button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
+<!-- workspace-shell:end --></div>
+<script src="../js/workspace-shell.js"></script>
+<main class="container my-4">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
                 <nav aria-label="breadcrumb">
@@ -165,6 +176,12 @@
                 <div class="p-3 p-md-4 border-bottom">
                     <h5 class="fw-bold mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Yêu cầu của gia đình</h5>
                     <div class="text-muted small">Trạng thái mới nhất của các yêu cầu đã gửi.</div>
+                    <form id="myRequestFilters" class="list-filters">
+                        <label>Tìm kiếm<input id="myRequestKeyword" class="form-control form-control-sm" maxlength="100" placeholder="Học viên, khóa học, lớp"></label>
+                        <label>Trạng thái<select id="myRequestStatus" class="form-select form-select-sm"><option value="">Tất cả trạng thái</option><option value="WAITING_PLACEMENT">Chờ Placement Test</option><option value="READY_FOR_ASSIGNMENT">Chờ xếp lớp</option><option value="PENDING_PAYMENT">Chờ thanh toán</option><option value="APPROVED">Đã ghi danh</option><option value="REJECTED">Từ chối</option><option value="CANCELLED">Đã hủy</option><option value="PENDING">Chờ duyệt</option></select></label>
+                        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Lọc</button>
+                    </form>
+                    <div id="myRequestPager"></div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -182,8 +199,8 @@
                 <div class="col-md-4">
                     <div class="stat-card">
                         <div class="stat-icon-wrapper stat-icon-amber"><i class="bi bi-hourglass-split"></i></div>
-                        <div class="stat-value" id="pendingCount">0</div>
-                        <div class="stat-label">Yêu cầu chờ duyệt</div>
+                        <div class="stat-value" id="pendingCount">—</div>
+                        <div class="stat-label">Yêu cầu chờ duyệt phù hợp bộ lọc</div>
                     </div>
                 </div>
                 <div class="col-md-8 d-flex align-items-center">
@@ -197,6 +214,12 @@
                 <div class="p-3 p-md-4 border-bottom">
                     <h5 class="fw-bold mb-1"><i class="bi bi-inbox text-primary me-2"></i>Danh sách chờ xử lý</h5>
                     <div class="text-muted small">Yêu cầu cũ nhất được hiển thị trước.</div>
+                    <form id="staffRequestFilters" class="list-filters">
+                        <label>Tìm kiếm<input id="staffRequestKeyword" class="form-control form-control-sm" maxlength="100" placeholder="Học viên, khóa học, lớp"></label>
+                        <label>Trạng thái<select id="staffRequestStatus" class="form-select form-select-sm"><option value="">Tất cả đơn chờ xử lý</option><option value="WAITING_PLACEMENT">Chờ Placement Test</option><option value="READY_FOR_ASSIGNMENT">Chờ xếp lớp</option><option value="PENDING">Chờ duyệt</option></select></label>
+                        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Lọc</button>
+                    </form>
+                    <div id="staffRequestPager"></div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -227,6 +250,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="small text-muted mb-3" id="decisionSummary"></div>
+                    <div id="decisionError" class="alert alert-danger d-none" role="alert"></div>
                     <div id="assignmentFields" class="mb-3 d-none">
                         <label for="assignedClassSelect" class="form-label small fw-semibold">Lớp còn chỗ</label>
                         <div class="d-flex gap-2">
@@ -270,7 +294,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/api.js"></script>
-    <script src="../js/auth.js"></script>
+
+    <script src="../js/request-feedback.js"></script>
+    <script src="../js/list-pagination.js"></script>
     <script>
         checkAuth();
 
@@ -282,13 +308,17 @@
         let pendingRequestMap = new Map();
         let availableClassMap = new Map();
         let recommendedClassIds = new Set();
+        const myPager = createListPager('myRequestPager', loadMyRequests);
+        const staffPager = createListPager('staffRequestPager', loadPendingRequests);
+        let myListVersion = 0;
+        let staffListVersion = 0;
+        let previewVersion = 0;
+        let previewRoomId = null;
+        let previewPager = null;
+        document.getElementById('myRequestFilters').addEventListener('submit', event => { event.preventDefault(); myPager.reset(); loadMyRequests(); });
+        document.getElementById('staffRequestFilters').addEventListener('submit', event => { event.preventDefault(); staffPager.reset(); loadPendingRequests(); });
 
-        fetch('../components/navbar.html')
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('navbar-container').innerHTML = html;
-                updateNavbarUser();
-            });
+        updateNavbarUser();
         fetch('../components/footer.html')
             .then(response => response.text())
             .then(html => document.getElementById('footer-container').innerHTML = html);
@@ -296,6 +326,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             decisionModal = new bootstrap.Modal(document.getElementById('decisionModal'));
             facilityModal = new bootstrap.Modal(document.getElementById('facilityModal'));
+            document.getElementById('facilityModal').addEventListener('hide.bs.modal', () => { ++previewVersion; });
             document.getElementById('refreshBtn').addEventListener('click', loadPageData);
             document.getElementById('childSelect').addEventListener('change', updatePlacementMode);
             document.getElementById('courseSelect').addEventListener('change', updatePlacementMode);
@@ -332,22 +363,25 @@
 
         function loadPageData() {
             if (currentUser.role === 'PARENT') loadParentData();
-            if (['STAFF', 'BRANCH_MANAGER', 'ADMIN'].includes(currentUser.role)) loadPendingRequests();
+            if (['STAFF', 'BRANCH_MANAGER', 'ADMIN'].includes(currentUser.role)) {
+                document.getElementById('pageNotice').classList.add('d-none');
+                loadPendingRequests();
+            }
         }
 
         async function loadParentData() {
+            document.getElementById('pageNotice').classList.add('d-none');
             try {
-                const [children, courses, requests] = await Promise.all([
-                    callApi('/api/course-enrollment/children'),
-                    callApi('/api/course-enrollment/courses'),
-                    callApi('/api/course-enrollment/requests/my')
+                const [children, courses] = await Promise.all([
+                    callApi('/api/course-enrollment/children', 'GET', null, false, false),
+                    callApi('/api/course-enrollment/courses', 'GET', null, false, false)
                 ]);
                 renderChildren(children || []);
                 renderCourses(courses || []);
-                renderMyRequests(requests || []);
+                await loadMyRequests();
                 await updatePlacementMode();
             } catch (error) {
-                showNotice(error.message, 'danger');
+                showNotice('Chưa tải được thông tin đăng ký. Vui lòng nhấn Làm mới để thử lại.', 'danger');
             }
         }
 
@@ -405,14 +439,14 @@
             const select = document.getElementById('parentPreviewClassSelect');
             select.innerHTML = '<option value="">Đang tải lớp...</option>';
             try {
-                const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`);
+                const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`, 'GET', null, false, false);
                 if (document.getElementById('placementRequested').checked
                     || document.getElementById('courseSelect').value !== String(courseId)) return;
                 renderParentPreviewClasses(classes || []);
             } catch (error) {
                 if (!document.getElementById('placementRequested').checked
                     && document.getElementById('courseSelect').value === String(courseId)) {
-                    select.innerHTML = `<option value="">${escapeHtml(error.message)}</option>`;
+                    select.innerHTML = '<option value="">Chưa tải được danh sách lớp tham khảo. Vui lòng chọn lại khóa học để thử lại.</option>';
                 }
             }
         }
@@ -430,9 +464,10 @@
 
             panel.className = 'recommendation-strip mb-3';
             panel.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang kiểm tra kết quả Placement Test...';
+            document.getElementById('parentPreviewClassSelect').innerHTML = '<option value="">Đang tải danh sách lớp tham khảo...</option>';
 
             try {
-                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations`);
+                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations`, 'GET', null, false, false);
                 if (document.getElementById('childSelect').value !== childId
                     || !document.getElementById('placementRequested').checked) return;
 
@@ -457,7 +492,8 @@
                 panel.className = 'recommendation-strip is-unavailable mb-3';
                 panel.innerHTML = `
                     <div class="fw-semibold"><i class="bi bi-exclamation-circle me-2"></i>Chưa tải được gợi ý xếp lớp</div>
-                    <div class="text-muted small mt-1">${escapeHtml(error.message)}. Yêu cầu vẫn có thể được gửi để staff kiểm tra sau.</div>`;
+                    <div class="text-muted small mt-1">Vui lòng thử lại sau. Bạn vẫn có thể gửi yêu cầu để phòng đào tạo kiểm tra và tư vấn.</div>`;
+                document.getElementById('parentPreviewClassSelect').innerHTML = '<option value="">Chưa tải được danh sách lớp tham khảo</option>';
             }
 
         }
@@ -501,8 +537,9 @@
         async function loadAssignableClasses(courseId) {
             const select = document.getElementById('assignedClassSelect');
             select.innerHTML = '<option value="">Đang tải lớp còn chỗ...</option>';
+            availableClassMap = new Map();
             document.getElementById('staffFacilityPreviewBtn').disabled = true;
-            const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`);
+            const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`, 'GET', null, false, false);
             availableClassMap = new Map((classes || []).map(item => [item.id, item]));
             select.innerHTML = classes && classes.length
                 ? classes.map(item => {
@@ -520,6 +557,8 @@
         async function openFacilityPreview(classId) {
             const selectedClass = availableClassMap.get(classId);
             if (!selectedClass) return;
+            const version = ++previewVersion;
+            previewRoomId = selectedClass.roomId;
 
             document.getElementById('facilityClassName').textContent = `${selectedClass.className} - ${selectedClass.classCode}`;
             const body = document.getElementById('facilityModalBody');
@@ -538,14 +577,12 @@
             }
 
             try {
-                const [branches, rooms, equipments] = await Promise.all([
-                    callApi('/api/branches'),
-                    callApi(`/api/branches/${selectedClass.branchId}/rooms`),
-                    callApi(`/api/branches/${selectedClass.branchId}/equipments`)
+                const [branches, room] = await Promise.all([
+                    callApi('/api/branches', 'GET', null, false, false),
+                    selectedClass.roomId ? callApi(`/api/branches/rooms/${selectedClass.roomId}/detail`, 'GET', null, false, false) : null
                 ]);
+                if (version !== previewVersion) return;
                 const branch = (branches || []).find(item => item.id === selectedClass.branchId);
-                const room = (rooms || []).find(item => item.id === selectedClass.roomId);
-                const roomEquipments = (equipments || []).filter(item => item.roomId === selectedClass.roomId);
 
                 body.innerHTML = `
                     <div class="row g-3 mb-4">
@@ -580,13 +617,35 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="fw-bold"><i class="bi bi-music-note-list text-primary me-2"></i>Thiết bị trong phòng</div>
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">${roomEquipments.length} thiết bị</span>
+                        <span id="previewEquipmentCount" class="badge bg-primary-subtle text-primary border border-primary-subtle">—</span>
                     </div>
-                    ${renderFacilityEquipments(roomEquipments, selectedClass.roomId)}
+                    <div id="previewEquipmentBody"></div><div id="previewEquipmentPager"></div>
                 `;
+                previewPager = createListPager('previewEquipmentPager', loadPreviewEquipment);
+                await loadPreviewEquipment();
             } catch (error) {
-                body.innerHTML = `<div class="alert alert-danger mb-0">Không thể tải thông tin cơ sở: ${escapeHtml(error.message)}</div>`;
+                if (version !== previewVersion) return;
+                body.innerHTML = `<div class="alert alert-danger mb-0" role="alert">${escapeHtml(requestErrorMessage(error, 'Chưa tải được thông tin cơ sở vật chất. Vui lòng đóng cửa sổ và mở lại để thử lại.'))}</div>`;
             }
+        }
+
+        async function loadPreviewEquipment() {
+            const version = previewVersion;
+            const pager = previewPager;
+            if (!previewRoomId) {
+                document.getElementById('previewEquipmentBody').innerHTML = renderFacilityEquipments([], null);
+                return;
+            }
+            pager.busy(true);
+            try {
+                const result = await callApi(`/api/branches/rooms/${previewRoomId}/equipments/page?${pager.params()}`, 'GET', null, false, false);
+                if (version !== previewVersion || pager !== previewPager) return;
+                if (!pager.accept(result)) return;
+                document.getElementById('previewEquipmentCount').textContent = `${result.totalElements} thiết bị`;
+                document.getElementById('previewEquipmentBody').innerHTML = renderFacilityEquipments(result.items, previewRoomId);
+            } catch (error) {
+                if (version === previewVersion) { pager.fail(); document.getElementById('previewEquipmentBody').textContent = requestErrorMessage(error, 'Chưa tải được thiết bị. Vui lòng mở lại thông tin phòng.'); }
+            } finally { if (version === previewVersion && pager === previewPager) pager.busy(false); }
         }
 
         function renderFacilityEquipments(equipments, roomId) {
@@ -630,8 +689,8 @@
                 });
                 document.getElementById('requestNote').value = '';
                 showNotice('Đã gửi nhu cầu học. Phòng đào tạo sẽ kiểm tra và xếp lớp phù hợp.', 'success');
-                const requests = await callApi('/api/course-enrollment/requests/my');
-                renderMyRequests(requests || []);
+                myPager.reset();
+                await loadMyRequests();
             } catch (error) {
                 showNotice(error.message, 'danger');
             } finally {
@@ -642,7 +701,7 @@
         function renderMyRequests(requests) {
             const body = document.getElementById('myRequestTableBody');
             if (!requests.length) {
-                body.innerHTML = '<tr><td colspan="6" class="empty-state">Gia đình chưa gửi yêu cầu đăng ký nào.</td></tr>';
+                body.innerHTML = '<tr><td colspan="6" class="empty-state">Không có yêu cầu đăng ký phù hợp với bộ lọc.</td></tr>';
                 return;
             }
             body.innerHTML = requests.map(item => `
@@ -661,29 +720,60 @@
                 </tr>`).join('');
         }
 
-        async function cancelRequest(requestId) {
-            if (!window.confirm('Bạn muốn hủy yêu cầu đăng ký này?')) return;
-            const button = document.querySelector(`[data-cancel-request="${requestId}"]`);
-            if (button) button.disabled = true;
+        async function loadMyRequests() {
+            const version = ++myListVersion;
+            myPager.busy(true);
             try {
-                await callApi(`/api/course-enrollment/requests/${requestId}/cancel`, 'PATCH');
-                const requests = await callApi('/api/course-enrollment/requests/my');
-                renderMyRequests(requests || []);
+                const params = myPager.params({ keyword: document.getElementById('myRequestKeyword').value.trim(), status: document.getElementById('myRequestStatus').value });
+                const result = await callApi('/api/course-enrollment/requests/my/page?' + params, 'GET', null, false, false);
+                if (version !== myListVersion || !myPager.accept(result)) return;
+                renderMyRequests(result.items);
+            } catch (error) {
+                if (version === myListVersion) { myPager.fail(); document.getElementById('myRequestTableBody').innerHTML = '<tr><td colspan="6" class="empty-state text-danger">Chưa tải được yêu cầu. Vui lòng nhấn Làm mới để thử lại.</td></tr>'; }
+            } finally { if (version === myListVersion) myPager.busy(false); }
+        }
+
+        async function cancelRequest(requestId) {
+            const button = document.querySelector(`[data-cancel-request="${requestId}"]`);
+            if (button?.disabled) return;
+            if (!window.confirm('Bạn muốn hủy yêu cầu đăng ký này?')) return;
+            if (button) button.disabled = true;
+            let cancelled = false;
+            try {
+                await callApi(`/api/course-enrollment/requests/${requestId}/cancel`, 'PATCH', null, false, false);
+                cancelled = true;
                 showNotice('Đã hủy yêu cầu đăng ký.', 'success');
             } catch (error) {
-                if (button) button.disabled = false;
-                showNotice(error.message, 'danger');
-                const requests = await callApi('/api/course-enrollment/requests/my');
-                renderMyRequests(requests || []);
+                const messages = {
+                    'Không tìm thấy yêu cầu đăng ký': 'Không tìm thấy yêu cầu đăng ký. Vui lòng nhấn Làm mới để cập nhật danh sách.',
+                    'Yêu cầu đã được xếp lịch kiểm tra hoặc xử lý, không thể tự hủy': 'Yêu cầu đã được xếp lịch kiểm tra hoặc xử lý nên không thể tự hủy. Vui lòng liên hệ phòng đào tạo nếu cần hỗ trợ.'
+                };
+                showNotice(messages[error.message] || 'Chưa xác nhận được kết quả hủy yêu cầu. Vui lòng nhấn Làm mới để kiểm tra trạng thái.', 'danger');
+            }
+            try {
+                await loadMyRequests();
+            } catch (error) {
+                if (cancelled) {
+                    showNotice('Đã hủy yêu cầu đăng ký nhưng chưa tải lại được danh sách. Vui lòng nhấn Làm mới để cập nhật.', 'warning');
+                }
+            } finally {
+                if (button) button.disabled = cancelled;
             }
         }
 
         async function loadPendingRequests() {
+            const version = ++staffListVersion;
+            staffPager.busy(true);
             const body = document.getElementById('pendingTableBody');
+            document.getElementById('pendingCount').innerText = '—';
+            pendingRequestMap = new Map();
             body.innerHTML = '<tr><td colspan="5" class="empty-state"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải yêu cầu...</td></tr>';
             try {
-                const requests = await callApi('/api/course-enrollment/staff/requests');
-                document.getElementById('pendingCount').innerText = requests ? requests.length : 0;
+                const params = staffPager.params({ keyword: document.getElementById('staffRequestKeyword').value.trim(), status: document.getElementById('staffRequestStatus').value });
+                const result = await callApi('/api/course-enrollment/staff/requests/page?' + params, 'GET', null, false, false);
+                if (version !== staffListVersion || !staffPager.accept(result)) return;
+                const requests = result.items;
+                document.getElementById('pendingCount').innerText = result.totalElements;
                 if (!requests || requests.length === 0) {
                     pendingRequestMap = new Map();
                     body.innerHTML = '<tr><td colspan="5" class="empty-state">Không có yêu cầu nào đang chờ duyệt.</td></tr>';
@@ -693,11 +783,12 @@
                     .filter(item => item.placementRequested)
                     .map(async item => {
                         try {
-                            return [item.id, await callApi(`/api/placement-tests/students/${item.childId}/latest-result`)];
+                            return [item.id, await callApi(`/api/placement-tests/students/${item.childId}/latest-result`, 'GET', null, false, false)];
                         } catch (error) {
                             return [item.id, null];
                         }
                     })));
+                if (version !== staffListVersion) return;
                 pendingRequestMap = new Map(requests.map(item => [item.id, item]));
                 body.innerHTML = requests.map(item => `
                     <tr>
@@ -708,7 +799,9 @@
                             <div class="mt-1">${statusBadge(item.status)}</div>
                             ${placementResults.get(item.id)?.placementStatus === 'COMPLETED'
                                 ? `<div class="small text-muted mt-1">PT: ${placementResults.get(item.id).score ?? '—'}/10 · ${escapeHtml(placementResults.get(item.id).recommendedLevel || 'Chưa có trình độ')}${placementResults.get(item.id).recommendationAvailable ? '' : ' · Chờ giáo viên chọn khóa học'}</div>`
-                                : ''}
+                                : item.placementRequested && placementResults.get(item.id) === null
+                                    ? '<div class="small text-warning-emphasis mt-1">Chưa tải được kết quả Placement Test. Vui lòng nhấn Làm mới để thử lại.</div>'
+                                    : ''}
                         </td>
                         <td>${formatDateTime(item.requestedAt)}</td>
                         <td class="small">${escapeHtml(item.note || 'Không có')}</td>
@@ -720,13 +813,17 @@
                         </td>
                     </tr>`).join('');
             } catch (error) {
-                body.innerHTML = `<tr><td colspan="5" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
-            }
+                if (version !== staffListVersion) return;
+                staffPager.fail();
+                document.getElementById('pendingCount').innerText = '—';
+                pendingRequestMap = new Map();
+                body.innerHTML = '<tr><td colspan="5" class="empty-state text-danger" role="alert">Chưa tải được danh sách yêu cầu. Vui lòng nhấn Làm mới để thử lại.</td></tr>';
+            } finally { if (version === staffListVersion) staffPager.busy(false); }
         }
 
         async function refreshPlacement(requestId) {
             try {
-                const request = await callApi(`/api/course-enrollment/staff/requests/${requestId}/refresh-placement`, 'PATCH');
+                const request = await callApi(`/api/course-enrollment/staff/requests/${requestId}/refresh-placement`, 'PATCH', null, false, false);
                 if (request.status === 'WAITING_PLACEMENT') {
                     showNotice('Yêu cầu đang chờ giáo viên hoàn tất kết quả và chọn khóa học đề xuất.', 'warning');
                 } else {
@@ -734,7 +831,7 @@
                 }
                 await loadPendingRequests();
             } catch (error) {
-                showNotice(error.message, 'danger');
+                showNotice('Chưa kiểm tra được kết quả Placement Test. Vui lòng thử lại. Nếu tình trạng tiếp diễn, hãy liên hệ bộ phận hỗ trợ.', 'danger');
             }
         }
 
@@ -742,6 +839,7 @@
             selectedRequest = pendingRequestMap.get(requestId);
             if (!selectedRequest) return;
             selectedDecision = decision;
+            showDecisionError('');
             const isApprove = decision === 'APPROVE';
             document.getElementById('decisionModalTitle').innerText = isApprove ? 'Xếp lớp cho học viên' : 'Từ chối yêu cầu';
             document.getElementById('decisionSummary').innerHTML = `<strong>${escapeHtml(selectedRequest.childName)}</strong> - ${escapeHtml(selectedRequest.preferredCourseName || 'Chưa xác định khóa học')}`;
@@ -759,7 +857,8 @@
                     const classes = await loadAssignableClasses(selectedRequest.preferredCourseId);
                     button.disabled = classes.length === 0;
                 } catch (error) {
-                    document.getElementById('assignedClassSelect').innerHTML = `<option value="">${escapeHtml(error.message)}</option>`;
+                    document.getElementById('assignedClassSelect').innerHTML = '<option value="">Chưa tải được danh sách lớp</option>';
+                    showDecisionError(requestErrorMessage(error, 'Chưa tải được danh sách lớp còn chỗ. Vui lòng đóng cửa sổ và mở lại để thử lại.'));
                     button.disabled = true;
                 }
             }
@@ -768,7 +867,9 @@
         async function confirmDecision() {
             if (!selectedRequest || !selectedDecision) return;
             const button = document.getElementById('confirmDecisionBtn');
+            if (button.disabled) return;
             button.disabled = true;
+            showDecisionError('');
             try {
                 const res = await callApi(`/api/course-enrollment/staff/requests/${selectedRequest.id}/decision`, 'PATCH', {
                     decision: selectedDecision,
@@ -776,7 +877,7 @@
                         ? Number(document.getElementById('assignedClassSelect').value)
                         : null,
                     reviewNote: document.getElementById('reviewNote').value.trim() || null
-                });
+                }, false, false);
                 decisionModal.hide();
                 if (selectedDecision === 'APPROVE') {
                     const invoiceId = res && res.invoiceId ? res.invoiceId : '';
@@ -787,18 +888,25 @@
 
                     // Điều hướng sang quầy thu phí học phí, tự động mở modal thu tiền như ảnh 2
                     const paymentPage = window.location.pathname.includes('/com_fe/') 
-                        ? '/com_fe/pages/tuition-payment.html' 
-                        : '/pages/tuition-payment.html';
+                        ? '/com_fe/pages/tuition-receivables.html'
+                        : '/pages/tuition-receivables.html';
                     window.location.href = `${paymentPage}?invoiceId=${invoiceId}&invoiceCode=${encodeURIComponent(invoiceCode)}`;
                     return;
                 }
                 showNotice('Đã từ chối yêu cầu đăng ký.', 'success');
                 await loadPendingRequests();
             } catch (error) {
-                showNotice(error.message, 'danger');
+                const action = selectedDecision === 'APPROVE' ? 'xếp lớp' : 'từ chối';
+                showDecisionError(requestErrorMessage(error, `Chưa xác nhận được kết quả ${action}. Vui lòng đóng cửa sổ và nhấn Làm mới để kiểm tra trạng thái trước khi thử lại.`));
             } finally {
                 button.disabled = false;
             }
+        }
+
+        function showDecisionError(message) {
+            const alert = document.getElementById('decisionError');
+            alert.textContent = message;
+            alert.classList.toggle('d-none', !message);
         }
 
         function statusBadge(status) {

@@ -13,6 +13,10 @@ import java.util.Optional;
 @Repository
 public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, Long> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select ar from AbsenceRequest ar where ar.id = :id")
+    Optional<AbsenceRequest> findByIdForUpdate(@Param("id") Long id);
+
     /**
      * Tìm tất cả yêu cầu nghỉ học sắp xếp giảm dần theo thời gian tạo
      */

@@ -13,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/teacher/classes")
+@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'STAFF', 'BRANCH_MANAGER')")
 @RequiredArgsConstructor
 @Tag(name = "Lớp Phụ Trách (Teacher Classes)", description = "Quản lý danh sách lớp phụ trách, học viên và tiến độ buổi học của giáo viên")
 public class TeacherClassController {

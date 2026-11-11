@@ -43,6 +43,12 @@ public class AttendanceTrackingController {
         ));
     }
 
+    @Operation(summary = "Lấy danh sách học viên được phép tra cứu theo phân quyền tài khoản hiện tại")
+    @GetMapping({"/api/schedule/students", "/api/attendance-tracking/students"})
+    public ResponseEntity<List<Map<String, Object>>> getTrackableStudents() {
+        return ResponseEntity.ok(attendanceTrackingService.getTrackableStudents());
+    }
+
     @Operation(summary = "Lấy danh sách lớp học mà học viên đã ghi danh")
     @GetMapping({"/api/schedule/students/{studentId}/enrolled-classes", "/api/attendance-tracking/students/{studentId}/enrolled-classes"})
     public ResponseEntity<List<EnrolledClassOptionResponse>> getEnrolledClassesForStudent(
@@ -54,7 +60,7 @@ public class AttendanceTrackingController {
     @Operation(summary = "Tra cứu chi tiết tiến độ điểm danh toàn bộ khóa học của học viên")
     @GetMapping({"/api/schedule/attendance-tracking", "/api/attendance-tracking"})
     public ResponseEntity<StudentAttendanceTrackingResponse> getStudentAttendanceTracking(
-            @RequestParam Long studentId,
+            @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) Long classId) {
         StudentAttendanceTrackingResponse response = attendanceTrackingService.getStudentAttendanceTracking(studentId, classId);
         return ResponseEntity.ok(response);

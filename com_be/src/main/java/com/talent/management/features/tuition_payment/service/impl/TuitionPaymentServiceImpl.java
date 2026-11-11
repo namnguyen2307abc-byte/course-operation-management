@@ -43,6 +43,10 @@ import java.util.*;
 @Slf4j
 public class TuitionPaymentServiceImpl implements TuitionPaymentService {
 
+    private final com.talent.management.features.tuition_payment.service.TuitionPlanService ledger;
+    private final com.talent.management.features.tuition_payment.service.PaymentPostingService posting;
+    private final com.talent.management.features.tuition_payment.service.InstallmentGatewayService installmentGateway;
+    private final com.talent.management.features.tuition_payment.repository.TuitionReversalRepository reversals;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -54,9 +58,6 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     private final JdbcTemplate jdbcTemplate;
     private final com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository enrollmentRequestRepository;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.talent.management.features.notification.service.NotificationService notificationService;
-
     private static final String ACADEMY_BANK_ID = "970405";
     private static final String ACADEMY_BANK_NAME = "Ngân hàng Nông nghiệp & PTNT (Agribank)";
     private static final String ACADEMY_ACCOUNT_NO = "3511205288130";
@@ -67,7 +68,8 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     public List<PendingInvoiceResponse> searchPendingInvoices(String keyword) {
         String trimmedKeyword = keyword != null ? keyword.trim() : "";
         log.info("Tra cứu phiếu giữ chỗ / hóa đơn chờ thanh toán với keyword: '{}'", trimmedKeyword);
-        List<Invoice> invoices = invoiceRepository.searchInvoicesByStatusAndKeyword(InvoiceStatus.UNPAID, trimmedKeyword);
+        List<Invoice> invoices = new ArrayList<>(invoiceRepository.searchInvoicesByStatusAndKeyword(InvoiceStatus.UNPAID, trimmedKeyword));
+        invoices.addAll(invoiceRepository.searchInvoicesByStatusAndKeyword(InvoiceStatus.PARTIALLY_PAID,trimmedKeyword));
         return invoices.stream()
                 .map(tuitionPaymentMapper::toPendingInvoiceResponse)
                 .toList();
@@ -84,13 +86,14 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     @Override
     @Transactional
     public PendingInvoiceResponse calculateDiscount(Long invoiceId, ApplyDiscountRequest request) {
-        Invoice invoice = invoiceRepository.findByIdWithDetails(invoiceId)
-                .orElseThrow(() -> new TuitionPaymentException("Không tìm thấy hóa đơn với ID: " + invoiceId));
-
-        if (invoice.getStatus() == InvoiceStatus.PAID) {
-            throw new TuitionPaymentException("Hóa đơn này đã được thanh toán hoàn tất, không thể thay đổi miễn giảm phí!");
+        Invoice invoice=ledger.lock(invoiceId);
+        if (invoice.getStatus()!=InvoiceStatus.UNPAID || ledger.paid(invoice).signum()>0
+                || jdbcTemplate.queryForObject("SELECT COUNT(*) FROM tuition_payment_intents WHERE invoice_id=? AND status IN ('PENDING','CREATING','UNCERTAIN')",Integer.class,invoiceId)>0) {
+            throw new TuitionPaymentException("Không đổi ưu đãi sau khi thu tiền hoặc khi có QR chưa được xử lý.");
         }
-
+        if (jdbcTemplate.queryForObject("SELECT COUNT(*) FROM tuition_plans WHERE invoice_id=? AND mode='INSTALLMENTS'",Integer.class,invoiceId)>0) {
+            throw new TuitionPaymentException("Chốt ưu đãi trước khi cấu hình nhiều kỳ.");
+        }
         BigDecimal originalAmount = invoice.getOriginalAmount();
         BigDecimal discountAmount = BigDecimal.ZERO;
         DiscountType discountType = request.getDiscountType() != null ? request.getDiscountType() : DiscountType.NONE;
@@ -131,6 +134,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
         invoice.setFinalAmount(finalAmount);
 
         invoiceRepository.save(invoice);
+        ledger.refreshUnpaidFullPlan(invoice);
         log.info("Áp dụng chiết khấu cho hóa đơn {}: loại={}, giảm={}, còn lại={}", 
                 invoice.getInvoiceCode(), discountType, discountAmount, finalAmount);
 
@@ -140,174 +144,20 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     @Override
     @Transactional(readOnly = true)
     public VietQrResponse generateVietQr(Long invoiceId, BigDecimal customAmount) {
-        Invoice invoice = invoiceRepository.findByIdWithDetails(invoiceId)
-                .orElseThrow(() -> new TuitionPaymentException("Không tìm thấy hóa đơn với ID: " + invoiceId));
-
-        BigDecimal amount = customAmount != null ? customAmount : invoice.getFinalAmount();
-        String invoiceCode = invoice.getInvoiceCode();
-
-        // Chuẩn hóa nội dung chuyển khoản: INV-2026-002 Nguyen Mai Chi dang ky Piano Mam Non
-        String studentNameNoAccent = removeAccents(invoice.getStudent() != null ? invoice.getStudent().getFullName() : "");
-        String classNameNoAccent = "";
-        if (invoice.getEnrollment() != null && invoice.getEnrollment().getClassEntity() != null) {
-            classNameNoAccent = removeAccents(invoice.getEnrollment().getClassEntity().getClassName());
-        }
-
-        String transferContent = String.format("%s %s dang ky lop %s", invoiceCode, studentNameNoAccent, classNameNoAccent)
-                .replaceAll("[^a-zA-Z0-9 ]", "")
-                .replaceAll(" +", " ")
-                .trim();
-        if (transferContent.length() > 50) {
-            transferContent = transferContent.substring(0, 50).trim();
-        }
-
-        String description = "Hoc phi " + invoiceCode;
-
-        // Sinh link ảnh VietQR chuẩn dịch vụ VietQR
-        // Cú pháp: https://img.vietqr.io/image/<BANK_ID>-<ACCOUNT_NO>-compact2.png?amount=<AMOUNT>&addInfo=<INFO>&accountName=<NAME>
-        String encodedAccountName = URLEncoder.encode(ACADEMY_ACCOUNT_NAME, StandardCharsets.UTF_8);
-        String encodedInfo = URLEncoder.encode(transferContent, StandardCharsets.UTF_8);
-        String qrImageUrl = String.format(
-                "https://img.vietqr.io/image/%s-%s-compact2.png?amount=%s&addInfo=%s&accountName=%s",
-                ACADEMY_BANK_ID,
-                ACADEMY_ACCOUNT_NO,
-                amount.setScale(0, RoundingMode.HALF_UP).toString(),
-                encodedInfo,
-                encodedAccountName
-        );
-
-        return VietQrResponse.builder()
-                .qrImageUrl(qrImageUrl)
-                .bankId(ACADEMY_BANK_ID)
-                .bankName(ACADEMY_BANK_NAME)
-                .accountNo(ACADEMY_ACCOUNT_NO)
-                .accountName(ACADEMY_ACCOUNT_NAME)
-                .amount(amount)
-                .transferContent(transferContent)
-                .paymentDescription(description)
-                .build();
+        throw new TuitionPaymentException("Vui lòng tạo QR có mã yêu cầu trong trang Công nợ & thu theo kỳ.");
     }
 
     @Override
     @Transactional
     public PaymentReceiptResponse processPayment(ProcessPaymentRequest request, String cashierUsername) {
-        Invoice invoice = invoiceRepository.findByIdWithDetails(request.getInvoiceId())
-                .orElseThrow(() -> new TuitionPaymentException("Không tìm thấy hóa đơn với ID: " + request.getInvoiceId()));
-
-        if (invoice.getStatus() == InvoiceStatus.PAID) {
-            throw new TuitionPaymentException("Hóa đơn này (" + invoice.getInvoiceCode() + ") đã được thanh toán trước đó!");
+        if (request.getPaymentMethod()!=PaymentMethod.CASH_AT_DESK) {
+            throw new TuitionPaymentException("Giao dịch QR cần được xác nhận từ cổng thanh toán.");
         }
-
-        User cashier = null;
-        if (cashierUsername != null && !cashierUsername.isBlank()) {
-            cashier = userRepository.findByUsername(cashierUsername).orElse(null);
-        }
-        if (cashier == null) {
-            cashier = userRepository.findByUsername("cashier_mai").orElse(null);
-        }
-
-        // 1. Cập nhật thông tin số tiền & chiết khấu vào Invoice
-        if (request.getDiscountType() != null) {
-            invoice.setDiscountType(request.getDiscountType());
-        }
-        if (request.getDiscountAmount() != null) {
-            invoice.setDiscountAmount(request.getDiscountAmount());
-        }
-        if (request.getDiscountReason() != null) {
-            invoice.setDiscountReason(request.getDiscountReason());
-        }
-        if (request.getFinalAmount() != null) {
-            invoice.setFinalAmount(request.getFinalAmount());
-        }
-        invoice.setStatus(InvoiceStatus.PAID);
-        invoiceRepository.save(invoice);
-
-        // 2. Tính toán tiền trả lại nếu thanh toán bằng tiền mặt (chỉ áp dụng cho CASH_AT_DESK)
-        BigDecimal cashGiven = null;
-        BigDecimal changeAmount = null;
-        BigDecimal finalAmount = invoice.getFinalAmount();
-        if (request.getPaymentMethod() == PaymentMethod.CASH_AT_DESK) {
-            cashGiven = request.getCashGiven() != null ? request.getCashGiven() : finalAmount;
-            if (cashGiven.compareTo(finalAmount) < 0) {
-                throw new TuitionPaymentException("Số tiền khách đưa không đủ để thanh toán học phí!");
-            }
-            changeAmount = cashGiven.subtract(finalAmount);
-        } else {
-            cashGiven = finalAmount;
-            changeAmount = BigDecimal.ZERO;
-        }
-
-        // 3. Tạo bản ghi Payment
-        String paymentCode = "PAY-" + System.currentTimeMillis();
-        Payment payment = Payment.builder()
-                .invoice(invoice)
-                .paymentCode(paymentCode)
-                .paymentMethod(request.getPaymentMethod())
-                .amount(finalAmount)
-                .cashGiven(cashGiven)
-                .changeAmount(changeAmount)
-                .paymentDate(LocalDateTime.now())
-                .cashier(cashier)
-                .bankTransactionId(request.getBankTransactionId())
-                .note(request.getNote())
-                .status(PaymentStatus.SUCCESS)
-                .build();
-        paymentRepository.save(payment);
-
-        // 4. Hoàn tất ghi danh: Cập nhật Enrollment thành ENROLLED & tăng sĩ số lớp
-        Enrollment enrollment = invoice.getEnrollment();
-        if (enrollment != null) {
-            enrollment.setStatus(EnrollmentStatus.ENROLLED);
-            enrollment.setNotes("Đã nộp học phí qua mã phiếu: " + paymentCode);
-            enrollmentRepository.save(enrollment);
-
-            // Cập nhật trạng thái yêu cầu đăng ký (nếu có) thành APPROVED
-            try {
-                enrollmentRequestRepository.findByEnrollmentId(enrollment.getId()).ifPresent(req -> {
-                    req.setStatus(com.talent.management.shared.enums.EnrollmentRequestStatus.APPROVED);
-                    enrollmentRequestRepository.save(req);
-                });
-            } catch (Exception ex) {
-                log.warn("Không thể cập nhật trạng thái EnrollmentRequest: {}", ex.getMessage());
-            }
-
-            ClassEntity classEntity = enrollment.getClassEntity();
-            if (classEntity != null) {
-                int current = classEntity.getCurrentStudents() != null ? classEntity.getCurrentStudents() : 0;
-                classEntity.setCurrentStudents(current + 1);
-                classRepository.save(classEntity);
-                log.info("Lớp học {} đã tăng sĩ số lên: {}/{}", classEntity.getClassName(), classEntity.getCurrentStudents(), classEntity.getMaxStudents());
-            }
-        }
-
-        log.info("Xử lý thanh toán thành công cho hóa đơn: {}, mã giao dịch: {}, thu ngân: {}", 
-                invoice.getInvoiceCode(), paymentCode, cashier != null ? cashier.getUsername() : "SYSTEM");
-
-        if (notificationService != null && invoice.getStudent() != null) {
-            Student st = invoice.getStudent();
-            String clsName = (enrollment != null && enrollment.getClassEntity() != null)
-                    ? enrollment.getClassEntity().getClassName() : "khóa học";
-            if (st.getParent() != null) {
-                notificationService.sendNotification(
-                        st.getParent(), cashier,
-                        "Thanh toán học phí & Nhập học thành công",
-                        "Hóa đơn #" + invoice.getInvoiceCode() + " của bé " + st.getFullName() + " đã thanh toán thành công (" + formatCurrency(finalAmount) + ", Mã GD: " + paymentCode + "). Bé đã chính thức nhập học lớp " + clsName + "!",
-                        "PAYMENT_SUCCESS", invoice.getId(), "/pages/attendance-tracking.html");
-            }
-            if (enrollment != null && enrollment.getClassEntity() != null && enrollment.getClassEntity().getTeacher() != null) {
-                notificationService.sendNotification(
-                        enrollment.getClassEntity().getTeacher(), cashier,
-                        "Học viên mới chính thức vào lớp",
-                        "Học viên " + st.getFullName() + " đã hoàn tất học phí và chính thức nhập học lớp " + clsName + " của bạn.",
-                        "ENROLLMENT_COMPLETED", enrollment.getId(), "/pages/weekly-schedule.html");
-            }
-            notificationService.sendToRoles(
-                    List.of(Role.ADMIN, Role.STAFF), cashier,
-                    "Thu học phí thành công: " + invoice.getInvoiceCode(),
-                    "Đã thu " + formatCurrency(finalAmount) + " của học viên " + st.getFullName() + " — Lớp " + clsName + " (Mã phiếu: " + paymentCode + ").",
-                    "PAYMENT_SUCCESS", invoice.getId(), "/pages/tuition-payment.html");
-        }
-        return tuitionPaymentMapper.toPaymentReceiptResponse(payment, cashGiven, changeAmount);
+        String key=request.getIdempotencyKey();
+        if (key==null || key.isBlank()) throw new TuitionPaymentException("Thiếu mã chống gửi lặp. Vui lòng tải lại trang thu học phí.");
+        Payment payment=posting.cash(request.getInvoiceId(),request.getFinalAmount(),
+                request.getCashGiven()==null ? request.getFinalAmount() : request.getCashGiven(),key);
+        return tuitionPaymentMapper.toPaymentReceiptResponse(payment,null,null);
     }
 
     @Override
@@ -337,31 +187,9 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     }
 
     @Override
-    @Transactional
     public PaymentReceiptResponse simulateBankWebhook(Long invoiceId, BigDecimal customAmount) {
-        Invoice invoice = invoiceRepository.findByIdWithDetails(invoiceId)
-                .orElseThrow(() -> new TuitionPaymentException("Không tìm thấy hóa đơn với ID: " + invoiceId));
-
-        if (invoice.getStatus() == InvoiceStatus.PAID) {
-            Payment payment = paymentRepository.findFirstByInvoiceIdOrderByIdDesc(invoiceId).orElse(null);
-            if (payment != null) {
-                return tuitionPaymentMapper.toPaymentReceiptResponse(payment, null, null);
-            }
-        }
-
-        BigDecimal amount = customAmount != null ? customAmount : invoice.getFinalAmount();
-        ProcessPaymentRequest request = ProcessPaymentRequest.builder()
-                .invoiceId(invoiceId)
-                .paymentMethod(PaymentMethod.VIET_QR)
-                .discountType(invoice.getDiscountType() != null ? invoice.getDiscountType() : DiscountType.NONE)
-                .discountAmount(invoice.getDiscountAmount() != null ? invoice.getDiscountAmount() : BigDecimal.ZERO)
-                .discountReason(invoice.getDiscountReason())
-                .finalAmount(amount)
-                .bankTransactionId("AGRI-AUTO-" + System.currentTimeMillis())
-                .note("Thanh toán tự động qua Webhook Ngân Hàng Agribank VietQR (Ting-Ting)")
-                .build();
-
-        return processPayment(request, "SYSTEM_WEBHOOK");
+        var intent=installmentGateway.create(invoiceId,customAmount==null ? ledger.view(invoiceId).balance() : customAmount);
+        return installmentGateway.simulate(intent.id());
     }
 
     @Override
@@ -423,6 +251,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     public List<PaymentReceiptResponse> getPaymentHistory(String keyword) {
         List<Payment> payments = paymentRepository.findAllByOrderByPaymentDateDesc();
         List<PaymentReceiptResponse> responses = payments.stream()
+                .filter(p -> p.getStatus()==PaymentStatus.SUCCESS && !reversals.existsByPaymentIdAndStatus(p.getId(),"APPROVED"))
                 .map(p -> tuitionPaymentMapper.toPaymentReceiptResponse(p, null, null))
                 .toList();
 
@@ -490,6 +319,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
         List<Payment> payments = paymentRepository.findPaymentsWithFilters(startDateTime, endDateTime, filterCashier);
 
         List<PaymentReceiptResponse> receiptResponses = payments.stream()
+                .filter(p -> p.getStatus()==PaymentStatus.SUCCESS && !reversals.existsByPaymentIdAndStatus(p.getId(),"APPROVED"))
                 .map(p -> tuitionPaymentMapper.toPaymentReceiptResponse(p, null, null))
                 .toList();
 
@@ -567,13 +397,14 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     }
 
     @Override
-    @Transactional
     public PayOSPaymentLinkResponse createPayOSPaymentLink(Long invoiceId, BigDecimal customAmount) {
-        return createPayOSPaymentLink(invoiceId, customAmount, null, null, null);
+        var intent=installmentGateway.create(invoiceId,customAmount==null ? ledger.view(invoiceId).balance() : customAmount);
+        return PayOSPaymentLinkResponse.builder().orderCode(intent.orderCode()).amount(intent.amount())
+                .checkoutUrl(intent.checkoutUrl()).qrCode(intent.qrCode()).paymentLinkId(String.valueOf(intent.id()))
+                .status(intent.status()).simulated(intent.simulated()).build();
     }
 
     @Override
-    @Transactional
     public PayOSPaymentLinkResponse createPayOSPaymentLink(
             Long invoiceId,
             BigDecimal customAmount,
@@ -621,141 +452,14 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
     }
 
     @Override
-    @Transactional
     public PaymentReceiptResponse processPayOSWebhook(Map<String, Object> payload) {
-        log.info("Nhận Webhook từ PayOS: {}", payload);
-        if (!payOSGateway.verifyWebhookSignature(payload)) {
-            log.error("PayOS Webhook: Chữ ký không hợp lệ!");
-            throw new TuitionPaymentException("Chữ ký Webhook PayOS không hợp lệ!");
-        }
-
-        Object dataObj = payload.get("data");
-        if (!(dataObj instanceof Map<?, ?> dataMap)) {
-            throw new TuitionPaymentException("Dữ liệu webhook PayOS không đúng định dạng!");
-        }
-
-        // 1. Phản hồi thành công ngay lập tức nếu là ping test xác thực Webhook (/confirm-webhook) từ PayOS
-        Object testRef = dataMap.get("reference");
-        Object testOrder = dataMap.get("orderCode");
-        Object testDesc = dataMap.get("description");
-        if ("TF230204212323".equals(String.valueOf(testRef))
-                || "123".equals(String.valueOf(testOrder))
-                || (testDesc != null && String.valueOf(testDesc).contains("VQRIO123"))) {
-            log.info("Xác thực Webhook thành công qua Ping kiểm tra của PayOS: ref={}, orderCode={}", testRef, testOrder);
-            return PaymentReceiptResponse.builder()
-                    .paymentId(0L)
-                    .invoiceCode("TEST-PAYOS")
-                    .paymentCode("CONFIRMED-WEBHOOK")
-                    .bankTransactionId(testRef != null ? String.valueOf(testRef) : "CONFIRMED")
-                    .studentName("PayOS Ping Test")
-                    .finalAmount(BigDecimal.valueOf(3000))
-                    .paymentMethod("BANK_TRANSFER")
-                    .message("Xác nhận kết nối Webhook PayOS thành công 100%!")
-                    .build();
-        }
-
-        String description = String.valueOf(dataMap.get("description"));
-        Object amountObj = dataMap.get("amount");
-        BigDecimal amount = null;
-        if (amountObj != null) {
-            try {
-                amount = new BigDecimal(String.valueOf(amountObj));
-            } catch (Exception ignored) {}
-        }
-        String reference = String.valueOf(dataMap.get("reference"));
-        if (reference == null || reference.isBlank() || "null".equals(reference)) {
-            reference = "PAYOS-" + dataMap.get("orderCode");
-        }
-
-        Invoice invoice = null;
-        if (description != null && !description.isBlank() && !"null".equalsIgnoreCase(description)) {
-            invoice = invoiceRepository.findByInvoiceCode(description.trim()).orElse(null);
-            if (invoice == null) {
-                java.util.regex.Pattern p = java.util.regex.Pattern.compile("(INV-\\d{4}-\\d+)");
-                java.util.regex.Matcher m = p.matcher(description);
-                if (m.find()) {
-                    invoice = invoiceRepository.findByInvoiceCode(m.group(1)).orElse(null);
-                }
-            }
-            if (invoice == null) {
-                // Hỗ trợ trường hợp PayOS bỏ ký tự đặc biệt: INV2026011 -> INV-2026-011
-                java.util.regex.Pattern p2 = java.util.regex.Pattern.compile("INV(\\d{4})(\\d+)");
-                java.util.regex.Matcher m2 = p2.matcher(description);
-                if (m2.find()) {
-                    String formattedCode = "INV-" + m2.group(1) + "-" + m2.group(2);
-                    invoice = invoiceRepository.findByInvoiceCode(formattedCode).orElse(null);
-                }
-            }
-        }
-
-        if (invoice == null) {
-            Object orderCodeObj = dataMap.get("orderCode");
-            if (orderCodeObj != null) {
-                try {
-                    long orderCode = Long.parseLong(String.valueOf(orderCodeObj));
-                    long invoiceId = orderCode % 100_000L;
-                    invoice = invoiceRepository.findByIdWithDetails(invoiceId).orElse(null);
-                } catch (Exception ignored) {}
-            }
-        }
-
-        if (invoice == null) {
-            log.error("Không tìm thấy hóa đơn phù hợp cho webhook PayOS: {}", dataMap);
-            throw new TuitionPaymentException("Không tìm thấy hóa đơn tương ứng với giao dịch PayOS!");
-        }
-
-        // Đảm bảo fetch đầy đủ quan hệ để xử lý và sinh receipt
-        Invoice detailedInvoice = invoiceRepository.findByIdWithDetails(invoice.getId()).orElse(invoice);
-
-        if (detailedInvoice.getStatus() == InvoiceStatus.PAID) {
-            log.info("Hóa đơn {} đã được thanh toán trước đó.", detailedInvoice.getInvoiceCode());
-            Payment payment = paymentRepository.findFirstByInvoiceIdOrderByIdDesc(detailedInvoice.getId()).orElse(null);
-            if (payment != null) {
-                return tuitionPaymentMapper.toPaymentReceiptResponse(payment, null, null);
-            }
-        }
-
-        BigDecimal finalAmount = amount != null ? amount : detailedInvoice.getFinalAmount();
-        BigDecimal discountAmount = detailedInvoice.getDiscountAmount();
-        DiscountType discountType = detailedInvoice.getDiscountType();
-        String discountReason = detailedInvoice.getDiscountReason();
-
-        if (finalAmount.compareTo(BigDecimal.ZERO) == 0) {
-            discountType = DiscountType.FULL_FREE;
-            discountAmount = detailedInvoice.getOriginalAmount();
-            if (discountReason == null || discountReason.isBlank()) {
-                discountReason = "Học bổng tài năng âm nhạc 100%";
-            }
-        } else if (detailedInvoice.getOriginalAmount() != null && finalAmount.compareTo(detailedInvoice.getOriginalAmount()) < 0) {
-            if (discountAmount == null || discountAmount.compareTo(BigDecimal.ZERO) == 0) {
-                discountAmount = detailedInvoice.getOriginalAmount().subtract(finalAmount);
-                if (discountType == null || discountType == DiscountType.NONE) {
-                    discountType = DiscountType.PARTIAL_DISCOUNT;
-                }
-                if (discountReason == null || discountReason.isBlank()) {
-                    discountReason = "Ưu đãi giảm trực tiếp khi thanh toán";
-                }
-            }
-        }
-
-        ProcessPaymentRequest request = ProcessPaymentRequest.builder()
-                .invoiceId(detailedInvoice.getId())
-                .paymentMethod(PaymentMethod.VIET_QR)
-                .discountType(discountType != null ? discountType : DiscountType.NONE)
-                .discountAmount(discountAmount != null ? discountAmount : BigDecimal.ZERO)
-                .discountReason(discountReason)
-                .finalAmount(finalAmount)
-                .bankTransactionId(reference)
-                .note("Thanh toán trực tuyến PayOS Webhook tự động (orderCode: " + dataMap.get("orderCode") + ")")
-                .build();
-
-        return processPayment(request, "PAYOS_GATEWAY");
+        return installmentGateway.webhook(payload);
     }
 
     @Override
     @Transactional(readOnly = true)
     public CashierDashboardStatsResponse getDashboardStats() {
-        long pendingCount = invoiceRepository.countByStatus(InvoiceStatus.UNPAID);
+        long pendingCount = invoiceRepository.countByStatus(InvoiceStatus.UNPAID)+invoiceRepository.countByStatus(InvoiceStatus.PARTIALLY_PAID);
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
         long paidTodayCount = paymentRepository.countPaymentsSince(startOfToday);
         BigDecimal revenueToday = paymentRepository.sumAmountSince(startOfToday);

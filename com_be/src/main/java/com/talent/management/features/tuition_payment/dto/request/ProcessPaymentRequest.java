@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProcessPaymentRequest {
+    private String idempotencyKey;
 
     @NotNull(message = "ID hóa đơn không được để trống")
     private Long invoiceId;

@@ -32,7 +32,8 @@ const WORKSPACE_FEATURES = [
     { file: 'placement-test', label: 'Đánh giá đầu vào', icon: 'clipboard-check', group: 'Đào tạo & học vụ', roles: ['ADMIN', 'TEACHER', 'STAFF', 'BRANCH_MANAGER'], description: 'Sắp xếp lịch kiểm tra và ghi nhận kết quả đánh giá năng khiếu.' },
     { file: 'absence-makeup', label: 'Viết đơn', icon: 'envelope-paper', group: 'Đào tạo & học vụ', roles: ['PARENT', 'TEACHER', 'STAFF', 'BRANCH_MANAGER', 'ADMIN', 'STUDENT'], description: 'Viết đơn xin nghỉ học, theo dõi phê duyệt và sắp xếp buổi học bù.' },
     { file: 'branch-facility', label: 'Cơ sở & phòng học', icon: 'buildings', group: 'Vận hành trung tâm', roles: ['ADMIN', 'BRANCH_MANAGER', 'STAFF', 'TEACHER', 'PARENT', 'STUDENT'], description: 'Tra cứu chi nhánh, phòng học và cơ sở vật chất của trung tâm.' },
-    { file: 'tuition-payment', label: 'Thu học phí', icon: 'wallet2', group: 'Vận hành trung tâm', roles: ['ADMIN', 'STAFF', 'CASHIER'], description: 'Tra cứu hóa đơn, thu học phí và xem lịch sử thanh toán.' },
+    { file: 'parent-tuition', label: 'Học phí & thông báo', icon: 'wallet2', group: 'Học tập của con', roles: ['PARENT'], description: 'Xem lịch đóng, thông báo, thanh toán online và biên lai học phí.' },
+    { file: 'tuition-receivables', label: 'Quản lý học phí', icon: 'cash-stack', group: 'Vận hành trung tâm', roles: ['ADMIN','STAFF','BRANCH_MANAGER'], description: 'Chốt lịch đóng, thu học phí và quản lý công nợ.' },
 ];
 function visibleFeatures(user) { return WORKSPACE_FEATURES.filter(feature => feature.roles.includes(user?.role)); }
 function getFeatureLabel(feature, user) {
@@ -114,3 +115,14 @@ function logout() {
     localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = appPath('/login.html');
 }
 document.addEventListener('DOMContentLoaded', updateNavbarUser);
+
+async function updateTuitionNoticeIndicator() {
+    if (getCurrentUser()?.role !== 'PARENT' || typeof callApi !== 'function') return;
+    try {
+        const notices = await callApi('/api/parent-tuition/notifications', 'GET', null, false, false);
+        const link = [...document.querySelectorAll('#workspaceNavigation a')].find(a => a.pathname.endsWith('/parent-tuition.html'));
+        const count = notices.filter(n => !n.read).length;
+        if (link) link.querySelector('span').textContent = 'Học phí & thông báo' + (count ? ' (' + count + ')' : '');
+    } catch {}
+}
+document.addEventListener('DOMContentLoaded', updateTuitionNoticeIndicator);

@@ -6,8 +6,14 @@ import com.talent.management.features.attendance_tracking.dto.response.LessonAtt
 import com.talent.management.features.attendance_tracking.dto.response.StudentAttendanceTrackingResponse;
 
 import java.util.List;
+import java.util.Map;
 
 public interface AttendanceTrackingService {
+
+    /**
+     * Lấy danh sách học viên được phép tra cứu theo phân quyền tài khoản hiện tại
+     */
+    List<Map<String, Object>> getTrackableStudents();
 
     /**
      * Lấy danh sách điểm danh chi tiết của một buổi học (kèm kiểm tra quyền canEdit)

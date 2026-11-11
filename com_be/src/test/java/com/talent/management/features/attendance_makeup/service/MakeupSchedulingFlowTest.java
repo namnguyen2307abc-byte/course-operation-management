@@ -125,7 +125,7 @@ class MakeupSchedulingFlowTest {
                 .teacher(null).classEntity(ClassEntity.builder().id(100L).className("Piano 1").teacher(classTeacher).build()).build();
         AbsenceRequest ar = AbsenceRequest.builder().id(5L).student(student).lesson(lesson).status(AbsenceStatus.PENDING).build();
 
-        when(absences.findById(5L)).thenReturn(Optional.of(ar));
+        when(absences.findByIdForUpdate(5L)).thenReturn(Optional.of(ar));
         when(absences.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(makeups.findByAbsenceRequestId(5L)).thenReturn(Optional.empty());
         when(makeups.save(any())).thenAnswer(inv -> {
@@ -163,10 +163,33 @@ class MakeupSchedulingFlowTest {
         verify(notificationService).sendToRoles(eq(List.of(Role.STAFF, Role.ADMIN, Role.BRANCH_MANAGER)), eq(parent), anyString(), anyString(), eq("ABSENCE_CREATED"), eq(88L), anyString());
 
         AbsenceRequest pending = AbsenceRequest.builder().id(88L).student(student).lesson(lesson).status(AbsenceStatus.PENDING).build();
-        when(absences.findById(88L)).thenReturn(Optional.of(pending));
+        when(absences.findByIdForUpdate(88L)).thenReturn(Optional.of(pending));
         service.cancelAbsenceRequest(88L);
         verify(absences).delete(pending);
         verify(notificationService).sendNotification(eq(teacher), eq(parent), anyString(), anyString(), eq("ABSENCE_CANCELLED"), eq(88L), anyString());
         verify(notificationService).sendToRoles(eq(List.of(Role.STAFF, Role.ADMIN, Role.BRANCH_MANAGER)), eq(parent), anyString(), anyString(), eq("ABSENCE_CANCELLED"), eq(88L), anyString());
     }
+    @Test void cancellationRejectsOtherFamiliesAndAlreadyReviewedRequests() {
+        User parent = User.builder().id(10L).role(Role.PARENT).build();
+        Student student = Student.builder().id(1L).parent(User.builder().id(99L).build()).build();
+        AbsenceRequest ar = AbsenceRequest.builder().id(8L).student(student).status(AbsenceStatus.PENDING).build();
+        when(currentUser.getCurrentUser()).thenReturn(parent);
+        when(absences.findByIdForUpdate(8L)).thenReturn(Optional.of(ar));
+        assertThatThrownBy(() -> service.cancelAbsenceRequest(8L)).isInstanceOf(AttendanceMakeupException.class);
+        student.setParent(parent);
+        ar.setStatus(AbsenceStatus.APPROVED);
+        assertThatThrownBy(() -> service.cancelAbsenceRequest(8L)).isInstanceOf(AttendanceMakeupException.class)
+                .hasMessageContaining("Chờ duyệt");
+        verify(absences, never()).delete(any());
+    }
+
+    @Test void teacherCannotCancelAnotherTeachersRequest() {
+        when(currentUser.getCurrentUser()).thenReturn(User.builder().id(10L).role(Role.TEACHER).build());
+        AbsenceRequest ar = AbsenceRequest.builder().id(8L).student(Student.builder().id(1L).build())
+                .lesson(Lesson.builder().teacher(User.builder().id(99L).build()).build()).status(AbsenceStatus.PENDING).build();
+        when(absences.findByIdForUpdate(8L)).thenReturn(Optional.of(ar));
+        assertThatThrownBy(() -> service.cancelAbsenceRequest(8L)).isInstanceOf(AttendanceMakeupException.class);
+        verify(absences, never()).delete(any());
+    }
+
 }

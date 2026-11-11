@@ -80,6 +80,24 @@ public class CourseEnrollmentController {
         return ResponseEntity.ok(service.cancelRequest(requestId));
     }
 
+    @GetMapping("/requests/my/page")
+    @PreAuthorize("hasRole('PARENT')")
+    public com.talent.management.shared.dto.PageResponse<EnrollmentRequestResponse> myRequestPage(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) com.talent.management.shared.enums.EnrollmentRequestStatus status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        return service.searchRequests(true, keyword, status, page, size);
+    }
+
+    @GetMapping("/staff/requests/page")
+    @PreAuthorize("hasAnyRole('STAFF', 'BRANCH_MANAGER', 'ADMIN')")
+    public com.talent.management.shared.dto.PageResponse<EnrollmentRequestResponse> staffRequestPage(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) com.talent.management.shared.enums.EnrollmentRequestStatus status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        return service.searchRequests(false, keyword, status, page, size);
+    }
+
     @GetMapping("/staff/requests")
     @PreAuthorize("hasAnyRole('STAFF', 'BRANCH_MANAGER', 'ADMIN')")
     @Operation(summary = "Lấy các yêu cầu đang chờ duyệt")
