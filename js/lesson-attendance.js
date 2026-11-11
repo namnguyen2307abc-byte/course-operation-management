@@ -393,7 +393,8 @@ function renderStudents() {
             <!-- Ghi chú -->
             <div class="rc-note">
                 <input type="text" class="att-note" id="note_${s.studentId}" value="${escapeAttr(s.note || '')}"
-                       placeholder="${editMode ? 'Nhập ghi chú (nếu có)...' : '—'}" ${dis}
+                       maxlength="500"
+                       placeholder="${editMode ? 'Nhập ghi chú (tối đa 500 ký tự)...' : '—'}" ${dis}
                        oninput="setNote(${s.studentId}, this.value)">
             </div>
         </div>`;
@@ -402,6 +403,7 @@ function renderStudents() {
 
 function setStatus(studentId, status) {
     if (!editMode || !sheet) return;
+    if (status !== 'PRESENT' && status !== 'ABSENT') return;
     const s = sheet.students.find(x => x.studentId === studentId);
     if (!s) return;
 
@@ -427,10 +429,17 @@ async function saveAttendance() {
     }
 
     // KIỂM TRA: Giáo viên phải chọn Present hoặc Absent cho toàn bộ học viên từ đầu
-    const unselected = (sheet.students || []).filter(s => !s.status);
+    const unselected = (sheet.students || []).filter(s => s.status !== 'PRESENT' && s.status !== 'ABSENT');
     if (unselected.length > 0) {
         showToast('error', 'Chưa hoàn tất điểm danh',
             `Còn ${unselected.length} học viên chưa được chọn Present hoặc Absent. Vui lòng điểm danh đủ cho cả lớp trước khi lưu!`);
+        return;
+    }
+
+    const tooLongNote = (sheet.students || []).find(s => (s.note || '').trim().length > 500);
+    if (tooLongNote) {
+        showToast('error', 'Ghi chú quá dài',
+            `Ghi chú của học viên ${tooLongNote.fullName} vượt quá 500 ký tự. Vui lòng rút gọn!`);
         return;
     }
 
@@ -443,7 +452,7 @@ async function saveAttendance() {
     const payload = {
         attendances: sheet.students.map(s => ({
             studentId: s.studentId,
-            status: String(s.status).startsWith('ABSENT') ? 'ABSENT' : 'PRESENT',
+            status: s.status === 'ABSENT' ? 'ABSENT' : 'PRESENT',
             note: (s.note || '').trim()
         }))
     };

@@ -51,7 +51,57 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final ZoneId CENTER_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
+    private User resolveEffectiveTeacher(Lesson lesson) {
+        if (lesson == null) return null;
+        if (lesson.getTeacher() != null) return lesson.getTeacher();
+        return lesson.getClassEntity() != null ? lesson.getClassEntity().getTeacher() : null;
+    }
+
+    @Override
+    public List<Map<String, Object>> getTrackableStudents() {
+        User currentUser = currentUserService.getCurrentUser();
+        Role role = currentUser.getRole();
+        List<Student> students;
+
+        if (role == Role.PARENT) {
+            students = studentRepository.findByParentId(currentUser.getId());
+        } else if (role == Role.STUDENT) {
+            students = studentRepository.findByAccountId(currentUser.getId())
+                    .map(List::of)
+                    .orElseGet(() -> studentRepository.findByParentId(currentUser.getId()));
+        } else if (role == Role.TEACHER) {
+            Set<Long> classIds = new LinkedHashSet<>();
+            attendanceClassRepository.findAll().stream()
+                    .filter(c -> c.getTeacher() != null && currentUser.getId().equals(c.getTeacher().getId()))
+                    .forEach(c -> classIds.add(c.getId()));
+            Map<Long, Student> map = new LinkedHashMap<>();
+            for (Long cid : classIds) {
+                for (Enrollment e : attendanceEnrollmentRepository.findActiveEnrollmentsByClassId(cid)) {
+                    if (e.getStudent() != null) {
+                        map.putIfAbsent(e.getStudent().getId(), e.getStudent());
+                    }
+                }
+            }
+            students = new ArrayList<>(map.values());
+        } else {
+            students = studentRepository.findAll();
+        }
+
+        return students.stream().map(s -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", s.getId());
+            item.put("fullName", s.getFullName());
+            item.put("name", s.getFullName());
+            item.put("studentCode", String.format("HV%04d", s.getId()));
+            return item;
+        }).toList();
+    }
+
+    @Override
     public LessonAttendanceSheetResponse getLessonAttendanceSheet(Long lessonId) {
+        if (lessonId == null || lessonId <= 0) {
+            throw new AttendanceMakeupException("Mã buổi học không hợp lệ.");
+        }
         Lesson lesson = attendanceLessonRepository.findById(lessonId)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy buổi học với ID: " + lessonId));
 
@@ -61,8 +111,9 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 && userRole != Role.TEACHER) {
             throw new AttendanceMakeupException("Tài khoản không có quyền xem bảng điểm danh của lớp.");
         }
-        if (userRole == Role.TEACHER && (lesson.getTeacher() == null
-                || !lesson.getTeacher().getId().equals(currentUser.getId()))) {
+        User effectiveTeacher = resolveEffectiveTeacher(lesson);
+        if (userRole == Role.TEACHER && (effectiveTeacher == null
+                || !effectiveTeacher.getId().equals(currentUser.getId()))) {
             throw new AttendanceMakeupException("Bạn không phải giáo viên phụ trách buổi học này!");
         }
         LocalDate today = LocalDate.now(CENTER_ZONE);
@@ -73,11 +124,14 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         if (userRole == Role.ADMIN || userRole == Role.STAFF || userRole == Role.BRANCH_MANAGER) {
             canEdit = true;
         } else if (userRole == Role.TEACHER) {
-            boolean isAssignedTeacher = lesson.getTeacher() != null
-                    && lesson.getTeacher().getId().equals(currentUser.getId());
+            boolean isAssignedTeacher = effectiveTeacher != null
+                    && effectiveTeacher.getId().equals(currentUser.getId());
             if (!isAssignedTeacher) {
                 canEdit = false;
                 lockReason = "Bạn không phải giáo viên phụ trách buổi học này!";
+            } else if (lesson.getClassEntity() != null && lesson.getClassEntity().getStatus() == ClassStatus.FINISHED) {
+                canEdit = false;
+                lockReason = "Lớp học đã kết thúc (FINISHED), giáo viên không thể chỉnh sửa điểm danh.";
             } else if (lesson.getLessonDate().isBefore(today)) {
                 canEdit = false;
                 lockReason = "Buổi học ngày " + lesson.getLessonDate() + " đã diễn ra trước đó. " +
@@ -182,7 +236,7 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
             if ("PRESENT".equals(statusStr)) {
                 presentCount++;
-            } else if (statusStr != null && statusStr.startsWith("ABSENT")) {
+            } else if ("ABSENT".equals(statusStr)) {
                 absentCount++;
             }
 
@@ -233,8 +287,8 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 .branchName(lesson.getClassEntity() != null && lesson.getClassEntity().getBranch() != null
                         ? lesson.getClassEntity().getBranch().getName()
                         : "")
-                .teacherId(lesson.getTeacher() != null ? lesson.getTeacher().getId() : null)
-                .teacherName(lesson.getTeacher() != null ? lesson.getTeacher().getFullName() : "Chưa phân công")
+                .teacherId(effectiveTeacher != null ? effectiveTeacher.getId() : null)
+                .teacherName(effectiveTeacher != null ? effectiveTeacher.getFullName() : "Chưa phân công")
                 .sessionNumber(lesson.getSessionNumber())
                 .canEdit(canEdit)
                 .lockReason(lockReason)
@@ -253,6 +307,9 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
     @Override
     @Transactional
     public void saveLessonAttendanceBatch(Long lessonId, BatchAttendanceSaveRequest request) {
+        if (lessonId == null || lessonId <= 0) {
+            throw new AttendanceMakeupException("Mã buổi học không hợp lệ.");
+        }
         Lesson lesson = attendanceLessonRepository.findById(lessonId)
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy buổi học với ID: " + lessonId));
 
@@ -266,9 +323,10 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         }
 
         // 2. Ràng buộc thời gian & giáo viên (Crucial Business Rule)
+        User effectiveTeacher = resolveEffectiveTeacher(lesson);
         if (userRole == Role.TEACHER) {
-            boolean isAssignedTeacher = lesson.getTeacher() != null
-                    && lesson.getTeacher().getId().equals(currentUser.getId());
+            boolean isAssignedTeacher = effectiveTeacher != null
+                    && effectiveTeacher.getId().equals(currentUser.getId());
             if (!isAssignedTeacher) {
                 throw new AttendanceMakeupException("Bạn không phải giáo viên phụ trách buổi học này!");
             }
@@ -299,20 +357,28 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         }
         Set<Long> roster = attendanceSheet.getStudents().stream()
                 .map(StudentAttendanceItemDto::getStudentId).collect(Collectors.toSet());
+        if (roster.isEmpty()) {
+            throw new AttendanceMakeupException("Buổi học hiện chưa có học viên nào trong danh sách để điểm danh.");
+        }
         Set<Long> submitted = new HashSet<>();
-        if (request.getAttendances() == null || request.getAttendances().isEmpty()) {
+        if (request == null || request.getAttendances() == null || request.getAttendances().isEmpty()) {
             throw new AttendanceMakeupException("Danh sách điểm danh không được để trống.");
         }
         for (StudentAttendanceMarkItem item : request.getAttendances()) {
             if (item == null || item.getStudentId() == null || !submitted.add(item.getStudentId())) {
                 throw new AttendanceMakeupException("Danh sách điểm danh có học viên trùng hoặc không hợp lệ.");
             }
-            if (!Set.of("PRESENT", "ABSENT").contains(item.getStatus() == null ? "" : item.getStatus())) {
-                throw new AttendanceMakeupException("Trạng thái điểm danh chỉ được là PRESENT hoặc ABSENT.");
+            String normalizedStatus = item.getStatus() == null ? "" : item.getStatus().trim().toUpperCase();
+            if (!Set.of("PRESENT", "ABSENT").contains(normalizedStatus)) {
+                throw new AttendanceMakeupException("Trạng thái điểm danh chỉ được phép là PRESENT (Có mặt) hoặc ABSENT (Vắng mặt).");
+            }
+            if (item.getNote() != null && item.getNote().trim().length() > 500) {
+                throw new AttendanceMakeupException("Ghi chú điểm danh không được vượt quá 500 ký tự.");
             }
         }
         if (!submitted.equals(roster)) {
-            throw new AttendanceMakeupException("Danh sách học viên đã thay đổi hoặc chưa đầy đủ. Vui lòng tải lại buổi học.");
+            throw new AttendanceMakeupException(
+                    "Danh sách điểm danh phải bao gồm đầy đủ 100% học viên của buổi học (" + roster.size() + " học viên). Vui lòng tải lại và kiểm tra!");
         }
 
         // 3. Xử lý lưu từng bản ghi điểm danh
@@ -321,27 +387,29 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                     .orElseThrow(() -> new AttendanceMakeupException(
                             "Không tìm thấy học viên với ID: " + item.getStudentId()));
 
-            AttendanceStatus status = AttendanceStatus.PRESENT;
-            if (item.getStatus() != null && !item.getStatus().isBlank()) {
-                String reqStatus = item.getStatus().trim().toUpperCase();
-                if (reqStatus.contains("ABSENT")) {
-                    status = AttendanceStatus.ABSENT;
-                } else {
-                    status = AttendanceStatus.PRESENT;
-                }
-            }
+            String reqStatus = item.getStatus().trim().toUpperCase();
+            AttendanceStatus status = "ABSENT".equals(reqStatus) ? AttendanceStatus.ABSENT : AttendanceStatus.PRESENT;
 
-            Attendance attendance = attendanceRecordRepository
-                    .findByLessonIdAndStudentId(lesson.getId(), student.getId())
-                    .orElseGet(() -> Attendance.builder()
-                            .lesson(lesson)
-                            .student(student)
-                            .build());
+            Optional<Attendance> existingOpt = attendanceRecordRepository
+                    .findByLessonIdAndStudentId(lesson.getId(), student.getId());
+            boolean isNewRecord = existingOpt.isEmpty();
+            Attendance attendance = existingOpt.orElseGet(() -> Attendance.builder()
+                    .lesson(lesson)
+                    .student(student)
+                    .build());
+
+            AttendanceStatus previousStatus = isNewRecord ? null : attendance.getStatus();
+            boolean statusChanged = isNewRecord || (previousStatus != status);
 
             attendance.setStatus(status);
-            attendance.setMarkedAt(LocalDateTime.now());
+            attendance.setMarkedAt(LocalDateTime.now(CENTER_ZONE));
             attendance.setNote(item.getNote() != null ? item.getNote().trim() : null);
             attendanceRecordRepository.save(attendance);
+
+            // Chỉ gửi thông báo và kích hoạt cập nhật học bù / cảnh báo vắng khi trạng thái thực sự thay đổi
+            if (!statusChanged) {
+                continue;
+            }
 
             if (notificationService != null && student.getParent() != null) {
                 String statusVn = status == AttendanceStatus.PRESENT ? "Có mặt" : "Vắng mặt";
@@ -353,11 +421,11 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                         notifType, lesson.getId(), "/pages/attendance-tracking.html");
             }
 
-            // Nếu học sinh PRESENT và có ca bù SCHEDULED / MISSED -> tự động COMPLETED
+            // Nếu học sinh PRESENT và có ca bù SCHEDULED / MISSED / CANCELLED -> tự động COMPLETED
             if (status == AttendanceStatus.PRESENT) {
                 makeupRegistrationRepository
                         .findFirstByTargetLessonIdAndStudentIdAndStatusIn(lesson.getId(), student.getId(),
-                                List.of(MakeupStatus.SCHEDULED, MakeupStatus.MISSED))
+                                List.of(MakeupStatus.SCHEDULED, MakeupStatus.MISSED, MakeupStatus.CANCELLED))
                         .ifPresent(mr -> {
                             int retry = Math.max(1, AttendanceMakeupMapper.extractRetryCount(mr));
                             mr.setStatus(MakeupStatus.COMPLETED);
@@ -506,6 +574,14 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 List.of(EnrollmentStatus.ENROLLED, EnrollmentStatus.PENDING_PAYMENT, EnrollmentStatus.COMPLETED)
         );
 
+        if (currentUser.getRole() == Role.TEACHER) {
+            enrollments = enrollments.stream()
+                    .filter(e -> e.getClassEntity() != null
+                            && e.getClassEntity().getTeacher() != null
+                            && currentUser.getId().equals(e.getClassEntity().getTeacher().getId()))
+                    .toList();
+        }
+
         return enrollments.stream().map(e -> {
             ClassEntity c = e.getClassEntity();
             Course co = c != null ? c.getCourse() : null;
@@ -535,16 +611,24 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy học viên với ID: " + effectiveStudentId));
         validateStudentAccess(currentUser, student);
 
+        List<Enrollment> enrollments = attendanceEnrollmentRepository.findEnrollmentsByStudentIdAndStatusIn(
+                student.getId(),
+                List.of(EnrollmentStatus.ENROLLED, EnrollmentStatus.PENDING_PAYMENT, EnrollmentStatus.COMPLETED)
+        );
+        if (enrollments.isEmpty()) {
+            throw new AttendanceMakeupException("Học viên chưa đăng ký tham gia lớp học nào!");
+        }
+
         Long targetClassId = classId;
         if (targetClassId == null) {
-            List<Enrollment> enrollments = attendanceEnrollmentRepository.findEnrollmentsByStudentIdAndStatusIn(
-                    student.getId(),
-                    List.of(EnrollmentStatus.ENROLLED, EnrollmentStatus.PENDING_PAYMENT, EnrollmentStatus.COMPLETED)
-            );
-            if (enrollments.isEmpty()) {
-                throw new AttendanceMakeupException("Học viên chưa đăng ký tham gia lớp học nào!");
-            }
             targetClassId = enrollments.get(0).getClassEntity().getId();
+        } else {
+            final Long checkCid = targetClassId;
+            boolean isEnrolledInClass = enrollments.stream()
+                    .anyMatch(e -> e.getClassEntity() != null && checkCid.equals(e.getClassEntity().getId()));
+            if (!isEnrolledInClass) {
+                throw new AttendanceMakeupException("Học viên không có hồ sơ ghi danh trong lớp học được chọn!");
+            }
         }
 
         final Long resolvedClassId = targetClassId;
@@ -558,6 +642,16 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
         List<Lesson> classLessons = attendanceLessonRepository
                 .findByClassEntityIdOrderBySessionNumberAscLessonDateAscStartTimeAsc(classEntity.getId());
+
+        if (currentUser.getRole() == Role.TEACHER) {
+            boolean teachesClass = (classEntity.getTeacher() != null
+                    && currentUser.getId().equals(classEntity.getTeacher().getId()))
+                    || classLessons.stream().anyMatch(l -> l.getTeacher() != null
+                            && currentUser.getId().equals(l.getTeacher().getId()));
+            if (!teachesClass) {
+                throw new AttendanceMakeupException("Bạn chỉ có quyền tra cứu tiến độ chuyên cần của học viên thuộc lớp mình phụ trách!");
+            }
+        }
 
         if (totalSessions == 0) {
             totalSessions = classLessons.size();
@@ -850,11 +944,11 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
     private int mapTimeToSlotNumber(LocalTime time) {
         if (time == null)
             return 1;
-        if (time.isBefore(LocalTime.of(9, 30)))
+        if (time.isBefore(LocalTime.of(9, 15)))
             return 1;
         if (time.isBefore(LocalTime.of(12, 30)))
             return 2;
-        if (time.isBefore(LocalTime.of(15, 30)))
+        if (time.isBefore(LocalTime.of(15, 15)))
             return 3;
         return 4;
     }
@@ -866,7 +960,7 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 TimeSlotDto.builder().slotNumber(2).slotName("Slot 2").timeRange("09:30 - 11:30")
                         .startTime(LocalTime.of(9, 30)).endTime(LocalTime.of(11, 30)).build(),
                 TimeSlotDto.builder().slotNumber(3).slotName("Slot 3").timeRange("13:00 - 15:00")
-                        .startTime(LocalTime.of(13, 0)).endTime(LocalTime.of(15, 30)).build(),
+                        .startTime(LocalTime.of(13, 0)).endTime(LocalTime.of(15, 0)).build(),
                 TimeSlotDto.builder().slotNumber(4).slotName("Slot 4").timeRange("15:30 - 17:30")
                         .startTime(LocalTime.of(15, 30)).endTime(LocalTime.of(17, 30)).build());
     }

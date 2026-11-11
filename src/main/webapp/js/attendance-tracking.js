@@ -59,7 +59,12 @@ async function loadStudents() {
     const studentSelect = document.getElementById('studentSelect');
 
     try {
-        const res = await callApi('/api/attendance-makeup/students', 'GET');
+        let res;
+        try {
+            res = await callApi('/api/attendance-tracking/students', 'GET');
+        } catch (_fallbackErr) {
+            res = await callApi('/api/attendance-makeup/students', 'GET');
+        }
         currentStudents = res || [];
 
         if (currentStudents.length === 0) {
