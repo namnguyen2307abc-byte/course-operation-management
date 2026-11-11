@@ -126,7 +126,7 @@ test('successful assignment still opens its invoice; rejection still reloads que
         element('assignedClassSelect').value = '3';
         await ctx.confirmDecision();
         assert.equal(element('decisionModal').classList.contains('show'), false);
-        if (decision === 'APPROVE') assert.match(ctx.window.location.href, /tuition-payment\.html\?invoiceId=99/);
+        if (decision === 'APPROVE') assert.match(ctx.window.location.href, /tuition-receivables\.html\?invoiceId=99/);
         else assert.match(element('pageNotice').textContent, /Đã từ chối yêu cầu/);
         assert.deepEqual(state.alerts, []);
     }
