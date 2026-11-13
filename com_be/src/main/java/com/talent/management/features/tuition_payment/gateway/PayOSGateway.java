@@ -135,15 +135,33 @@ public class PayOSGateway {
     }
 
     public void cancelPayment(long orderCode) {
+        if (isMissingOrClosed(orderCode)) return;
         Map<String,Object> response = restClient.post().uri(createPaymentUrl + "/" + orderCode + "/cancel")
                 .header("x-client-id", clientId.trim()).header("x-api-key", apiKey.trim())
                 .body(Map.of("cancellationReason", "Doi phuong thuc thanh toan"))
                 .retrieve().body(new ParameterizedTypeReference<>() {});
         if (response == null || !"00".equals(String.valueOf(response.get("code")))
                 || !(response.get("data") instanceof Map<?,?> data)
-                || !"CANCELLED".equals(String.valueOf(data.get("status")))) {
+                || !"CANCELLED".equals(String.valueOf(data.get("status")))
+                || new BigDecimal(String.valueOf(data.get("amountPaid"))).signum() != 0) {
             throw new IllegalStateException("Chưa hủy được QR ở cổng thanh toán. Cần kiểm tra ngân hàng trước khi thu lại.");
         }
+    }
+
+    /** Only definitive gateway absence/closure permits releasing an uncertain local request. */
+    public boolean isMissingOrClosed(long orderCode) {
+        Map<String, Object> response = restClient.get().uri(createPaymentUrl + "/" + orderCode)
+                .header("User-Agent", "TalentCenter/1.0")
+                .header("x-client-id", clientId.trim()).header("x-api-key", apiKey.trim())
+                .retrieve().body(new ParameterizedTypeReference<>() {});
+        if (response != null && "101".equals(String.valueOf(response.get("code")))) return true;
+        if (response == null || !"00".equals(String.valueOf(response.get("code")))
+                || !(response.get("data") instanceof Map<?, ?> data))
+            throw new IllegalStateException("Chưa kiểm tra được yêu cầu QR với PayOS. Vui lòng thử lại sau.");
+        if (!String.valueOf(orderCode).equals(String.valueOf(data.get("orderCode"))))
+            throw new IllegalStateException("Mã đơn PayOS trả về không khớp.");
+        BigDecimal paid = new BigDecimal(String.valueOf(data.get("amountPaid")));
+        return paid.signum() == 0 && List.of("CANCELLED", "EXPIRED").contains(String.valueOf(data.get("status")));
     }
 
     public boolean verifyWebhookSignature(Map<String, Object> body) {

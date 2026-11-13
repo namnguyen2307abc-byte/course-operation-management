@@ -55,6 +55,7 @@ public class TuitionInstallmentController {
     @PostMapping("/{id}/collections")
     public PaymentReceiptResponse collect(
             @PathVariable Long id, @Valid @RequestBody Collection input) {
+        gateway.prepareCashPayment(id);
         return posting.collectReceipt(
                 id, input.amount(), input.cashGiven(), input.idempotencyKey());
     }
@@ -116,7 +117,7 @@ public class TuitionInstallmentController {
     }
 
     @PostMapping("/payments/{id}/reversal")
-    @PreAuthorize("hasAnyRole('ADMIN','BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN','BRANCH_MANAGER')")
     public void reversal(@PathVariable Long id, @Valid @RequestBody Reason input) {
         reversals.request(id, input.reason());
     }

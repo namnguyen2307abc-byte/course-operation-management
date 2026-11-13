@@ -19,6 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.*;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import com.talent.management.features.notification.service.impl.NotificationServiceImpl;
+import com.talent.management.features.notification.repository.NotificationRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
@@ -40,6 +43,7 @@ import java.util.*;
     TuitionReversalService.class,
     TuitionReservationService.class,
     TuitionPaymentMapper.class,
+    NotificationServiceImpl.class,
     TuitionInstallmentFlowTest.Transactions.class
 })
 @TestPropertySource(
@@ -68,10 +72,13 @@ class TuitionInstallmentFlowTest {
     @Autowired TuitionReservationService reservations;
     @Autowired TuitionInstallmentRepository installments;
     @Autowired TuitionBankEventRepository events;
+    @Autowired TuitionIntentRepository intents;
     @Autowired PaymentRepository payments;
     @MockBean CurrentUserService current;
     @MockBean PayOSGateway payos;
-    @MockBean com.talent.management.features.notification.service.NotificationService notificationService;
+    @SpyBean NotificationServiceImpl notificationService;
+    @Autowired NotificationRepository bellNotifications;
+    @Autowired TuitionNoticeRepository tuitionNotices;
     User parent, other, staff, manager;
     Invoice invoice;
     ClassEntity clazz;
@@ -161,6 +168,7 @@ class TuitionInstallmentFlowTest {
     @Test
     void installmentNotificationsUseBalanceAndDoNotDuplicateEnrollmentOrReplays() {
         User teacher = user("teacher-notice", Role.TEACHER);
+        User branchManager = user("branch-notice", Role.BRANCH_MANAGER);
         clazz.setTeacher(teacher);
         configure();
         posting.cash(invoice.getId(), money(3000000), money(3000000), "notice-first");
@@ -174,6 +182,90 @@ class TuitionInstallmentFlowTest {
         verify(notificationService, times(2)).sendNotification(eq(parent), eq(staff),
                 eq("Đã nhận học phí"), anyString(), eq("PAYMENT_SUCCESS"), anyLong(), anyString());
         assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
+        assertThat(paymentNotifications(parent)).hasSize(2);
+        assertThat(paymentNotifications(staff)).hasSize(2);
+        assertThat(paymentNotifications(manager)).hasSize(2);
+        assertThat(paymentNotifications(branchManager)).hasSize(2);
+        assertThat(paymentNotifications(other)).isEmpty();
+    }
+
+    @Test
+    void confirmedScheduleAppearsOnParentBellWithAmountsDatesAndInvoiceLink() {
+        configure();
+        assertThat(bellNotifications.findByRecipientIdAndIsReadFalse(parent.getId()))
+                .singleElement().satisfies(n -> {
+                    assertThat(n.getType()).isEqualTo("TUITION_PLAN_CONFIRMED");
+                    assertThat(n.getMessage()).contains("Con thử nghiệm", "INV-FLOW", "3.000.000", "đợt 3");
+                    assertThat(n.getTargetUrl()).isEqualTo("/pages/parent-tuition.html?invoiceId=" + invoice.getId());
+                    assertThat(n.getSender().getId()).isEqualTo(staff.getId());
+                });
+        assertThat(bellNotifications.findByRecipientIdAndIsReadFalse(other.getId())).isEmpty();
+    }
+
+    @Test
+    void scheduledRemindersReachBellOncePerStageAndDoNotResendReadNotifications() {
+        ledger.configure(invoice.getId(), new InstallmentRequests.Plan(List.of(
+                new InstallmentRequests.Due(money(3000000), today.plusDays(1)),
+                new InstallmentRequests.Due(money(3000000), today.plusDays(30)))));
+        var due = installments.findById(ledger.view(invoice.getId()).installments().get(0).id()).orElseThrow();
+        when(current.getCurrentUser()).thenThrow(new IllegalStateException("No login in scheduler"));
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        var upcoming = bellNotifications.findByRecipientIdAndIsReadFalse(parent.getId()).stream()
+                .filter(n -> n.getType().equals("TUITION_UPCOMING")).toList();
+        assertThat(upcoming).singleElement().satisfies(n -> {
+            assertThat(n.getMessage()).contains("đợt 1", "3.000.000");
+            assertThat(n.getSender()).isNull();
+            n.setIsRead(true);
+        });
+        db.flush();
+        notices.generate(invoice.getId());
+        due.setDueDate(today);
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        due.setDueDate(today.minusDays(1));
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        var all = bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(parent.getId());
+        assertThat(all.stream().filter(n -> n.getType().startsWith("TUITION_")
+                && !n.getType().equals("TUITION_PLAN_CONFIRMED")))
+                .extracting(Notification::getType)
+                .containsExactlyInAnyOrder("TUITION_UPCOMING", "TUITION_DUE_TODAY", "TUITION_OVERDUE");
+        assertThat(bellNotifications.findByRecipientIdAndIsReadFalse(other.getId())).isEmpty();
+    }
+
+    @Test
+    void existingPrivateReminderIsBridgedToSharedBellWithoutDuplication() {
+        configure();
+        TuitionPlan plan = ledger.ensure(invoice);
+        var due = installments.findByPlanIdOrderBySequenceNumber(plan.getId()).get(0);
+        TuitionNotice legacy = new TuitionNotice();
+        legacy.setRecipient(parent);
+        legacy.setInstallment(due);
+        legacy.setRevision(plan.getRevision());
+        legacy.setType("DUE_TODAY");
+        legacy.setEventKey(parent.getId() + "-" + due.getId() + "-" + plan.getRevision() + "-DUE_TODAY");
+        tuitionNotices.saveAndFlush(legacy);
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        assertThat(bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(parent.getId()).stream()
+                .filter(n -> n.getType().equals("TUITION_DUE_TODAY")))
+                .singleElement().satisfies(n -> assertThat(n.getReferenceId()).isEqualTo(legacy.getId()));
+    }
+
+    @Test
+    void settledInvoiceDoesNotCreateDueBellNotifications() {
+        configure();
+        posting.cash(invoice.getId(), money(6000000), money(6000000), "settled-before-reminder");
+        notices.generate(invoice.getId());
+        assertThat(bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(parent.getId()).stream()
+                .filter(n -> List.of("TUITION_UPCOMING", "TUITION_DUE_TODAY", "TUITION_OVERDUE").contains(n.getType())))
+                .isEmpty();
+    }
+
+    private List<Notification> paymentNotifications(User recipient) {
+        return bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(recipient.getId()).stream()
+                .filter(n -> n.getType().equals("PAYMENT_SUCCESS")).toList();
     }
 
     @Test
@@ -216,6 +308,64 @@ class TuitionInstallmentFlowTest {
         assertThatThrownBy(() -> ledger.view(invoice.getId()))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("404");
+    }
+
+    @Test
+    void parentCanRetryMissingGatewayRequestWithoutLosingPayments() {
+        configure();
+        when(payos.createPaymentLink(any(), any(), anyLong(), anyBoolean()))
+                .thenThrow(new IllegalStateException("Network result unknown"));
+        as(parent);
+        assertThatThrownBy(() -> gateway.create(invoice.getId(), money(3000000)))
+                .isInstanceOf(IllegalStateException.class);
+        var failed = intents.findByInvoiceIdAndStatus(invoice.getId(), "UNCERTAIN").get(0);
+        when(payos.isMissingOrClosed(failed.getOrderCode())).thenReturn(true);
+        useRealGatewayStub();
+        var retry = gateway.create(invoice.getId(), money(3000000));
+        assertThat(retry.status()).isEqualTo("PENDING");
+        assertThat(retry.id()).isNotEqualTo(failed.getId());
+        assertThat(intents.findById(failed.getId()).orElseThrow().getStatus()).isEqualTo("FAILED");
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+    }
+
+    @Test
+    void unknownGatewayResultStaysBlockedUntilConfirmedAbsent() {
+        configure();
+        when(payos.createPaymentLink(any(), any(), anyLong(), anyBoolean()))
+                .thenThrow(new IllegalStateException("Timeout"));
+        assertThatThrownBy(() -> gateway.create(invoice.getId(), money(3000000)))
+                .isInstanceOf(IllegalStateException.class);
+        useRealGatewayStub();
+        assertThatThrownBy(() -> gateway.create(invoice.getId(), money(3000000)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(intents.findByInvoiceIdAndStatus(invoice.getId(), "UNCERTAIN")).hasSize(1);
+    }
+
+    @Test
+    void switchingToCashClosesQrAndReturnsExcessCash() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        gateway.prepareCashPayment(invoice.getId());
+        verify(payos).cancelPayment(qr.orderCode());
+        var payment = posting.cash(invoice.getId(), money(3000000), money(3500000), "cash-after-qr");
+        assertThat(payment.getChangeAmount()).isEqualByComparingTo("500000");
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+        assertThat(ledger.view(invoice.getId()).paid()).isEqualByComparingTo("3000000");
+    }
+
+    @Test
+    void failedGatewayCancellationDoesNotAllowCashCollection() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        org.mockito.Mockito.doThrow(new IllegalStateException("Gateway unavailable"))
+                .when(payos).cancelPayment(qr.orderCode());
+        assertThatThrownBy(() -> gateway.prepareCashPayment(invoice.getId()))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> posting.cash(invoice.getId(), money(3000000), money(3500000), "blocked"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
     }
 
     @Test
@@ -280,6 +430,25 @@ class TuitionInstallmentFlowTest {
         assertThat(events.findByReference("BANK-MANUAL-1").orElseThrow().getReviewedBy().getId())
                 .isEqualTo(staff.getId());
         assertThat(events.findByStatusOrderByIdDesc("RECONCILE")).isEmpty();
+        assertThat(paymentNotifications(parent)).hasSize(1);
+        assertThat(paymentNotifications(staff)).hasSize(1);
+    }
+
+    @Test
+    void automaticWebhookNotifiesParentAndStaffOnceWithoutLoggedInUser() {
+        configure();
+        useRealGatewayStub();
+        as(parent);
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        when(current.getCurrentUser()).thenThrow(new IllegalStateException("Webhook has no login"));
+        gateway.webhook(webhook(qr.orderCode(), "BANK-NOTIFY-ONCE", money(3000000)));
+        gateway.webhook(webhook(qr.orderCode(), "BANK-NOTIFY-ONCE", money(3000000)));
+        assertThat(paymentNotifications(parent)).singleElement()
+                .satisfies(n -> assertThat(n.getTargetUrl()).contains("parent-tuition.html?invoiceId=" + invoice.getId()));
+        assertThat(paymentNotifications(staff)).singleElement()
+                .satisfies(n -> assertThat(n.getTargetUrl()).contains("tuition-receivables.html?invoiceId=" + invoice.getId()));
+        assertThat(paymentNotifications(manager)).hasSize(1);
+        assertThat(paymentNotifications(other)).isEmpty();
     }
 
     @Test
@@ -362,15 +531,15 @@ class TuitionInstallmentFlowTest {
     }
 
     private void useRealGatewayStub() {
-        when(payos.createPaymentLink(any(), any(), anyLong(), anyBoolean()))
-                .thenAnswer(
+        doAnswer(
                         call ->
                                 PayOSPaymentLinkResponse.builder()
                                         .orderCode(call.getArgument(2))
                                         .amount(call.getArgument(1))
                                         .status("PENDING")
                                         .simulated(false)
-                                        .build());
+                                        .build())
+                .when(payos).createPaymentLink(any(), any(), anyLong(), anyBoolean());
     }
 
     @Test
@@ -438,22 +607,21 @@ class TuitionInstallmentFlowTest {
     void approvedCashCorrectionRestoresDebtAndKeepsEnrollmentHistory() {
         configure();
         Payment payment = posting.cash(invoice.getId(), money(3000000), money(3000000), "wrong");
-        assertThatThrownBy(() -> reversals.request(payment.getId(), "Nhập nhầm"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("403");
+        reversals.request(payment.getId(), "Nhập nhầm số tiền mặt chưa nhận");
         assertThatThrownBy(() -> reversals.list())
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("403");
         as(manager);
-        reversals.request(payment.getId(), "Nhập nhầm số tiền mặt chưa nhận");
+        var requestId = reversals.list().get(0).id();
+        as(staff);
         assertThatThrownBy(
                         () ->
                                 reversals.review(
-                                        reversals.list().get(0).id(),
+                                        requestId,
                                         new InstallmentRequests.Review(true, "Tự duyệt")))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("không được tự duyệt");
-        as(user("reviewer", Role.BRANCH_MANAGER));
+                .hasMessageContaining("403");
+        as(manager);
         reversals.review(
                 reversals.list().get(0).id(),
                 new InstallmentRequests.Review(true, "Đã kiểm đếm và xác minh"));
@@ -464,6 +632,23 @@ class TuitionInstallmentFlowTest {
         assertThat(payment.getPaymentCode()).startsWith("PAY-");
         assertThat(invoice.getEnrollment().getStatus()).isEqualTo(EnrollmentStatus.ENROLLED);
         assertThat(clazz.getCurrentStudents()).isEqualTo(1);
+    }
+
+    @Test
+    void cashCorrectionRejectsParentsAndManagerSelfApproval() {
+        configure();
+        Payment payment = posting.cash(invoice.getId(), money(3000000), money(3000000), "self-review");
+        as(parent);
+        assertThatThrownBy(() -> reversals.request(payment.getId(), "Nhập nhầm"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("403");
+        as(manager);
+        reversals.request(payment.getId(), "Nhập nhầm");
+        var requestId = reversals.list().get(0).id();
+        assertThatThrownBy(() -> reversals.review(requestId,
+                        new InstallmentRequests.Review(true, "Tự duyệt")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("không được tự duyệt");
     }
 
     @Test

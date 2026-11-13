@@ -38,7 +38,11 @@ public class TuitionReversalService {
 
     @Transactional
     public void request(Long paymentId, String reason) {
-        requireManager();
+        if (!List.of(Role.STAFF, Role.ADMIN, Role.BRANCH_MANAGER)
+                .contains(current.getCurrentUser().getRole()))
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Chỉ nhân viên hoặc quản lý được đề nghị điều chỉnh khoản thu.");
         Payment payment = payments.findById(paymentId).orElseThrow();
         ledger.lock(payment.getInvoice().getId());
         if (payment.getPaymentMethod() != PaymentMethod.CASH_AT_DESK

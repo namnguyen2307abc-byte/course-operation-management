@@ -68,19 +68,49 @@ test('parent sees notices and requests only an online payment for the chosen amo
  }finally{await page.close();}
 });
 test('cashier posts a partial installment with a stable idempotency key',async()=>{
- let posted;
+ let posted,bellReads=0;
  const {page,errors}=await open('STAFF',(url,req)=>{
   if(req.method()==='POST'&&url.pathname.endsWith('/collections')){posted=req.postDataJSON();return {};}
+  if(url.pathname==='/api/notifications'){
+   bellReads++;
+   return {unreadCount:posted?1:0,notifications:posted?[{id:401,type:'PAYMENT_SUCCESS',title:'Đã ghi nhận khoản thu học phí',message:'Đã nhận tiền học phí',isRead:false}]:[]};
+  }
  });
  try{
   await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Chọn tất toán',exact:true}).count(),0);
-  await page.getByLabel('Số tiền thanh toán (đ)',{exact:true}).fill('1000000');
-  await page.getByLabel('Tiền khách đưa (đ)',{exact:true}).fill('1200000');
+  await page.getByLabel('Số tiền thanh toán (đ)',{exact:true}).fill('1.000.000');
+  await page.getByLabel('Tiền khách đưa (đ)',{exact:true}).fill('1.200.000');
+  assert.match(await page.locator('#action-content').innerText(),/Tiền trả lại: 200\.000/);
   await page.getByRole('button',{name:'Xác nhận đã thu tiền',exact:true}).click();
   await page.getByText('Đã lưu và cập nhật số dư.',{exact:true}).waitFor();
   assert.equal(posted.amount,1000000);assert.equal(posted.cashGiven,1200000);
   assert.match(posted.idempotencyKey,/^[a-f0-9-]{36}$/);
+  await page.waitForFunction(()=>document.getElementById('notifUnreadBadge')?.textContent==='1');
+  assert.ok(bellReads>=2,'successful collection should refresh the shared bell immediately');
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('parent bell shows tuition reminders in alerts and opens the related invoice',async()=>{
+ let markedRead=false;
+ const {page,errors}=await open('PARENT',(url,req)=>{
+  if(url.pathname==='/api/notifications')return {unreadCount:2,notifications:[
+   {id:501,type:'TUITION_DUE_TODAY',title:'Học phí đến hạn hôm nay',message:'Minh An - đợt 2 còn phải đóng 1.500.000 đ',targetUrl:'/pages/parent-tuition.html?invoiceId=11',isRead:false},
+   {id:502,type:'TUITION_PLAN_CONFIRMED',title:'Đã chốt lịch đóng học phí',message:'Đã xác nhận lịch đóng',targetUrl:'/pages/parent-tuition.html?invoiceId=11',isRead:false}
+  ]};
+  if(url.pathname==='/api/notifications/501/read'&&req.method()==='PATCH'){markedRead=true;return {};}
+ });
+ try{
+  await page.locator('#notifBellBtn').click();
+  await page.locator('#notifDropdownList .notif-item[data-id="501"]').waitFor();
+  await page.locator('#notifTabAlert').click();
+  assert.equal(await page.locator('#notifDropdownList .notif-item').count(),1);
+  assert.equal(await page.locator('#notifDropdownList .bi-wallet2').count(),1);
+  await page.screenshot({path:path.resolve(__dirname,'../.local-run/tuition-due-bell.png')});
+  await page.locator('#notifDropdownList .notif-item[data-id="501"]').click();
+  await page.waitForURL('**/parent-tuition.html?invoiceId=11');
+  assert.equal(markedRead,true);
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
@@ -117,6 +147,7 @@ test('parent receives a due notification with QR and cannot manually confirm rec
   await page.locator('#action-dialog canvas').waitFor();
   assert.equal(await page.getByRole('button',{name:'Xác nhận đã thu tiền',exact:true}).count(),0);
   assert.equal(await page.getByRole('button',{name:'Kiểm tra kết quả',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Hủy yêu cầu QR',exact:true}).count(),0);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
@@ -199,8 +230,28 @@ test('invoices paginate five items while all receipts remain visible',async()=>{
   await page.locator('#records summary').click();
   assert.equal(await page.locator('.receipt-history-row').count(),7);
   assert.equal(await page.getByRole('navigation',{name:'Phân trang biên lai 11',exact:true}).count(),0);
-  assert.equal(await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).count(),7);
   assert.equal(reversalReads,0);
+  assert.equal(await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).count(),0);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('staff submits a cash correction without access to management review',async()=>{
+ let posted;
+ const data=structuredClone(invoice);
+ data.receipts=[{id:21,code:'PT-20261111-000021',amount:1000000,method:'CASH_AT_DESK',at:'2026-11-11T09:35:00',reversed:false}];
+ const {page,errors}=await open('STAFF',(url,req)=>{
+  if(url.pathname.endsWith('/receivables'))return [data];
+  if(req.method()==='POST'&&url.pathname.endsWith('/payments/21/reversal')){posted=req.postDataJSON();return {};}
+ });
+ try{
+  await page.locator('summary').filter({hasText:'Biên lai (1)'}).click();
+  await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).click();
+  await page.getByLabel('Lý do và kết quả kiểm tra',{exact:true}).fill('Nhập sai số tiền mặt');
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.getByText('Đã gửi đề nghị điều chỉnh; chờ quản lý khác kiểm tra và duyệt.',{exact:true}).waitFor();
+  assert.deepEqual(posted,{reason:'Nhập sai số tiền mặt'});
   assert.equal(await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).count(),0);
   assert.deepEqual(errors,[]);
  }finally{await page.close();}

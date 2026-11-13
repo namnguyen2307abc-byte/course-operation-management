@@ -7,6 +7,7 @@ import com.talent.management.features.tuition_payment.repository.*;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
+import com.talent.management.features.notification.service.NotificationService;
 
 import jakarta.persistence.*;
 
@@ -30,8 +31,7 @@ public class PaymentPostingService {
     private final EntityManager em;
     private final com.talent.management.features.tuition_payment.mapper.TuitionPaymentMapper mapper;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.talent.management.features.notification.service.NotificationService notificationService;
+    private final NotificationService notificationService;
 
     @Transactional
     public com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse
@@ -141,7 +141,7 @@ public class PaymentPostingService {
                         "Đã nhận học phí", message, "PAYMENT_SUCCESS", payment.getId(),
                         "/pages/parent-tuition.html?invoiceId=" + invoice.getId());
             }
-            notificationService.sendToRoles(List.of(Role.ADMIN, Role.STAFF), cashier,
+            notificationService.sendToRoles(List.of(Role.ADMIN, Role.STAFF, Role.BRANCH_MANAGER), cashier,
                     "Đã ghi nhận khoản thu học phí", message, "PAYMENT_SUCCESS", payment.getId(),
                     "/pages/tuition-receivables.html?invoiceId=" + invoice.getId());
             if (newlyEnrolled && linked.getClassEntity().getTeacher() != null) {

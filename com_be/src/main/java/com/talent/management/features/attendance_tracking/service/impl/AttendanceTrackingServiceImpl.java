@@ -121,7 +121,11 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         boolean canEdit;
         String lockReason = null;
 
-        if (userRole == Role.ADMIN || userRole == Role.STAFF || userRole == Role.BRANCH_MANAGER) {
+        if (lesson.getLessonDate().isAfter(today)) {
+            canEdit = false;
+            lockReason = "Buổi học ngày " + lesson.getLessonDate()
+                    + " chưa diễn ra. Không được điểm danh hoặc chỉnh sửa điểm danh cho ngày tương lai.";
+        } else if (userRole == Role.ADMIN || userRole == Role.STAFF || userRole == Role.BRANCH_MANAGER) {
             canEdit = true;
         } else if (userRole == Role.TEACHER) {
             boolean isAssignedTeacher = effectiveTeacher != null
@@ -326,6 +330,10 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         // 1. Phân quyền: Học sinh/phụ huynh không được điểm danh
         if (userRole == Role.PARENT || userRole == Role.STUDENT) {
             throw new AttendanceMakeupException("Tài khoản Phụ huynh/Học viên không có quyền điểm danh!");
+        }
+        if (lesson.getLessonDate().isAfter(today)) {
+            throw new AttendanceMakeupException("Buổi học ngày " + lesson.getLessonDate()
+                    + " chưa diễn ra. Không được điểm danh hoặc chỉnh sửa điểm danh cho ngày tương lai.");
         }
 
         // 2. Ràng buộc thời gian & giáo viên (Crucial Business Rule)

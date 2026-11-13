@@ -16,7 +16,7 @@
  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());
  const status={UNPAID:'Chưa đóng',PARTIALLY_PAID:'Đã đóng một phần',PAID:'Đã đóng đủ',CANCELLED:'Đã hủy',
   PENDING:'Chờ duyệt',APPROVED:'Đã duyệt',REJECTED:'Từ chối',CREATING:'Đang tạo QR',UNCERTAIN:'Cần kiểm tra với PayOS',
-  RECONCILE:'Cần kiểm tra ngân hàng',UPCOMING:'Sắp đến hạn',DUE_TODAY:'Đến hạn hôm nay',OVERDUE:'Đã quá hạn'};
+  FAILED:'Chưa tạo được mã QR',RECONCILE:'Cần kiểm tra ngân hàng',UPCOMING:'Sắp đến hạn',DUE_TODAY:'Đến hạn hôm nay',OVERDUE:'Đã quá hạn'};
  function badge(text,tone='neutral') {return node('span',text,'ledger-badge tone-'+tone);}
  function sectionHeading(el,title,description,count) {
   const head=node('div',null,'ledger-section-heading');
@@ -93,8 +93,10 @@
   return input;
  }
  function integer(value) {
-  const raw=String(value||'').trim();
+  let raw=String(value||'').trim();
+  if(/^\d{1,3}([.,])\d{3}(?:\1\d{3})*$/.test(raw))raw=raw.replace(/[.,]/g,'');
   if(!/^\d+$/.test(raw)) throw new Error('Nhập tiền VND bằng các chữ số, ví dụ 1500000.');
+  if(!Number.isSafeInteger(Number(raw)))throw new Error('Số tiền không hợp lệ.');
   return Number(raw);
  }
  function table(headers,rows) {
@@ -173,10 +175,20 @@
   if(Number(invoice.balance)>0)method.add(new Option('Chuyển khoản QR / PayOS','QR'));
   label.append(method);$('action-content').append(label);
   const given=field('Tiền khách đưa (đ)','given',{inputMode:'numeric',value:next?next.remaining:0});
+  const change=node('p',null,'ledger-help');$('action-content').append(change);
+  function updateChange() {
+   change.hidden=method.value!=='CASH';
+   try {
+    const due=integer($('action-form').elements.amount.value),received=integer(given.value);
+    change.textContent=received>=due?'Tiền trả lại: '+money(received-due):'Khách cần đưa thêm: '+money(due-received);
+   }catch{change.textContent='Ví dụ: nhập 1000000 hoặc 1.000.000. Tiền khách đưa có thể lớn hơn số tiền thanh toán.';}
+  }
   function toggle() {
    given.parentElement.hidden=method.value!=='CASH';given.required=method.value==='CASH';
    $('submit-action').textContent=method.value==='CASH'?'Xác nhận đã thu tiền':'Tạo mã QR';
+   updateChange();
   }
+  given.addEventListener('input',updateChange);$('action-form').elements.amount.addEventListener('input',updateChange);
   method.addEventListener('change',toggle);toggle();
  }
  function qrView(intent,width=256) {
@@ -220,9 +232,6 @@
    content.append(node('p','Sau khi thanh toán, giữ trang này để hệ thống kiểm tra xác nhận từ cổng.'));
   }
   const actions=node('div',null,'ledger-actions');content.append(actions);
-  actions.append(button('Hủy yêu cầu QR',async()=>{
-   await api.cancelIntent(intent.id,parent);$('action-dialog').close();await load();
-  }));
   if(!parent && !intent.simulated && (['PENDING','UNCERTAIN'].includes(intent.status) || role==='ADMIN' && intent.status==='RECONCILE'))
    actions.append(button('Xác nhận đã thu tiền',()=>confirmBank(intent,invoice),'btn btn-success'));
   if(intent.simulated && role==='ADMIN')actions.append(button('Mô phỏng nhận tiền',async()=>{await api.simulate(intent.id);await poll();}));
@@ -236,6 +245,10 @@
      state.textContent='Đã nhận tiền. Biên lai đã được cập nhật.';
      $('action-dialog').close();
      feedback('Đã nhận tiền chuyển khoản. Giao dịch và biên lai đã hoàn tất.');
+     await load();window.refreshNotifications?.();return;
+    }
+    if(['FAILED','CANCELLED'].includes(current.status)) {
+     $('action-dialog').close();feedback('Yêu cầu QR cũ không còn hiệu lực. Bạn có thể chọn thanh toán để tạo mã QR mới.',true);
      await load();return;
     }
     if(['RECONCILE','CANCELLED'].includes(current.status))return;
@@ -304,7 +317,7 @@
     const row=node('div',null,'receipt-history-row'),info=node('div');
     info.append(node('strong',r.code),node('small',date(r.at)+' · '+(r.method==='CASH_AT_DESK'?'Tiền mặt':'Chuyển khoản PayOS')));
     row.append(info,node('strong',money(r.amount)),badge(r.reversed?'Đã đảo':'Thành công',r.reversed?'danger':'success'),button('Xem biên lai',()=>previewReceipt(invoice,r)));
-    if(manager && !r.reversed && r.method==='CASH_AT_DESK')row.append(button('Điều chỉnh thu nhầm',()=>{
+    if(!parent && !r.reversed && r.method==='CASH_AT_DESK')row.append(button('Điều chỉnh thu nhầm',()=>{
      open('Đề nghị điều chỉnh khoản thu nhầm',async data=>{await api.reversal(r.id,data.get('reason'));return {message:'Đã gửi đề nghị điều chỉnh; chờ quản lý khác kiểm tra và duyệt.'};});
      $('action-content').append(node('p','Phiếu '+r.code+' · '+money(r.amount),'payment-context'),node('p','Đề nghị này chỉ điều chỉnh bản ghi tiền mặt nhập sai, không chuyển tiền cho phụ huynh. Khi quản lý khác người đề nghị duyệt, khoản thu này bị loại khỏi số đã đóng và công nợ tăng tương ứng. Biên lai gốc vẫn được giữ.','ledger-help'));
      field('Lý do và kết quả kiểm tra','reason',{multiline:true,maxLength:500});
@@ -397,6 +410,7 @@
    const result=await action(new FormData($('action-form')));
    if(result?.keepOpen)return;
    $('action-dialog').close();feedback(result?.message||'Đã lưu và cập nhật số dư.');await load();
+   window.refreshNotifications?.();
   } catch(error){$('action-error').textContent=error.message;}
   finally {busy=false;$('submit-action').disabled=false;}
  });

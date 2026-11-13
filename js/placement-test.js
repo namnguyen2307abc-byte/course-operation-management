@@ -101,6 +101,14 @@ let placementTestsData = [
 
 let currentEditingId = null;
 let uploadedFileUrl = "";
+let attachmentUploadVersion = 0;
+let attachmentUploading = false;
+
+function setAttachmentUploading(busy) {
+    attachmentUploading = busy;
+    const save = document.querySelector("#evaluatePlacementTestForm button[type=submit]");
+    if (save) save.disabled = busy;
+}
 
 function escapeCourseOption(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -631,6 +639,8 @@ function setupEventListeners() {
     const evalModalEl = document.getElementById('evaluateModal');
     if (evalModalEl) {
         evalModalEl.addEventListener('hidden.bs.modal', () => {
+            attachmentUploadVersion++;
+            setAttachmentUploading(false);
             uploadedFileUrl = "";
             currentEditingId = null;
             const fileInput = document.getElementById("evalAttachmentFile");
@@ -757,43 +767,51 @@ async function handleFileUpload(e) {
         e.target.value = "";
         return;
     }
-
     const file = e.target.files[0];
     if (!file) return;
-
     const statusEl = document.getElementById("uploadStatusMessage");
-    if (statusEl) statusEl.innerHTML = `<span class="text-primary"><i class="bi bi-hourglass-split me-1"></i>Đang tải file lên máy chủ...</span>`;
-
+    if (file.size > 50 * 1024 * 1024) {
+        if (statusEl) statusEl.textContent = "File vượt quá 50 MB. Vui lòng chọn file nhỏ hơn.";
+        e.target.value = "";
+        return;
+    }
+    const version = ++attachmentUploadVersion;
+    const assessmentId = currentEditingId;
+    setAttachmentUploading(true);
+    if (statusEl) { statusEl.className = "small mt-1"; statusEl.textContent = "Đang tải file lên máy chủ..."; }
     try {
         const formData = new FormData();
         formData.append("file", file);
-
-        let fileUrl = "";
-        if (typeof callApi === 'function') {
-            const res = await callApi('/api/placement-tests/upload', 'POST', formData, true).catch(err => {
-                console.warn("API upload fallback (backend offline):", err);
-                return null;
-            });
-            if (res && res.fileUrl) {
-                fileUrl = res.fileUrl;
-            }
+        const res = await callApi('/api/placement-tests/upload', 'POST', formData, true, false);
+        if (version !== attachmentUploadVersion || assessmentId !== currentEditingId) return;
+        if (!res || typeof res.fileUrl !== 'string' || !res.fileUrl.startsWith('/uploads/')) {
+            throw new Error("Máy chủ chưa trả về file đã lưu. Vui lòng thử lại.");
         }
-        if (!fileUrl) {
-            fileUrl = `http://localhost:8080/uploads/placement-tests/${file.name}`;
-        }
-
-        uploadedFileUrl = fileUrl;
-        const evalMediaInput = document.getElementById("evalMediaUrl");
-        if (evalMediaInput) evalMediaInput.value = fileUrl;
-
+        uploadedFileUrl = res.fileUrl;
+        document.getElementById("evalMediaUrl").value = res.fileUrl;
         if (statusEl) {
-            statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Đã tải thành công: <a href="${fileUrl}" target="_blank" class="text-success text-decoration-underline">${file.name}</a></span>`;
+            statusEl.replaceChildren();
+            const text = document.createElement('span');
+            text.className = 'text-success';
+            text.textContent = 'Đã tải thành công: ';
+            const link = document.createElement('a');
+            link.href = (typeof BASE_URL === 'string' ? BASE_URL : '') + res.fileUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = file.name;
+            text.append(link);
+            statusEl.append(text);
         }
     } catch (err) {
-        console.error("Upload error:", err);
+        if (version !== attachmentUploadVersion || assessmentId !== currentEditingId) return;
         if (statusEl) {
-            statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Lỗi tải file lên.</span>`;
+            statusEl.className = 'small mt-1 text-danger';
+            statusEl.textContent = 'Chưa tải được file: ' + (err.message || 'Vui lòng thử lại.')
+                + ' Nội dung chấm điểm vẫn được giữ nguyên.';
         }
+        e.target.value = "";
+    } finally {
+        if (version === attachmentUploadVersion) setAttachmentUploading(false);
     }
 }
 
@@ -821,6 +839,8 @@ async function openEvaluateModal(id) {
         }
     }
 
+    attachmentUploadVersion++;
+    setAttachmentUploading(false);
     currentEditingId = id;
     uploadedFileUrl = item.videoUrl || item.audioUrl || item.recordUrl || item.imageUrl || "";
 
@@ -887,7 +907,8 @@ async function openEvaluateModal(id) {
     document.getElementById("evalMediaUrl").value = uploadedFileUrl;
 
     const statusEl = document.getElementById("uploadStatusMessage");
-    if (statusEl) statusEl.innerHTML = uploadedFileUrl ? `<span class="text-info"><i class="bi bi-link-45deg me-1"></i>Đã có file: <a href="${uploadedFileUrl}" target="_blank" class="text-info text-decoration-underline">${uploadedFileUrl}</a></span>` : "";
+    const existingFileHref = uploadedFileUrl.startsWith("/uploads/") ? (typeof BASE_URL === "string" ? BASE_URL : "") + uploadedFileUrl : uploadedFileUrl;
+    if (statusEl) statusEl.innerHTML = uploadedFileUrl ? `<span class="text-info"><i class="bi bi-link-45deg me-1"></i>Đã có file: <a href="${escapeCourseOption(existingFileHref)}" target="_blank" rel="noopener" class="text-info text-decoration-underline">Xem file đính kèm</a></span>` : "";
 
     const modal = new bootstrap.Modal(document.getElementById('evaluateModal'));
     modal.show();
@@ -896,6 +917,10 @@ async function openEvaluateModal(id) {
 async function handleSaveEvaluation(e) {
     e.preventDefault();
 
+    if (attachmentUploading) {
+        showNotification('Vui lòng đợi tải file xong trước khi lưu đánh giá.', 'warning');
+        return;
+    }
     if (!currentEditingId) return;
     const item = placementTestsData.find(x => x.id === currentEditingId);
     if (!item) return;

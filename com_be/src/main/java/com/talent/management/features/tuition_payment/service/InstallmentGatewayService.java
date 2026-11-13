@@ -59,6 +59,7 @@ public class InstallmentGatewayService {
 
     private IntentView createAs(
             Long invoiceId, BigDecimal requestedAmount, User actor, boolean reminder) {
+        releaseMissingRequests(invoiceId, actor);
         TuitionPaymentIntent intent =
                 tx.execute(
                         status -> {
@@ -99,8 +100,7 @@ public class InstallmentGatewayService {
                                         && old.getExpectedAmount().compareTo(amount) == 0
                                         && old.getPlanRevision() == plan.getRevision()) return old;
                                 throw conflict(
-                                        "Đang có QR khác chờ xác nhận. Đóng QR chưa trả hoặc kiểm"
-                                            + " tra ngân hàng trước khi tạo QR mới.");
+                                        "Đang có QR chờ thanh toán. Vui lòng mở QR đang chờ để thanh toán đúng số tiền.");
                             }
                             TuitionPaymentIntent created = new TuitionPaymentIntent();
                             created.setInvoice(invoice);
@@ -149,6 +149,11 @@ public class InstallmentGatewayService {
     }
 
     public IntentView status(Long id) {
+        tx.executeWithoutResult(status -> {
+            TuitionPaymentIntent found = intents.findById(id).orElseThrow();
+            ledger.checkParent(found.getInvoice());
+        });
+        refreshUncertain(id);
         return tx.execute(
                 status -> {
                     TuitionPaymentIntent intent =
@@ -160,6 +165,45 @@ public class InstallmentGatewayService {
                     ledger.checkParent(intent.getInvoice());
                     return map(intent);
                 });
+    }
+
+    private void releaseMissingRequests(Long invoiceId, User actor) {
+        List<Long> uncertain = tx.execute(status -> {
+            Invoice invoice = ledger.lock(invoiceId);
+            if (actor.getRole() == Role.PARENT && (invoice.getStudent().getParent() == null
+                    || !invoice.getStudent().getParent().getId().equals(actor.getId())))
+                throw new ResponseStatusException(NOT_FOUND, "Không tìm thấy học phí của con bạn.");
+            return intents.findByInvoiceIdAndStatus(invoiceId, "UNCERTAIN").stream()
+                    .map(TuitionPaymentIntent::getId).toList();
+        });
+        for (Long id : uncertain) refreshUncertain(id);
+    }
+
+    private void refreshUncertain(Long id) {
+        TuitionPaymentIntent snapshot = tx.execute(status -> intents.findById(id).orElseThrow());
+        if ("UNCERTAIN".equals(snapshot.getStatus()) && !snapshot.isSimulated()
+                && gateway.isMissingOrClosed(snapshot.getOrderCode())) {
+            tx.executeWithoutResult(status -> {
+                ledger.lock(snapshot.getInvoice().getId());
+                TuitionPaymentIntent saved = intents.findById(id).orElseThrow();
+                if ("UNCERTAIN".equals(saved.getStatus())) saved.setStatus("FAILED");
+            });
+        }
+    }
+
+    /** Changing to cash closes unpaid links at the gateway first; the cash writer rechecks under lock. */
+    public void prepareCashPayment(Long invoiceId) {
+        if (!List.of(Role.STAFF, Role.ADMIN, Role.BRANCH_MANAGER).contains(current.getCurrentUser().getRole()))
+            throw new ResponseStatusException(FORBIDDEN, "Chỉ nhân viên được thu tiền mặt.");
+        List<Long> active = tx.execute(status -> {
+            ledger.lock(invoiceId);
+            if (!intents.findByInvoiceIdAndStatus(invoiceId, "CREATING").isEmpty())
+                throw conflict("QR đang được tạo. Vui lòng đợi hoàn tất trước khi thu tiền mặt.");
+            List<TuitionPaymentIntent> pending = new ArrayList<>(intents.findByInvoiceIdAndStatus(invoiceId, "PENDING"));
+            pending.addAll(intents.findByInvoiceIdAndStatus(invoiceId, "UNCERTAIN"));
+            return pending.stream().map(TuitionPaymentIntent::getId).toList();
+        });
+        for (Long id : active) cancel(id);
     }
 
     public void cancel(Long id) {

@@ -8,6 +8,7 @@ import com.talent.management.features.tuition_payment.repository.*;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
+import com.talent.management.features.notification.service.NotificationService;
 
 import jakarta.persistence.*;
 
@@ -32,6 +33,7 @@ public class TuitionPlanService {
     private final CurrentUserService current;
     private final TuitionReversalRepository reversals;
     private final TuitionIntentRepository intents;
+    private final NotificationService notificationService;
 
     public static LocalDate today() {
         return LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
@@ -328,6 +330,23 @@ public class TuitionPlanService {
             installments.save(due);
         }
         invoice.setDueDate(input.installments().get(input.installments().size() - 1).date());
+        User parent = invoice.getStudent().getParent();
+        if (parent != null) {
+            StringBuilder schedule = new StringBuilder();
+            int period = 1;
+            for (InstallmentRequests.Due due : input.installments()) {
+                if (!schedule.isEmpty()) schedule.append("; ");
+                schedule.append(String.format(Locale.forLanguageTag("vi-VN"),
+                        "đợt %d: %,.0f đ, hạn %s", period++, due.amount(),
+                        due.date().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+            }
+            notificationService.sendNotification(parent, current.getCurrentUser(),
+                    "Đã chốt lịch đóng học phí",
+                    invoice.getStudent().getFullName() + " - " + invoice.getInvoiceCode() + ": "
+                            + schedule + ". Mở hóa đơn để xem chi tiết và thanh toán.",
+                    "TUITION_PLAN_CONFIRMED", plan.getId(),
+                    "/pages/parent-tuition.html?invoiceId=" + invoice.getId());
+        }
         return map(invoice, plan);
     }
 

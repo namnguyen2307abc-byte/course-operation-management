@@ -251,7 +251,7 @@ updateNavbarUser();
         if (!type) return false;
         return type.includes('CRITICAL') || type.includes('WARNING') || type.includes('MISSED')
             || type.includes('LIMIT_EXCEEDED') || type.includes('ABSENT') || type.includes('REJECTED')
-            || type.includes('NO_SLOT');
+            || type.includes('NO_SLOT') || type === 'TUITION_OVERDUE' || type === 'TUITION_DUE_TODAY';
     }
 
     async function fetchNotifApi(endpoint, method = 'GET') {
@@ -285,6 +285,15 @@ updateNavbarUser();
         }
         if (type.includes('PAYMENT_SUCCESS')) {
             return { cls: 'bg-success-subtle text-success', icon: 'bi-cash-coin', tag: '' };
+        }
+        if (type === 'TUITION_OVERDUE') {
+            return { cls: 'bg-danger-subtle text-danger', icon: 'bi-receipt-cutoff', tag: '<span class="badge bg-danger text-white ms-1" style="font-size:0.62rem;">Quá hạn</span>' };
+        }
+        if (type === 'TUITION_DUE_TODAY') {
+            return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-wallet2', tag: '<span class="badge bg-warning text-dark ms-1" style="font-size:0.62rem;">Đến hạn</span>' };
+        }
+        if (type === 'TUITION_UPCOMING' || type === 'TUITION_PLAN_CONFIRMED') {
+            return { cls: 'bg-info-subtle text-info-emphasis', icon: 'bi-calendar-check', tag: '' };
         }
         if (type.includes('INVOICE') || type.includes('DISCOUNT')) {
             return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-receipt-cutoff', tag: '' };

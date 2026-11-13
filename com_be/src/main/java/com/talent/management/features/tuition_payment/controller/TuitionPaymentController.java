@@ -37,11 +37,7 @@ public class TuitionPaymentController {
         return ResponseEntity.ok(tuitionPaymentService.searchPendingInvoices(keyword));
     }
 
-    @GetMapping("/{invoiceId}")
-    @Operation(summary = "Xem chi tiết một hóa đơn học phí")
-    public ResponseEntity<PendingInvoiceResponse> getInvoiceDetail(@PathVariable Long invoiceId) {
-        return ResponseEntity.ok(tuitionPaymentService.getInvoiceDetail(invoiceId));
-    }
+
 
     @PostMapping("/{invoiceId}/apply-discount")
     @Operation(summary = "Xác nhận số tiền: Tính toán miễn giảm phí (đăng ký sớm, anh chị em, học bổng 100%)")
@@ -152,5 +148,11 @@ public class TuitionPaymentController {
     public ResponseEntity<String> fixFont() {
         tuitionPaymentService.fixVietnameseFontData();
         return ResponseEntity.ok("Chuẩn hóa font tiếng Việt thành công!");
+    }
+
+    @GetMapping("/{invoiceId}")
+    @Operation(summary = "Xem chi tiết một hóa đơn học phí")
+    public ResponseEntity<PendingInvoiceResponse> getInvoiceDetail(@PathVariable Long invoiceId) {
+        return ResponseEntity.ok(tuitionPaymentService.getInvoiceDetail(invoiceId));
     }
 }
