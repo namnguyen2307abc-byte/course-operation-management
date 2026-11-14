@@ -108,4 +108,41 @@ class PlacementAssessmentFlowTest {
         assertThat(schedule.getScore()).isEqualTo(38);
         verify(scheduleRepository, never()).save(any());
     }
+
+    @Test
+    void cancelScheduleMarksCancelledAndUnlinksWaitingEnrollmentRequest() {
+        EnrollmentRequest enrollmentRequest = EnrollmentRequest.builder().id(22L)
+                .status(EnrollmentRequestStatus.WAITING_PLACEMENT).build();
+        PlacementSchedule schedule = PlacementSchedule.builder().id(9L)
+                .enrollmentRequest(enrollmentRequest)
+                .status(PlacementScheduleStatus.SCHEDULED).build();
+        when(scheduleRepository.findById(9L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.save(schedule)).thenReturn(schedule);
+
+        service.cancelSchedule(9L, "Học viên bận đột xuất", "staff");
+
+        assertThat(schedule.getStatus()).isEqualTo(PlacementScheduleStatus.CANCELLED);
+        assertThat(schedule.getCancelReason()).isEqualTo("Học viên bận đột xuất");
+        assertThat(schedule.getCancelledAt()).isNotNull();
+        assertThat(schedule.getEnrollmentRequest()).isNull();
+        verify(scheduleRepository).save(schedule);
+    }
+
+    @Test
+    void cancelScheduleRequiresReason() {
+        assertThatThrownBy(() -> service.cancelSchedule(9L, "   ", "staff"))
+                .isInstanceOf(BusinessException.class);
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void completedScheduleCannotBeCancelled() {
+        PlacementSchedule schedule = PlacementSchedule.builder().id(9L)
+                .status(PlacementScheduleStatus.COMPLETED).score(85).build();
+        when(scheduleRepository.findById(9L)).thenReturn(Optional.of(schedule));
+
+        assertThatThrownBy(() -> service.cancelSchedule(9L, "Hủy nhầm", "staff"))
+                .isInstanceOf(BusinessException.class);
+        verify(scheduleRepository, never()).save(any());
+    }
 }

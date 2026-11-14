@@ -12,7 +12,11 @@ public interface PlacementScheduleRepository extends JpaRepository<PlacementSche
 
     boolean existsByEnrollmentRequestId(Long enrollmentRequestId);
 
+    boolean existsByEnrollmentRequestIdAndStatusNot(Long enrollmentRequestId, com.talent.management.features.placement_test.entity.PlacementScheduleStatus status);
+
     Optional<PlacementSchedule> findFirstByEnrollmentRequestStudentIdOrderByTestDateDescIdDesc(Long studentId);
+
+    Optional<PlacementSchedule> findFirstByEnrollmentRequestStudentIdAndStatusOrderByTestDateDescIdDesc(Long studentId, com.talent.management.features.placement_test.entity.PlacementScheduleStatus status);
 
     List<PlacementSchedule> findAllByOrderByTestDateDesc();
 

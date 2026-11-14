@@ -24,6 +24,7 @@ public class UpdateCourseRequest {
     @Size(max = 150, message = "Tên khóa học không vượt quá 150 ký tự")
     private String name;
 
+    @NotNull(message = "Trình độ (level) không được để trống")
     private PlacementLevel level;
 
     @Min(value = 1, message = "Số tuần học phải lớn hơn 0")

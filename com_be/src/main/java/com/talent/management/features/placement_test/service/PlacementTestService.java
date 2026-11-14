@@ -23,5 +23,7 @@ public interface PlacementTestService {
 
     PlacementScheduleResponse createSchedule(CreatePlacementScheduleRequest request, String parentUsername);
 
+    PlacementScheduleResponse cancelSchedule(Long scheduleId, String cancelReason, String currentUsername);
+
     PlacementRecommendationResponse getLatestRecommendation(Long studentId);
 }

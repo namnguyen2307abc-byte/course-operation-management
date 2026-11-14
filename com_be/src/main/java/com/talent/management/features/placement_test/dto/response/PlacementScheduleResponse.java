@@ -35,6 +35,8 @@ public class PlacementScheduleResponse {
     private Long evaluatedById;
     private String evaluatedByName;
     private LocalDateTime evaluatedAt;
+    private String cancelReason;
+    private LocalDateTime cancelledAt;
     private Long parentId;
     private String parentName;
     private String parentEmail;

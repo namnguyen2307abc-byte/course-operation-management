@@ -88,6 +88,12 @@ public class PlacementSchedule {
     @Column(name = "evaluated_at")
     private LocalDateTime evaluatedAt;
 
+    @Column(name = "cancel_reason", columnDefinition = "NVARCHAR(500)")
+    private String cancelReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
