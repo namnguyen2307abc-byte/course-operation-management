@@ -15,6 +15,8 @@ public class PlacementScheduleResponse {
 
     private Long id;
     private Long enrollmentRequestId;
+    private Long programId;
+    private String programName;
     private String studentName;
     private String title;
     private String roomName;

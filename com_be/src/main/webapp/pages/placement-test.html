@@ -258,18 +258,21 @@
                                 <select id="createEnrollmentRequest" class="form-select" onchange="onEnrollmentRequestChange()">
                                     <option value="">Lịch test độc lập</option>
                                 </select>
+                                <div id="createParentNote" class="border rounded bg-light p-2 mt-2 small d-none">
+                                    <div class="fw-semibold">Ghi chú của phụ huynh</div>
+                                    <div id="createParentNoteText" class="text-break"></div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Họ và tên học viên <span class="text-danger">*</span></label>
                                 <input type="text" id="createStudentName" class="form-control" placeholder="Ví dụ: Nguyễn Minh Anh" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold text-dark">Bộ môn kiểm tra (Subject) <span class="text-danger">*</span></label>
-                                <select id="createSubject" class="form-select" required>
-                                    <option value="DAN">🎹 Bộ Môn Đàn</option>
-                                    <option value="MUA">🩰 Bộ Môn Múa</option>
-                                    <option value="VO">🥋 Bộ Môn Võ</option>
+                                <label for="createProgram" class="form-label fw-semibold text-dark">Môn kiểm tra <span class="text-danger">*</span></label>
+                                <select id="createProgram" class="form-select" required>
+                                    <option value="">Chọn môn kiểm tra</option>
                                 </select>
+                                <div id="createProgramHint" class="form-text" aria-live="polite"></div>
                             </div>
 
                             <div class="col-md-12">

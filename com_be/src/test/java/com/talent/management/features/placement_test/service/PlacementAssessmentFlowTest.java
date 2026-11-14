@@ -14,6 +14,7 @@ import com.talent.management.features.placement_test.repository.PlacementTestRep
 import com.talent.management.features.placement_test.service.impl.PlacementTestServiceImpl;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.EnrollmentRequest;
+import com.talent.management.shared.entity.Program;
 import com.talent.management.shared.entity.Student;
 import com.talent.management.shared.enums.EnrollmentRequestStatus;
 import com.talent.management.shared.exception.BusinessException;
@@ -40,6 +41,20 @@ class PlacementAssessmentFlowTest {
     @Mock EnrollmentRequestRepository enrollmentRequestRepository;
     @Mock CourseRepository courseRepository;
     @InjectMocks PlacementTestServiceImpl service;
+
+    @Test
+    void assessmentRejectsACourseFromAnotherProgramInTheSameSubjectGroup() {
+        Program piano = Program.builder().id(1L).placementSubject("DAN").build();
+        Program guitar = Program.builder().id(2L).placementSubject("DAN").build();
+        var schedule = PlacementSchedule.builder().program(piano).subject("DAN").build();
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
+        when(courseRepository.findById(4L)).thenReturn(Optional.of(Course.builder().id(4L).program(guitar).build()));
+
+        assertThatThrownBy(() -> service.saveAssessment(9L,
+                PlacementAssessmentRequest.builder().recommendedCourseId(4L).build(), "teacher"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("phải thuộc môn");
+        verify(scheduleRepository, never()).save(any());
+    }
 
     @Test
     void assessedLinkedScheduleProvidesRecommendationAndReadiesStaffRequest() {

@@ -31,6 +31,10 @@ public class EnrollmentRequest {
     @JoinColumn(name = "preferred_course_id")
     private Course preferredCourse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requested_program_id", foreignKey = @ForeignKey(name = "FK_enrollment_requests_requested_program"))
+    private Program requestedProgram;
+
     @Column(name = "placement_requested")
     @Builder.Default
     private Boolean placementRequested = false;

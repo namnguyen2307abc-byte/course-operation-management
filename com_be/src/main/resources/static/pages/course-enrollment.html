@@ -136,6 +136,12 @@
                             <label for="courseSelect" class="form-label small fw-semibold">Khóa học mong muốn</label>
                             <select class="form-select" id="courseSelect" required></select>
                         </div>
+                        <div class="col-md-6 d-none" id="placementProgramField">
+                            <label for="placementProgramSelect" class="form-label small fw-semibold">Môn muốn kiểm tra <span class="text-danger">*</span></label>
+                            <select class="form-select" id="placementProgramSelect" disabled>
+                                <option value="">Chọn môn muốn kiểm tra</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="border rounded p-3 mb-3">
@@ -148,7 +154,7 @@
 
                     <div id="recommendationPanel" class="recommendation-strip d-none mb-3" aria-live="polite"></div>
 
-                    <div class="mb-3">
+                    <div class="mb-3" id="parentClassPreviewField">
                         <label for="parentPreviewClassSelect" class="form-label small fw-semibold">Lớp đang mở (tham khảo)</label>
                         <div class="d-flex gap-2">
                             <select class="form-select" id="parentPreviewClassSelect" aria-label="Lớp đang mở"></select>
@@ -307,7 +313,7 @@
         let selectedRequest = null;
         let pendingRequestMap = new Map();
         let availableClassMap = new Map();
-        let recommendedClassIds = new Set();
+        let placementPreviewVersion = 0;
         const myPager = createListPager('myRequestPager', loadMyRequests);
         const staffPager = createListPager('staffRequestPager', loadPendingRequests);
         let myListVersion = 0;
@@ -331,6 +337,7 @@
             document.getElementById('childSelect').addEventListener('change', updatePlacementMode);
             document.getElementById('courseSelect').addEventListener('change', updatePlacementMode);
             document.getElementById('placementRequested').addEventListener('change', updatePlacementMode);
+            document.getElementById('placementProgramSelect').addEventListener('change', loadClassRecommendations);
             document.getElementById('parentFacilityPreviewBtn').addEventListener('click', () =>
                 openFacilityPreview(Number(document.getElementById('parentPreviewClassSelect').value)));
             document.getElementById('staffFacilityPreviewBtn').addEventListener('click', () =>
@@ -378,6 +385,7 @@
                 ]);
                 renderChildren(children || []);
                 renderCourses(courses || []);
+                await loadPlacementPrograms();
                 await loadMyRequests();
                 await updatePlacementMode();
             } catch (error) {
@@ -403,20 +411,42 @@
             const placementRequested = document.getElementById('placementRequested').checked;
             const courseSelect = document.getElementById('courseSelect');
             const coursePreferenceField = document.getElementById('coursePreferenceField');
-            const childField = document.getElementById('childField');
+            const programSelect = document.getElementById('placementProgramSelect');
             const panel = document.getElementById('recommendationPanel');
             courseSelect.disabled = placementRequested;
             courseSelect.required = !placementRequested;
             coursePreferenceField.classList.toggle('d-none', placementRequested);
-            childField.classList.toggle('col-md-6', !placementRequested);
-            childField.classList.toggle('col-md-12', placementRequested);
+            programSelect.disabled = !placementRequested;
+            programSelect.required = placementRequested;
+            document.getElementById('placementProgramField').classList.toggle('d-none', !placementRequested);
 
             if (!placementRequested) {
+                placementPreviewVersion++;
+                document.getElementById('parentClassPreviewField').classList.remove('d-none');
                 panel.className = 'recommendation-strip d-none mb-3';
                 await loadParentPreviewForCourse(courseSelect.value);
                 return;
             }
             await loadClassRecommendations();
+        }
+
+        async function loadPlacementPrograms() {
+            const select = document.getElementById('placementProgramSelect');
+            const selected = select.value;
+            select.replaceChildren(new Option('Chọn môn muốn kiểm tra', ''));
+            try {
+                const programs = await callApi('/api/course-enrollment/programs', 'GET', null, false, false);
+                for (const program of programs || []) {
+                    const label = program.placementAvailable ? program.name : `${program.name} (Chờ tư vấn)`;
+                    const option = new Option(label, program.id);
+                    option.dataset.placementAvailable = String(program.placementAvailable);
+                    select.add(option);
+                }
+                if (select.options.length === 1) select.options[0].text = 'Chưa có môn trong danh mục';
+                if ([...select.options].some(option => option.value === selected)) select.value = selected;
+            } catch {
+                select.options[0].text = 'Chưa tải được danh sách môn. Hãy nhấn Làm mới.';
+            }
         }
 
         function renderParentPreviewClasses(classes) {
@@ -452,48 +482,42 @@
         }
 
         async function loadClassRecommendations() {
+            const version = ++placementPreviewVersion;
             const childId = document.getElementById('childSelect').value;
+            const program = document.getElementById('placementProgramSelect').selectedOptions[0];
+            const programId = program?.value;
             const panel = document.getElementById('recommendationPanel');
-            recommendedClassIds = new Set();
+            const preview = document.getElementById('parentClassPreviewField');
+            preview.classList.add('d-none');
             renderParentPreviewClasses([]);
 
-            if (!childId) {
+            if (!childId || !programId) {
                 panel.className = 'recommendation-strip d-none mb-3';
+                return;
+            }
+
+            if (program.dataset.placementAvailable === 'false') {
+                panel.className = 'recommendation-strip is-unavailable mb-3';
+                panel.textContent = 'Phòng đào tạo sẽ tư vấn hình thức kiểm tra cho môn này sau khi nhận yêu cầu.';
                 return;
             }
 
             panel.className = 'recommendation-strip mb-3';
             panel.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang kiểm tra kết quả Placement Test...';
-            document.getElementById('parentPreviewClassSelect').innerHTML = '<option value="">Đang tải danh sách lớp tham khảo...</option>';
-
             try {
-                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations`, 'GET', null, false, false);
-                if (document.getElementById('childSelect').value !== childId
-                    || !document.getElementById('placementRequested').checked) return;
-
-                recommendedClassIds = new Set((recommendation.recommendedClasses || []).map(item => item.id));
+                const recommendation = await callApi(`/api/course-enrollment/children/${childId}/class-recommendations?programId=${programId}`, 'GET', null, false, false);
+                if (version !== placementPreviewVersion) return;
                 renderRecommendation(recommendation);
-                const openClasses = recommendation.openClasses || [];
-                renderParentPreviewClasses([
-                    ...openClasses.filter(item => recommendedClassIds.has(item.id)),
-                    ...openClasses.filter(item => !recommendedClassIds.has(item.id))
-                ]);
-
                 if (recommendation.recommendationAvailable && recommendation.recommendedCourseId) {
-                    const courseSelect = document.getElementById('courseSelect');
-                    const recommendedCourseId = String(recommendation.recommendedCourseId);
-                    if ([...courseSelect.options].some(option => option.value === recommendedCourseId)) {
-                        courseSelect.value = recommendedCourseId;
-                    }
+                    renderParentPreviewClasses(recommendation.recommendedClasses || []);
+                    preview.classList.remove('d-none');
                 }
             } catch (error) {
-                if (document.getElementById('childSelect').value !== childId
-                    || !document.getElementById('placementRequested').checked) return;
+                if (version !== placementPreviewVersion) return;
                 panel.className = 'recommendation-strip is-unavailable mb-3';
                 panel.innerHTML = `
                     <div class="fw-semibold"><i class="bi bi-exclamation-circle me-2"></i>Chưa tải được gợi ý xếp lớp</div>
                     <div class="text-muted small mt-1">Vui lòng thử lại sau. Bạn vẫn có thể gửi yêu cầu để phòng đào tạo kiểm tra và tư vấn.</div>`;
-                document.getElementById('parentPreviewClassSelect').innerHTML = '<option value="">Chưa tải được danh sách lớp tham khảo</option>';
             }
 
         }
@@ -676,6 +700,7 @@
         async function submitRequest(event) {
             event.preventDefault();
             const placementRequested = document.getElementById('placementRequested').checked;
+            const program = document.getElementById('placementProgramSelect').selectedOptions[0];
             const button = document.getElementById('submitRequestBtn');
             button.disabled = true;
             try {
@@ -684,11 +709,15 @@
                     preferredCourseId: placementRequested
                         ? null
                         : Number(document.getElementById('courseSelect').value),
+                    requestedProgramId: placementRequested ? Number(program.value) : null,
                     placementRequested,
                     note: document.getElementById('requestNote').value.trim() || null
                 });
                 document.getElementById('requestNote').value = '';
-                showNotice('Đã gửi nhu cầu học. Phòng đào tạo sẽ kiểm tra và xếp lớp phù hợp.', 'success');
+                const waitingForAdvice = placementRequested && program.dataset.placementAvailable === 'false';
+                showNotice(waitingForAdvice
+                    ? 'Đã gửi nhu cầu học. Phòng đào tạo sẽ tư vấn hình thức kiểm tra.'
+                    : 'Đã gửi nhu cầu học. Phòng đào tạo sẽ kiểm tra và xếp lớp phù hợp.', 'success');
                 myPager.reset();
                 await loadMyRequests();
             } catch (error) {
@@ -708,7 +737,7 @@
                 <tr>
                     <td class="fw-semibold">${escapeHtml(item.childName)}</td>
                     <td>
-                        <div>${escapeHtml(item.preferredCourseName || (item.placementRequested ? 'Theo kết quả Placement Test' : 'Chưa xác định'))}</div>
+                        <div>${escapeHtml(item.preferredCourseName || item.requestedProgramName || (item.placementRequested ? 'Theo kết quả Placement Test' : 'Chưa xác định'))}</div>
                         <span class="text-muted small">${item.className ? `${escapeHtml(item.className)} (${escapeHtml(item.classCode)})` : 'Staff chưa xếp lớp'}</span>
                     </td>
                     <td>${formatDateTime(item.requestedAt)}</td>
@@ -783,7 +812,8 @@
                     .filter(item => item.placementRequested)
                     .map(async item => {
                         try {
-                            return [item.id, await callApi(`/api/placement-tests/students/${item.childId}/latest-result`, 'GET', null, false, false)];
+                            const programFilter = item.requestedProgramId ? `?programId=${item.requestedProgramId}` : '';
+                            return [item.id, await callApi(`/api/placement-tests/students/${item.childId}/latest-result${programFilter}`, 'GET', null, false, false)];
                         } catch (error) {
                             return [item.id, null];
                         }
@@ -794,7 +824,7 @@
                     <tr>
                         <td><div class="fw-semibold">${escapeHtml(item.childName)}</div><span class="text-muted small">PH: ${escapeHtml(item.requestedBy)}</span></td>
                         <td>
-                            <div>${escapeHtml(item.preferredCourseName || 'Chờ kết quả Placement Test')}</div>
+                            <div>${escapeHtml(item.preferredCourseName || item.requestedProgramName || 'Chờ kết quả Placement Test')}</div>
                             <span class="badge border ${item.placementRequested ? 'bg-info-subtle text-info-emphasis' : 'bg-light text-secondary'}">${item.placementRequested ? 'Có Placement Test' : 'Không Placement Test'}</span>
                             <div class="mt-1">${statusBadge(item.status)}</div>
                             ${placementResults.get(item.id)?.placementStatus === 'COMPLETED'

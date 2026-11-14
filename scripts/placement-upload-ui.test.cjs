@@ -42,6 +42,128 @@ async function open(role,file,intercept,width=1440){
 const assessment={id:7,studentName:'Học viên thử upload',subject:'DAN',title:'Test Piano',status:'SCHEDULED',testDate:'2026-11-11T10:00:00',score:null};
 const image={name:'bai-thi.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==','base64')};
 
+const programs = [{id:31,name:'Piano',subject:'DAN'}, {id:32,name:'Guitar',subject:'DAN'}];
+
+test('parent submits a placement program and sees classes only for the recommended course', async()=>{
+ let submitted;
+ const {page}=await open('PARENT','course-enrollment.html',(url,request)=>{
+  if(url.pathname.endsWith('/children')) return [{id:5,fullName:'Nguyễn An'}];
+  if(url.pathname==='/api/course-enrollment/programs') return programs.map(program=>({...program,placementAvailable:true}));
+  if(url.pathname.endsWith('/courses')) return [{id:8,name:'Piano nền tảng',tuitionFee:2400000}];
+  if(url.pathname.endsWith('/class-recommendations')){
+   const recommended=url.searchParams.get('programId')==='32';
+   return {recommendationAvailable:recommended,placementStatus:recommended?'COMPLETED':'NOT_AVAILABLE',
+    recommendedCourseId:recommended?9:null,recommendedClasses:recommended?[{id:3,className:'Lớp Guitar 1',availableSeats:4}]:[],
+    openClasses:[{id:4,className:'Lớp Piano khác',availableSeats:5}]};
+  }
+  if(request.method()==='POST') submitted=request.postDataJSON();
+  if(url.pathname.endsWith('/page')) return {items:[],totalItems:0,page:0,totalPages:0};
+ });
+ try{
+  const program=page.locator('#placementProgramSelect');
+  await page.locator('#courseSelect option[value="8"]').waitFor({state:'attached'});
+  await page.locator('#placementRequested').check();
+  assert.equal(await program.evaluate(el=>el.validity.valueMissing),true);
+  assert.equal(await page.locator('#coursePreferenceField').isVisible(),false);
+  await program.selectOption('31');
+  await page.getByText('Chưa có kết quả Placement Test',{exact:true}).waitFor();
+  assert.equal(await page.locator('#parentClassPreviewField').isVisible(),false);
+  await program.selectOption('32');
+  await page.locator('#parentClassPreviewField').waitFor();
+  assert.match(await page.locator('#parentPreviewClassSelect').innerText(),/Lớp Guitar 1/);
+  assert.equal(await page.locator('#parentPreviewClassSelect option').count(),1);
+  await page.locator('#submitRequestBtn').click();
+  await page.getByText(/Đã gửi nhu cầu học/).waitFor();
+  assert.equal(submitted.requestedProgramId,32);
+  assert.equal(submitted.preferredCourseId,null);
+  await page.locator('#placementRequested').uncheck();
+  assert.equal(await page.locator('#coursePreferenceField').isVisible(),true);
+  assert.equal(await program.isDisabled(),true);
+ }finally{await page.close();}
+});
+
+test('parent can submit a catalog program awaiting advice without requesting an assessment', async()=>{
+ let submitted;
+ let resultRequests=0;
+ const {page,errors}=await open('PARENT','course-enrollment.html',(url,request)=>{
+  if(url.pathname.endsWith('/children')) return [{id:5,fullName:'Nguyễn An'}];
+  if(url.pathname==='/api/course-enrollment/programs') return [
+   ...programs.map(program=>({...program,placementAvailable:true})),
+   {id:33,name:'Cờ vua',placementAvailable:false},
+   {id:34,name:'Bơi lội',placementAvailable:false}
+  ];
+  if(url.pathname.endsWith('/courses')) return [{id:8,name:'Piano nền tảng',tuitionFee:2400000}];
+  if(url.pathname.endsWith('/class-recommendations')) resultRequests++;
+  if(request.method()==='POST') submitted=request.postDataJSON();
+  if(url.pathname.endsWith('/page')) return {items:[],totalItems:0,page:0,totalPages:0};
+ });
+ try{
+  const select=page.locator('#placementProgramSelect');
+  await select.locator('option[value="34"]').waitFor({state:'attached'});
+  await page.locator('#placementRequested').check();
+  assert.equal(await select.locator('option').count(),5);
+  assert.equal(await select.locator('option[value="33"]').textContent(),'Cờ vua (Chờ tư vấn)');
+  await select.selectOption('33');
+  await page.getByText('Phòng đào tạo sẽ tư vấn hình thức kiểm tra cho môn này sau khi nhận yêu cầu.',{exact:true}).waitFor();
+  assert.equal(await page.locator('#parentClassPreviewField').isVisible(),false);
+  await page.locator('#requestNote').fill('Gia đình ưu tiên sáng thứ Bảy.');
+  await page.locator('#submitRequestBtn').click();
+  await page.getByText('Đã gửi nhu cầu học. Phòng đào tạo sẽ tư vấn hình thức kiểm tra.',{exact:true}).waitFor();
+  assert.equal(submitted.requestedProgramId,33);
+  assert.equal(submitted.placementRequested,true);
+  assert.equal(submitted.note,'Gia đình ưu tiên sáng thứ Bảy.');
+  await select.selectOption('34');
+  await page.getByText('Phòng đào tạo sẽ tư vấn hình thức kiểm tra cho môn này sau khi nhận yêu cầu.',{exact:true}).waitFor();
+  assert.equal(resultRequests,0);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('staff sees the parent note and locked program, and can choose a program for an independent test', async()=>{
+ let submitted;
+ const {page}=await open('STAFF','placement-test.html',(url,request)=>{
+  if(url.pathname.endsWith('/placement-programs')) return programs;
+  if(url.pathname.endsWith('/staff/requests')) return [
+   {id:70,childName:'Nguyễn An',placementRequested:true,status:'WAITING_PLACEMENT',requestedProgramId:31,
+    requestedProgramName:'Piano',note:'Ưu tiên thứ Bảy'},
+   {id:71,childName:'Đơn cũ',placementRequested:true,status:'WAITING_PLACEMENT',note:'Muốn học Guitar'}
+  ];
+  if(url.pathname==='/api/placement-tests' && request.method()==='POST'){
+   submitted=request.postDataJSON();
+   return {...assessment,...submitted,id:18,programName:'Piano'};
+  }
+ });
+ try{
+  await page.locator('button[onclick="openCreateModal()"]').click();
+  const request=page.locator('#createEnrollmentRequest');
+  const program=page.locator('#createProgram');
+  await request.selectOption('70');
+  await page.getByText('Ưu tiên thứ Bảy',{exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('#createProgram').value==='31');
+  assert.equal(await page.locator('#createStudentName').inputValue(),'Nguyễn An');
+  assert.equal(await program.isDisabled(),true);
+  await request.selectOption('71');
+  await program.selectOption('32');
+  await request.selectOption('');
+  assert.equal(await page.locator('#createParentNote').isVisible(),false);
+  assert.equal(await program.inputValue(),'');
+  await program.selectOption('32');
+  await request.selectOption('70');
+  await page.locator('#createTitle').fill('Kiểm tra Piano');
+  await page.locator('#createRoomName').fill('P101');
+  const future=await page.evaluate(()=>{
+   const date=new Date();date.setDate(date.getDate()+3);
+   return new Date(date.getTime()-date.getTimezoneOffset()*60_000).toISOString().slice(0,10);
+  });
+  await page.locator('#createTestDate').fill(future);
+  await page.locator('#createTestTime').fill('10:00');
+  await page.locator('#createPlacementTestForm button[type="submit"]').click();
+  await page.locator('#createModal').waitFor({state:'hidden'});
+  assert.equal(submitted.programId,31);
+  assert.equal(submitted.enrollmentRequestId,70);
+ }finally{await page.close();}
+});
+
 test('placement cancellation requires a reason, preserves a failed draft and retries on the same schedule',async()=>{
  const {page,errors}=await open('STAFF','placement-test.html',u=>u.pathname==='/api/placement-tests'?[assessment]:undefined);
  let attempts=0;

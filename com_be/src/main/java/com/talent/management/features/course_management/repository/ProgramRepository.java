@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface ProgramRepository extends JpaRepository<Program, Long> {
     List<Program> findAllByOrderByNameAsc();
+    List<Program> findByPlacementSubjectIsNotNullOrderByNameAsc();
     boolean existsByCode(String code);
     boolean existsByCodeAndIdNot(String code, Long id);
 }

@@ -7,6 +7,7 @@ import com.talent.management.features.course_enrollment.dto.response.ChildRespon
 import com.talent.management.features.course_enrollment.dto.response.ClassResponse;
 import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
+import com.talent.management.features.course_enrollment.dto.response.EnrollmentProgramResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
 import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.features.course_enrollment.enums.EnrollmentDecision;
@@ -16,9 +17,11 @@ import com.talent.management.features.course_enrollment.repository.ClassReposito
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
 import com.talent.management.features.course_enrollment.repository.EnrollmentRepository;
 import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
+import com.talent.management.features.course_management.repository.ProgramRepository;
 import com.talent.management.shared.entity.ClassEntity;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.Enrollment;
+import com.talent.management.shared.entity.Program;
 import com.talent.management.shared.entity.Student;
 import com.talent.management.shared.entity.User;
 import com.talent.management.shared.enums.ClassStatus;
@@ -29,6 +32,7 @@ import com.talent.management.shared.service.ListPaging;
 import org.springframework.data.domain.Sort;
 import java.util.Comparator;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
+import com.talent.management.features.placement_test.dto.response.PlacementProgramResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
 import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
 import com.talent.management.features.tuition_payment.repository.InvoiceRepository;
@@ -47,6 +51,8 @@ import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -78,6 +84,7 @@ public class CourseEnrollmentService {
     private final PlacementTestService placementTestService;
     private final PlacementScheduleRepository placementScheduleRepository;
     private final InvoiceRepository invoiceRepository;
+    private final ProgramRepository programRepository;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.talent.management.features.notification.service.NotificationService notificationService;
@@ -99,6 +106,22 @@ public class CourseEnrollmentService {
     }
 
     @Transactional(readOnly = true)
+    public List<PlacementProgramResponse> getPlacementPrograms() {
+        return placementTestService.getPlacementPrograms();
+    }
+
+    @Transactional(readOnly = true)
+    public List<EnrollmentProgramResponse> getEnrollmentPrograms() {
+        Set<Long> availableProgramIds = placementTestService.getPlacementPrograms().stream()
+                .map(PlacementProgramResponse::id)
+                .collect(Collectors.toSet());
+        return programRepository.findAllByOrderByNameAsc().stream()
+                .map(program -> new EnrollmentProgramResponse(
+                        program.getId(), program.getName(), availableProgramIds.contains(program.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<ClassResponse> getOpenClasses(Long courseId) {
         if (!courseRepository.existsById(courseId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khóa học");
@@ -113,12 +136,25 @@ public class CourseEnrollmentService {
 
     @Transactional(readOnly = true)
     public ClassRecommendationResponse getClassRecommendations(Long childId) {
+        return getClassRecommendations(childId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public ClassRecommendationResponse getClassRecommendations(Long childId, Long programId) {
         User parent = currentUserService.getCurrentUser();
         Student child = studentRepository.findByIdAndParentId(childId, parent.getId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Không tìm thấy học viên thuộc tài khoản của bạn"
                 ));
+
+        if (programId != null) {
+            Program program = getRequestedProgram(programId);
+            PlacementRecommendationResponse placement = getPlacementRecommendation(childId, program);
+            List<ClassResponse> classes = placement.recommendationAvailable() && placement.recommendedCourseId() != null
+                    ? getOpenClasses(placement.recommendedCourseId()) : List.of();
+            return toClassRecommendation(child, placement, classes, classes);
+        }
 
         PlacementRecommendationResponse placement = placementTestService.getLatestRecommendation(childId);
         List<ClassResponse> openClasses = classRepository
@@ -134,6 +170,11 @@ public class CourseEnrollmentService {
                         .toList()
                 : List.of();
 
+        return toClassRecommendation(child, placement, recommendedClasses, openClasses);
+    }
+
+    private ClassRecommendationResponse toClassRecommendation(Student child, PlacementRecommendationResponse placement,
+                                                               List<ClassResponse> recommendedClasses, List<ClassResponse> openClasses) {
         return new ClassRecommendationResponse(
                 child.getId(),
                 child.getFullName(),
@@ -160,9 +201,11 @@ public class CourseEnrollmentService {
         ensureNoOpenRequest(child.getId());
 
         Course preferredCourse = null;
+        Program requestedProgram = null;
         EnrollmentRequestStatus status;
         if (input.placementRequested()) {
-            PlacementRecommendationResponse placement = placementTestService.getLatestRecommendation(child.getId());
+            requestedProgram = getRequestedProgram(input.requestedProgramId());
+            PlacementRecommendationResponse placement = getPlacementRecommendation(child.getId(), requestedProgram);
             if (placement.recommendationAvailable() && placement.recommendedCourseId() != null) {
                 preferredCourse = getCourseOrThrow(placement.recommendedCourseId());
                 status = EnrollmentRequestStatus.READY_FOR_ASSIGNMENT;
@@ -183,6 +226,7 @@ public class CourseEnrollmentService {
         EnrollmentRequest request = EnrollmentRequest.builder()
                 .student(child)
                 .preferredCourse(preferredCourse)
+                .requestedProgram(requestedProgram)
                 .placementRequested(input.placementRequested())
                 .requestedBy(parent)
                 .status(status)
@@ -394,14 +438,33 @@ public class CourseEnrollmentService {
     }
 
     private void syncPlacementResult(EnrollmentRequest request) {
-        PlacementRecommendationResponse placement = placementTestService
-                .getLatestRecommendation(request.getStudent().getId());
+        PlacementRecommendationResponse placement = getPlacementRecommendation(
+                request.getStudent().getId(), request.getRequestedProgram());
         if (!placement.recommendationAvailable() || placement.recommendedCourseId() == null) {
             return;
         }
 
         request.setPreferredCourse(getCourseOrThrow(placement.recommendedCourseId()));
         request.setStatus(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT);
+    }
+
+    private Program getRequestedProgram(Long programId) {
+        if (programId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn môn muốn kiểm tra");
+        }
+        return programRepository.findById(programId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Môn đã chọn không có trong danh mục"));
+    }
+
+    private PlacementRecommendationResponse getPlacementRecommendation(Long studentId, Program program) {
+        if (program == null) {
+            return placementTestService.getLatestRecommendation(studentId);
+        }
+        boolean placementAvailable = placementTestService.getPlacementPrograms().stream()
+                .anyMatch(item -> item.id().equals(program.getId()));
+        return placementAvailable
+                ? placementTestService.getLatestRecommendation(studentId, program.getId())
+                : PlacementRecommendationResponse.notAvailable(studentId);
     }
 
     private ClassEntity getClassOrThrow(Long classId) {

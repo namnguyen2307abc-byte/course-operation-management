@@ -3,6 +3,7 @@ package com.talent.management.features.placement_test.entity;
 import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.shared.entity.User;
 import com.talent.management.shared.entity.Course;
+import com.talent.management.shared.entity.Program;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +29,10 @@ public class PlacementSchedule {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "enrollment_request_id")
     private EnrollmentRequest enrollmentRequest;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "program_id", foreignKey = @ForeignKey(name = "FK_placement_schedules_program"))
+    private Program program;
 
     @Column(name = "student_name", columnDefinition = "NVARCHAR(100)")
     private String studentName;

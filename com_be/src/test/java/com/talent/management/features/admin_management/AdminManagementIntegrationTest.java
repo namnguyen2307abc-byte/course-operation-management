@@ -68,6 +68,85 @@ class AdminManagementIntegrationTest {
     }
     JsonNode body(ResultActions result) throws Exception { return json.readTree(result.andReturn().getResponse().getContentAsString()); }
 
+    @Test void enrollmentPlacementCarriesProgramFromParentRequestToSchedule() throws Exception {
+        User parent = user("placement_parent", Role.PARENT);
+        User staff = user("placement_staff", Role.STAFF);
+        String parentToken = login(parent.getUsername(), "initial-pass");
+        String staffToken = login(staff.getUsername(), "initial-pass");
+        Student child = students.saveAndFlush(Student.builder().parent(parent).fullName("Học viên Piano").build());
+        Program piano = Program.builder().code("PIANO").name("Piano").placementSubject("DAN").build();
+        Program guitar = Program.builder().code("GUITAR").name("Guitar").placementSubject("DAN").build();
+        Program chess = Program.builder().code("CHESS").name("Cờ vua").build();
+        em.persist(piano);
+        em.persist(guitar);
+        em.persist(chess);
+        Course guitarCourse = Course.builder().program(guitar).code("GUI-1").name("Guitar cơ bản")
+                .tuitionFee(BigDecimal.TEN).build();
+        em.persist(guitarCourse);
+        em.persist(PlacementTest.builder().student(child).teacher(user("placement_teacher", Role.TEACHER))
+                .program(guitar).recommendedCourse(guitarCourse).testDate(LocalDate.now()).build());
+
+        var availablePrograms = body(mvc.perform(get("/api/course-enrollment/placement-programs")
+                .header("Authorization", "Bearer " + parentToken)).andExpect(status().isOk()));
+        assertThat(availablePrograms.findValuesAsText("id")).contains(piano.getId().toString());
+        assertThat(availablePrograms.findValuesAsText("id")).doesNotContain(chess.getId().toString());
+        var enrollmentPrograms = body(mvc.perform(get("/api/course-enrollment/programs")
+                .header("Authorization", "Bearer " + parentToken)).andExpect(status().isOk()));
+        assertThat(enrollmentPrograms.findValuesAsText("id")).contains(piano.getId().toString(), chess.getId().toString());
+        assertThat(enrollmentPrograms.findValuesAsText("placementAvailable")).contains("false", "true");
+
+        postJson("/api/course-enrollment/requests", parentToken,
+                Map.of("childId", child.getId(), "placementRequested", true)).andExpect(status().isBadRequest());
+        postJson("/api/course-enrollment/requests", parentToken,
+                Map.of("childId", child.getId(), "placementRequested", true, "requestedProgramId", Long.MAX_VALUE))
+                .andExpect(status().isBadRequest());
+        long requestId = body(postJson("/api/course-enrollment/requests", parentToken,
+                Map.of("childId", child.getId(), "placementRequested", true,
+                        "requestedProgramId", piano.getId(), "note", "Sáng thứ Bảy"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("WAITING_PLACEMENT"))
+                .andExpect(jsonPath("$.requestedProgramName").value("Piano"))).path("id").asLong();
+
+        var schedule = new HashMap<String, Object>(Map.of("enrollmentRequestId", requestId, "studentName", "Other",
+                "title", "Kiểm tra Piano", "roomName", "P101", "subject", "VO", "programId", guitar.getId(),
+                "testDate", LocalDateTime.now().plusDays(2).withNano(0).toString()));
+        postJson("/api/placement-tests", staffToken, schedule).andExpect(status().isBadRequest());
+        schedule.remove("programId");
+        postJson("/api/placement-tests", staffToken, schedule)
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.programId").value(piano.getId()))
+                .andExpect(jsonPath("$.subject").value("DAN"))
+                .andExpect(jsonPath("$.studentName").value("Học viên Piano"));
+    }
+
+    @Test void parentCanSubmitAnUnconfiguredProgramWhilePlacementSchedulingRemainsBlocked() throws Exception {
+        User parent = user("chess_parent", Role.PARENT);
+        User staff = user("chess_staff", Role.STAFF);
+        String parentToken = login(parent.getUsername(), "initial-pass");
+        String staffToken = login(staff.getUsername(), "initial-pass");
+        Program chess = Program.builder().code("CHESS").name("Cờ vua").build();
+        em.persist(chess);
+        Student child = students.saveAndFlush(Student.builder().parent(parent).fullName("Học viên Cờ vua").build());
+        long requestId = body(postJson("/api/course-enrollment/requests", parentToken,
+                Map.of("childId", child.getId(), "placementRequested", true,
+                        "requestedProgramId", chess.getId(), "note", "Xin tư vấn"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("WAITING_PLACEMENT"))
+                .andExpect(jsonPath("$.requestedProgramId").value(chess.getId()))).path("id").asLong();
+        mvc.perform(get("/api/course-enrollment/children/" + child.getId() + "/class-recommendations")
+                .param("programId", chess.getId().toString()).header("Authorization", "Bearer " + parentToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.recommendationAvailable").value(false))
+                .andExpect(jsonPath("$.recommendedClasses").isEmpty());
+        mvc.perform(patch("/api/course-enrollment/staff/requests/" + requestId + "/refresh-placement")
+                .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("WAITING_PLACEMENT"))
+                .andExpect(jsonPath("$.requestedProgramName").value("Cờ vua"))
+                .andExpect(jsonPath("$.note").value("Xin tư vấn"));
+        postJson("/api/placement-tests", staffToken,
+                Map.of("enrollmentRequestId", requestId, "studentName", child.getFullName(),
+                        "title", "Kiểm tra Cờ vua", "roomName", "C101",
+                        "testDate", LocalDateTime.now().plusDays(2).withNano(0).toString()))
+                .andExpect(status().isBadRequest());
+        assertThat(em.find(EnrollmentRequest.class, requestId).getRequestedProgram().getId()).isEqualTo(chess.getId());
+    }
+
     @Test void teacherSpecialismCanBeManagedWithoutChangingPlacementDepartment() throws Exception {
         var created = body(postJson("/api/admin/users", adminToken, Map.of("username", "specific_teacher",
                 "password", "temporary-pass", "fullName", "Specific teacher", "role", "TEACHER",

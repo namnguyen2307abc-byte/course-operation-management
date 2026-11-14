@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record CourseResponse(
         Long id,
+        Long programId,
         String programName,
         String code,
         String name,
