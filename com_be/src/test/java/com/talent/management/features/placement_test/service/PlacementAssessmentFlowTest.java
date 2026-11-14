@@ -49,7 +49,7 @@ class PlacementAssessmentFlowTest {
         PlacementSchedule schedule = PlacementSchedule.builder().id(9L).enrollmentRequest(enrollmentRequest)
                 .testDate(LocalDateTime.now()).build();
         Course course = Course.builder().id(2L).name("Piano Sơ Cấp").build();
-        when(scheduleRepository.findById(9L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
         when(scheduleRepository.save(schedule)).thenReturn(schedule);
         when(courseRepository.findById(2L)).thenReturn(Optional.of(course));
 
@@ -99,7 +99,7 @@ class PlacementAssessmentFlowTest {
         PlacementSchedule schedule = PlacementSchedule.builder().id(9L)
                 .enrollmentRequest(EnrollmentRequest.builder().id(22L).build())
                 .status(PlacementScheduleStatus.COMPLETED).score(38).build();
-        when(scheduleRepository.findById(9L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
         PlacementAssessmentRequest assessment = PlacementAssessmentRequest.builder().score(40)
                 .recommendedLevel(PlacementLevel.BEGINNER).build();
 
@@ -116,7 +116,7 @@ class PlacementAssessmentFlowTest {
         PlacementSchedule schedule = PlacementSchedule.builder().id(9L)
                 .enrollmentRequest(enrollmentRequest)
                 .status(PlacementScheduleStatus.SCHEDULED).build();
-        when(scheduleRepository.findById(9L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
         when(scheduleRepository.save(schedule)).thenReturn(schedule);
 
         service.cancelSchedule(9L, "Học viên bận đột xuất", "staff");
@@ -139,10 +139,40 @@ class PlacementAssessmentFlowTest {
     void completedScheduleCannotBeCancelled() {
         PlacementSchedule schedule = PlacementSchedule.builder().id(9L)
                 .status(PlacementScheduleStatus.COMPLETED).score(85).build();
-        when(scheduleRepository.findById(9L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
 
         assertThatThrownBy(() -> service.cancelSchedule(9L, "Hủy nhầm", "staff"))
                 .isInstanceOf(BusinessException.class);
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelledScheduleCannotBeAssessedOrCancelledAgain() {
+        PlacementSchedule schedule = PlacementSchedule.builder().id(9L)
+                .status(PlacementScheduleStatus.CANCELLED).cancelReason("Đã đổi lịch").build();
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
+        assertThatThrownBy(() -> service.saveAssessment(9L,
+                PlacementAssessmentRequest.builder().score(80).build(), null))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("đã bị hủy");
+        assertThatThrownBy(() -> service.cancelSchedule(9L, "Hủy lại", "staff"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("đã được hủy");
+        assertThat(schedule.getCancelReason()).isEqualTo("Đã đổi lịch");
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void teacherCannotCancelAnotherSubjectsSchedule() {
+        PlacementSchedule schedule = PlacementSchedule.builder().id(9L)
+                .subject("MUA").status(PlacementScheduleStatus.SCHEDULED).build();
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
+        when(userRepository.findByUsername("teacher")).thenReturn(Optional.of(
+                com.talent.management.shared.entity.User.builder()
+                        .role(com.talent.management.shared.enums.Role.TEACHER).subject("DAN").build()));
+        when(scheduleMapper.normalizeSubject("DAN")).thenReturn("DAN");
+        when(scheduleMapper.normalizeSubject("MUA")).thenReturn("MUA");
+        assertThatThrownBy(() -> service.cancelSchedule(9L, "Đổi lịch", "teacher"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("không có quyền hủy");
+        assertThat(schedule.getStatus()).isEqualTo(PlacementScheduleStatus.SCHEDULED);
         verify(scheduleRepository, never()).save(any());
     }
 }

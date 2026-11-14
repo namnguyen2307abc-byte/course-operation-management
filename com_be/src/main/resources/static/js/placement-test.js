@@ -101,6 +101,7 @@ let placementTestsData = [
 
 let currentEditingId = null;
 let cancellingScheduleId = null;
+let placementCancelling = false;
 let uploadedFileUrl = "";
 let attachmentUploadVersion = 0;
 let attachmentUploading = false;
@@ -1277,6 +1278,7 @@ function openDetailModal(id) {
 }
 
 function openCancelPlacementModal(id) {
+    if (placementCancelling) return;
     const item = placementTestsData.find(x => x.id === id);
     if (!item) return;
 
@@ -1310,21 +1312,22 @@ function openCancelPlacementModal(id) {
 }
 
 async function confirmCancelPlacementTest() {
-    if (!cancellingScheduleId) return;
-    const item = placementTestsData.find(x => x.id === cancellingScheduleId);
+    if (!cancellingScheduleId || placementCancelling) return;
+    const scheduleId = cancellingScheduleId;
+    const item = placementTestsData.find(x => x.id === scheduleId);
     if (!item) return;
 
     const reasonInput = document.getElementById('cancelReasonInput');
     const reasonError = document.getElementById('cancelReasonError');
     const cancelReason = reasonInput ? reasonInput.value.trim() : '';
 
-    if (!cancelReason) {
+    if (!cancelReason || cancelReason.length > 500) {
         if (reasonInput) {
             reasonInput.classList.add('is-invalid');
             reasonInput.focus();
         }
         if (reasonError) reasonError.classList.remove('d-none');
-        showNotification('Vui lòng nhập lý do hủy đơn Placement Test!', 'warning');
+        showNotification('Vui lòng nhập lý do hủy từ 1 đến 500 ký tự.', 'warning');
         return;
     }
     if (reasonInput) reasonInput.classList.remove('is-invalid');
@@ -1336,25 +1339,22 @@ async function confirmCancelPlacementTest() {
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang hủy...';
     }
 
+    placementCancelling = true;
     try {
-        let updatedResponse = null;
-        if (typeof callApi === 'function') {
-            updatedResponse = await callApi(`/api/placement-tests/${cancellingScheduleId}/cancel`, 'POST', { cancelReason });
+        if (typeof callApi !== 'function') throw new Error('Chưa kết nối được máy chủ. Vui lòng tải lại trang.');
+        const updatedResponse = await callApi(`/api/placement-tests/${scheduleId}/cancel`, 'POST', { cancelReason }, false, false);
+        if (!updatedResponse || updatedResponse.id !== scheduleId || updatedResponse.status !== 'CANCELLED') {
+            throw new Error('Máy chủ chưa xác nhận hủy đơn. Vui lòng thử lại.');
         }
-        if (updatedResponse) {
-            const idx = placementTestsData.findIndex(x => x.id === cancellingScheduleId);
-            if (idx !== -1) placementTestsData[idx] = updatedResponse;
-        } else {
-            item.status = 'CANCELLED';
-            item.cancelReason = cancelReason;
-            item.cancelledAt = new Date().toISOString();
-        }
+        const idx = placementTestsData.findIndex(x => x.id === scheduleId);
+        if (idx !== -1) placementTestsData[idx] = updatedResponse;
 
         const modalEl = document.getElementById('cancelPlacementModal');
         const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
         if (modal) modal.hide();
 
-        showNotification(`Đã hủy đơn Placement Test #PT-${cancellingScheduleId} thành công!`, 'success');
+        cancellingScheduleId = null;
+        showNotification(`Đã hủy đơn Placement Test #PT-${scheduleId} thành công!`, 'success');
         renderStats();
         filterPlacementTests();
     } catch (err) {
@@ -1365,7 +1365,7 @@ async function confirmCancelPlacementTest() {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Xác Nhận Hủy Đơn';
         }
-        cancellingScheduleId = null;
+        placementCancelling = false;
     }
 }
 

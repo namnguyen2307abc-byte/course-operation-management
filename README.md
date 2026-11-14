@@ -11,6 +11,8 @@ Học viên được quản lý bằng hồ sơ `students`, không có role đă
 
 ---
 
+Với database đang có, bổ sung cột lưu lý do/thời điểm hủy Placement Test bằng `database/placement_schedule_cancellation.sql` trước khi chạy bản mới. Script không reset dữ liệu và có thể chạy lại; database tạo mới từ `database/init_database.sql` đã có các cột này.
+
 ## 📑 Mục Lục
 1. [Tổng Quan Kiến Trúc Dự Án](#1-tổng-quan-kiến-trúc-dự-án-architecture-overview)
 2. [Kiến Trúc Backend Chuẩn Enterprise (`com_be`)](#2-kiến-trúc-backend-chuẩn-enterprise-com_be)

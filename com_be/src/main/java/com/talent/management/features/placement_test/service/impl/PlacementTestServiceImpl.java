@@ -115,7 +115,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     @Override
     @Transactional
     public PlacementScheduleResponse saveAssessment(Long scheduleId, PlacementAssessmentRequest request, String teacherUsername) {
-        PlacementSchedule schedule = scheduleRepository.findById(scheduleId)
+        PlacementSchedule schedule = scheduleRepository.findByIdForUpdate(scheduleId)
                 .orElseThrow(() -> new BusinessException("Lịch thi xếp lớp không tồn tại với ID: " + scheduleId));
 
         if (schedule.getStatus() == PlacementScheduleStatus.CANCELLED) {
@@ -235,12 +235,12 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     @Override
     @Transactional
     public PlacementScheduleResponse cancelSchedule(Long scheduleId, String cancelReason, String currentUsername) {
-        if (cancelReason == null || cancelReason.trim().isEmpty()) {
+        if (cancelReason == null || cancelReason.trim().isEmpty() || cancelReason.length() > 500) {
             throw new BusinessException("Vui lòng nhập lý do hủy đơn Placement Test!");
         }
         String trimmedReason = cancelReason.trim();
 
-        PlacementSchedule schedule = scheduleRepository.findById(scheduleId)
+        PlacementSchedule schedule = scheduleRepository.findByIdForUpdate(scheduleId)
                 .orElseThrow(() -> new BusinessException("Lịch thi xếp lớp không tồn tại với ID: " + scheduleId));
 
         if (schedule.getStatus() == PlacementScheduleStatus.CANCELLED) {

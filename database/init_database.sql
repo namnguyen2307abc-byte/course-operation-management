@@ -307,6 +307,8 @@ CREATE TABLE placement_schedules (
     record_url VARCHAR(500),
     teacher_id BIGINT FOREIGN KEY REFERENCES users(id),
     evaluated_at DATETIME2,
+    cancel_reason NVARCHAR(500) NULL,
+    cancelled_at DATETIME2 NULL,
     created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 GO
