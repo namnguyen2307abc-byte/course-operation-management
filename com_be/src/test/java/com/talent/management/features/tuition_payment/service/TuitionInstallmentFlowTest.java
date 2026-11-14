@@ -904,6 +904,15 @@ class TuitionInstallmentFlowTest {
     @Test
     void onlyAdminCanCancelAfterContactAndUnpaidQrClosesAutomatically() {
         configure();
+        EnrollmentRequest request = db.persist(EnrollmentRequest.builder()
+                .student(invoice.getStudent())
+                .requestedBy(parent)
+                .classEntity(clazz)
+                .enrollment(invoice.getEnrollment())
+                .reviewedBy(staff)
+                .reviewNote("Đã xếp lớp, chờ thanh toán")
+                .status(EnrollmentRequestStatus.PENDING_PAYMENT)
+                .build());
         var qr = gateway.create(invoice.getId(), money(3000000));
         var cancel =
                 new InstallmentRequests.Reservation(
@@ -928,6 +937,13 @@ class TuitionInstallmentFlowTest {
         assertThat(gateway.status(qr.id()).status()).isEqualTo("CANCELLED");
         assertThat(result.reservationHistory()).hasSize(1);
         assertThat(invoice.getEnrollment().getStatus()).isEqualTo(EnrollmentStatus.CANCELLED);
+        db.flush();
+        db.clear();
+        EnrollmentRequest cancelled = db.find(EnrollmentRequest.class, request.getId());
+        assertThat(cancelled.getStatus()).isEqualTo(EnrollmentRequestStatus.CANCELLED);
+        assertThat(cancelled.getReviewedBy().getId()).isEqualTo(manager.getId());
+        assertThat(cancelled.getReviewNote()).isEqualTo(cancel.reason());
+        assertThat(cancelled.getReviewedAt()).isNotNull();
     }
 
     @Test

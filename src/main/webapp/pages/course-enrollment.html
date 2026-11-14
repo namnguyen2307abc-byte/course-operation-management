@@ -713,7 +713,7 @@
                     </td>
                     <td>${formatDateTime(item.requestedAt)}</td>
                     <td>${statusBadge(item.status)}</td>
-                    <td class="small">${escapeHtml(item.reviewNote || requestStatusHint(item.status))}</td>
+                    <td class="small">${escapeHtml(requestFeedback(item))}</td>
                     <td class="text-end">${item.cancellable
                         ? `<button type="button" class="btn btn-outline-danger btn-sm text-nowrap" data-cancel-request="${item.id}"><i class="bi bi-x-circle me-1"></i>Hủy đơn</button>`
                         : ''}</td>
@@ -923,6 +923,21 @@
             return `<span class="badge border ${value[0]}">${value[1]}</span>`;
         }
 
+        function requestFeedback(item) {
+            if (item.status === 'CANCELLED') {
+                // A linked enrollment cannot be cancelled by the parent's request action.
+                // This also identifies older Admin cancellations with no review metadata.
+                if (item.enrollmentId != null) {
+                    const details = ['Trung tâm đã hủy giữ chỗ'];
+                    if (item.reviewedBy) details.push('Người xử lý: ' + item.reviewedBy);
+                    if (item.reviewNote) details.push('Phản hồi: ' + item.reviewNote);
+                    return details.join(' · ');
+                }
+                return 'Phụ huynh đã hủy yêu cầu';
+            }
+            return item.reviewNote || requestStatusHint(item.status);
+        }
+
         function requestStatusHint(status) {
             const hints = {
                 PENDING: 'Đang chờ phòng đào tạo xử lý',
@@ -931,7 +946,7 @@
                 PENDING_PAYMENT: 'Đã xếp lớp, chờ hoàn tất thanh toán',
                 APPROVED: 'Đã được duyệt',
                 REJECTED: 'Yêu cầu đã bị từ chối',
-                CANCELLED: 'Phụ huynh đã hủy yêu cầu'
+                CANCELLED: 'Yêu cầu đã được hủy'
             };
             return hints[status] || 'Đang cập nhật';
         }

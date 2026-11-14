@@ -77,8 +77,14 @@ public class TuitionReservationService {
                         throw conflict("QR đã thay đổi. Vui lòng kiểm tra lại trước khi hủy.");
                     invoice.setStatus(InvoiceStatus.CANCELLED);
                     invoice.getEnrollment().setStatus(EnrollmentStatus.CANCELLED);
+                    LocalDateTime cancelledAt = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
                     requests.findByEnrollmentId(invoice.getEnrollment().getId())
-                            .ifPresent(r -> r.setStatus(EnrollmentRequestStatus.CANCELLED));
+                            .ifPresent(r -> {
+                                r.setStatus(EnrollmentRequestStatus.CANCELLED);
+                                r.setReviewedBy(actor);
+                                r.setReviewedAt(cancelledAt);
+                                r.setReviewNote(input.reason().trim());
+                            });
                     TuitionPlan plan = ledger.ensure(invoice);
                     plan.setRevision(plan.getRevision() + 1);
                     TuitionReservationAction audit = new TuitionReservationAction();
@@ -87,7 +93,7 @@ public class TuitionReservationService {
                     audit.setAction("CANCEL");
                     audit.setReason(input.reason().trim());
                     audit.setOldDeadline(invoice.getReservationDeadline());
-                    audit.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
+                    audit.setCreatedAt(cancelledAt);
                     em.persist(audit);
                     em.flush();
                     return ledger.map(invoice, plan);
