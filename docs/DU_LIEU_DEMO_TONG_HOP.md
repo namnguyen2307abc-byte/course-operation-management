@@ -4,21 +4,34 @@ File duy nhất để nạp: `database/seed_demo_tong_hop.sql`.
 
 Gồm `du_lieu_theo_word.sql`, `test_attendence_makeup.sql`, `test_d26_absence_makeup.sql`, `-- Seed data for reviewing Weekly S.sql` và dữ liệu nền mà các file này cần. Phần D26 đã chuyển tên cột/giá trị về đúng schema hiện tại. Các file nguồn được giữ lại để tham khảo; không chạy tiếp từng file sau khi đã nạp bản gộp.
 
-File giữ nguyên schema, nạp trong transaction và đánh dấu `COMBINED_DEMO_V1`; chạy lại sẽ bỏ qua để giữ trạng thái demo. Muốn làm mới toàn bộ phải sao lưu và reset dữ liệu trước. Ngày tương đối được tính tại lần nạp đầu tiên, không tự dịch chuyển khi mở ứng dụng.
+File yêu cầu database đã có schema ứng dụng. File tự bổ sung `placement_schedules.cancel_reason NVARCHAR(500) NULL` và `placement_schedules.cancelled_at DATETIME2 NULL` nếu thiếu, sau đó nạp dữ liệu trong cùng transaction. Không cần chạy riêng `placement_schedule_cancellation.sql` khi dùng file gộp này. Các bản ghi cũ giữ giá trị NULL ở hai cột mới; không xóa hoặc đổi dữ liệu đã thao tác.
+
+Dữ liệu được đánh dấu `COMBINED_DEMO_V1`; chạy lại sẽ bỏ qua phần đã nạp để giữ trạng thái demo, nhưng vẫn kiểm tra/thêm hai cột mới và bổ sung thu ngân thứ hai nếu thiếu. File không tạo toàn bộ schema từ database trống. Ngày tương đối được tính tại lần nạp đầu tiên, không tự dịch chuyển khi mở ứng dụng.
 
 ## Tài khoản
 
 | Vai trò / bộ dữ liệu | Tài khoản | Mật khẩu |
 |---|---|---|
+| Admin nền | `admin` | `123456` |
 | Admin D26 / Weekly | `d26_admin` | `Test@123456` |
 | Nhân viên D26 / Weekly | `d26_staff` | `Test@123456` |
 | Nhân viên thu ngân thứ hai | `d26_staff_2` | `Test@123456` |
 | Phụ huynh D26 / Weekly | `d26_parent_new` | `Test@123456` |
+| Phụ huynh chờ kiểm tra đầu vào | `d26_parent_wait` | `Test@123456` |
+| Phụ huynh chờ xếp lớp | `d26_parent_ready` | `Test@123456` |
+| Phụ huynh test thanh toán | `d26_parent_pay` | `Test@123456` |
 | Giáo viên lớp Weekly | `d26_teacher_piano` | `Test@123456` |
 | Giáo viên không được phân công lớp Weekly | `d26_teacher_other` | `Test@123456` |
 | Giáo viên các lớp D26 | `teacher_huong` | `Test@123456` |
+| Giáo viên Piano | `teacher_ha` | `123456` |
+| Giáo viên Guitar | `teacher_tuan`, `teacher_dung` | `123456` |
+| Giáo viên Múa | `teacher_linh` | `123456` |
+| Giáo viên Võ | `teacher_long` | `123456` |
 | Nhân viên dữ liệu học bù cũ | `staff_minh` | `123456` |
+| Thu ngân dữ liệu nền | `cashier_mai` | `123456` |
 | Phụ huynh dữ liệu học bù cũ | `parent_lan`, `parent_hoang`, `parent_dung` | `123456` |
+
+Tổng cộng **21 tài khoản**: 2 Admin, 4 Staff, 8 Teacher và 7 Parent. Mật khẩu trên là mật khẩu ban đầu của bộ demo; nếu đã đổi mật khẩu sau khi nạp thì file chạy lại không đặt lại mật khẩu. Cuối file SQL có truy vấn liệt kê toàn bộ 21 tài khoản của bộ dữ liệu này.
 
 ## Kiểm tra thủ công
 
@@ -30,7 +43,7 @@ D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701
 
 ## Test quyền điều chỉnh giữa hai nhân viên
 
-Chạy lại file tổng hợp trên database đã nạp sẽ chỉ bổ sung `d26_staff_2` nếu chưa có; không reset mật khẩu, lịch đóng hoặc giao dịch đang test. Nếu tên tài khoản đã thuộc role khác, script báo lỗi thay vì đổi quyền.
+Chạy lại file tổng hợp trên database đã nạp sẽ bổ sung hai cột hủy Placement Test nếu thiếu và `d26_staff_2` nếu chưa có; không reset mật khẩu, lịch đóng hoặc giao dịch đang test. Nếu tên tài khoản đã thuộc role khác, script báo lỗi thay vì đổi quyền.
 
 1. Đăng nhập `d26_staff`, thu một kỳ bằng tiền mặt và ghi lại số biên lai mới. Tài khoản này được gửi yêu cầu điều chỉnh biên lai đó.
 2. Đăng xuất, đăng nhập `d26_staff_2`, mở cùng hóa đơn: được xem biên lai nhưng không thấy nút điều chỉnh khoản do `d26_staff` thu.

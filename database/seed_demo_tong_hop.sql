@@ -1,6 +1,7 @@
 ﻿-- DU LIEU DEMO TONG HOP: Word + attendance/makeup + D26 + Weekly Schedule.
 -- Tu chua du lieu nen; khong can file SQL ben ngoai.
--- Chi nap du lieu, KHONG xoa database/schema. Reset du lieu la thao tac rieng.
+-- Nap du lieu va bo sung 2 cot huy Placement Test neu thieu; KHONG reset database.
+-- Can schema ung dung hien co; khong can chay rieng placement_schedule_cancellation.sql.
 -- D26 dung lai Bao An va lop PIA-MD-2701-01 cua kich ban Word.
 -- Mat khau d26_* va teacher_huong: Test@123456; tai khoan nen con lai: 123456.
 -- Chi nap mot lan (COMBINED_DEMO_V1); cac ngay tuong doi tinh tai ngay nap.
@@ -14,6 +15,14 @@ BEGIN TRY
  DECLARE @lockResult int;
  EXEC @lockResult=sys.sp_getapplock @Resource=N'COMBINED_DEMO_V1',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=10000;
  IF @lockResult<0 THROW 51800,'Cannot acquire combined demo seed lock.',1;
+ -- Additive schema upgrade also runs when COMBINED_DEMO_V1 is already installed.
+ -- Old schedules keep NULL cancellation metadata; existing data is not rewritten.
+ IF OBJECT_ID(N'dbo.placement_schedules',N'U') IS NULL
+  THROW 51803,'Create the application schema before importing the combined demo file.',1;
+ IF COL_LENGTH(N'dbo.placement_schedules',N'cancel_reason') IS NULL
+  ALTER TABLE dbo.placement_schedules ADD cancel_reason NVARCHAR(500) NULL;
+ IF COL_LENGTH(N'dbo.placement_schedules',N'cancelled_at') IS NULL
+  ALTER TABLE dbo.placement_schedules ADD cancelled_at DATETIME2 NULL;
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
  IF NOT EXISTS(SELECT 1 FROM dbo.combined_demo_installations WHERE seed_key='COMBINED_DEMO_V1')
@@ -1478,6 +1487,16 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;';
   PRINT N'Da bo sung tai khoan d26_staff_2 de test quyen dieu chinh khoan thu.';
  END;
  SELECT username,full_name,role,status FROM dbo.users WHERE username='d26_staff_2';
+ -- Full account directory for this combined dataset; passwords shown are initial only.
+ SELECT u.username,u.full_name,u.role,u.status,
+  CASE WHEN u.username LIKE 'd26[_]%' OR u.username='teacher_huong'
+   THEN 'Test@123456' ELSE '123456' END AS initial_password
+ FROM dbo.users u
+ WHERE u.username IN ('admin','d26_admin','staff_minh','cashier_mai','d26_staff','d26_staff_2',
+  'teacher_huong','teacher_ha','teacher_tuan','teacher_dung','teacher_linh','teacher_long',
+  'd26_teacher_piano','d26_teacher_other','parent_lan','parent_hoang','parent_dung',
+  'd26_parent_new','d26_parent_wait','d26_parent_ready','d26_parent_pay')
+ ORDER BY u.role,u.username;
  COMMIT TRANSACTION;
 END TRY
 BEGIN CATCH
