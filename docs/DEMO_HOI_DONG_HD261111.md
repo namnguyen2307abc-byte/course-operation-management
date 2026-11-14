@@ -6,7 +6,7 @@ Bộ dữ liệu **HD261111**, tạo theo ngày **11/11/2026** trên database lo
 
 Địa chỉ bản main đã build và chạy để kiểm tra: **http://127.0.0.1/login.html** (cổng 80). Frontend/backend cùng địa chỉ này. Backend IntelliJ ở cổng 8080 được giữ nguyên; cần restart/rebuild IntelliJ sau khi đổi branch nếu muốn demo qua Live Server 5500 → backend 8080.
 
-Mật khẩu chung cho **8 tài khoản mẫu mới**: **`Test@123456`**.
+Mật khẩu chung cho **7 tài khoản mẫu mới**: **`Test@123456`**.
 
 | Tài khoản | Vai trò | Dùng khi demo |
 |---|---|---|
@@ -17,7 +17,6 @@ Mật khẩu chung cho **8 tài khoản mẫu mới**: **`Test@123456`**.
 | `hd261111_admin` | Admin | Quản lý tài khoản, cơ sở, hủy hồ sơ chưa đóng và duyệt điều chỉnh |
 | `hd261111_leader` | Quản lý trung tâm | Lập/duyệt điều chỉnh khoản thu với người khác |
 | `hd261111_other` | Phụ huynh Trần Mai | Chỉ có Thảo Nhi; kiểm tra không thấy con/học phí của Nguyễn Lan |
-| `hd261111_student` | Học viên Minh Châu | Xem lịch và chuyên cần của chính Minh Châu |
 
 Nên mở các cửa sổ/profile trình duyệt riêng cho phụ huynh, nhân viên và giáo viên. Các tab chung profile dùng chung localStorage, đổi tài khoản ở tab này sẽ ảnh hưởng tab kia.
 
@@ -143,7 +142,7 @@ Lớp B/C: buổi 1 ngày 28/10, buổi 2 ngày 04/11, buổi 3 ngày 11/11, bu�
 | **Thu đợt sau quá hạn** | Staff → Quản lý học phí → **HD261111-INV-6**, Tuấn Kiệt | Đã thu 3 triệu/còn 3 triệu; thu đợt 2 **1,5 triệu** → còn **1,5 triệu**, vẫn ở lớp; parent xem biên lai thứ hai |
 | **Hủy hồ sơ chưa đóng** | Admin → **HD261111-INV-12**, Ngọc Anh → hủy hồ sơ sau liên hệ | Phải nhập lý do/xác nhận đã liên hệ và kiểm tra chưa nhận tiền. Hóa đơn/ghi danh/yêu cầu bị hủy; không dùng cho hồ sơ đã có khoản thu |
 | **Điều chỉnh thu nhầm** | Leader → **HD261111-INV-13**, Phương Anh → mở biên lai tiền mặt, lập đề nghị. Admin → tab **Điều chỉnh khoản thu** → tìm và duyệt | Người lập không tự duyệt; biên lai cũ còn lịch sử “đã điều chỉnh”, công nợ tăng lại. Ghi danh không bị âm thầm xóa. Đây là sửa sổ thu, không phải hoàn tiền cho phụ huynh |
-| **Riêng tư dữ liệu** | Đăng nhập `hd261111_other` và `hd261111_student` | Other chỉ thấy Thảo Nhi, không thấy các con của Lan; student chỉ thấy hồ sơ Minh Châu |
+| **Riêng tư dữ liệu** | Đăng nhập `hd261111_other` và `hd261111_parent` | Other chỉ thấy Thảo Nhi; Parent thấy các con của Nguyễn Lan, gồm Minh Châu. Học viên chỉ có hồ sơ, không có tài khoản đăng nhập riêng. |
 | **Lớp đầy / lớp dự kiến** | Parent/Staff xem lớp D và F | D không được xếp thêm vì 1/1; F chưa được hiển thị như lớp đang mở |
 | **Cơ sở vật chất** | Admin → cơ sở HD261111 → P01/P02/P03, thiết bị | P01/P02 có 6 đàn tốt/phòng; P03 bảo trì không nhận phân công mới. Thử tăng sĩ số quá 6/thiếu đàn để thấy chặn nghiệp vụ |
 | **Quản lý lớp** | Staff → sửa lớp F, chọn teacher, P01, ngày 13/11, chỉ Thứ Sáu 07:00–09:00, 10 buổi; chuyển OPEN | Sinh lịch, kiểm tra phù hợp môn/phòng/thiết bị và xung đột. Không chọn thời gian trùng lớp đang dùng cùng giáo viên/phòng |

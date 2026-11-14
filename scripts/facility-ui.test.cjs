@@ -69,7 +69,7 @@ async function facilityPage(role = 'ADMIN', viewport = { width: 1440, height: 10
         let result = method === 'OPTIONS' ? { status: 204, body: null } : await state.intercept({ pathname, method, payload });
         if (!result && method === 'GET' && pathname === '/api/notifications') result = {body:{notifications:[],unreadCount:0}};
         if (!result && method === 'GET' && pathname === '/api/parent-tuition/notifications') result = { body: [] };
-        if (!result && method === 'GET' && pathname === '/api/branches') result = { body: [{ id: 1, name: 'Cơ sở A', address: 'Quận 1' }, { id: 2, name: 'Cơ sở B', address: 'Quận 2' }] };
+        if (!result && method === 'GET' && pathname === '/api/branches') result = { body: [{ id: 1, name: 'Cơ sở A', address: 'Quận 1', active: true }, { id: 2, name: 'Cơ sở B', address: 'Quận 2', active: false }] };
         if (!result && method === 'GET' && pathname.endsWith('/counts')) result = { body: { rooms: 2, equipment: 1, goodEquipment: state.broken ? 0 : 1 } };
         if (!result && method === 'GET' && /^\/api\/branches\/\d+\/rooms\/page$/.test(pathname)) {
             result = { body: pathname.includes('/1/') ? state.rooms : [{ ...state.rooms[0], id: 21, branchId: 2, roomName: 'Phòng cơ sở B' }] };
@@ -211,7 +211,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 }
 
 test('usage and class links respect role boundaries; only Admin edits', async () => {
-    for (const role of ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT', 'STUDENT']) {
+    for (const role of ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT']) {
         const { page, state } = await facilityPage(role);
         try {
             await page.locator('#roomTableBody').getByText('Bể bơi A', { exact: true }).waitFor();
@@ -309,7 +309,7 @@ test('usage errors retry locally, stale room/usage responses cannot replace curr
 });
 
 test('roomId links open usage directly and select its branch only for authorized roles', async () => {
-    for (const role of ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT', 'STUDENT']) {
+    for (const role of ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT']) {
         const { page, state } = await facilityPage(role, { width: 390, height: 844 }, state => { state.search = '?roomId=21'; });
         try {
             const authorized = ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER'].includes(role);

@@ -36,7 +36,10 @@ test('class form filters assignments, calculates end date and displays a schedul
                     { id: 1, code: 'PIANO', name: 'Piano', totalSessions: 4 },
                     { id: 2, code: 'GUITAR', name: 'Guitar', totalSessions: 4 }
                 ];
-                if (url.pathname === '/api/branches/options') body = [{ id: 1, code: 'B1', name: 'Campus' }];
+                if (url.pathname === '/api/branches') body = [
+                    { id: 1, code: 'B1', name: 'Campus', active: true },
+                    { id: 2, code: 'B2', name: 'Inactive campus', active: false }
+                ];
                 if (url.pathname.endsWith('/classes/teachers')) {
                     const piano = url.searchParams.get('courseId') === '1';
                     body = [{ id: piano ? 11 : 12, fullName: piano ? 'Piano teacher' : 'Guitar teacher', subject: piano ? 'PIANO' : 'GUITAR' }];
@@ -63,6 +66,8 @@ test('class form filters assignments, calculates end date and displays a schedul
             await page.goto((process.env.CLASS_TEST_URL || 'http://127.0.0.1:5500') + '/pages/class-management.html');
             await page.locator('#courseId option[value="1"]').waitFor({ state: 'attached' });
             await page.locator('#newClassBtn').click();
+            assert.match(await page.locator('#filterBranch option[value="2"]').textContent(), /Ngừng hoạt động/);
+            assert.equal(await page.locator('#branchId option[value="2"]').count(), 0);
             await page.locator('#courseId').selectOption('1');
             await page.locator('#teacherId option[value="11"]').waitFor({ state: 'attached' });
             assert.equal(await page.locator('#teacherId option').count(), 2);

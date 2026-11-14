@@ -44,7 +44,11 @@ async function openPage({ failClasses = false, failOptions = false } = {}) {
             if (classes && state.failClasses) throw new TypeError('Failed to fetch');
             const failed = !classes && state.failOptions;
             const body = classes ? { items: state.rows, page: 0, size: 10, totalElements: state.rows.length, totalPages: state.rows.length ? 1 : 0 }
-                : failed ? { message: 'Internal database details' } : [{ id: 1, code: 'ONE', name: 'Option' }];
+                : failed ? { message: 'Internal database details' }
+                : parsed.pathname === '/api/branches' ? [
+                    { id: 1, code: 'ONE', name: 'Active branch', active: true },
+                    { id: 2, code: 'TH01', name: 'Tây Hồ', active: false }
+                ] : [{ id: 1, code: 'ONE', name: 'Option' }];
             return { status: failed ? 500 : 200, ok: !failed,
                 json: async () => body, text: async () => JSON.stringify(body) };
         }
@@ -55,6 +59,17 @@ async function openPage({ failClasses = false, failOptions = false } = {}) {
     await new Promise(resolve => setImmediate(resolve));
     return { state, nodes, ctx, visible: id => !nodes.get(id).classList.contains('d-none') };
 }
+
+test('class filter includes inactive branches, but class creation does not', async () => {
+    const { nodes, ctx } = await openPage();
+    assert.match(nodes.get('filterBranch').innerHTML, /Tây Hồ \(Ngừng hoạt động\)/);
+    assert.match(nodes.get('branchId').innerHTML, /Active branch/);
+    assert.doesNotMatch(nodes.get('branchId').innerHTML, /Tây Hồ/);
+    ctx.renderClassBranches(2);
+    assert.match(nodes.get('branchId').innerHTML, /value="2" disabled>[^<]*Tây Hồ/);
+    ctx.renderClassBranches();
+    assert.doesNotMatch(nodes.get('branchId').innerHTML, /Tây Hồ/);
+});
 
 test('initial class load failure is friendly, has one retry and hides unknown result count', async () => {
     const page = await openPage({ failClasses: true });

@@ -104,15 +104,6 @@ function initNavbarAndRoleBadge() {
             roleBadge.innerHTML = '<i class="bi bi-people-fill me-1"></i>Phụ Huynh: ' + (currentUser.fullName || currentUser.username);
             roleBadge.className = 'badge bg-success px-3 py-2 rounded-pill small';
         }
-    } else if (role === 'STUDENT') {
-        document.title = 'Lịch Học Cá Nhân - Học Viện Talent';
-        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Lịch Học';
-        if (heroTitle) heroTitle.textContent = 'Lịch Học Cá Nhân';
-        if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi thời khóa biểu các ca học và điểm danh chuyên cần của bạn.';
-        if (roleBadge) {
-            roleBadge.innerHTML = '<i class="bi bi-person-fill me-1"></i>Học Viên: ' + (currentUser.fullName || currentUser.username);
-            roleBadge.className = 'badge bg-info text-dark px-3 py-2 rounded-pill small';
-        }
     } else {
         document.title = 'Thời Khóa Biểu Trung Tâm - Học Viện Talent';
         if (heroBreadcrumb) heroBreadcrumb.textContent = 'Thời Khóa Biểu Trung Tâm';
@@ -253,7 +244,7 @@ function renderWeeklyMatrix(data) {
 
     // 4. Vẽ từng hàng Slot (Slot 1 đến Slot 4)
     const expandBtn = document.getElementById('btnToggleExpandCells');
-    if (expandBtn && data.currentUserRole !== 'STUDENT' && data.currentUserRole !== 'PARENT') {
+    if (expandBtn && data.currentUserRole !== 'PARENT') {
         expandBtn.classList.remove('d-none');
     }
     const tbody = document.getElementById('timetableBody');
@@ -298,9 +289,9 @@ function renderWeeklyMatrix(data) {
 
             html += `<td class="${isToday ? 'today-column' : ''}">`;
 
-            const isParentOrStudent = (data.currentUserRole === 'STUDENT' || data.currentUserRole === 'PARENT');
+            const isParent = data.currentUserRole === 'PARENT';
             if (lessonsInCell.length > 0) {
-                if (isParentOrStudent || expandAllCells || lessonsInCell.length <= MAX_VISIBLE_CARDS_PER_CELL) {
+                if (isParent || expandAllCells || lessonsInCell.length <= MAX_VISIBLE_CARDS_PER_CELL) {
                     lessonsInCell.forEach(l => {
                         html += renderLessonCard(l, data.currentUserRole);
                     });
@@ -347,7 +338,7 @@ function renderLessonCard(lesson, userRole) {
 
     // 1. DÀNH CHO HỌC VIÊN HOẶC PHỤ HUYNH
     // Không cho phép bấm link vào trang điểm danh, cập nhật ngay trạng thái điểm danh
-    if (userRole === 'STUDENT' || userRole === 'PARENT') {
+    if (userRole === 'PARENT') {
         const personalMarks = lesson.studentAttendances || [];
         let effectiveStatus = lesson.attendanceStatus;
         if (isPast && (!effectiveStatus || effectiveStatus === 'NOT_MARKED')) {

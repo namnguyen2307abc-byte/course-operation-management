@@ -33,10 +33,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             String username = jwtService.extractUsername(token);
             authenticatedUser = userRepository.findByUsername(username).orElseThrow();
+            if (authenticatedUser.getRole() == null || authenticatedUser.getStatus() != UserStatus.ACTIVE) {
+                throw new IllegalArgumentException("Invalid session");
+            }
             UserDetails details = org.springframework.security.core.userdetails.User.withUsername(username)
                     .password(authenticatedUser.getPassword()).roles(authenticatedUser.getRole().name()).build();
             Number version = jwtService.extractClaim(token, claims -> claims.get("version", Number.class));
-            if (authenticatedUser.getStatus() != UserStatus.ACTIVE || !jwtService.isTokenValid(token, details)
+            if (!jwtService.isTokenValid(token, details)
                     || version == null || version.longValue() != authenticatedUser.getTokenVersion()) {
                 throw new IllegalArgumentException("Invalid session");
             }

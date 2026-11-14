@@ -168,26 +168,40 @@ class AdminManagementIntegrationTest {
         assertThat(audit.count()).isZero();
     }
 
-    @Test void independentStudentNeedsAnExplicitUniqueProfileAndSeesOnlyOwnProfile() throws Exception {
-        Student child = students.saveAndFlush(Student.builder().fullName("Học viên A").build());
-        students.saveAndFlush(Student.builder().fullName("Học viên B").build());
-        Map<String, Object> request = new HashMap<>(Map.of("username", "student_a", "password", "student-pass", "fullName", "Học viên A", "role", "STUDENT"));
-        postJson("/api/admin/users", adminToken, request).andExpect(status().isConflict());
+    @Test void studentRoleCannotBeCreatedOrAssigned() throws Exception {
+        postJson("/api/admin/users", adminToken, Map.of("username", "student_a", "password", "student-pass",
+                "fullName", "Học viên A", "role", "STUDENT")).andExpect(status().isBadRequest());
+        User staff = user("role_target", Role.STAFF);
+        patchJson("/api/admin/users/" + staff.getId() + "/role", Map.of("role", "STUDENT", "reason", "Test"))
+                .andExpect(status().isBadRequest());
         assertThat(users.findByUsername("student_a")).isEmpty();
-        // A failed transaction is rolled back by the service; start a fresh transaction for the successful path in a separate test.
+        assertThat(staff.getRole()).isEqualTo(Role.STAFF);
     }
 
-    @Test void studentAccountLinksAndDuplicateProfileIsRejected() throws Exception {
-        Student child = students.saveAndFlush(Student.builder().fullName("Học viên A").build());
-        students.saveAndFlush(Student.builder().fullName("Học viên B").build());
-        var result = postJson("/api/admin/users", adminToken, Map.of("username", "student_a", "password", "student-pass", "fullName", "Học viên A", "role", "STUDENT", "studentId", child.getId())).andExpect(status().isCreated());
-        String initial = login("student_a", "student-pass");
-        String token = body(postJson("/api/auth/change-password", initial, Map.of("currentPassword", "student-pass", "newPassword", "student-new-pass")).andExpect(status().isOk())).get("token").asText();
-        mvc.perform(get("/api/attendance-makeup/students").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(child.getId()));
-        mvc.perform(get("/api/admin/users/" + body(result).get("id").asLong()).header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.studentProfiles[0].id").value(child.getId()));
-        postJson("/api/admin/users", adminToken, Map.of("username", "student_b", "password", "student-pass", "fullName", "Học viên B", "role", "STUDENT", "studentId", child.getId())).andExpect(status().isConflict());
+    @Test void retiredLoginAndTokenAreBlockedWithoutLosingTheParentLink() throws Exception {
+        User archived = user("retired_account", Role.PARENT);
+        String oldToken = login(archived.getUsername(), "initial-pass");
+        User parent = user("parent_of_archived", Role.PARENT);
+        Student child = students.saveAndFlush(Student.builder().fullName("Học viên A")
+                .account(archived).parent(parent).build());
+        archived.setRole(null);
+        archived.setStatus(UserStatus.INACTIVE);
+        users.saveAndFlush(archived);
+
+        postJson("/api/auth/login", null, Map.of("username", archived.getUsername(), "password", "initial-pass"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/attendance-makeup/students").header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/attendance-makeup/students")
+                        .header("Authorization", "Bearer " + login(parent.getUsername(), "initial-pass")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(child.getId()));
+        mvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+        patchJson("/api/admin/users/" + archived.getId() + "/status", Map.of("status", "ACTIVE", "reason", "Test"))
+                .andExpect(status().isConflict());
+        patchJson("/api/admin/users/" + archived.getId() + "/role", Map.of("role", "PARENT", "reason", "Test"))
+                .andExpect(status().isConflict());
     }
 
     @Test void dashboardExcludesFailedPaymentsUsesExclusiveEndDateAndShowsOutstanding() throws Exception {
@@ -266,7 +280,7 @@ class AdminManagementIntegrationTest {
                 List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
         org.springframework.security.core.context.SecurityContextHolder.setContext(context);
         try {
-            administration.changeRole(target.getId(), new com.talent.management.features.admin_management.dto.request.ChangeUserRoleRequest(Role.STAFF, null, "Concurrent demotion test"));
+            administration.changeRole(target.getId(), new com.talent.management.features.admin_management.dto.request.ChangeUserRoleRequest(Role.STAFF, "Concurrent demotion test"));
             return 200;
         } catch (org.springframework.web.server.ResponseStatusException ex) { return ex.getStatusCode().value(); }
         finally { org.springframework.security.core.context.SecurityContextHolder.clearContext(); }

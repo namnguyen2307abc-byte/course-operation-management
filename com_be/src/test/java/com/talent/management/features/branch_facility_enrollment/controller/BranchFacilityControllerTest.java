@@ -9,12 +9,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(BranchFacilityController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -23,6 +26,46 @@ class BranchFacilityControllerTest {
     @Autowired MockMvc mvc;
     @MockBean BranchFacilityService service;
     @MockBean JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void branchReadsRemainAvailable() throws Exception {
+        mvc.perform(get("/api/branches")).andExpect(status().isOk());
+        mvc.perform(get("/api/branches/options")).andExpect(status().isOk());
+        mvc.perform(get("/api/branches/1/rooms")).andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void unsupportedMethodOnAnExistingUrlReturns405AndAdvertisesAllowedMethods() throws Exception {
+        mvc.perform(post("/api/branches"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().string(HttpHeaders.ALLOW, containsString("GET")))
+                .andExpect(jsonPath("$.status").value(405))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void removedUrlsReturn404() throws Exception {
+        for (String path : new String[]{"/api/branches/1/rooms/options", "/api/branches/1/equipments"}) {
+            mvc.perform(get(path)).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.message").isNotEmpty());
+        }
+        for (String path : new String[]{"/api/branches/rooms", "/api/branches/equipments"}) {
+            mvc.perform(post(path)).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404));
+        }
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void unexpectedServiceErrorsStillReturn500() throws Exception {
+        when(service.getAllBranches()).thenThrow(new IllegalStateException("Unexpected failure"));
+        mvc.perform(get("/api/branches")).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500));
+    }
 
     @Test
     @WithMockUser(roles = "STAFF")

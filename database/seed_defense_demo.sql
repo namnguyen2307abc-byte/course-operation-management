@@ -22,8 +22,7 @@ FROM (VALUES
  ('teacher',N'Cô Thu Hà - Piano','TEACHER','0909000004','DAN','PIANO'),
  ('teacher2',N'Thầy Minh - Piano học bù','TEACHER','0909000005','DAN','PIANO'),
  ('parent',N'Phụ huynh Nguyễn Lan','PARENT','0909000006',NULL,NULL),
- ('other',N'Phụ huynh Trần Mai','PARENT','0909000007',NULL,NULL),
- ('student',N'Học viên Minh Châu','STUDENT','0909000008',NULL,NULL)
+ ('other',N'Phụ huynh Trần Mai','PARENT','0909000007',NULL,NULL)
 ) v(suffix,label,role,phone,subject,teaching);
 DECLARE @parent BIGINT=(SELECT id FROM users WHERE username=CONCAT(@u,'_parent')),
  @other BIGINT=(SELECT id FROM users WHERE username=CONCAT(@u,'_other')),
@@ -99,7 +98,7 @@ WHILE @j<=14 BEGIN
  WHEN 13 THEN N'Phương Anh - khoản thu nhập nhầm' ELSE N'Thảo Nhi - con phụ huynh khác' END;
  INSERT students(parent_id,account_id,full_name,date_of_birth,gender,school_name,created_at)
  VALUES(CASE WHEN @j=14 THEN @other ELSE @parent END,
- CASE WHEN @j=4 THEN (SELECT id FROM users WHERE username=CONCAT(@u,'_student')) ELSE NULL END,
+ NULL,
  CONCAT(N'[',@tag,N'-',RIGHT('0'+CAST(@j AS VARCHAR(2)),2),N'] ',@name),'2017-05-15',CASE WHEN @j IN(1,5,6,8,10,11) THEN N'Nam' ELSE N'Nữ' END,N'[DEMO] Trường năng khiếu',@now);
  DECLARE @sid BIGINT=SCOPE_IDENTITY(); INSERT @people VALUES(@j,@sid);
  IF @j IN(2,3) BEGIN

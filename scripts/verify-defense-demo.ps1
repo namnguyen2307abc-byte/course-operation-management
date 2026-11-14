@@ -3,7 +3,7 @@ param([string]$Tag='HD261111',[string]$BaseUrl='http://127.0.0.1')
 $ErrorActionPreference='Stop'
 if($Tag -cnotmatch '^[A-Z0-9]{6,18}$'){throw 'Invalid tag'}
 $headersByRole=@{}
-foreach($suffix in @('admin','staff','leader','teacher','teacher2','parent','other','student')){
+foreach($suffix in @('admin','staff','leader','teacher','teacher2','parent','other')){
  $body=@{username="$($Tag.ToLower())_$suffix";password='Test@123456'}|ConvertTo-Json
  $login=Invoke-RestMethod "$BaseUrl/api/auth/login" -Method Post -ContentType application/json -Body $body
  if(!$login.token){throw "Login failed: $suffix"}
@@ -43,4 +43,4 @@ $absence=Read-DemoApi '/api/attendance-makeup/absence-requests' 'parent'
 if(@($absence|Where-Object {$_.studentName.StartsWith("[$Tag-")}).Count -ne 4){throw 'Expected four initial absence fixtures'}
 $notice=Read-DemoApi '/api/notifications' 'teacher'
 if(!$notice.notifications.Count){throw 'Demo teacher has no deep-link notification'}
-Write-Output "PASS: 8 demo logins, 14+1 children with family isolation, 11 invoices, overdue balance, 15%/30% absence warnings, today makeup roster and absence notifications. No demo workflow was consumed."
+Write-Output "PASS: 7 demo logins, 14+1 children with family isolation, 11 invoices, overdue balance, 15%/30% absence warnings, today makeup roster and absence notifications. No demo workflow was consumed."

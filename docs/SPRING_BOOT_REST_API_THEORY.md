@@ -183,6 +183,8 @@ Nhiều người mới bắt đầu thường mang tư duy gọi hàm kiểu RPC
 - **HÀNH ĐỘNG được quyết định bởi HTTP METHOD (Động từ - Verb)**.
 
 ### So sánh cách đặt tên:
+Các URI dưới đây minh họa quy ước REST, không phải danh sách endpoint đang hoạt động trong dự án.
+
 | Mục đích nghiệp vụ | ❌ Đặt Sai (Kiểu RPC/Servlet cũ) | ✅ Đặt Chuẩn RESTful |
 | :--- | :--- | :--- |
 | Lấy danh sách cơ sở | `GET /getAllBranches` | `GET /api/branches` |
@@ -350,7 +352,7 @@ Client (Trình duyệt) ◄── Chỉ nhận vài KB dữ liệu JSON ──�
 | `web.xml` | Các file cấu hình Java với `@Configuration` hoặc `application.properties`. |
 | `HttpServlet` (`doGet`, `doPost`) | `@RestController`, `@GetMapping`, `@PostMapping`. |
 | `request.getParameter("id")` | `@PathVariable` (lấy từ đường dẫn) hoặc `@RequestParam` (lấy từ query `?id=1`). |
-| Đọc form gửi lên qua request | `@RequestBody @Valid CreateBranchRequest request`. |
+| Đọc form gửi lên qua request | `@RequestBody @Valid UpdateRoomRequest request`. |
 | `new MyService()` | `@Autowired` hoặc `@RequiredArgsConstructor` (Dependency Injection). |
 | `Connection`, `PreparedStatement` | `JpaRepository<Entity, ID>`. |
 | File hiển thị `.jsp` | File HTML tĩnh gọi API qua hàm `fetch()` / `api.js` nhận dữ liệu JSON. |

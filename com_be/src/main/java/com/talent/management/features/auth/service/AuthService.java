@@ -26,7 +26,7 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername().trim())
                 .orElseThrow(() -> new BadCredentialsException("Thông tin đăng nhập không hợp lệ"));
-        if (user.getStatus() != UserStatus.ACTIVE || request.getPassword() == null
+        if (user.getRole() == null || user.getStatus() != UserStatus.ACTIVE || request.getPassword() == null
                 || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BadCredentialsException("Thông tin đăng nhập không hợp lệ");
         }
@@ -75,6 +75,9 @@ public class AuthService {
     }
 
     private AuthResponse response(User user) {
+        if (user.getRole() == null || user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadCredentialsException("Thông tin đăng nhập không hợp lệ");
+        }
         UserDetails details = org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
                 .password(user.getPassword()).roles(user.getRole().name()).build();
         return AuthResponse.builder().userId(user.getId()).username(user.getUsername()).fullName(user.getFullName())
