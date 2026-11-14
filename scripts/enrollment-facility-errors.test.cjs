@@ -84,6 +84,19 @@ function screen(kind) {
     return { ctx, state, element };
 }
 
+test('cancelled reservations show center feedback while parent cancellations stay distinct', () => {
+    const { ctx } = screen('enrollment');
+    const cancelled = { status: 'CANCELLED', enrollmentId: 22,
+        reviewedBy: 'Quản trị viên', reviewNote: 'Đã liên hệ, gia đình không tiếp tục học' };
+    assert.match(ctx.requestFeedback(cancelled), /Trung tâm đã hủy giữ chỗ/);
+    assert.match(ctx.requestFeedback(cancelled), /Quản trị viên/);
+    assert.match(ctx.requestFeedback(cancelled), /gia đình không tiếp tục học/);
+    assert.doesNotMatch(ctx.requestFeedback(cancelled), /Phụ huynh đã hủy/);
+    assert.equal(ctx.requestFeedback({ status: 'CANCELLED', enrollmentId: 22 }), 'Trung tâm đã hủy giữ chỗ');
+    assert.equal(ctx.requestFeedback({ status: 'CANCELLED', enrollmentId: null }), 'Phụ huynh đã hủy yêu cầu');
+    assert.equal(ctx.requestFeedback({ status: 'PENDING_PAYMENT', reviewNote: 'Đã xếp lớp' }), 'Đã xếp lớp');
+});
+
 test('assignment list failure stays inside the form and reopening recovers', async () => {
     const { ctx, state, element } = screen('enrollment');
     state.failures.set('/api/course-enrollment/courses/2/classes', 'network');
