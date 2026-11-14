@@ -51,9 +51,10 @@ public class CourseManagementServiceImpl implements CourseManagementService {
     @Transactional
     public CourseDetailResponse createCourse(CreateCourseRequest request) {
         // Validate code uniqueness
-        if (courseRepository.existsByCode(request.getCode())) {
+        String trimmedCode = request.getCode().trim();
+        if (courseRepository.existsByCode(trimmedCode)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Mã khóa học '" + request.getCode() + "' đã tồn tại trong hệ thống");
+                    "Mã khóa học '" + trimmedCode + "' đã tồn tại trong hệ thống");
         }
 
         Program program = programRepository.findById(request.getProgramId())
@@ -62,9 +63,9 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
         Course course = Course.builder()
                 .program(program)
-                .code(request.getCode().trim())
+                .code(trimmedCode)
                 .name(request.getName().trim())
-                .level(request.getLevel() != null ? request.getLevel().name() : null)
+                .level(request.getLevel().name())
                 .durationWeeks(request.getDurationWeeks())
                 .totalSessions(request.getTotalSessions())
                 .tuitionFee(request.getTuitionFee())
@@ -83,9 +84,10 @@ public class CourseManagementServiceImpl implements CourseManagementService {
                         "Không tìm thấy khóa học với id: " + id));
 
         // Validate code uniqueness (excluding current record)
-        if (courseRepository.existsByCodeAndIdNot(request.getCode(), id)) {
+        String trimmedCode = request.getCode().trim();
+        if (courseRepository.existsByCodeAndIdNot(trimmedCode, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Mã khóa học '" + request.getCode() + "' đã được sử dụng bởi khóa học khác");
+                    "Mã khóa học '" + trimmedCode + "' đã được sử dụng bởi khóa học khác");
         }
 
         Program program = programRepository.findById(request.getProgramId())
@@ -93,9 +95,9 @@ public class CourseManagementServiceImpl implements CourseManagementService {
                         "Không tìm thấy bộ môn với id: " + request.getProgramId()));
 
         course.setProgram(program);
-        course.setCode(request.getCode().trim());
+        course.setCode(trimmedCode);
         course.setName(request.getName().trim());
-        course.setLevel(request.getLevel() != null ? request.getLevel().name() : null);
+        course.setLevel(request.getLevel().name());
         course.setDurationWeeks(request.getDurationWeeks());
         course.setTotalSessions(request.getTotalSessions());
         course.setTuitionFee(request.getTuitionFee());

@@ -37,6 +37,8 @@ public class PlacementScheduleMapper {
                 .evaluatedById(schedule.getEvaluatedBy() != null ? schedule.getEvaluatedBy().getId() : null)
                 .evaluatedByName(schedule.getEvaluatedBy() != null ? schedule.getEvaluatedBy().getFullName() : null)
                 .evaluatedAt(schedule.getEvaluatedAt())
+                .cancelReason(schedule.getCancelReason())
+                .cancelledAt(schedule.getCancelledAt())
                 .parentId(schedule.getParent() != null ? schedule.getParent().getId() : null)
                 .parentName(schedule.getParent() != null ? schedule.getParent().getFullName() : null)
                 .parentEmail(schedule.getParent() != null ? schedule.getParent().getEmail() : null)

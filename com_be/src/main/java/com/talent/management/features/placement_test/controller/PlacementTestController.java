@@ -1,5 +1,6 @@
 package com.talent.management.features.placement_test.controller;
 
+import com.talent.management.features.placement_test.dto.request.CancelPlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.CreatePlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
@@ -84,5 +85,16 @@ public class PlacementTestController {
             Authentication authentication) {
         String teacherUsername = authentication != null ? authentication.getName() : null;
         return ResponseEntity.ok(placementTestService.saveAssessment(id, request, teacherUsername));
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER')")
+    @Operation(summary = "Hủy một lịch thi xếp lớp / đơn đăng ký kiểm tra đầu vào (Bắt buộc nhập lý do hủy)")
+    public ResponseEntity<PlacementScheduleResponse> cancelSchedule(
+            @PathVariable Long id,
+            @Valid @RequestBody CancelPlacementScheduleRequest request,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        return ResponseEntity.ok(placementTestService.cancelSchedule(id, request.getCancelReason(), username));
     }
 }

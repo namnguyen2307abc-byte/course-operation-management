@@ -41,6 +41,64 @@ async function open(role,file,intercept,width=1440){
 
 const assessment={id:7,studentName:'Học viên thử upload',subject:'DAN',title:'Test Piano',status:'SCHEDULED',testDate:'2026-11-11T10:00:00',score:null};
 const image={name:'bai-thi.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==','base64')};
+
+test('placement cancellation requires a reason, preserves a failed draft and retries on the same schedule',async()=>{
+ const {page,errors}=await open('STAFF','placement-test.html',u=>u.pathname==='/api/placement-tests'?[assessment]:undefined);
+ let attempts=0;
+ await page.route('**/api/placement-tests/7/cancel',async route=>{
+  attempts++;
+  assert.equal(route.request().postDataJSON().cancelReason,'Gia đình xin đổi lịch');
+  await route.fulfill(attempts===1?{status:500,json:{message:'Máy chủ tạm thời bận'}}:
+   {json:{...assessment,status:'CANCELLED',cancelReason:'Gia đình xin đổi lịch'}});
+ });
+ try{
+  await page.waitForFunction(()=>placementTestsData.some(x=>x.id===7));
+  await page.evaluate(()=>openCancelPlacementModal(7));
+  await page.locator('#cancelPlacementModal.show').waitFor();
+  await page.locator('#btnConfirmCancelPlacement').click();
+  assert.equal(attempts,0);
+  await page.locator('#cancelReasonInput').fill('Gia đình xin đổi lịch');
+  await page.locator('#btnConfirmCancelPlacement').click();
+  await page.getByText(/Không thể hủy đơn:/).waitFor();
+  assert.equal(await page.locator('#cancelReasonInput').inputValue(),'Gia đình xin đổi lịch');
+  assert.equal(await page.evaluate(()=>placementTestsData[0].status),'SCHEDULED');
+  await page.locator('#btnConfirmCancelPlacement').click();
+  await page.waitForFunction(()=>placementTestsData[0].status==='CANCELLED');
+  assert.equal(attempts,2);
+  await page.locator('#cancelPlacementModal').waitFor({state:'hidden'});
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('placement cancellation never fakes success for an empty server response',async()=>{
+ const {page,errors}=await open('STAFF','placement-test.html',u=>u.pathname==='/api/placement-tests'?[assessment]:undefined);
+ await page.route('**/api/placement-tests/7/cancel',r=>r.fulfill({json:null}));
+ try{
+  await page.waitForFunction(()=>placementTestsData.some(x=>x.id===7));
+  await page.evaluate(()=>openCancelPlacementModal(7));
+  await page.locator('#cancelPlacementModal.show').waitFor();
+  await page.locator('#cancelReasonInput').fill('Gia đình xin đổi lịch');
+  await page.locator('#btnConfirmCancelPlacement').click();
+  await page.getByText(/Máy chủ chưa xác nhận hủy đơn/).waitFor();
+  assert.equal(await page.evaluate(()=>placementTestsData[0].status),'SCHEDULED');
+  assert.equal(await page.evaluate(()=>cancellingScheduleId),7);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('placement detail previews an uploaded image from the backend URL',async()=>{
+ const {page,errors}=await open('STAFF','placement-test.html',u=>u.pathname==='/api/placement-tests'?
+  [{...assessment,imageUrl:'/uploads/placement-tests/exam.png'}]:undefined);
+ await page.route('**/uploads/placement-tests/exam.png',r=>r.fulfill({body:image.buffer,contentType:'image/png'}));
+ try{
+  await page.waitForFunction(()=>placementTestsData.some(x=>x.id===7));
+  await page.evaluate(()=>openDetailModal(7));
+  const preview=page.locator('#detailMediaAttachment img');
+  await preview.waitFor();
+  assert.match(await preview.getAttribute('src'),/:8080\/uploads\/placement-tests\/exam\.png$/);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
 async function evaluate(intercept){
  const result=await open('TEACHER','placement-test.html',(u,req)=>{
   if(u.pathname==='/api/placement-tests')return [assessment];

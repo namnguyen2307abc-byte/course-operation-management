@@ -435,6 +435,11 @@
                         <p id="detailNotes" class="bg-light p-3 rounded-3 text-muted small mt-1 mb-0 border">Chưa có nhận xét.</p>
                     </div>
 
+                    <div id="detailCancelReasonBox" class="mb-3 d-none">
+                        <strong class="text-danger small"><i class="bi bi-x-octagon-fill me-1"></i>Lý do hủy đơn (cancelReason):</strong>
+                        <p id="detailCancelReason" class="bg-danger-subtle p-3 rounded-3 text-danger-emphasis small mt-1 mb-0 border border-danger-subtle">—</p>
+                    </div>
+
                     <div>
                         <strong class="text-dark small mb-1 d-block"><i class="bi bi-paperclip me-1"></i>Tệp tin ghi âm / video đính kèm:</strong>
                         <div id="detailMediaAttachment"></div>
@@ -443,6 +448,40 @@
                 <div class="modal-footer bg-light px-4">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
                     <button type="button" class="btn btn-outline-primary rounded-pill px-3" onclick="window.print()"><i class="bi bi-printer me-1"></i>In Phiếu Result</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: Xác nhận hủy đơn Placement Test -->
+    <div class="modal fade" id="cancelPlacementModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-x-octagon-fill me-2"></i>Xác Nhận Hủy Đơn Placement Test
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2.5rem;"></i>
+                        <h6 class="fw-bold mt-2 mb-2">Bạn có chắc chắn muốn hủy đơn kiểm tra này?</h6>
+                        <p class="text-muted small mb-1">Mã lịch: <strong id="cancelScheduleCodeDisplay" class="text-danger">—</strong></p>
+                        <p class="text-muted small mb-1">Học viên: <strong id="cancelStudentNameDisplay">—</strong></p>
+                        <p class="text-muted small mb-0">Sau khi hủy, trạng thái đơn sẽ chuyển sang <strong>Đã Hủy (CANCELLED)</strong>.</p>
+                    </div>
+                    <div class="mt-3 text-start">
+                        <label for="cancelReasonInput" class="form-label fw-semibold text-dark small">Lý do hủy đơn <span class="text-danger">*</span></label>
+                        <textarea id="cancelReasonInput" class="form-control" rows="3" maxlength="500" placeholder="Nhập lý do hủy đơn (ví dụ: Học viên bận đột xuất, vắng mặt quá giờ hẹn, đổi lịch...)" required></textarea>
+                        <div id="cancelReasonError" class="text-danger small mt-1 d-none">Vui lòng nhập lý do hủy đơn trước khi xác nhận!</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-danger px-4 rounded-pill fw-semibold" id="btnConfirmCancelPlacement" onclick="confirmCancelPlacementTest()">
+                        <i class="bi bi-x-circle me-1"></i>Xác Nhận Hủy Đơn
+                    </button>
                 </div>
             </div>
         </div>

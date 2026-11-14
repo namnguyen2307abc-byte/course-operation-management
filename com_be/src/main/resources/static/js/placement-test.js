@@ -100,6 +100,8 @@ let placementTestsData = [
 ];
 
 let currentEditingId = null;
+let cancellingScheduleId = null;
+let placementCancelling = false;
 let uploadedFileUrl = "";
 let attachmentUploadVersion = 0;
 let attachmentUploading = false;
@@ -506,6 +508,9 @@ function renderTable(dataList) {
             statusBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle me-1"></i>Đã Hoàn Thành</span>`;
         } else {
             statusBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1"><i class="bi bi-x-circle me-1"></i>Đã Hủy</span>`;
+            if (item.cancelReason) {
+                statusBadge += `<div class="small text-danger mt-1 text-truncate" style="max-width: 160px;" title="Lý do hủy: ${escapeCourseOption(item.cancelReason)}"><i class="bi bi-info-circle me-1"></i>${escapeCourseOption(item.cancelReason)}</div>`;
+            }
         }
 
         let levelText = "Chưa xếp trình độ";
@@ -563,7 +568,11 @@ function renderTable(dataList) {
                         <button class="btn btn-outline-primary" onclick="openDetailModal(${item.id})" title="Xem Chi Tiết">
                             <i class="bi bi-eye"></i>
                         </button>
-                        ${canGradeThisItem ? `
+                        ${item.status === 'CANCELLED' ? `
+                            <button class="btn btn-outline-secondary opacity-50" disabled title="Đơn đã bị hủy">
+                                <i class="bi bi-slash-circle me-1"></i>Đã Hủy
+                            </button>
+                        ` : canGradeThisItem ? `
                             <button class="btn btn-warning text-dark fw-semibold" onclick="openEvaluateModal(${item.id})" title="Chấm Điểm (Giáo Viên Bộ Môn)">
                                 <i class="bi bi-pencil-square me-1"></i>${item.status === 'COMPLETED' ? 'Sửa' : 'Chấm'}
                             </button>
@@ -572,6 +581,11 @@ function renderTable(dataList) {
                                 <i class="bi bi-lock-fill me-1"></i>Chấm
                             </button>
                         `}
+                        ${item.status === 'SCHEDULED' ? `
+                            <button class="btn btn-outline-danger" onclick="openCancelPlacementModal(${item.id})" title="Hủy đơn Placement Test">
+                                <i class="bi bi-x-circle me-1"></i>Hủy
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -818,6 +832,11 @@ async function handleFileUpload(e) {
 async function openEvaluateModal(id) {
     const item = placementTestsData.find(x => x.id === id);
     if (!item) return;
+
+    if (item.status === 'CANCELLED') {
+        showNotification('Không thể chấm điểm cho đơn Placement Test đã bị hủy!', 'warning');
+        return;
+    }
 
     // 1. STRICT ROLE & SUBJECT PERMISSION CHECK
     if (!isTeacher()) {
@@ -1182,6 +1201,18 @@ function openDetailModal(id) {
     document.getElementById("detailLevel").innerText = levelText;
     document.getElementById("detailNotes").innerText = item.teacherNote || item.note || "Chưa có ghi chú.";
 
+    const cancelBox = document.getElementById("detailCancelReasonBox");
+    const cancelText = document.getElementById("detailCancelReason");
+    if (cancelBox && cancelText) {
+        if (item.status === 'CANCELLED' && item.cancelReason) {
+            cancelText.innerText = item.cancelReason;
+            cancelBox.classList.remove("d-none");
+        } else {
+            cancelText.innerText = "—";
+            cancelBox.classList.add("d-none");
+        }
+    }
+
     const baseScore = item.score != null ? item.score : 0;
     const normSubject = normalizeSubject(item.subject || inferSubject(item.title));
     const cfg = SUBJECT_EVALUATION_CONFIG[normSubject] || SUBJECT_EVALUATION_CONFIG['DAN'];
@@ -1213,13 +1244,29 @@ function openDetailModal(id) {
     const mediaUrl = item.videoUrl || item.audioUrl || item.recordUrl || item.imageUrl;
     if (mediaContainer) {
         if (mediaUrl) {
+            const fullMediaUrl = mediaUrl.startsWith("/uploads/")
+                ? (typeof BASE_URL === "string" ? BASE_URL : "") + mediaUrl
+                : mediaUrl;
+            const safeHref = escapeCourseOption(fullMediaUrl);
+            const isImg = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(mediaUrl);
+            const isVid = /\.(mp4|webm|mov|avi|mkv)$/i.test(mediaUrl);
+            const isAud = /\.(mp3|wav|ogg|m4a)$/i.test(mediaUrl);
+            let previewHtml = "";
+            if (isImg) {
+                previewHtml = `<div class="mt-2 text-center"><a href="${safeHref}" target="_blank" rel="noopener"><img src="${safeHref}" alt="Ảnh đính kèm bài thi" class="img-fluid rounded-3 border shadow-sm" style="max-height: 280px; object-fit: contain;"></a></div>`;
+            } else if (isVid) {
+                previewHtml = `<div class="mt-2"><video controls class="w-100 rounded-3 border shadow-sm" style="max-height: 320px;" src="${safeHref}"></video></div>`;
+            } else if (isAud) {
+                previewHtml = `<div class="mt-2"><audio controls class="w-100" src="${safeHref}"></audio></div>`;
+            }
             mediaContainer.innerHTML = `
                 <div class="alert alert-info py-2 px-3 small d-flex align-items-center justify-content-between mb-0">
                     <span><i class="bi bi-paperclip me-1"></i>File đính kèm bài thi / ghi âm:</span>
-                    <a href="${mediaUrl}" target="_blank" class="btn btn-sm btn-info text-dark fw-bold rounded-pill">
+                    <a href="${safeHref}" target="_blank" rel="noopener" class="btn btn-sm btn-info text-dark fw-bold rounded-pill">
                         <i class="bi bi-download me-1"></i>Xem / Tải file
                     </a>
                 </div>
+                ${previewHtml}
             `;
         } else {
             mediaContainer.innerHTML = `<span class="text-muted small">Không có đính kèm media</span>`;
@@ -1228,6 +1275,98 @@ function openDetailModal(id) {
 
     const modal = new bootstrap.Modal(document.getElementById('detailModal'));
     modal.show();
+}
+
+function openCancelPlacementModal(id) {
+    if (placementCancelling) return;
+    const item = placementTestsData.find(x => x.id === id);
+    if (!item) return;
+
+    if (item.status === 'CANCELLED') {
+        showNotification('Đơn Placement Test này đã được hủy trước đó.', 'warning');
+        return;
+    }
+    if (item.status === 'COMPLETED') {
+        showNotification('Không thể hủy đơn Placement Test đã hoàn thành chấm điểm.', 'warning');
+        return;
+    }
+
+    cancellingScheduleId = id;
+    const codeEl = document.getElementById('cancelScheduleCodeDisplay');
+    const nameEl = document.getElementById('cancelStudentNameDisplay');
+    const reasonInput = document.getElementById('cancelReasonInput');
+    const reasonError = document.getElementById('cancelReasonError');
+    if (codeEl) codeEl.innerText = `#PT-${item.id}`;
+    if (nameEl) nameEl.innerText = item.studentName || 'Học viên';
+    if (reasonInput) {
+        reasonInput.value = '';
+        reasonInput.classList.remove('is-invalid');
+    }
+    if (reasonError) reasonError.classList.add('d-none');
+
+    const modalEl = document.getElementById('cancelPlacementModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+async function confirmCancelPlacementTest() {
+    if (!cancellingScheduleId || placementCancelling) return;
+    const scheduleId = cancellingScheduleId;
+    const item = placementTestsData.find(x => x.id === scheduleId);
+    if (!item) return;
+
+    const reasonInput = document.getElementById('cancelReasonInput');
+    const reasonError = document.getElementById('cancelReasonError');
+    const cancelReason = reasonInput ? reasonInput.value.trim() : '';
+
+    if (!cancelReason || cancelReason.length > 500) {
+        if (reasonInput) {
+            reasonInput.classList.add('is-invalid');
+            reasonInput.focus();
+        }
+        if (reasonError) reasonError.classList.remove('d-none');
+        showNotification('Vui lòng nhập lý do hủy từ 1 đến 500 ký tự.', 'warning');
+        return;
+    }
+    if (reasonInput) reasonInput.classList.remove('is-invalid');
+    if (reasonError) reasonError.classList.add('d-none');
+
+    const btn = document.getElementById('btnConfirmCancelPlacement');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang hủy...';
+    }
+
+    placementCancelling = true;
+    try {
+        if (typeof callApi !== 'function') throw new Error('Chưa kết nối được máy chủ. Vui lòng tải lại trang.');
+        const updatedResponse = await callApi(`/api/placement-tests/${scheduleId}/cancel`, 'POST', { cancelReason }, false, false);
+        if (!updatedResponse || updatedResponse.id !== scheduleId || updatedResponse.status !== 'CANCELLED') {
+            throw new Error('Máy chủ chưa xác nhận hủy đơn. Vui lòng thử lại.');
+        }
+        const idx = placementTestsData.findIndex(x => x.id === scheduleId);
+        if (idx !== -1) placementTestsData[idx] = updatedResponse;
+
+        const modalEl = document.getElementById('cancelPlacementModal');
+        const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+        if (modal) modal.hide();
+
+        cancellingScheduleId = null;
+        showNotification(`Đã hủy đơn Placement Test #PT-${scheduleId} thành công!`, 'success');
+        renderStats();
+        filterPlacementTests();
+    } catch (err) {
+        console.error('Cancel placement test error:', err);
+        showNotification(`Không thể hủy đơn: ${err.message || 'Vui lòng thử lại.'}`, 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Xác Nhận Hủy Đơn';
+        }
+        placementCancelling = false;
+    }
 }
 
 function setProgressBar(barId, valId, score100) {

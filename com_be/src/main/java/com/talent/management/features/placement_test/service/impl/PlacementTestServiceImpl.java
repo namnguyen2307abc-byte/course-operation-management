@@ -115,8 +115,12 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     @Override
     @Transactional
     public PlacementScheduleResponse saveAssessment(Long scheduleId, PlacementAssessmentRequest request, String teacherUsername) {
-        PlacementSchedule schedule = scheduleRepository.findById(scheduleId)
+        PlacementSchedule schedule = scheduleRepository.findByIdForUpdate(scheduleId)
                 .orElseThrow(() -> new BusinessException("Lịch thi xếp lớp không tồn tại với ID: " + scheduleId));
+
+        if (schedule.getStatus() == PlacementScheduleStatus.CANCELLED) {
+            throw new BusinessException("Không thể chấm điểm cho đơn Placement Test đã bị hủy!");
+        }
 
         EnrollmentRequest enrollmentRequest = schedule.getEnrollmentRequest();
         if (enrollmentRequest != null && request.getRecommendedCourseId() == null) {
@@ -200,7 +204,8 @@ public class PlacementTestServiceImpl implements PlacementTestService {
                     || enrollmentRequest.getStatus() != EnrollmentRequestStatus.WAITING_PLACEMENT) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu không còn chờ xếp lịch Placement Test");
             }
-            if (scheduleRepository.existsByEnrollmentRequestId(enrollmentRequest.getId())) {
+            if (scheduleRepository.existsByEnrollmentRequestId(enrollmentRequest.getId())
+                    || scheduleRepository.existsByEnrollmentRequestIdAndStatusNot(enrollmentRequest.getId(), PlacementScheduleStatus.CANCELLED)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu đã có lịch Placement Test");
             }
             schedule.setEnrollmentRequest(enrollmentRequest);
@@ -223,6 +228,60 @@ public class PlacementTestServiceImpl implements PlacementTestService {
                     "Lịch đánh giá đầu vào mới",
                     "Học viên " + saved.getStudentName() + " có lịch kiểm tra năng khiếu vào lúc " + saved.getTestDate() + ".",
                     "PLACEMENT_SCHEDULED", saved.getId(), "/pages/placement-test.html");
+        }
+        return scheduleMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public PlacementScheduleResponse cancelSchedule(Long scheduleId, String cancelReason, String currentUsername) {
+        if (cancelReason == null || cancelReason.trim().isEmpty() || cancelReason.length() > 500) {
+            throw new BusinessException("Vui lòng nhập lý do hủy đơn Placement Test!");
+        }
+        String trimmedReason = cancelReason.trim();
+
+        PlacementSchedule schedule = scheduleRepository.findByIdForUpdate(scheduleId)
+                .orElseThrow(() -> new BusinessException("Lịch thi xếp lớp không tồn tại với ID: " + scheduleId));
+
+        if (schedule.getStatus() == PlacementScheduleStatus.CANCELLED) {
+            throw new BusinessException("Đơn Placement Test này đã được hủy trước đó!");
+        }
+        if (schedule.getStatus() == PlacementScheduleStatus.COMPLETED) {
+            throw new BusinessException("Không thể hủy đơn Placement Test đã hoàn thành chấm điểm!");
+        }
+
+        if (currentUsername != null && !currentUsername.isBlank()) {
+            var userOpt = userRepository.findByUsername(currentUsername);
+            if (userOpt.isPresent() && userOpt.get().getRole() == com.talent.management.shared.enums.Role.TEACHER) {
+                var teacher = userOpt.get();
+                String teacherSubject = teacher.getSubject();
+                String scheduleSubject = schedule.getSubject() != null ? schedule.getSubject() : scheduleMapper.inferSubject(schedule.getTitle());
+                if (teacherSubject != null && !teacherSubject.isBlank() && scheduleSubject != null && !scheduleSubject.isBlank()) {
+                    String normTeacher = scheduleMapper.normalizeSubject(teacherSubject);
+                    String normSchedule = scheduleMapper.normalizeSubject(scheduleSubject);
+                    if (!normTeacher.equalsIgnoreCase(normSchedule)) {
+                        throw new BusinessException("Bạn là giáo viên bộ môn " + teacherSubject + ", không có quyền hủy lịch thi thuộc bộ môn " + scheduleSubject + "!");
+                    }
+                }
+            }
+        }
+
+        schedule.setStatus(PlacementScheduleStatus.CANCELLED);
+        schedule.setCancelReason(trimmedReason);
+        schedule.setCancelledAt(LocalDateTime.now());
+        // Nếu gắn với EnrollmentRequest đang chờ Placement Test, cho phép tách liên kết để xếp lịch mới hoặc hủy đơn
+        EnrollmentRequest enrollmentRequest = schedule.getEnrollmentRequest();
+        if (enrollmentRequest != null && enrollmentRequest.getStatus() == EnrollmentRequestStatus.WAITING_PLACEMENT) {
+            schedule.setEnrollmentRequest(null);
+        }
+
+        PlacementSchedule saved = scheduleRepository.save(schedule);
+        if (notificationService != null && saved.getParent() != null) {
+            notificationService.sendNotification(
+                    saved.getParent(), null,
+                    "Lịch kiểm tra đầu vào (Placement Test) đã hủy",
+                    "Lịch đánh giá năng khiếu đầu vào của bé " + saved.getStudentName() + " (#PT-" + saved.getId() + ") đã được hủy. Lý do: " + trimmedReason,
+                    "PLACEMENT_CANCELLED", saved.getId(), "/pages/course-enrollment.html");
         }
         return scheduleMapper.toResponse(saved);
     }
