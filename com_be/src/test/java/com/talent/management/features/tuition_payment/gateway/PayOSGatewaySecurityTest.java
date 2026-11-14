@@ -9,6 +9,32 @@ import java.util.Map;
 
 class PayOSGatewaySecurityTest {
     @Test
+    void paymentCreationHasAFiveMinuteGatewayExpiry() {
+        var builder = org.springframework.web.client.RestClient.builder();
+        var server = org.springframework.test.web.client.MockRestServiceServer.bindTo(builder).build();
+        PayOSGateway gateway = new PayOSGateway();
+        ReflectionTestUtils.setField(gateway,"restClient",builder.build());
+        ReflectionTestUtils.setField(gateway,"clientId","test");
+        ReflectionTestUtils.setField(gateway,"apiKey","test");
+        ReflectionTestUtils.setField(gateway,"checksumKey","test");
+        ReflectionTestUtils.setField(gateway,"createPaymentUrl","https://gateway.test/payment-requests");
+        ReflectionTestUtils.setField(gateway,"publicBaseUrl","http://127.0.0.1:5500");
+        long before=java.time.Instant.now().getEpochSecond();
+        server.expect(org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo("https://gateway.test/payment-requests"))
+                .andExpect(request -> {
+                    String body=((org.springframework.mock.http.client.MockClientHttpRequest)request).getBodyAsString();
+                    var data=new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+                    assertThat(data.get("expiredAt").asLong()).isBetween(before+300,before+305);
+                })
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess(
+                        "{\"code\":\"00\",\"data\":{\"checkoutUrl\":\"https://pay.test/123\",\"qrCode\":\"qr-data\",\"status\":\"PENDING\"}}",
+                        org.springframework.http.MediaType.APPLICATION_JSON));
+        var invoice=new com.talent.management.shared.entity.Invoice();invoice.setId(1L);invoice.setInvoiceCode("HP123");
+        assertThat(gateway.createPaymentLink(invoice,new java.math.BigDecimal("5000"),123L,false).getQrCode()).isEqualTo("qr-data");
+        server.verify();
+    }
+
+    @Test
     void absentRequestIsRecoverableButUnknownGatewayErrorsAreNot() {
         var builder = org.springframework.web.client.RestClient.builder();
         var server = org.springframework.test.web.client.MockRestServiceServer.bindTo(builder).build();

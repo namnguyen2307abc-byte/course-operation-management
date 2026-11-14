@@ -341,6 +341,7 @@ CREATE TABLE payments (
     amount DECIMAL(12,2) NOT NULL,
     cash_given DECIMAL(12,2),
     change_amount DECIMAL(12,2),
+    cash_rounding_amount DECIMAL(12,2) NOT NULL CONSTRAINT DF_payments_cash_rounding_amount DEFAULT(0),
     payment_date DATETIME2 DEFAULT CURRENT_TIMESTAMP,
     cashier_id BIGINT FOREIGN KEY REFERENCES users(id),
     bank_transaction_id VARCHAR(100),

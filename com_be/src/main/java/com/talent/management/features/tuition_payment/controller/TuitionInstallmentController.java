@@ -55,7 +55,9 @@ public class TuitionInstallmentController {
     @PostMapping("/{id}/collections")
     public PaymentReceiptResponse collect(
             @PathVariable Long id, @Valid @RequestBody Collection input) {
-        gateway.prepareCashPayment(id);
+        var replay = posting.replayCashReceipt(id, input.amount(), input.cashGiven(), input.idempotencyKey());
+        if (replay.isPresent()) return replay.get();
+        gateway.prepareCashPayment(id, input.amount(), input.cashGiven());
         return posting.collectReceipt(
                 id, input.amount(), input.cashGiven(), input.idempotencyKey());
     }
@@ -71,8 +73,9 @@ public class TuitionInstallmentController {
     }
 
     @PostMapping("/payment-intents/{id}/cancel")
-    public void cancel(@PathVariable Long id) {
+    public IntentView cancel(@PathVariable Long id) {
         gateway.cancel(id);
+        return gateway.status(id);
     }
 
     @PostMapping("/payment-intents/{id}/confirm-bank")

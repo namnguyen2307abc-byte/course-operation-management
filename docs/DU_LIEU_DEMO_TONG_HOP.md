@@ -12,6 +12,7 @@ File giữ nguyên schema, nạp trong transaction và đánh dấu `COMBINED_DE
 |---|---|---|
 | Admin D26 / Weekly | `d26_admin` | `Test@123456` |
 | Nhân viên D26 / Weekly | `d26_staff` | `Test@123456` |
+| Nhân viên thu ngân thứ hai | `d26_staff_2` | `Test@123456` |
 | Phụ huynh D26 / Weekly | `d26_parent_new` | `Test@123456` |
 | Giáo viên lớp Weekly | `d26_teacher_piano` | `Test@123456` |
 | Giáo viên không được phân công lớp Weekly | `d26_teacher_other` | `Test@123456` |
@@ -25,7 +26,16 @@ File giữ nguyên schema, nạp trong transaction và đánh dấu `COMBINED_DE
 2. Đăng nhập `d26_parent_new`, xem chuyên cần lớp trên: Bảo An 0%, An Nhiên 8,3%, Minh Quân 16,7% (cảnh báo), Ngọc Hân 25% (nguy cơ cao). Chi tiết tại `docs/DEMO_WEEKLY_ATTENDANCE.md`.
 3. Dùng `d26_staff`, `d26_parent_new`, `teacher_huong` kiểm tra đơn xin nghỉ và học bù của bộ D26; dùng `staff_minh` và các phụ huynh dữ liệu cũ kiểm tra các trường hợp còn lại.
 
-D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701-01` mà kịch bản Word ban đầu dành cho thao tác tạo mới. Vì vậy sau khi nạp gộp, lớp này đã tồn tại. Bộ tổng hợp hiện có 20 tài khoản, 10 học viên, 13 lớp, 61 buổi, 21 đơn nghỉ, 17 lượt học bù và 62 bản ghi điểm danh.
+D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701-01` mà kịch bản Word ban đầu dành cho thao tác tạo mới. Vì vậy sau khi nạp gộp, lớp này đã tồn tại. Bộ tổng hợp sau khi bổ sung thu ngân thứ hai có 21 tài khoản, 10 học viên, 13 lớp, 61 buổi, 21 đơn nghỉ, 17 lượt học bù và 62 bản ghi điểm danh.
+
+## Test quyền điều chỉnh giữa hai nhân viên
+
+Chạy lại file tổng hợp trên database đã nạp sẽ chỉ bổ sung `d26_staff_2` nếu chưa có; không reset mật khẩu, lịch đóng hoặc giao dịch đang test. Nếu tên tài khoản đã thuộc role khác, script báo lỗi thay vì đổi quyền.
+
+1. Đăng nhập `d26_staff`, thu một kỳ bằng tiền mặt và ghi lại số biên lai mới. Tài khoản này được gửi yêu cầu điều chỉnh biên lai đó.
+2. Đăng xuất, đăng nhập `d26_staff_2`, mở cùng hóa đơn: được xem biên lai nhưng không thấy nút điều chỉnh khoản do `d26_staff` thu.
+3. Dùng `d26_staff_2` thu một kỳ khác bằng tiền mặt. Biên lai mới chỉ tài khoản này được đề nghị điều chỉnh; `d26_staff` không được đề nghị cho khoản đó.
+4. Đăng nhập `d26_admin`: được đề nghị điều chỉnh mọi khoản tiền mặt hợp lệ. Người gửi không tự duyệt yêu cầu của mình; biên lai đã có yêu cầu hoặc đã điều chỉnh không dùng để gửi yêu cầu mới.
 
 Lần reset này chỉ nạp bộ tổng hợp trên; dữ liệu demo HD/DD và các giao dịch trước reset không được nạp lại. Bộ tổng hợp không tạo hóa đơn hay giao dịch thanh toán; có thể bắt đầu luồng đăng ký/xếp lớp để tạo học phí mới.
 

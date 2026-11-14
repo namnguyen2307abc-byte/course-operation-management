@@ -15,4 +15,7 @@ public interface TuitionIntentRepository extends JpaRepository<TuitionPaymentInt
     Optional<Long> findInvoiceId(@Param("id") Long id);
 
     List<TuitionPaymentIntent> findByInvoiceIdAndStatus(Long invoiceId, String status);
+
+    @Query("select i.id from TuitionPaymentIntent i where i.status in ('CREATING','PENDING','UNCERTAIN') and i.createdAt <= :before")
+    List<Long> findExpiredIds(@Param("before") java.time.LocalDateTime before);
 }

@@ -1465,6 +1465,19 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;';
   PRINT N'Da nap day du du lieu demo tong hop.';
  END
  ELSE PRINT N'Bo du lieu tong hop da duoc nap; giu nguyen du lieu hien tai.';
+ -- Additive extension: also runs on databases where COMBINED_DEMO_V1 was installed.
+ -- Existing accounts, passwords and payment history are never reset by this extension.
+ IF EXISTS(SELECT 1 FROM dbo.users WHERE username='d26_staff_2' AND role<>'STAFF')
+  THROW 51802,'d26_staff_2 already exists with a different role; no account was changed.',1;
+ IF NOT EXISTS(SELECT 1 FROM dbo.users WHERE username='d26_staff_2')
+ BEGIN
+  INSERT dbo.users(username,password,full_name,email,phone,role,status,token_version,must_change_password,created_at)
+  VALUES('d26_staff_2',
+   '$2a$10$U9rS8H8giwtd3tJo7XlXG.tkjsA8opaNfJZqihlijddbmKw2k76Ju',
+   N'Nhân viên thu ngân 2','d26.staff2@example.test','0909000022','STAFF','ACTIVE',0,0,SYSDATETIME());
+  PRINT N'Da bo sung tai khoan d26_staff_2 de test quyen dieu chinh khoan thu.';
+ END;
+ SELECT username,full_name,role,status FROM dbo.users WHERE username='d26_staff_2';
  COMMIT TRANSACTION;
 END TRY
 BEGIN CATCH

@@ -37,7 +37,7 @@ public class AdminDashboardRepository {
         return result;
     }
     public List<RevenuePoint> revenue(LocalDate from, LocalDate to) {
-        return em.createQuery("select year(p.paymentDate), month(p.paymentDate), day(p.paymentDate), sum(p.amount) "
+        return em.createQuery("select year(p.paymentDate), month(p.paymentDate), day(p.paymentDate), sum(p.amount - coalesce(p.cashRoundingAmount,0)) "
                 + "from Payment p where p.status = 'SUCCESS' and p.paymentDate >= :from and p.paymentDate < :to "
                 + "and not exists (select r.id from TuitionReversal r where r.payment=p and r.status='APPROVED') "
                 + "group by year(p.paymentDate), month(p.paymentDate), day(p.paymentDate) "

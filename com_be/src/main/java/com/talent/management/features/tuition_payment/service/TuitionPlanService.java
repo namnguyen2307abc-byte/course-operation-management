@@ -190,6 +190,32 @@ public class TuitionPlanService {
         }
     }
 
+    public void requireCurrentInstallment(Invoice invoice, TuitionPlan plan, BigDecimal amount) {
+        requireCollectible(invoice, plan, amount);
+        BigDecimal expected = installments.findByPlanIdOrderBySequenceNumber(plan.getId()).stream()
+                .map(due -> due.getAmountDue().subtract(allocations.paid(due.getId())).max(BigDecimal.ZERO))
+                .filter(left -> left.signum() > 0).findFirst().orElse(BigDecimal.ZERO);
+        if (amount.compareTo(expected) != 0)
+            throw conflict("Số tiền thanh toán cố định theo đợt còn thiếu: " + expected.toPlainString() + "đ. Vui lòng tải lại hóa đơn.");
+        if (em.createQuery("select count(i) from TuitionPaymentIntent i where i.invoice.id=:id and i.status='RECONCILE'", Long.class)
+                .setParameter("id", invoice.getId()).getSingleResult() > 0)
+            throw conflict("Có tiền ngân hàng cần xác minh trước khi tiếp tục thu.");
+    }
+
+    public void validateDiscountValue(BigDecimal original, String method, BigDecimal value) {
+        if (!List.of("PERCENTAGE", "FIXED_AMOUNT").contains(method))
+            throw conflict("Kiểu giảm không hợp lệ.");
+        if (value == null || value.signum() < 0 || value.scale() > 0)
+            throw conflict("Mức giảm phải là số nguyên không âm, không được nhập số thập phân.");
+        BigDecimal maximum = "PERCENTAGE".equals(method) ? BigDecimal.valueOf(100) : original;
+        if ("FIXED_AMOUNT".equals(method) && value.compareTo(BigDecimal.valueOf(1000)) < 0)
+            throw conflict("Số tiền giảm phải từ 1.000đ đến học phí gốc.");
+        if (value.compareTo(maximum) > 0)
+            throw conflict("PERCENTAGE".equals(method)
+                    ? "Phần trăm giảm phải từ 0 đến 100."
+                    : "Số tiền giảm phải từ 1.000đ đến học phí gốc.");
+    }
+
     public void allocate(Payment payment, TuitionPlan plan) {
         BigDecimal left = payment.getAmount();
         for (TuitionInstallment due :
@@ -264,6 +290,7 @@ public class TuitionPlanService {
                 > 0) throw conflict("Hóa đơn đang có QR chờ thanh toán.");
         if (input.discountMethod()!=null) {
             BigDecimal value=input.discountValue()==null ? BigDecimal.ZERO : input.discountValue();
+            validateDiscountValue(invoice.getOriginalAmount(), input.discountMethod(), value);
             validateMoney(value);
             BigDecimal reduction;
             if ("PERCENTAGE".equals(input.discountMethod())) {
@@ -389,7 +416,9 @@ public class TuitionPlanService {
                                                 p.getPaymentDate(),
                                                 p.getBalanceAfter(),
                                                 reversals.existsByPaymentIdAndStatus(
-                                                        p.getId(), "APPROVED")))
+                                                        p.getId(), "APPROVED"),
+                                                p.getCashRoundingAmount(),
+                                                p.getCashier() == null ? null : p.getCashier().getId()))
                         .toList();
         User parent = invoice.getStudent().getParent();
         return new InvoiceView(

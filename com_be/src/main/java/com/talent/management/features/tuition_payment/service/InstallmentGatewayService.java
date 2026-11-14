@@ -40,6 +40,9 @@ public class InstallmentGatewayService {
     @Value("${tuition.simulation.enabled:false}")
     private boolean simulation;
 
+    @Value("${tuition.qr-lifetime-seconds:300}")
+    private long qrLifetimeSeconds = 300;
+
     public IntentView create(Long invoiceId, BigDecimal amount) {
         return createAs(invoiceId, amount, current.getCurrentUser(), false);
     }
@@ -60,6 +63,20 @@ public class InstallmentGatewayService {
     private IntentView createAs(
             Long invoiceId, BigDecimal requestedAmount, User actor, boolean reminder) {
         releaseMissingRequests(invoiceId, actor);
+        if (!reminder) {
+            tx.executeWithoutResult(status -> {
+                Invoice invoice = ledger.lock(invoiceId);
+                ledger.requireCurrentInstallment(invoice, ledger.ensure(invoice), requestedAmount);
+            });
+            List<Long> pending = tx.execute(status -> intents.findByInvoiceIdAndStatus(invoiceId, "PENDING")
+                    .stream().map(TuitionPaymentIntent::getId).toList());
+            for (Long id : pending) {
+                cancelIntent(id);
+                String outcome = tx.execute(status -> intents.findById(id).orElseThrow().getStatus());
+                if (!"CANCELLED".equals(outcome))
+                    throw conflict("QR trước đã nhận tiền hoặc đang cần xác minh. Vui lòng tải lại hóa đơn.");
+            }
+        }
         TuitionPaymentIntent intent =
                 tx.execute(
                         status -> {
@@ -86,7 +103,7 @@ public class InstallmentGatewayService {
                                     throw conflict("Chưa đến hạn phát hành QR nhắc học phí.");
                                 amount = due.remaining();
                             }
-                            ledger.requireCollectible(invoice, plan, amount);
+                            ledger.requireCurrentInstallment(invoice, plan, amount);
                             if (amount.signum() == 0)
                                 throw conflict("Hóa đơn miễn phí không cần QR.");
                             List<TuitionPaymentIntent> active =
@@ -100,7 +117,7 @@ public class InstallmentGatewayService {
                                         && old.getExpectedAmount().compareTo(amount) == 0
                                         && old.getPlanRevision() == plan.getRevision()) return old;
                                 throw conflict(
-                                        "Đang có QR chờ thanh toán. Vui lòng mở QR đang chờ để thanh toán đúng số tiền.");
+                                        "Yêu cầu QR trước chưa rõ kết quả. Vui lòng đợi hoặc xác minh ngân hàng trước khi tạo mã mới.");
                             }
                             TuitionPaymentIntent created = new TuitionPaymentIntent();
                             created.setInvoice(invoice);
@@ -125,7 +142,7 @@ public class InstallmentGatewayService {
             PayOSPaymentLinkResponse link =
                     gateway.createPaymentLink(
                             snapshot, intent.getExpectedAmount(), intent.getOrderCode(), parent);
-            return tx.execute(
+            IntentView result = tx.execute(
                     status -> {
                         ledger.lock(invoiceId);
                         TuitionPaymentIntent saved = intents.findById(intent.getId()).orElseThrow();
@@ -135,6 +152,19 @@ public class InstallmentGatewayService {
                         if (saved.getStatus().equals("CREATING")) saved.setStatus("PENDING");
                         return map(saved);
                     });
+            // A page-close request may arrive before the gateway finishes creating the link.
+            if ("CANCELLED".equals(result.status()) && !link.isSimulated()) {
+                try { gateway.cancelPayment(intent.getOrderCode()); }
+                catch (RuntimeException failure) {
+                    tx.executeWithoutResult(status -> {
+                        ledger.lock(invoiceId);
+                        TuitionPaymentIntent saved = intents.findById(intent.getId()).orElseThrow();
+                        if ("CANCELLED".equals(saved.getStatus())) saved.setStatus("UNCERTAIN");
+                    });
+                    throw failure;
+                }
+            }
+            return result;
         } catch (RuntimeException ex) {
             tx.executeWithoutResult(
                     status -> {
@@ -203,26 +233,72 @@ public class InstallmentGatewayService {
             pending.addAll(intents.findByInvoiceIdAndStatus(invoiceId, "UNCERTAIN"));
             return pending.stream().map(TuitionPaymentIntent::getId).toList();
         });
-        for (Long id : active) cancel(id);
+        for (Long id : active) {
+            cancel(id);
+            String outcome = tx.execute(status -> intents.findById(id).orElseThrow().getStatus());
+            if (!List.of("CANCELLED", "FAILED").contains(outcome))
+                throw conflict("QR đã nhận tiền hoặc đang cần xác minh. Không thu thêm tiền mặt; vui lòng tải lại hóa đơn.");
+        }
+    }
+
+    public void prepareCashPayment(Long invoiceId, BigDecimal amount, BigDecimal given) {
+        tx.executeWithoutResult(status -> {
+            Invoice invoice = ledger.lock(invoiceId);
+            ledger.requireCurrentInstallment(invoice, ledger.ensure(invoice), amount);
+            CashTenderPolicy.quote(amount, given);
+        });
+        prepareCashPayment(invoiceId);
     }
 
     public void cancel(Long id) {
+        tx.executeWithoutResult(status -> ledger.checkParent(intents.findById(id).orElseThrow().getInvoice()));
+        cancelIntent(id);
+    }
+
+    private void cancelIntent(Long id) {
         TuitionPaymentIntent snapshot =
                 tx.execute(
                         status -> {
                             TuitionPaymentIntent intent = intents.findById(id).orElseThrow();
-                            ledger.checkParent(intent.getInvoice());
                             return intent;
                         });
-        if (!snapshot.isSimulated()) gateway.cancelPayment(snapshot.getOrderCode());
+        if (List.of("PAID", "CANCELLED", "FAILED", "RECONCILE").contains(snapshot.getStatus())) return;
+        if (!snapshot.isSimulated()) {
+            try { gateway.cancelPayment(snapshot.getOrderCode()); }
+            catch (RuntimeException failure) {
+                // Authenticated gateway lookup handles money received before a delayed webhook.
+                PayOSGateway.GatewayPayment remote;
+                try { remote = gateway.paymentInformation(snapshot.getOrderCode()); }
+                catch (RuntimeException lookupFailure) { throw failure; }
+                if (remote != null && "PAID".equals(remote.status()) && !remote.transfers().isEmpty()
+                        && remote.transfers().stream().map(PayOSGateway.BankTransfer::amount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add).compareTo(remote.paid()) == 0) {
+                    for (PayOSGateway.BankTransfer transfer : remote.transfers())
+                        receive(snapshot.getOrderCode(), transfer.amount(), transfer.reference(), false);
+                    return;
+                }
+                throw failure;
+            }
+        }
         tx.executeWithoutResult(
                 status -> {
                     ledger.lock(snapshot.getInvoice().getId());
                     TuitionPaymentIntent intent = intents.findById(id).orElseThrow();
-                    if (!List.of("PENDING", "CREATING", "UNCERTAIN").contains(intent.getStatus()))
-                        throw conflict("Yêu cầu đã được xử lý.");
-                    intent.setStatus("CANCELLED");
+                    if (List.of("PENDING", "CREATING", "UNCERTAIN").contains(intent.getStatus()))
+                        intent.setStatus("CANCELLED");
                 });
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 30000, initialDelay = 15000)
+    public void expireUnpaidRequests() {
+        List<Long> expired = tx.execute(status -> intents.findExpiredIds(
+                java.time.LocalDateTime.now().minusSeconds(qrLifetimeSeconds)));
+        for (Long id : expired) {
+            try { cancelIntent(id); }
+            catch (RuntimeException failure) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).warn("QR {} expiry could not be confirmed; kept blocked for retry", id);
+            }
+        }
     }
 
     public PaymentReceiptResponse webhook(Map<String, Object> body) {
@@ -395,6 +471,9 @@ public class InstallmentGatewayService {
                             || amount.compareTo(intent.getExpectedAmount()) != 0
                             || intent.getStatus().equals("PAID")
                             || intent.getStatus().equals("RECONCILE")
+                            || intent.getStatus().equals("CANCELLED")
+                            || intent.getStatus().equals("FAILED")
+                            || intent.getPlanRevision() != plan.getRevision()
                             || invoice.getStatus()
                                     == com.talent.management.shared.enums.InvoiceStatus.CANCELLED
                             || plan.isReviewRequired()

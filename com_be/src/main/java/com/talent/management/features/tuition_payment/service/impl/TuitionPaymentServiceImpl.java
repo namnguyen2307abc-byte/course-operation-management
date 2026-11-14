@@ -107,6 +107,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
         } else if (discountType == DiscountType.PARTIAL_DISCOUNT) {
             String method = request.getDiscountMethod() != null ? request.getDiscountMethod().toUpperCase() : "PERCENTAGE";
             BigDecimal value = request.getDiscountValue() != null ? request.getDiscountValue() : BigDecimal.ZERO;
+            ledger.validateDiscountValue(originalAmount, method, value);
 
             if ("PERCENTAGE".equals(method)) {
                 discountAmount = originalAmount.multiply(value).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
@@ -353,7 +354,7 @@ public class TuitionPaymentServiceImpl implements TuitionPaymentService {
         long bankCount = 0;
 
         for (PaymentReceiptResponse item : receiptResponses) {
-            BigDecimal amt = item.getFinalAmount() != null ? item.getFinalAmount() : BigDecimal.ZERO;
+            BigDecimal amt = item.getNetReceivedAmount() != null ? item.getNetReceivedAmount() : BigDecimal.ZERO;
             String method = item.getPaymentMethod();
             if ("CASH_AT_DESK".equalsIgnoreCase(method)) {
                 totalCash = totalCash.add(amt);

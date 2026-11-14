@@ -42,39 +42,42 @@ public class PaymentPostingService {
     @Transactional
     public Payment cash(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key) {
         Invoice invoice = ledger.lock(invoiceId);
+        User actor = current.getCurrentUser();
+        Optional<Payment> duplicate = existingCashPayment(invoiceId, amount, cashGiven, key, actor);
+        if (duplicate.isPresent()) return duplicate.get();
+        TuitionPlan plan = ledger.ensure(invoice);
+        if (em.createQuery("select count(i) from TuitionPaymentIntent i where i.invoice.id=:id and i.status in ('CREATING','PENDING','UNCERTAIN')", Long.class)
+                .setParameter("id", invoiceId).getSingleResult() > 0)
+            throw conflict("QR chưa đóng thành công; cần xác minh ngân hàng trước khi thu tiền mặt.");
+        ledger.requireCurrentInstallment(invoice, plan, amount);
+        CashTenderPolicy.quote(amount, cashGiven);
+        return post(invoice, plan, amount, PaymentMethod.CASH_AT_DESK, actor, "CASH-" + key, null, cashGiven);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse>
+            replayCashReceipt(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key) {
+        return existingCashPayment(invoiceId, amount, cashGiven, key, current.getCurrentUser())
+                .map(payment -> mapper.toPaymentReceiptResponse(payment, null, null));
+    }
+
+    private Optional<Payment> existingCashPayment(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key, User actor) {
         if (key == null || key.isBlank() || key.length() > 80)
             throw conflict("Thiếu mã chống gửi lặp.");
-        User actor = current.getCurrentUser();
         String scoped = "CASH-" + key;
         Optional<Payment> duplicate = payments.findByRequestKey(scoped);
         if (duplicate.isPresent()) {
             Payment old = duplicate.get();
             if (!old.getInvoice().getId().equals(invoiceId)
-                    || old.getAmount().compareTo(amount) != 0
+                    || amount == null || old.getAmount().compareTo(amount) != 0
                     || cashGiven == null
                     || old.getCashGiven().compareTo(cashGiven) != 0
                     || old.getCashier() == null
                     || !old.getCashier().getId().equals(actor.getId())) {
                 throw conflict("Mã yêu cầu đã dùng với nội dung khác.");
             }
-            return old;
         }
-        TuitionPlan plan = ledger.ensure(invoice);
-        if (em.createQuery(
-                                "select count(i) from TuitionPaymentIntent i where i.invoice.id=:id"
-                                        + " and i.status in ('CREATING','PENDING','UNCERTAIN')",
-                                Long.class)
-                        .setParameter("id", invoiceId)
-                        .getSingleResult()
-                > 0) {
-            throw conflict(
-                    "Đang có QR chờ thanh toán. Đóng QR chưa trả hoặc xác nhận tiền chuyển khoản đã nhận trước khi thu tiền mặt.");
-        }
-        ledger.requireCollectible(invoice, plan, amount);
-        ledger.validateMoney(cashGiven);
-        if (cashGiven.compareTo(amount) < 0) throw conflict("Tiền khách đưa chưa đủ.");
-        return post(
-                invoice, plan, amount, PaymentMethod.CASH_AT_DESK, actor, scoped, null, cashGiven);
+        return duplicate;
     }
 
     public Payment post(
@@ -86,6 +89,9 @@ public class PaymentPostingService {
             String key,
             String bankReference,
             BigDecimal cashGiven) {
+        CashTenderPolicy.Quote cash = method == PaymentMethod.CASH_AT_DESK
+                ? CashTenderPolicy.quote(amount, cashGiven)
+                : new CashTenderPolicy.Quote(BigDecimal.ZERO, BigDecimal.ZERO);
         Payment payment =
                 Payment.builder()
                         .invoice(invoice)
@@ -95,7 +101,8 @@ public class PaymentPostingService {
                         .cashier(cashier)
                         .bankTransactionId(bankReference)
                         .cashGiven(cashGiven)
-                        .changeAmount(cashGiven.subtract(amount))
+                        .changeAmount(cash.change())
+                        .cashRoundingAmount(cash.support())
                         .status(PaymentStatus.SUCCESS)
                         .build();
         payment.setRequestKey(key);
@@ -135,7 +142,9 @@ public class PaymentPostingService {
             String receipt = com.talent.management.features.tuition_payment.mapper.PaymentReference.receipt(payment);
             String message = String.format(java.util.Locale.forLanguageTag("vi-VN"),
                     "%s: đã nhận %,.0f đ cho %s; còn phải đóng %,.0f đ.",
-                    receipt, amount, invoice.getStudent().getFullName(), payment.getBalanceAfter());
+                    receipt, payment.getNetReceivedAmount(), invoice.getStudent().getFullName(), payment.getBalanceAfter());
+            if (cash.support().signum() > 0)
+                message += " Trung tâm hỗ trợ làm tròn " + cash.support().toPlainString() + "đ; học phí ghi nhận " + amount.toPlainString() + "đ.";
             if (invoice.getStudent().getParent() != null) {
                 notificationService.sendNotification(invoice.getStudent().getParent(), cashier,
                         "Đã nhận học phí", message, "PAYMENT_SUCCESS", payment.getId(),

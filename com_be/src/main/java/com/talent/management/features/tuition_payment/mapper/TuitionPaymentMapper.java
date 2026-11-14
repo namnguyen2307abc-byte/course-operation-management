@@ -102,6 +102,8 @@ public class TuitionPaymentMapper {
                 .totalTuition(invoice != null ? invoice.getFinalAmount() : payment.getAmount())
                 .remainingAfter(payment.getBalanceAfter())
                 .cashGiven(actualCashGiven)
+                .cashRoundingAmount(payment.getCashRoundingAmount())
+                .netReceivedAmount(payment.getNetReceivedAmount())
                 .changeAmount(actualChangeAmount)
                 .paymentMethod(payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : "")
                 .cashierName(cashier != null ? cashier.getFullName() : "PayOS tự động")

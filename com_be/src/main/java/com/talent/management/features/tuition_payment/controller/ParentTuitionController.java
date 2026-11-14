@@ -48,8 +48,9 @@ public class ParentTuitionController {
     }
 
     @PostMapping("/payment-intents/{id}/cancel")
-    public void cancel(@PathVariable Long id) {
+    public IntentView cancel(@PathVariable Long id) {
         gateway.cancel(id);
+        return gateway.status(id);
     }
 
     @GetMapping("/notifications")

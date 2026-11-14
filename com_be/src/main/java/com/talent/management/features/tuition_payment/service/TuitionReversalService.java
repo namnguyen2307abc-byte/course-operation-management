@@ -38,13 +38,20 @@ public class TuitionReversalService {
 
     @Transactional
     public void request(Long paymentId, String reason) {
+        User actor = current.getCurrentUser();
         if (!List.of(Role.STAFF, Role.ADMIN, Role.BRANCH_MANAGER)
-                .contains(current.getCurrentUser().getRole()))
+                .contains(actor.getRole()))
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN,
                     "Chỉ nhân viên hoặc quản lý được đề nghị điều chỉnh khoản thu.");
         Payment payment = payments.findById(paymentId).orElseThrow();
         ledger.lock(payment.getInvoice().getId());
+        if (actor.getRole() != Role.ADMIN
+                && (payment.getCashier() == null
+                        || !actor.getId().equals(payment.getCashier().getId())))
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Bạn chỉ được đề nghị điều chỉnh giao dịch tiền mặt do chính mình thu.");
         if (payment.getPaymentMethod() != PaymentMethod.CASH_AT_DESK
                 || payment.getStatus() != PaymentStatus.SUCCESS
                 || reversals.existsByPaymentId(paymentId)
@@ -58,7 +65,7 @@ public class TuitionReversalService {
         TuitionReversal r = new TuitionReversal();
         r.setPayment(payment);
         r.setReason(reason);
-        r.setRequestedBy(current.getCurrentUser());
+        r.setRequestedBy(actor);
         reversals.save(r);
     }
 

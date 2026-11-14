@@ -42,6 +42,8 @@ public class PaymentReceiptResponse {
     // Thanh toán
     private BigDecimal cashGiven;
     private BigDecimal changeAmount;
+    private BigDecimal cashRoundingAmount;
+    private BigDecimal netReceivedAmount;
     private String paymentMethod;
     private String cashierName;
     private LocalDateTime paymentDate;

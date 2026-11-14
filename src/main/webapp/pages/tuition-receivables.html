@@ -40,11 +40,10 @@
 <div id="summary" class="ledger-summary"></div>
 <div class="ledger-toolbar" role="search" aria-label="Lọc hóa đơn">
 <label>Tìm học viên, lớp hoặc mã hóa đơn<input id="keyword" class="form-control" type="search" placeholder="Nhập để lọc"></label>
-<label>Tình trạng<select id="state" class="form-select"><option value="">Tất cả</option><option value="outstanding">Còn phải đóng</option><option value="overdue">Quá hạn</option><option value="paid">Đã đóng đủ</option><option value="review">Cần đối chiếu</option></select></label>
+<label>Tình trạng<select id="state" class="form-select"><option value="">Tất cả</option><option value="outstanding">Còn phải đóng</option><option value="overdue">Quá hạn</option><option value="paid">Đã đóng đủ</option></select></label>
 <button id="refresh" class="btn btn-outline-success"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Tải lại</button>
 </div>
 <section id="records" aria-live="polite"></section>
-<section id="changes" class="ledger-internal" hidden aria-label="Đề nghị gia hạn"></section>
 </section>
 <section id="reversals" role="tabpanel" aria-labelledby="corrections-tab" hidden>
 <header class="adjustment-heading"><div><h2>Điều chỉnh khoản thu nhầm</h2><p>Kiểm tra, duyệt và theo dõi các khoản thu tiền mặt được đề nghị sửa.</p></div><span class="ledger-badge tone-neutral">Dành cho quản lý</span></header>
