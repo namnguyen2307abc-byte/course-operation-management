@@ -61,7 +61,7 @@ async function screen(file, role, width) {
             body = { items: items.slice(index * size, (index + 1) * size), page: index, size, totalElements: items.length, totalPages: Math.ceil(items.length / size) };
         } else if (endpoint === '/api/notifications') body = {notifications:[], unreadCount:0};
         else if (endpoint === '/api/parent-tuition/notifications') body = [];
-        else if (endpoint === '/api/branches' || endpoint === '/api/branches/options') body = [{ id: 1, code: 'B1', name: 'Campus' }];
+        else if (endpoint === '/api/branches' || endpoint === '/api/branches/options') body = [{ id: 1, code: 'B1', name: 'Campus', active: true }];
         else if (endpoint.endsWith('/counts')) body = { rooms: 23, equipment: 23, goodEquipment: 23 };
         else if (endpoint.endsWith('/overview')) body = { room, warnings: [] };
         else if (endpoint.endsWith('/detail')) body = room;
@@ -76,6 +76,27 @@ async function screen(file, role, width) {
     await page.goto(origin + '/pages/' + file);
     return { page, calls, errors };
 }
+
+test('family enrollment distinguishes admin reservation cancellation from a parent withdrawal', async () => {
+    const { page, errors } = await screen('course-enrollment.html', 'PARENT', 1440);
+    try {
+        await page.locator('#myRequestTableBody tr').first().waitFor();
+        await page.evaluate(() => renderMyRequests([
+            { id: 1, childName: 'Học viên A', status: 'CANCELLED', enrollmentId: 22,
+                reviewedBy: 'Admin kiểm thử', reviewNote: 'Đã liên hệ gia đình', requestedAt: '2026-11-14T18:30:00' },
+            { id: 2, childName: 'Học viên B', status: 'CANCELLED', enrollmentId: 23,
+                requestedAt: '2026-11-14T18:30:00' },
+            { id: 3, childName: 'Học viên C', status: 'CANCELLED', enrollmentId: null,
+                requestedAt: '2026-11-14T18:30:00' }
+        ]));
+        const rows = page.locator('#myRequestTableBody tr');
+        assert.match(await rows.nth(0).innerText(), /Trung tâm đã hủy giữ chỗ.*Admin kiểm thử.*Đã liên hệ gia đình/);
+        assert.doesNotMatch(await rows.nth(0).innerText(), /Phụ huynh đã hủy/);
+        assert.match(await rows.nth(1).innerText(), /Trung tâm đã hủy giữ chỗ/);
+        assert.match(await rows.nth(2).innerText(), /Phụ huynh đã hủy yêu cầu/);
+        assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
 
 async function navigation(page, pagerId, bodyId) {
     const pager = page.locator('#' + pagerId);

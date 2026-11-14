@@ -30,12 +30,6 @@ class TeacherClassControllerTest {
         verifyNoInteractions(service);
     }
 
-    @Test @WithMockUser(roles = "STUDENT")
-    void studentCannotReadWholeClass() throws Exception {
-        mvc.perform(get("/api/teacher/classes/1")).andExpect(status().isForbidden());
-        verifyNoInteractions(service);
-    }
-
     @Test @WithMockUser(roles = "TEACHER")
     void teacherCanReachOwnershipCheckedService() throws Exception {
         mvc.perform(get("/api/teacher/classes")).andExpect(status().isOk());

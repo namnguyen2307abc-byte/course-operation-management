@@ -31,7 +31,6 @@ INSERT INTO @accounts VALUES
 ('qa_teacher_free', N'[TEST] Phạm Bảo Châu - GV chưa có lớp', 'TEACHER', 'ACTIVE', 0, 'DAN'),
 ('qa_parent_linked', N'[TEST] Đỗ Thanh Mai - PH có con', 'PARENT', 'ACTIVE', 0, NULL),
 ('qa_parent_free', N'[TEST] Vũ Hoài Nam - PH chưa có con', 'PARENT', 'ACTIVE', 0, NULL),
-('qa_student', N'[TEST] Nguyễn Khánh Linh - Học viên', 'STUDENT', 'ACTIVE', 0, NULL),
 ('qa_locked', N'[TEST] Bùi Minh Đức - Đang khóa', 'STAFF', 'INACTIVE', 0, NULL),
 ('qa_password', N'[TEST] Hoàng Phương - Cần đổi mật khẩu', 'STAFF', 'ACTIVE', 1, NULL),
 ('qa_staff_01', N'[TEST] Nguyễn Thảo Vy', 'STAFF', 'ACTIVE', 0, NULL),
@@ -50,7 +49,6 @@ FROM @accounts;
 DECLARE @admin BIGINT = (SELECT id FROM dbo.users WHERE username = 'qa_admin');
 DECLARE @parent BIGINT = (SELECT id FROM dbo.users WHERE username = 'qa_parent_linked');
 DECLARE @teacher BIGINT = (SELECT id FROM dbo.users WHERE username = 'qa_teacher_linked');
-DECLARE @studentAccount BIGINT = (SELECT id FROM dbo.users WHERE username = 'qa_student');
 DECLARE @cashier BIGINT = (SELECT id FROM dbo.users WHERE username = 'qa_staff_01');
 DECLARE @students TABLE (n INT PRIMARY KEY, name NVARCHAR(150));
 INSERT INTO @students VALUES
@@ -58,12 +56,12 @@ INSERT INTO @students VALUES
 (3,N'[TEST ADMIN] Lê Minh Quân'),(4,N'[TEST ADMIN] Phạm Ngọc Hân'),
 (5,N'[TEST ADMIN] Vũ Bảo An'),(6,N'[TEST ADMIN] Đặng Gia Huy'),
 (7,N'[TEST ADMIN] Hồ sơ chờ cấp tài khoản A'),(8,N'[TEST ADMIN] Hồ sơ chờ cấp tài khoản B');
-INSERT INTO dbo.students (parent_id, account_id, full_name, date_of_birth, gender, school_name, notes, created_at)
-SELECT CASE WHEN n <= 7 THEN @parent ELSE NULL END, CASE WHEN n = 1 THEN @studentAccount ELSE NULL END,
+INSERT INTO dbo.students (parent_id, full_name, date_of_birth, gender, school_name, notes, created_at)
+SELECT CASE WHEN n <= 7 THEN @parent ELSE NULL END,
        name, DATEADD(YEAR,-10, @today), CASE WHEN n % 2 = 0 THEN N'Nữ' ELSE N'Nam' END,
-       N'Trường mẫu để kiểm thử', N'QA-ADM fixture: hồ sơ test, có thể dùng để cấp tài khoản học viên.', @now
+       N'Trường mẫu để kiểm thử', N'QA-ADM fixture: hồ sơ học viên.', @now
 FROM @students;
-DECLARE @student BIGINT = (SELECT id FROM dbo.students WHERE account_id = @studentAccount);
+DECLARE @student BIGINT = (SELECT id FROM dbo.students WHERE parent_id = @parent AND full_name = N'[TEST ADMIN] Nguyễn Khánh Linh');
 DECLARE @secondStudent BIGINT = (SELECT id FROM dbo.students WHERE full_name = N'[TEST ADMIN] Trần An Nhiên');
 
 INSERT INTO dbo.branches (code,name,address,phone,email,active,created_at)
@@ -131,6 +129,6 @@ BEGIN
     SET @i=@i+1;
 END;
 INSERT INTO dbo.admin_audit_logs (actor_id,actor_username,target_id,target_username,action,details,created_at)
-VALUES (@admin,'qa_admin',@admin,'qa_admin','SEED_TEST_DATA',N'admin-manual-test-v1: tạo 17 tài khoản, 8 hồ sơ học viên và các bản ghi nghiệp vụ mô phỏng để tự kiểm thử. Không ghi đè dữ liệu hiện có.',@now);
+VALUES (@admin,'qa_admin',@admin,'qa_admin','SEED_TEST_DATA',N'admin-manual-test-v1: tạo 16 tài khoản, 8 hồ sơ học viên và các bản ghi nghiệp vụ mô phỏng để tự kiểm thử. Không ghi đè dữ liệu hiện có.',@now);
 COMMIT TRANSACTION;
 SELECT username, role, status, must_change_password FROM dbo.users WHERE username LIKE 'qa[_]%' ORDER BY username;

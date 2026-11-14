@@ -35,18 +35,4 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
     @Query("select e.room.id from Equipment e where e.id = :id")
     Optional<Long> findRoomIdById(@Param("id") Long id);
 
-    @Query("SELECT e FROM Equipment e " +
-           "JOIN e.room r " +
-           "WHERE r.branch.id = :branchId " +
-           "ORDER BY e.id ASC")
-    List<Equipment> findEquipmentsByBranchId(@Param("branchId") Long branchId);
-
-    @Query("SELECT e FROM Equipment e " +
-           "JOIN e.room r " +
-           "WHERE r.branch.id = :branchId AND e.category = :category " +
-           "ORDER BY e.id ASC")
-    List<Equipment> findEquipmentsByBranchIdAndCategory(
-            @Param("branchId") Long branchId,
-            @Param("category") EquipmentCategory category
-    );
 }

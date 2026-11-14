@@ -1091,7 +1091,7 @@
             const statsRow = document.getElementById('statsRow');
             const makeupDirWrapper = document.getElementById('makeupDirWrapper');
             if (statsRow) {
-                statsRow.classList.toggle('d-none', role === 'PARENT' || role === 'STUDENT');
+                statsRow.classList.toggle('d-none', role === 'PARENT');
             }
             if (makeupDirWrapper) {
                 makeupDirWrapper.classList.toggle('d-none', role !== 'TEACHER');
@@ -1347,7 +1347,7 @@
             };
 
             const isCoordinator = currentUser && ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(currentUser.role);
-            const isCreator = currentUser && ['PARENT', 'STUDENT'].includes(currentUser.role);
+            const isCreator = currentUser && currentUser.role === 'PARENT';
 
             tbody.innerHTML = pagedItems.map(item => {
                 const statusBadge = getAbsenceStatusBadgeHtml(item.status);
@@ -1635,7 +1635,7 @@
                 }
 
                 // Nếu có ít nhất 1 học viên (Phụ huynh) -> tự chọn học viên đầu tiên
-                if (currentUser && ['PARENT', 'STUDENT'].includes(currentUser.role) && currentStudents.length >= 1) {
+                if (currentUser && currentUser.role === 'PARENT' && currentStudents.length >= 1) {
                     selectStudentCard(currentStudents[0].id);
                 }
             } catch (err) {
@@ -2463,7 +2463,7 @@
                 const footer = document.getElementById('detailModalFooter');
                 const role = currentUser ? currentUser.role : '';
                 const isCoordinator = ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(role);
-                const isCreator = ['PARENT', 'STUDENT'].includes(role);
+                const isCreator = role === 'PARENT';
                 const myId = currentUser ? (currentUser.userId ?? currentUser.id) : null;
                 const canReview = isCoordinator || (role === 'TEACHER' && (myId == null || item.teacherId == null || Number(myId) === Number(item.teacherId)));
 

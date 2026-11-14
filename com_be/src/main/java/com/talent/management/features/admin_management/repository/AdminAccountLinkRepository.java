@@ -11,7 +11,6 @@ public class AdminAccountLinkRepository {
 
     public List<LinkedRecord> classes(Long id) { return links("select c.id, c.className from ClassEntity c where c.teacher.id = :id order by c.id", id); }
     public List<LinkedRecord> children(Long id) { return links("select s.id, s.fullName from Student s where s.parent.id = :id order by s.id", id); }
-    public List<LinkedRecord> studentProfiles(Long id) { return links("select s.id, s.fullName from Student s where s.account.id = :id order by s.id", id); }
 
     public boolean hasTeacherAssignments(Long id) {
         return count("select count(c) from ClassEntity c where c.teacher.id = :id", id) > 0

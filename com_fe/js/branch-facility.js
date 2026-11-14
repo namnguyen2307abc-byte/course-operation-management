@@ -100,15 +100,18 @@ async function loadBranches() {
     select.innerHTML = '<option value="">Đang tải danh sách cơ sở...</option>';
     branches = [];
     for (const id of ['statBranchesCount', 'statRoomsCount', 'statEquipmentCount', 'statGoodCount']) facilityElement(id).textContent = '—';
+    facilityElement('statBranchesStatus').textContent = '';
     facilityElement('facilityLoadError').classList.add('d-none');
     try {
         const result = await facilityRequest('/api/branches');
         if (request !== branchRequest) return;
         if (!Array.isArray(result)) throw new Error('Danh sách cơ sở không hợp lệ.');
         branches = result;
-        select.innerHTML = branches.length ? branches.map(branch => `<option value="${escapeHtml(branch.id)}">${escapeHtml(branch.name)} (${escapeHtml(branch.address || '')})</option>`).join('')
+        select.innerHTML = branches.length ? branches.map(branch => `<option value="${escapeHtml(branch.id)}">${escapeHtml(branch.name)}${branch.active === true ? '' : ' — Ngừng hoạt động'}${branch.address ? ' (' + escapeHtml(branch.address) + ')' : ''}</option>`).join('')
             : '<option value="">Không có chi nhánh</option>';
         facilityElement('statBranchesCount').textContent = String(branches.length);
+        const activeCount = branches.filter(branch => branch.active === true).length;
+        facilityElement('statBranchesStatus').textContent = `${activeCount} đang hoạt động · ${branches.length - activeCount} ngừng hoạt động`;
         loadCurrentTabData();
         if (initialRoomId) {
             const id = initialRoomId;

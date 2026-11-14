@@ -171,9 +171,10 @@ class ScheduleWeeklyFlowTest {
         assertThatThrownBy(() -> attendanceService.getLessonAttendanceSheet(100L)).isInstanceOf(AttendanceMakeupException.class);
     }
 
-    @Test void unlinkedStudentCannotRequestArbitraryStudentId() {
-        when(currentUser.getCurrentUser()).thenReturn(User.builder().id(50L).role(Role.STUDENT).build());
-        assertThat(service.getWeeklySchedule(today, 999L, null, null).getLessons()).isEmpty();
+    @Test void parentCannotRequestAnUnlinkedStudentSchedule() {
+        when(currentUser.getCurrentUser()).thenReturn(parent);
+        assertThatThrownBy(() -> service.getWeeklySchedule(today, 999L, null, null))
+                .isInstanceOf(AttendanceMakeupException.class);
         verify(lessons, never()).findLessonsByStudentIdAndDateBetween(anyLong(), any(), any());
     }
 

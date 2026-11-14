@@ -38,7 +38,7 @@ function checkRoleAccess() {
         if (user) {
             const role = (user.roleName || user.role || '').toUpperCase();
             if (!['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER'].includes(role)) {
-                alert('Tài khoản Học viên / Phụ huynh không có quyền thực hiện điểm danh lớp học. Đang chuyển về Thời Khóa Biểu...');
+                alert('Tài khoản Phụ huynh không có quyền thực hiện điểm danh lớp học. Đang chuyển về Thời Khóa Biểu...');
                 window.location.replace('weekly-schedule.html');
                 return false;
             }

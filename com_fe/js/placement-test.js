@@ -118,7 +118,7 @@ function escapeCourseOption(value) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Strict Permission Check: Block PARENT & STUDENT roles completely
+    // 1. Strict Permission Check: Block PARENT role completely
     const isAllowed = checkUserRolePermissions();
     if (!isAllowed) {
         const mainEl = document.querySelector("main");
@@ -260,7 +260,7 @@ function checkUserRolePermissions() {
 
     const roleUpper = currentUser && currentUser.role ? String(currentUser.role).toUpperCase().replace("ROLE_", "") : "";
 
-    if (roleUpper === "PARENT" || roleUpper === "STUDENT") {
+    if (roleUpper === "PARENT") {
         const msg = `Tài khoản (${currentUser.fullName || currentUser.username} - Role: ${currentUser.role}) không có quyền truy cập trang Đánh Giá Năng Khiếu & Xếp Lớp. Hệ thống sẽ tự động chuyển bạn về Trang Chủ.`;
         if (typeof showPermissionDeniedModal === 'function') {
             showPermissionDeniedModal(msg, "/index.html");
