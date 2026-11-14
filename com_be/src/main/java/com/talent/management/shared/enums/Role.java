@@ -5,6 +5,5 @@ public enum Role {
     BRANCH_MANAGER,
     TEACHER,
     STAFF,
-    PARENT,
-    STUDENT
+    PARENT
 }

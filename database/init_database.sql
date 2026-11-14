@@ -52,7 +52,7 @@ CREATE TABLE users (
     full_name NVARCHAR(150) NOT NULL,
     email VARCHAR(150),
     phone VARCHAR(20),
-    role VARCHAR(30) NOT NULL,
+    role VARCHAR(30) NULL,
     status VARCHAR(30) DEFAULT 'ACTIVE',
     subject VARCHAR(100),
     teaching_subject VARCHAR(100),

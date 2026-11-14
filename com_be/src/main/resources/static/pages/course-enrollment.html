@@ -948,10 +948,6 @@
             return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value || 0);
         }
 
-        function formatDate(value) {
-            return value ? new Date(`${value}T00:00:00`).toLocaleDateString('vi-VN') : 'Chưa xác định';
-        }
-
         function formatDateTime(value) {
             return value ? new Date(value).toLocaleString('vi-VN') : '';
         }

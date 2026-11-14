@@ -25,7 +25,7 @@ test('admin teacher editor keeps placement department separate from the exact cl
         document:{querySelectorAll:()=>[]},Admin:{$:element,escape:String,date:String,options(){},roles:[],query:()=>'',message(){},
             request:async(path,method,body)=>{
                 requests.push({path,method,body});
-                return method?{}:{user:teacher,classes:[],children:[],studentProfiles:[]};
+                return method?{}:{user:teacher,classes:[],children:[]};
             }}});
     const form=vm.runInContext(read('js/admin/admin-user-form.js')+'\nAdminUserForm;',ctx);
     form.initialize(async()=>{});
@@ -42,7 +42,7 @@ test('admin teacher editor keeps placement department separate from the exact cl
 });
 test('merged sidebar keeps weekly schedule and class management with role restrictions', () => {
     const ctx = context(); vm.runInContext(read('js/auth.js'), ctx);
-    for (const role of ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT', 'STUDENT']) {
+    for (const role of ['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER', 'PARENT']) {
         const files = ctx.visibleFeatures({ role }).map(f => f.file);
         assert(files.includes('weekly-schedule'));
         assert.equal(files.includes('class-management'), ['ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(role));

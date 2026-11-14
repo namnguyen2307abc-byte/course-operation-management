@@ -38,7 +38,8 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    // Archived accounts keep their ID for history, but have no login role.
+    @Column(length = 30)
     private Role role;
 
     @Enumerated(EnumType.STRING)

@@ -65,10 +65,6 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
         if (role == Role.PARENT) {
             students = studentRepository.findByParentId(currentUser.getId());
-        } else if (role == Role.STUDENT) {
-            students = studentRepository.findByAccountId(currentUser.getId())
-                    .map(List::of)
-                    .orElseGet(() -> studentRepository.findByParentId(currentUser.getId()));
         } else if (role == Role.TEACHER) {
             Set<Long> classIds = new LinkedHashSet<>();
             attendanceClassRepository.findAll().stream()
@@ -327,9 +323,9 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         Role userRole = currentUser.getRole();
         LocalDate today = LocalDate.now(CENTER_ZONE);
 
-        // 1. Phân quyền: Học sinh/phụ huynh không được điểm danh
-        if (userRole == Role.PARENT || userRole == Role.STUDENT) {
-            throw new AttendanceMakeupException("Tài khoản Phụ huynh/Học viên không có quyền điểm danh!");
+        // 1. Phân quyền: Phụ huynh không được điểm danh
+        if (userRole == Role.PARENT) {
+            throw new AttendanceMakeupException("Tài khoản Phụ huynh không có quyền điểm danh!");
         }
         if (lesson.getLessonDate().isAfter(today)) {
             throw new AttendanceMakeupException("Buổi học ngày " + lesson.getLessonDate()
@@ -926,10 +922,6 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 throw new AttendanceMakeupException("Tài khoản phụ huynh chưa có thông tin học viên liên kết.");
             }
             return children.get(0).getId();
-        } else if (currentUser.getRole() == Role.STUDENT) {
-            return studentRepository.findByAccountId(currentUser.getId())
-                    .map(Student::getId)
-                    .orElseThrow(() -> new AttendanceMakeupException("Tài khoản chưa được liên kết với hồ sơ học viên."));
         } else {
             if (requestedStudentId == null) {
                 throw new AttendanceMakeupException("Vui lòng chọn học viên cần tra cứu!");
@@ -942,10 +934,6 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         if (currentUser.getRole() == Role.PARENT) {
             if (student.getParent() == null || !student.getParent().getId().equals(currentUser.getId())) {
                 throw new AttendanceMakeupException("Bạn chỉ có quyền xem thông tin con của mình!");
-            }
-        } else if (currentUser.getRole() == Role.STUDENT) {
-            if (student.getAccount() == null || !student.getAccount().getId().equals(currentUser.getId())) {
-                throw new AttendanceMakeupException("Bạn chỉ có quyền xem thông tin của chính mình!");
             }
         }
     }

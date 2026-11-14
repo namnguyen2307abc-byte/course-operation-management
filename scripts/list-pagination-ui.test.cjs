@@ -61,7 +61,7 @@ async function screen(file, role, width) {
             body = { items: items.slice(index * size, (index + 1) * size), page: index, size, totalElements: items.length, totalPages: Math.ceil(items.length / size) };
         } else if (endpoint === '/api/notifications') body = {notifications:[], unreadCount:0};
         else if (endpoint === '/api/parent-tuition/notifications') body = [];
-        else if (endpoint === '/api/branches' || endpoint === '/api/branches/options') body = [{ id: 1, code: 'B1', name: 'Campus' }];
+        else if (endpoint === '/api/branches' || endpoint === '/api/branches/options') body = [{ id: 1, code: 'B1', name: 'Campus', active: true }];
         else if (endpoint.endsWith('/counts')) body = { rooms: 23, equipment: 23, goodEquipment: 23 };
         else if (endpoint.endsWith('/overview')) body = { room, warnings: [] };
         else if (endpoint.endsWith('/detail')) body = room;

@@ -295,6 +295,7 @@
         let classLoadVersion = 0;
         let filterOptionsLoaded = false;
         let courseList = [];
+        let branchList = [];
         let teacherLoadVersion = 0;
         let roomLoadVersion = 0;
         let teacherOptionsLoaded = false;
@@ -339,7 +340,18 @@
         }
         function optionList(items, label, codeField = 'code', nameField = 'name') {
             return `<option value="">${label}</option>` + items.map(item =>
-                `<option value="${item.id}">${escapeHtml(item[codeField] ? item[codeField] + ' — ' : '')}${escapeHtml(item[nameField])}</option>`).join('');
+                `<option value="${item.id}"${item.disabled ? ' disabled' : ''}>${escapeHtml(item[codeField] ? item[codeField] + ' — ' : '')}${escapeHtml(item[nameField])}</option>`).join('');
+        }
+
+        function branchWithStatus(branch) {
+            return branch.active === true ? branch : { ...branch, name: branch.name + ' (Ngừng hoạt động)' };
+        }
+
+        function renderClassBranches(currentBranchId) {
+            const active = branchList.filter(branch => branch.active === true);
+            const inactive = branchList.find(branch => branch.active !== true && String(branch.id) === String(currentBranchId));
+            if (inactive) active.push({ ...branchWithStatus(inactive), disabled: true });
+            $('branchId').innerHTML = optionList(active, 'Chọn cơ sở đang hoạt động');
         }
 
         // Tự động ghép chuỗi mô tả lịch học
@@ -482,18 +494,18 @@
         async function loadOptions() {
             const [courses, branches] = await Promise.all([
                 callApi('/api/course-enrollment/courses', 'GET', null, false, false),
-                callApi('/api/branches/options', 'GET', null, false, false)
+                callApi('/api/branches', 'GET', null, false, false)
             ]);
             const selectedCourse = $('filterCourse').value;
             const selectedBranch = $('filterBranch').value;
             courseList = courses || [];
+            branchList = branches || [];
 
             const courseOptions = optionList(courses || [], 'Chọn khóa học');
-            const branchOptions = optionList(branches || [], 'Chọn cơ sở');
             $('courseId').innerHTML = courseOptions;
-            $('branchId').innerHTML = branchOptions;
+            renderClassBranches();
             $('filterCourse').innerHTML = optionList(courses || [], 'Tất cả khóa học');
-            $('filterBranch').innerHTML = optionList(branches || [], 'Tất cả cơ sở');
+            $('filterBranch').innerHTML = optionList(branchList.map(branchWithStatus), 'Tất cả cơ sở');
             $('filterCourse').value = selectedCourse;
             $('filterBranch').value = selectedBranch;
 
@@ -592,6 +604,7 @@
             editingId = null;
             existingHasLessons = false;
             $('classForm').reset();
+            renderClassBranches();
             lockExistingSchedule(false);
             $('courseId').disabled = false;
             $('branchId').disabled = false;
@@ -624,6 +637,7 @@
             editingId = item.id;
             existingHasLessons = item.totalLessons > 0;
             $('classForm').reset();
+            renderClassBranches(item.branchId);
             lockExistingSchedule(existingHasLessons);
             const linked = existingHasLessons || item.currentStudents > 0 || item.pendingPaymentStudents > 0;
             $('courseId').disabled = linked;

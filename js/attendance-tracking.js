@@ -45,8 +45,6 @@ function initUserRoleBadge() {
         badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill fw-bold';
     } else if (currentUser.role === 'PARENT') {
         badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-bold';
-    } else if (currentUser.role === 'STUDENT') {
-        badge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-bold';
     } else {
         badge.className = 'badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-2 rounded-pill fw-bold';
     }
@@ -70,16 +68,6 @@ async function loadStudents() {
         if (currentStudents.length === 0) {
             studentSelect.innerHTML = '<option value="">Không tìm thấy học viên nào</option>';
             showEmptyTrackingState('Không có dữ liệu học viên được phân công hoặc liên kết với tài khoản này.');
-            return;
-        }
-
-        if (currentUser.role === 'STUDENT') {
-            studentSelect.innerHTML = currentStudents.map(s => 
-                `<option value="${s.id}" selected>${escapeHtml(s.fullName || s.name)} (${s.studentCode || 'HV'})</option>`
-            ).join('');
-            selectedStudentId = currentStudents[0].id;
-            studentSelect.disabled = true;
-            await loadEnrolledClasses(selectedStudentId);
             return;
         }
 
