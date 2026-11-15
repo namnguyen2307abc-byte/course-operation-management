@@ -1,7 +1,7 @@
 ﻿-- DU LIEU DEMO TONG HOP: Word + attendance/makeup + D26 + Weekly Schedule.
 -- Tu chua du lieu nen; khong can file SQL ben ngoai.
--- Nap du lieu va bo sung 2 cot huy Placement Test neu thieu; KHONG reset database.
--- Can schema ung dung hien co; khong can chay rieng placement_schedule_cancellation.sql.
+-- Nap du lieu va bo sung schema huy Placement Test, mon dang ky/kiem tra neu thieu; KHONG reset database.
+-- Can schema ung dung hien co; da gom placement_schedule_cancellation.sql va 20261115_placement_programs.sql.
 -- D26 dung lai Bao An va lop PIA-MD-2701-01 cua kich ban Word.
 -- Mat khau d26_* va teacher_huong: Test@123456; tai khoan nen con lai: 123456.
 -- Chi nap mot lan (COMBINED_DEMO_V1); cac ngay tuong doi tinh tai ngay nap.
@@ -23,6 +23,24 @@ BEGIN TRY
   ALTER TABLE dbo.placement_schedules ADD cancel_reason NVARCHAR(500) NULL;
  IF COL_LENGTH(N'dbo.placement_schedules',N'cancelled_at') IS NULL
   ALTER TABLE dbo.placement_schedules ADD cancelled_at DATETIME2 NULL;
+ -- Placement program migration runs even when the demo data was imported previously.
+ IF OBJECT_ID(N'dbo.programs',N'U') IS NULL OR OBJECT_ID(N'dbo.enrollment_requests',N'U') IS NULL
+  THROW 51804,'Create programs and enrollment_requests before importing the combined demo file.',1;
+ IF COL_LENGTH(N'dbo.programs',N'placement_subject') IS NULL
+  ALTER TABLE dbo.programs ADD placement_subject VARCHAR(20) NULL;
+ IF COL_LENGTH(N'dbo.enrollment_requests',N'requested_program_id') IS NULL
+  ALTER TABLE dbo.enrollment_requests ADD requested_program_id BIGINT NULL;
+ IF COL_LENGTH(N'dbo.placement_schedules',N'program_id') IS NULL
+  ALTER TABLE dbo.placement_schedules ADD program_id BIGINT NULL;
+ -- Dynamic SQL compiles after the new columns have been added in this batch.
+ IF OBJECT_ID(N'dbo.FK_enrollment_requests_requested_program',N'F') IS NULL
+  EXEC sys.sp_executesql N'ALTER TABLE dbo.enrollment_requests
+   ADD CONSTRAINT FK_enrollment_requests_requested_program
+   FOREIGN KEY (requested_program_id) REFERENCES dbo.programs(id);';
+ IF OBJECT_ID(N'dbo.FK_placement_schedules_program',N'F') IS NULL
+  EXEC sys.sp_executesql N'ALTER TABLE dbo.placement_schedules
+   ADD CONSTRAINT FK_placement_schedules_program
+   FOREIGN KEY (program_id) REFERENCES dbo.programs(id);';
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
  IF NOT EXISTS(SELECT 1 FROM dbo.combined_demo_installations WHERE seed_key='COMBINED_DEMO_V1')
@@ -1474,6 +1492,17 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;';
   PRINT N'Da nap day du du lieu demo tong hop.';
  END
  ELSE PRINT N'Bo du lieu tong hop da duoc nap; giu nguyen du lieu hien tai.';
+ -- Run after seeding so programs created during the first import are configured too.
+ -- Preserve custom mappings and leave historical requests/schedules unchanged.
+ EXEC sys.sp_executesql N'
+  UPDATE dbo.programs
+  SET placement_subject = CASE
+   WHEN code IN (''PIANO'',''GUITAR'') THEN ''DAN''
+   WHEN code = ''DANCE'' THEN ''MUA''
+   WHEN code = ''MARTIAL_ARTS'' THEN ''VO''
+  END
+  WHERE placement_subject IS NULL
+   AND code IN (''PIANO'',''GUITAR'',''DANCE'',''MARTIAL_ARTS'');';
  -- Additive extension: also runs on databases where COMBINED_DEMO_V1 was installed.
  -- Existing accounts, passwords and payment history are never reset by this extension.
  IF EXISTS(SELECT 1 FROM dbo.users WHERE username='d26_staff_2' AND role<>'STAFF')
