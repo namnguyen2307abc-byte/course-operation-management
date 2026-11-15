@@ -26,6 +26,7 @@ public class CourseEnrollmentMapper {
     public CourseResponse toCourseResponse(Course course) {
         return new CourseResponse(
                 course.getId(),
+                course.getProgram().getId(),
                 course.getProgram().getName(),
                 course.getCode(),
                 course.getName(),
@@ -89,6 +90,8 @@ public class CourseEnrollmentMapper {
                 request.getStudent().getFullName(),
                 preferredCourse == null ? null : preferredCourse.getId(),
                 preferredCourse == null ? null : preferredCourse.getName(),
+                request.getRequestedProgram() == null ? null : request.getRequestedProgram().getId(),
+                request.getRequestedProgram() == null ? null : request.getRequestedProgram().getName(),
                 request.isPlacementRequested(),
                 assignedClass == null ? null : assignedClass.getId(),
                 assignedClass == null ? null : assignedClass.getClassCode(),

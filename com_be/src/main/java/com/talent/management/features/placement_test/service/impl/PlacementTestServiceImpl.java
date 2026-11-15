@@ -1,6 +1,7 @@
 package com.talent.management.features.placement_test.service.impl;
 
 import com.talent.management.features.auth.repository.UserRepository;
+import com.talent.management.features.course_management.repository.ProgramRepository;
 import com.talent.management.shared.entity.EnrollmentRequest;
 import com.talent.management.shared.enums.EnrollmentRequestStatus;
 import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
@@ -8,6 +9,7 @@ import com.talent.management.features.placement_test.dto.request.CreatePlacement
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
+import com.talent.management.features.placement_test.dto.response.PlacementProgramResponse;
 import com.talent.management.features.placement_test.entity.PlacementSchedule;
 import com.talent.management.features.placement_test.entity.PlacementScheduleStatus;
 import com.talent.management.features.placement_test.mapper.PlacementScheduleMapper;
@@ -18,6 +20,7 @@ import com.talent.management.features.auth.repository.StudentRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.PlacementTest;
+import com.talent.management.shared.entity.Program;
 import com.talent.management.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,12 +30,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PlacementTestServiceImpl implements PlacementTestService {
 
+    private static final Set<String> PLACEMENT_SUBJECTS = Set.of("DAN", "MUA", "VO");
     private final PlacementScheduleRepository scheduleRepository;
     private final PlacementTestRepository placementTestRepository;
     private final StudentRepository studentRepository;
@@ -43,6 +49,30 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     private com.talent.management.features.notification.service.NotificationService notificationService;
     private final EnrollmentRequestRepository enrollmentRequestRepository;
     private final CourseRepository courseRepository;
+    private final ProgramRepository programRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PlacementProgramResponse> getPlacementPrograms() {
+        return programRepository.findByPlacementSubjectIsNotNullOrderByNameAsc().stream()
+                .filter(this::isPlacementEnabled)
+                .map(program -> new PlacementProgramResponse(program.getId(), program.getName(), program.getPlacementSubject()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Program requirePlacementProgram(Long programId) {
+        if (programId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn môn muốn kiểm tra");
+        }
+        return programRepository.findById(programId).filter(this::isPlacementEnabled)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Môn đã chọn chưa hỗ trợ Placement Test"));
+    }
+
+    private boolean isPlacementEnabled(Program program) {
+        return program.getPlacementSubject() != null && PLACEMENT_SUBJECTS.contains(program.getPlacementSubject());
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -129,6 +159,10 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         Course recommendedCourse = request.getRecommendedCourseId() == null ? null : courseRepository
                 .findById(request.getRecommendedCourseId())
                 .orElseThrow(() -> new BusinessException("Khóa học đề xuất không tồn tại"));
+        if (schedule.getProgram() != null && recommendedCourse != null
+                && !Objects.equals(schedule.getProgram().getId(), recommendedCourse.getProgram().getId())) {
+            throw new BusinessException("Khóa học đề xuất phải thuộc môn của ca kiểm tra");
+        }
 
         if (teacherUsername != null && !teacherUsername.isBlank()) {
             var teacherOpt = userRepository.findByUsername(teacherUsername);
@@ -195,9 +229,10 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             throw new BusinessException("Thời gian hẹn test không được ở trong quá khứ tính từ thời điểm hiện tại! Vui lòng chọn thời gian từ hiện tại trở đi.");
         }
 
-        PlacementSchedule schedule = scheduleMapper.toEntity(request);
+        EnrollmentRequest enrollmentRequest = null;
+        Program program;
         if (request.getEnrollmentRequestId() != null) {
-            EnrollmentRequest enrollmentRequest = enrollmentRequestRepository
+            enrollmentRequest = enrollmentRequestRepository
                     .findByIdForUpdate(request.getEnrollmentRequestId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu đăng ký"));
             if (!enrollmentRequest.isPlacementRequested()
@@ -208,6 +243,23 @@ public class PlacementTestServiceImpl implements PlacementTestService {
                     || scheduleRepository.existsByEnrollmentRequestIdAndStatusNot(enrollmentRequest.getId(), PlacementScheduleStatus.CANCELLED)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu đã có lịch Placement Test");
             }
+            Program requestedProgram = enrollmentRequest.getRequestedProgram();
+            if (requestedProgram != null && request.getProgramId() != null
+                    && !requestedProgram.getId().equals(request.getProgramId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Môn kiểm tra phải trùng với môn ghi trên đơn");
+            }
+            program = requirePlacementProgram(requestedProgram == null ? request.getProgramId() : requestedProgram.getId());
+            if (requestedProgram == null) {
+                enrollmentRequest.setRequestedProgram(program);
+            }
+        } else {
+            program = requirePlacementProgram(request.getProgramId());
+        }
+
+        PlacementSchedule schedule = scheduleMapper.toEntity(request);
+        schedule.setProgram(program);
+        schedule.setSubject(program.getPlacementSubject());
+        if (enrollmentRequest != null) {
             schedule.setEnrollmentRequest(enrollmentRequest);
             schedule.setStudentName(enrollmentRequest.getStudent().getFullName());
             schedule.setParent(enrollmentRequest.getRequestedBy());
@@ -301,6 +353,26 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         return placementTestRepository.findFirstByStudentIdOrderByTestDateDescCreatedAtDesc(studentId)
                 .map(this::toRecommendationResponse)
                 .orElseGet(() -> PlacementRecommendationResponse.notAvailable(studentId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlacementRecommendationResponse getLatestRecommendation(Long studentId, Long programId) {
+        if (programId == null) {
+            return getLatestRecommendation(studentId);
+        }
+        if (!studentRepository.existsById(studentId)) {
+            throw new BusinessException("Học viên không tồn tại với ID: " + studentId);
+        }
+        return scheduleRepository
+                .findFirstByEnrollmentRequestStudentIdAndProgramIdAndStatusAndRecommendedCourseProgramIdOrderByTestDateDescIdDesc(
+                        studentId, programId, PlacementScheduleStatus.COMPLETED, programId)
+                .map(schedule -> toRecommendationResponse(schedule, studentId))
+                .orElseGet(() -> placementTestRepository
+                        .findFirstByStudentIdAndProgramIdAndRecommendedCourseProgramIdOrderByTestDateDescCreatedAtDesc(
+                                studentId, programId, programId)
+                        .map(this::toRecommendationResponse)
+                        .orElseGet(() -> PlacementRecommendationResponse.notAvailable(studentId)));
     }
 
     private PlacementRecommendationResponse toRecommendationResponse(PlacementSchedule schedule, Long studentId) {

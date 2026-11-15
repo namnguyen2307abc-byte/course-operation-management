@@ -544,7 +544,7 @@ function renderTable(dataList) {
                     <small class="text-muted d-block"><i class="bi bi-person me-1"></i>${item.parentName || item.parentEmail || 'Chưa cập nhật'}</small>
                 </td>
                 <td>
-                    <div class="mb-1">${subjectBadge}</div>
+                    <div class="mb-1">${subjectBadge}${item.programName ? ` <span class="small fw-semibold">${escapeCourseOption(item.programName)}</span>` : ''}</div>
                     <div class="fw-semibold text-dark small text-truncate" style="max-width: 220px;" title="${item.title || ''}">${item.title || 'Đánh giá năng khiếu'}</div>
                 </td>
                 <td>
@@ -745,6 +745,28 @@ function onEnrollmentRequestChange() {
     const nameInput = document.getElementById('createStudentName');
     nameInput.value = selected ? selected.childName : '';
     nameInput.readOnly = Boolean(selected);
+    document.getElementById('createParentNote').classList.toggle('d-none', !selected);
+    document.getElementById('createParentNoteText').textContent = selected?.note || 'Không có ghi chú.';
+    const programSelect = document.getElementById('createProgram');
+    const programId = selected?.requestedProgramId;
+    programSelect.disabled = Boolean(programId);
+    programSelect.value = programId ? String(programId) : '';
+    document.getElementById('createProgramHint').textContent = programId
+        ? (programSelect.value ? 'Môn đã đăng ký trong đơn.' : `${selected.requestedProgramName} chưa có trong danh sách hỗ trợ. Hãy kiểm tra cấu hình hoặc thử mở lại form.`)
+        : (selected ? 'Đơn cũ chưa có môn. Hãy xác nhận với phụ huynh trước khi chọn.' : '');
+}
+
+async function loadProgramsForScheduling() {
+    const select = document.getElementById('createProgram');
+    select.replaceChildren(new Option('Đang tải môn kiểm tra...', ''));
+    try {
+        const programs = await callApi('/api/course-enrollment/placement-programs');
+        select.options[0].text = programs?.length ? 'Chọn môn kiểm tra' : 'Chưa có môn hỗ trợ Placement Test';
+        for (const program of programs || []) select.add(new Option(program.name, program.id));
+    } catch {
+        select.options[0].text = 'Chưa tải được môn. Hãy mở lại form để thử lại.';
+    }
+    if (document.getElementById('createEnrollmentRequest').value) onEnrollmentRequestChange();
 }
 
 async function loadEnrollmentRequestsForScheduling() {
@@ -753,7 +775,7 @@ async function loadEnrollmentRequestsForScheduling() {
     enrollmentRequestsForScheduling = [];
     field.classList.add('d-none');
     select.innerHTML = '<option value="">Lịch test độc lập</option>';
-    document.getElementById('createStudentName').readOnly = false;
+    onEnrollmentRequestChange();
 
     const currentUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     const role = String(currentUser?.role || '').toUpperCase().replace('ROLE_', '');
@@ -766,7 +788,7 @@ async function loadEnrollmentRequestsForScheduling() {
         for (const request of enrollmentRequestsForScheduling) {
             const option = document.createElement('option');
             option.value = String(request.id);
-            option.textContent = `#${request.id} - ${request.childName}`;
+            option.textContent = `#${request.id} - ${request.childName}${request.requestedProgramName ? ' · ' + request.requestedProgramName : ''}`;
             select.appendChild(option);
         }
         if (enrollmentRequestsForScheduling.length) field.classList.remove('d-none');
@@ -874,7 +896,7 @@ async function openEvaluateModal(id) {
     const subjectName = cfg.subjectName;
     const teacherDisplayName = currentUser ? (currentUser.subject ? `GV ${getSubjectDisplayName(currentUser.subject)}` : 'GV') : '';
     const examinerInfo = currentUser ? `${currentUser.fullName || currentUser.username} (${teacherDisplayName})` : (item.evaluatedByName || 'Chưa phân công');
-    document.getElementById("evalCandidateMeta").innerText = `Bộ môn: ${subjectName} | Tiêu đề: ${item.title || 'Test Năng Khiếu'} | Cơ sở: ${item.branch || 'Cơ sở 1'} | GV chấm: ${examinerInfo}`;
+    document.getElementById("evalCandidateMeta").innerText = `Môn: ${item.programName || subjectName} | Tiêu đề: ${item.title || 'Test Năng Khiếu'} | Cơ sở: ${item.branch || 'Cơ sở 1'} | GV chấm: ${examinerInfo}`;
 
     const baseScore10 = item.score != null ? (item.score / 10) : 7.5;
 
@@ -911,8 +933,9 @@ async function openEvaluateModal(id) {
     courseSelect.innerHTML = '<option value="">Đang tải khóa học...</option>';
     try {
         const courses = await callApi('/api/course-enrollment/courses');
+        const eligibleCourses = (courses || []).filter(course => !item.programId || course.programId === item.programId);
         courseSelect.innerHTML = '<option value="">Chọn khóa học phù hợp</option>' +
-            (courses || []).map(course => `<option value="${course.id}">${escapeCourseOption(course.programName)} — ${escapeCourseOption(course.name)}</option>`).join('');
+            eligibleCourses.map(course => `<option value="${course.id}">${escapeCourseOption(course.programName)} — ${escapeCourseOption(course.name)}</option>`).join('');
         courseSelect.value = item.recommendedCourseId == null ? '' : String(item.recommendedCourseId);
     } catch (error) {
         courseSelect.innerHTML = '<option value="">Không tải được khóa học</option>';
@@ -1043,25 +1066,23 @@ async function openCreateModal() {
     const form = document.getElementById("createPlacementTestForm");
     if (form) form.reset();
 
-    // Auto select teacher's subject if logged in as teacher
-    let currentUser = null;
-    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
-    const subjectSelect = document.getElementById("createSubject");
-    if (subjectSelect && currentUser && currentUser.subject) {
-        subjectSelect.value = normalizeSubject(currentUser.subject);
-    }
-
     initDateRestrictions();
     const modal = new bootstrap.Modal(document.getElementById('createModal'));
+    const enrollmentRequests = loadEnrollmentRequestsForScheduling();
+    const programs = loadProgramsForScheduling();
     modal.show();
-    await loadEnrollmentRequestsForScheduling();
+    await Promise.all([enrollmentRequests, programs]);
 }
 
 async function handleCreatePlacementTest(e) {
     e.preventDefault();
 
     const studentName = document.getElementById("createStudentName").value.trim();
-    const subject = normalizeSubject(document.getElementById("createSubject")?.value || "DAN");
+    const programId = Number(document.getElementById("createProgram").value);
+    if (!programId) {
+        showNotification('Vui lòng chọn môn kiểm tra có trong danh mục.', 'danger');
+        return;
+    }
     const title = document.getElementById("createTitle").value.trim();
     const roomName = document.getElementById("createRoomName").value.trim();
     const branch = document.getElementById("createBranch").value;
@@ -1093,7 +1114,7 @@ async function handleCreatePlacementTest(e) {
 
     const createPayload = {
         studentName: studentName,
-        subject: subject,
+        programId,
         title: title,
         roomName: roomName,
         branch: branch,
@@ -1102,45 +1123,18 @@ async function handleCreatePlacementTest(e) {
         enrollmentRequestId
     };
 
-    const newTest = {
-        id: placementTestsData.length + 1,
-        studentName: studentName,
-        subject: subject,
-        title: title,
-        roomName: roomName,
-        branch: branch,
-        testDate: isoDateTime,
-        note: note,
-        status: "SCHEDULED",
-        score: null,
-        recommendedLevel: null,
-        teacherNote: "",
-        parentName: "Phụ huynh đăng ký",
-        createdAt: new Date().toISOString()
-    };
-
-    let createdResponse = null;
-    if (enrollmentRequestId && typeof callApi !== 'function') {
-        showNotification('Không thể kết nối để xếp lịch cho yêu cầu này.', 'danger');
+    const submit = e.currentTarget.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    let savedRecord;
+    try {
+        savedRecord = await callApi('/api/placement-tests', 'POST', createPayload);
+        if (!savedRecord?.id) throw new Error('Chưa nhận được xác nhận lưu lịch từ máy chủ.');
+    } catch (error) {
+        showNotification(`Không thể tạo lịch kiểm tra: ${error.message}`, 'danger');
         return;
+    } finally {
+        submit.disabled = false;
     }
-    if (typeof callApi === 'function') {
-        try {
-            createdResponse = await callApi('/api/placement-tests', "POST", createPayload);
-        } catch (err) {
-            console.error("Create test error:", err);
-            showNotification(`Lỗi tạo đơn đăng ký: ${err.message || "Thời gian không hợp lệ"}`, "danger");
-            return;
-        }
-    }
-
-    if (enrollmentRequestId && !createdResponse) {
-        showNotification('Không thể xếp lịch cho yêu cầu này. Hãy làm mới danh sách đơn.', 'danger');
-        return;
-    }
-
-    const savedRecord = (createdResponse && createdResponse.id) ? createdResponse : newTest;
-    savedRecord.subject = normalizeSubject(savedRecord.subject || subject || inferSubject(savedRecord.title));
 
     // Add to dataset
     placementTestsData.unshift(savedRecord);
@@ -1170,7 +1164,7 @@ async function handleCreatePlacementTest(e) {
         }
     }
 
-    const testSubjectDisplayName = getSubjectDisplayName(savedRecord.subject);
+    const testSubjectDisplayName = savedRecord.programName || getSubjectDisplayName(savedRecord.subject);
     showNotification(`Đã đăng ký lịch kiểm tra mới cho học viên ${studentName} (Bộ môn ${testSubjectDisplayName}) thành công!`, "success");
 }
 

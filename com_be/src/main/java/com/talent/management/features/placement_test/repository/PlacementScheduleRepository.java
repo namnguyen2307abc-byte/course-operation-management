@@ -1,6 +1,7 @@
 package com.talent.management.features.placement_test.repository;
 
 import com.talent.management.features.placement_test.entity.PlacementSchedule;
+import com.talent.management.features.placement_test.entity.PlacementScheduleStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -20,11 +21,14 @@ public interface PlacementScheduleRepository extends JpaRepository<PlacementSche
 
     boolean existsByEnrollmentRequestId(Long enrollmentRequestId);
 
-    boolean existsByEnrollmentRequestIdAndStatusNot(Long enrollmentRequestId, com.talent.management.features.placement_test.entity.PlacementScheduleStatus status);
+    boolean existsByEnrollmentRequestIdAndStatusNot(Long enrollmentRequestId, PlacementScheduleStatus status);
 
     Optional<PlacementSchedule> findFirstByEnrollmentRequestStudentIdOrderByTestDateDescIdDesc(Long studentId);
 
-    Optional<PlacementSchedule> findFirstByEnrollmentRequestStudentIdAndStatusOrderByTestDateDescIdDesc(Long studentId, com.talent.management.features.placement_test.entity.PlacementScheduleStatus status);
+    Optional<PlacementSchedule> findFirstByEnrollmentRequestStudentIdAndProgramIdAndStatusAndRecommendedCourseProgramIdOrderByTestDateDescIdDesc(
+            Long studentId, Long programId, PlacementScheduleStatus status, Long courseProgramId);
+
+    Optional<PlacementSchedule> findFirstByEnrollmentRequestStudentIdAndStatusOrderByTestDateDescIdDesc(Long studentId, PlacementScheduleStatus status);
 
     List<PlacementSchedule> findAllByOrderByTestDateDesc();
 

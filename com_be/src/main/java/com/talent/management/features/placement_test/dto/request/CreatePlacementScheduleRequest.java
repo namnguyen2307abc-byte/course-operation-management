@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class CreatePlacementScheduleRequest {
 
     private Long enrollmentRequestId;
+    private Long programId;
 
     @NotBlank(message = "Tên học viên không được để trống")
     private String studentName;

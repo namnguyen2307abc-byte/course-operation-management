@@ -9,4 +9,7 @@ import java.util.Optional;
 @Repository
 public interface PlacementTestRepository extends JpaRepository<PlacementTest, Long> {
     Optional<PlacementTest> findFirstByStudentIdOrderByTestDateDescCreatedAtDesc(Long studentId);
+
+    Optional<PlacementTest> findFirstByStudentIdAndProgramIdAndRecommendedCourseProgramIdOrderByTestDateDescCreatedAtDesc(
+            Long studentId, Long programId, Long courseProgramId);
 }

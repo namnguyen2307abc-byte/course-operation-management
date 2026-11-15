@@ -13,6 +13,8 @@ import com.talent.management.features.course_enrollment.repository.ClassReposito
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
 import com.talent.management.features.course_enrollment.repository.EnrollmentRepository;
 import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
+import com.talent.management.features.course_management.repository.ProgramRepository;
+import com.talent.management.features.placement_test.dto.response.PlacementProgramResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
 import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
@@ -77,6 +79,9 @@ class CourseEnrollmentServiceTest {
     @Mock
     private InvoiceRepository invoiceRepository;
 
+    @Mock
+    private ProgramRepository programRepository;
+
     @InjectMocks
     private CourseEnrollmentService service;
 
@@ -90,7 +95,7 @@ class CourseEnrollmentServiceTest {
         recommendedClass.setBranch(Branch.builder().id(1L).name("Cơ sở A").build());
         return new CourseEnrollmentService(currentUserService, studentRepository, courseRepository,
                 classRepository, enrollmentRepository, requestRepository, new CourseEnrollmentMapper(),
-                placementTestService, placementScheduleRepository, invoiceRepository);
+                placementTestService, placementScheduleRepository, invoiceRepository, programRepository);
     }
 
     @Test
@@ -245,7 +250,7 @@ class CourseEnrollmentServiceTest {
     void createsReadyRequestWithoutAssigningClassWhenPlacementIsSkipped() {
         when(courseRepository.findById(30L)).thenReturn(Optional.of(course));
 
-        service.submitRequest(new EnrollmentRequestCreateRequest(20L, 30L, false, "Weekend"));
+        service.submitRequest(new EnrollmentRequestCreateRequest(20L, 30L, null, false, "Weekend"));
 
         ArgumentCaptor<EnrollmentRequest> captor = ArgumentCaptor.forClass(EnrollmentRequest.class);
         verify(requestRepository).save(captor.capture());
@@ -258,15 +263,20 @@ class CourseEnrollmentServiceTest {
 
     @Test
     void createsWaitingRequestWhenPlacementHasNoResult() {
-        when(placementTestService.getLatestRecommendation(20L))
+        var program = com.talent.management.shared.entity.Program.builder().id(40L).name("Piano").build();
+        when(programRepository.findById(40L)).thenReturn(Optional.of(program));
+        when(placementTestService.getPlacementPrograms())
+                .thenReturn(List.of(new PlacementProgramResponse(40L, "Piano", "DAN")));
+        when(placementTestService.getLatestRecommendation(20L, 40L))
                 .thenReturn(PlacementRecommendationResponse.notAvailable(20L));
 
-        service.submitRequest(new EnrollmentRequestCreateRequest(20L, null, true, null));
+        service.submitRequest(new EnrollmentRequestCreateRequest(20L, null, 40L, true, null));
 
         ArgumentCaptor<EnrollmentRequest> captor = ArgumentCaptor.forClass(EnrollmentRequest.class);
         verify(requestRepository).save(captor.capture());
         EnrollmentRequest saved = captor.getValue();
         assertThat(saved.getStatus()).isEqualTo(EnrollmentRequestStatus.WAITING_PLACEMENT);
+        assertThat(saved.getRequestedProgram()).isSameAs(program);
         assertThat(saved.getPreferredCourse()).isNull();
         assertThat(saved.getClassEntity()).isNull();
         assertThat(saved.isPlacementRequested()).isTrue();

@@ -63,8 +63,9 @@ public class PlacementTestController {
     @GetMapping("/students/{studentId}/latest-result")
     @Operation(summary = "Lấy kết quả và khóa học đề xuất mới nhất của học viên")
     public ResponseEntity<PlacementRecommendationResponse> getLatestRecommendation(
-            @PathVariable Long studentId) {
-        return ResponseEntity.ok(placementTestService.getLatestRecommendation(studentId));
+            @PathVariable Long studentId,
+            @RequestParam(required = false) Long programId) {
+        return ResponseEntity.ok(placementTestService.getLatestRecommendation(studentId, programId));
     }
 
     @PostMapping

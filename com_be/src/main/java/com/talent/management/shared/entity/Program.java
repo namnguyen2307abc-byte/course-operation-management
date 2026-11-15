@@ -24,4 +24,7 @@ public class Program {
 
     @Column(length = 1000)
     private String description;
+
+    @Column(name = "placement_subject", length = 20)
+    private String placementSubject;
 }
