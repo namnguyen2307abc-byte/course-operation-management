@@ -5,10 +5,13 @@ import com.talent.management.features.admin_management.dto.response.*;
 import com.talent.management.features.admin_management.mapper.AdminUserMapper;
 import com.talent.management.features.admin_management.repository.*;
 import com.talent.management.features.admin_management.service.*;
+import com.talent.management.features.auth.repository.StudentRepository;
 import com.talent.management.shared.dto.PageResponse;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -27,6 +30,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final AdminAuditService audit;
     private final CurrentUserService currentUser;
     private final PasswordEncoder encoder;
+    @PersistenceContext private EntityManager em;
+    private final StudentRepository studentRepository;
 
     @Override
     public PageResponse<AdminUserResponse> search(String keyword, Role role, UserStatus status, int page, int size) {
@@ -62,6 +67,21 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .teachingSubject(request.role() == Role.TEACHER ? clean(request.teachingSubject()) : null)
                 .status(UserStatus.ACTIVE).mustChangePassword(true).build();
         repository.saveAndFlush(user);
+        if (user.getRole() == Role.PARENT && request.children() != null) {
+            for (ChildItemRequest child : request.children()) {
+                if (child != null && child.fullName() != null && !child.fullName().isBlank()) {
+                    Student student = Student.builder()
+                            .parent(user)
+                            .fullName(child.fullName().trim())
+                            .dateOfBirth(child.dateOfBirth())
+                            .gender(clean(child.gender()))
+                            .schoolName(clean(child.schoolName()))
+                            .notes(clean(child.notes()))
+                            .build();
+                    studentRepository.save(student);
+                }
+            }
+        }
         audit.record(actor, user, "CREATE_USER", "Cấp tài khoản; role=" + user.getRole() + "; trạng thái=ACTIVE");
         return mapper.toResponse(user);
     }

@@ -459,27 +459,25 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
                     if (retry >= AttendanceMakeupMapper.MAX_MAKEUP_RETRIES) {
                         mr.setStatus(MakeupStatus.CANCELLED);
-                        String lockBody = "Hủy quyền học bù do học viên đã vắng mặt cả "
-                                + AttendanceMakeupMapper.MAX_MAKEUP_RETRIES + "/" + AttendanceMakeupMapper.MAX_MAKEUP_RETRIES
-                                + " lần học bù quy định (vắng ngày " + lesson.getLessonDate() + ")" + reasonSuffix;
+                        String lockBody = "Hủy quyền học bù do học viên đã vắng mặt tại ca học bù đã xếp (ngày " + lesson.getLessonDate() + ")" + reasonSuffix;
                         mr.setNote(AttendanceMakeupMapper.buildRetryNote(retry, true, lockBody));
                         makeupRegistrationRepository.save(mr);
-                        log.info("Ca học bù #{} của học viên [{}] TỰ ĐỘNG KHÓA/HỦY do bỏ lỡ quá {} lần",
-                                mr.getId(), student.getFullName(), AttendanceMakeupMapper.MAX_MAKEUP_RETRIES);
+                        log.info("Ca học bù #{} của học viên [{}] TỰ ĐỘNG KHÓA/HỦY do không tham gia buổi bù",
+                                mr.getId(), student.getFullName());
 
                         if (notificationService != null) {
                             if (student.getParent() != null) {
                                 notificationService.sendNotification(
                                         student.getParent(), currentUser,
-                                        "Khóa quyền học bù (Vắng 2/2 lần): " + student.getFullName(),
-                                        "Bé " + student.getFullName() + " đã vắng mặt tại buổi học bù lần " + retry + "/" + AttendanceMakeupMapper.MAX_MAKEUP_RETRIES
-                                                + " ngày " + lesson.getLessonDate() + ". Theo quy định tối đa 2 lần học bù, quyền học bù của buổi nghỉ này đã bị hủy.",
+                                        "Kết thúc quyền học bù: " + student.getFullName(),
+                                        "Bé " + student.getFullName() + " đã vắng mặt tại buổi học bù ngày " + lesson.getLessonDate()
+                                                + ". Theo quy định, mỗi buổi nghỉ chỉ xếp bù tối đa 1 lần, ca học bù này đã kết thúc.",
                                         "MAKEUP_LIMIT_EXCEEDED", mr.getId(), "/pages/absence-makeup.html");
                             }
                             notificationService.sendToRoles(
                                     List.of(Role.STAFF, Role.ADMIN), currentUser,
-                                    "Học viên vượt giới hạn 2 lần học bù: " + student.getFullName(),
-                                    "Học viên " + student.getFullName() + " đã bỏ lỡ cả 2/2 lần học bù (Ca bù #" + mr.getId() + "). Hệ thống đã tự động khóa quyền xếp lại.",
+                                    "Học viên không tham gia ca học bù: " + student.getFullName(),
+                                    "Học viên " + student.getFullName() + " đã vắng mặt tại buổi học bù (Ca bù #" + mr.getId() + "). Hệ thống đã tự động khóa quyền xếp lại.",
                                     "MAKEUP_LIMIT_EXCEEDED", mr.getId(), "/pages/absence-makeup.html");
                         }
                     } else {
@@ -703,6 +701,11 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
             String statusLabel;
             String note = "-";
 
+            LocalTime nowTime = LocalTime.now(CENTER_ZONE);
+            boolean isFutureLesson = l.getLessonDate() != null
+                    && (l.getLessonDate().isAfter(today)
+                        || (l.getLessonDate().isEqual(today) && l.getStartTime() != null && l.getStartTime().isAfter(nowTime)));
+
             if (att != null) {
                 if (att.getStatus() == AttendanceStatus.PRESENT) {
                     status = "PRESENT";
@@ -723,10 +726,33 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                     note = "Vắng mặt (Quá khứ chưa điểm danh)";
                 }
             } else if (ar != null && ar.getStatus() == AbsenceStatus.APPROVED) {
-                status = "ABSENT";
-                statusLabel = "Vắng mặt";
-                absentCount++;
-                note = "Nghỉ có phép: " + (ar.getReason() != null ? ar.getReason() : "");
+                if (isFutureLesson) {
+                    // Buổi học chưa diễn ra: giáo viên chưa điểm danh -> Trạng thái là "Chưa điểm danh", không tính vắng mặt!
+                    // Thông tin lịch bù hiển thị rõ ràng ở cột Ghi chú
+                    status = "NOT_MARKED";
+                    statusLabel = "Chưa điểm danh";
+                    unmarkedCount++;
+                    note = "Nghỉ có phép: " + (ar.getReason() != null ? ar.getReason() : "");
+                } else {
+                    // Buổi học đã trôi qua trong quá khứ
+                    if (mr != null && mr.getStatus() == MakeupStatus.COMPLETED) {
+                        status = "PRESENT";
+                        statusLabel = "Có mặt";
+                        attendedCount++;
+                        note = "Đã học bù: " + (ar.getReason() != null ? ar.getReason() : "");
+                    } else if (mr != null && mr.getStatus() == MakeupStatus.SCHEDULED) {
+                        // Buổi gốc đã qua nhưng ca bù vẫn đang chờ học ở tương lai
+                        status = "NOT_MARKED";
+                        statusLabel = "Chưa điểm danh";
+                        unmarkedCount++;
+                        note = "Nghỉ có phép (Chờ học bù): " + (ar.getReason() != null ? ar.getReason() : "");
+                    } else {
+                        status = "ABSENT";
+                        statusLabel = "Vắng mặt";
+                        absentCount++;
+                        note = "Nghỉ có phép: " + (ar.getReason() != null ? ar.getReason() : "");
+                    }
+                }
             } else if (autoAbsentPast) {
                 status = "ABSENT";
                 statusLabel = "Vắng mặt";
@@ -750,15 +776,15 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
             String makeupInfo = null;
             if (mr != null) {
                 if (mr.getStatus() == MakeupStatus.COMPLETED) {
-                    makeupInfo = "Đã học bù (Lần " + retry + "/2)";
+                    makeupInfo = "Đã học bù";
                     makeupCompletedCount++;
                 } else if (mr.getStatus() == MakeupStatus.SCHEDULED) {
-                    makeupInfo = "Đã xếp lịch bù (Lần " + retry + "/2)";
-                } else if (isLocked) {
-                    makeupInfo = "Bỏ lỡ 2/2 lần (Khóa quyền bù)";
+                    makeupInfo = "Đã xếp lịch bù";
+                } else if (isLocked || mr.getStatus() == MakeupStatus.CANCELLED) {
+                    makeupInfo = "Hết quyền bù (Đã vắng mặt)";
                     makeupMissedCount++;
                 } else if (mr.getStatus() == MakeupStatus.MISSED) {
-                    makeupInfo = "Bỏ lỡ bù (Lần " + retry + "/2 - Còn 1 lần)";
+                    makeupInfo = "Bỏ lỡ buổi bù (Không xếp lại)";
                     makeupMissedCount++;
                 } else if (mr.getStatus() == MakeupStatus.PENDING) {
                     makeupInfo = "Chờ xếp lịch học bù";

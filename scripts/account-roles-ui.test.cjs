@@ -62,6 +62,24 @@ test('admin has five role choices and can inspect a retired account without erro
             await fs.mkdir(process.env.ACCOUNT_ROLE_SCREENSHOTS, {recursive: true});
             await page.screenshot({path: path.join(process.env.ACCOUNT_ROLE_SCREENSHOTS, 'archived-account-' + width + '.png')});
         }
+        await page.locator('#detailDialog [data-close-dialog]').first().click();
+        await page.locator('#createUser').click();
+        await page.locator('#userRole').selectOption('PARENT');
+        await page.locator('#parentChildrenFields').waitFor();
+        await page.locator('#userUsername').fill('parent_demo');
+        await page.locator('#userPassword').fill('Test@123456');
+        await page.locator('#userName').fill('Phụ huynh kiểm thử');
+        await page.locator('.child-name').fill('Học viên kiểm thử');
+        await page.locator('.child-dob').fill('2018-05-20');
+        const saved = page.waitForRequest(request => new URL(request.url()).pathname === '/api/admin/users' && request.method() === 'POST');
+        await page.locator('#saveUser').click();
+        const payload = (await saved).postDataJSON();
+        assert.equal(payload.role, 'PARENT');
+        assert.equal(payload.children.length, 1);
+        assert.equal(payload.children[0].fullName, 'Học viên kiểm thử');
+        assert.equal(payload.children[0].dateOfBirth, '2018-05-20');
+        assert.equal(Object.hasOwn(payload, 'studentId'), false);
+        await page.locator('#userDialog').waitFor({state:'hidden'});
         assert.deepEqual(errors, []);
         await page.close();
     }

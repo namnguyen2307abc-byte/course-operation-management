@@ -34,7 +34,9 @@ async function callApi(endpoint, method = "GET", body = null, isFormData = false
             if (denied.code === 'PASSWORD_CHANGE_REQUIRED') {
                 const current = JSON.parse(localStorage.getItem('user') || '{}');
                 current.mustChangePassword = true; localStorage.setItem('user', JSON.stringify(current));
-                window.location.href = (window.location.pathname.startsWith('/com_fe/') ? '/com_fe' : '') + '/pages/change-password.html';
+                if (!window.location.pathname.endsWith('change-password.html')) {
+                    window.location.href = (window.location.pathname.startsWith('/com_fe/') ? '/com_fe' : '') + '/pages/change-password.html';
+                }
                 throw new Error(denied.message);
             }
             let roleName = "Chưa xác định";

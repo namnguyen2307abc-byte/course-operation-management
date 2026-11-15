@@ -38,6 +38,11 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
     List<AbsenceRequest> findByStudentIdAndStatusOrderByCreatedAtDesc(Long studentId, AbsenceStatus status);
 
     /**
+     * Lấy các yêu cầu nghỉ của học viên thuộc danh sách trạng thái
+     */
+    List<AbsenceRequest> findByStudentIdAndStatusIn(Long studentId, List<AbsenceStatus> statuses);
+
+    /**
      * Tìm yêu cầu nghỉ cho các con của phụ huynh
      */
     List<AbsenceRequest> findByStudentParentIdOrderByCreatedAtDesc(Long parentId);

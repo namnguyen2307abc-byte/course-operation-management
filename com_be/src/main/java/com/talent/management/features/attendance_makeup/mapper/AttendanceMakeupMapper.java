@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 @Component
 public class AttendanceMakeupMapper {
 
-    public static final int MAX_MAKEUP_RETRIES = 2;
+    public static final int MAX_MAKEUP_RETRIES = 1;
     private static final Pattern RETRY_TAG_PATTERN = Pattern.compile("\\[Lần bù:\\s*(\\d+)/(\\d+)(?:\\s*-\\s*KHÓA)?\\]\\s*");
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
@@ -134,6 +134,15 @@ public class AttendanceMakeupMapper {
                 .build();
     }
 
+    public AbsenceRequestResponse toAbsenceResponse(AbsenceRequest ar, MakeupRegistration mr, int courseMakeupCount, boolean courseMakeupLimitReached) {
+        AbsenceRequestResponse resp = toAbsenceResponse(ar, mr);
+        if (resp != null) {
+            resp.setCourseMakeupCount(courseMakeupCount);
+            resp.setCourseMakeupLimitReached(courseMakeupLimitReached);
+        }
+        return resp;
+    }
+
     /**
      * Chuyển đổi MakeupRegistration entity sang MakeupRegistrationResponse DTO
      */
@@ -192,6 +201,12 @@ public class AttendanceMakeupMapper {
                 .limitExceeded(limitExceeded)
                 .note(mr.getNote())
                 .createdAt(mr.getCreatedAt())
+                .reviewedAt(mr.getAbsenceRequest() != null && mr.getAbsenceRequest().getReviewedAt() != null
+                        ? mr.getAbsenceRequest().getReviewedAt()
+                        : mr.getCreatedAt())
+                .reviewerName(mr.getAbsenceRequest() != null && mr.getAbsenceRequest().getApprovedByTeacher() != null
+                        ? mr.getAbsenceRequest().getApprovedByTeacher().getFullName()
+                        : null)
                 .build();
     }
 
@@ -199,6 +214,10 @@ public class AttendanceMakeupMapper {
      * Chuyển đổi Student sang StudentOptionResponse DTO
      */
     public StudentOptionResponse toStudentOption(Student s, String currentClassName) {
+        return toStudentOption(s, currentClassName, 0, false);
+    }
+
+    public StudentOptionResponse toStudentOption(Student s, String currentClassName, int makeupCount, boolean makeupLimitReached) {
         if (s == null) return null;
         return StudentOptionResponse.builder()
                 .id(s.getId())
@@ -208,6 +227,8 @@ public class AttendanceMakeupMapper {
                 .parentId(s.getParent() != null ? s.getParent().getId() : null)
                 .parentName(s.getParent() != null ? s.getParent().getFullName() : null)
                 .currentClassName(currentClassName)
+                .makeupCount(makeupCount)
+                .makeupLimitReached(makeupLimitReached)
                 .build();
     }
 

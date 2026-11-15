@@ -3,17 +3,74 @@ const AdminUserForm = (() => {
     let selected, mode, onSaved, editingId;
     function error(id, message = '') { $(id).textContent = message; $(id).hidden = !message; }
     function close(id) { $(id).close(); }
-    function showRoleFields(role) {
-        const hints = { ADMIN: 'Quản lý tài khoản và theo dõi hoạt động toàn trung tâm.', BRANCH_MANAGER: 'Điều phối học vụ và các nghiệp vụ dành cho quản lý.', STAFF: 'Thực hiện nghiệp vụ tuyển sinh, học vụ và thu học phí.', TEACHER: 'Theo dõi lịch dạy, điểm danh và đánh giá đầu vào.', PARENT: 'Đăng ký lớp và theo dõi việc học của con.' };
-        $('userRoleHint').textContent = hints[role] || '';
-        $('userTeachingSubjectFields').hidden = role !== 'TEACHER';
+
+    function createChildRow(name = '', dob = '', gender = 'Nam', school = '') {
+        const row = document.createElement('div');
+        row.className = 'child-item-card border p-2 mb-2 rounded bg-white';
+        row.innerHTML = `
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <input class="form-control form-control-sm child-name" placeholder="Họ và tên con" value="${esc(name)}">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" class="form-control form-control-sm child-dob" value="${esc(dob)}" title="Ngày sinh">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select form-select-sm child-gender">
+                        <option value="Nam"${gender === 'Nam' ? ' selected' : ''}>Nam</option>
+                        <option value="Nữ"${gender === 'Nữ' ? ' selected' : ''}>Nữ</option>
+                    </select>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger child-remove" title="Xóa con" aria-label="Xóa"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                </div>
+                <div class="col-12 mt-1">
+                    <input class="form-control form-control-sm child-school" placeholder="Trường học (nếu có)" value="${esc(school)}">
+                </div>
+            </div>`;
+        row.querySelector('.child-remove').addEventListener('click', () => {
+            const list = $('childrenList');
+            if (list && list.children.length > 1) {
+                row.remove();
+            } else {
+                row.querySelector('.child-name').value = '';
+                row.querySelector('.child-dob').value = '';
+                row.querySelector('.child-school').value = '';
+            }
+        });
+        return row;
     }
+
+    function resetChildren(initialOne = true) {
+        const list = $('childrenList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (initialOne) list.appendChild(createChildRow());
+    }
+
+    function showRoleFields(role, prefix = 'user') {
+        if (prefix === 'user') {
+            const hints = {
+                ADMIN: 'Quản lý tài khoản và theo dõi hoạt động toàn trung tâm.',
+                BRANCH_MANAGER: 'Điều phối học vụ và các nghiệp vụ dành cho quản lý.',
+                STAFF: 'Thực hiện nghiệp vụ tuyển sinh, học vụ và thu học phí.',
+                TEACHER: 'Theo dõi lịch dạy, điểm danh và đánh giá đầu vào.',
+                PARENT: 'Đăng ký lớp và theo dõi việc học của con.'
+            };
+            $('userRoleHint').textContent = hints[role] || '';
+            $('userTeachingSubjectFields').hidden = role !== 'TEACHER';
+            if ($('parentChildrenFields')) $('parentChildrenFields').hidden = (editingId !== null || role !== 'PARENT');
+        }
+    }
+
     function create() {
         editingId = null; $('userForm').reset(); error('userFormError');
         $('userDialogTitle').textContent = 'Cấp tài khoản mới'; $('createOnly').hidden = false;
         $('userUsername').disabled = false; $('userPassword').required = true;
-        $('userRole').value = 'STAFF'; showRoleFields('STAFF'); $('userDialog').showModal();
+        resetChildren(true);
+        $('userRole').value = 'STAFF'; showRoleFields('STAFF', 'user'); $('userDialog').showModal();
     }
+
     async function detail(id) {
         Admin.message();
         try {
@@ -39,23 +96,29 @@ const AdminUserForm = (() => {
             if (!$('detailDialog').open) $('detailDialog').showModal();
         } catch (e) { Admin.message(e.message); }
     }
+
     function edit() {
         close('detailDialog'); editingId = selected.id; $('userForm').reset(); error('userFormError');
         $('userDialogTitle').textContent = 'Cập nhật thông tin tài khoản'; $('createOnly').hidden = true;
         $('userUsername').disabled = true; $('userPassword').required = false;
+        showRoleFields('', 'user');
         $('userTeachingSubjectFields').hidden = selected.role !== 'TEACHER';
+        if ($('parentChildrenFields')) $('parentChildrenFields').hidden = true;
         for (const [id, field] of [['userName', 'fullName'], ['userEmail', 'email'], ['userPhone', 'phone'], ['userSubject', 'subject'], ['userTeachingSubject', 'teachingSubject']]) $(id).value = selected[field] || '';
         $('userDialog').showModal();
     }
+
     function action(type) {
         mode = type; close('detailDialog'); $('actionForm').reset(); error('actionError');
         const titles = { role: 'Thay đổi vai trò', status: selected.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản', password: 'Đặt lại mật khẩu' };
         $('actionTitle').textContent = titles[type]; $('actionAccount').textContent = `${selected.fullName} (${selected.username})`;
         $('actionRoleFields').hidden = type !== 'role'; $('actionPasswordFields').hidden = type !== 'password';
         $('actionPassword').required = type === 'password'; $('actionRole').value = selected.role;
+        showRoleFields(type === 'role' ? selected.role : '', 'action');
         $('actionNotice').textContent = type === 'password' ? 'Người dùng phải đổi mật khẩu mới ở lần đăng nhập tiếp theo. Hãy cung cấp mật khẩu tạm qua kênh phù hợp.' : 'Thay đổi sẽ vô hiệu hóa phiên đăng nhập cũ của tài khoản. Các liên kết nghiệp vụ được giữ lại.';
         $('actionDialog').showModal();
     }
+
     function initialize(callback) {
         onSaved = callback;
         $('userDialog').addEventListener('close', () => {
@@ -70,7 +133,16 @@ const AdminUserForm = (() => {
         });
         Admin.options($('userRole'), Admin.roles, roleLabel); Admin.options($('actionRole'), Admin.roles, roleLabel);
         document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => close(button.dataset.closeDialog)));
-        $('userRole').addEventListener('change', () => showRoleFields($('userRole').value));
+        $('userRole').addEventListener('change', () => showRoleFields($('userRole').value, 'user'));
+        $('actionRole').addEventListener('change', () => showRoleFields($('actionRole').value, 'action'));
+        for (const prefix of ['user', 'action']) {
+            if ($(prefix + 'StudentFind')) {
+                $(prefix + 'StudentFind').addEventListener('click', () => loadStudents(prefix));
+            }
+        }
+        $('addChildBtn')?.addEventListener('click', () => {
+            $('childrenList')?.appendChild(createChildRow('', '', 'Nam', ''));
+        });
         $('editUser').addEventListener('click', edit);
         $('changeRole').addEventListener('click', () => action('role')); $('changeStatus').addEventListener('click', () => action('status'));
         $('resetPassword').addEventListener('click', () => action('password'));
@@ -78,7 +150,32 @@ const AdminUserForm = (() => {
             event.preventDefault(); error('userFormError'); $('saveUser').disabled = true;
             const payload = { fullName: $('userName').value.trim(), email: $('userEmail').value.trim(), phone: $('userPhone').value.trim(), subject: $('userSubject').value.trim() };
             if ((editingId ? selected.role : $('userRole').value) === 'TEACHER') payload.teachingSubject = $('userTeachingSubject').value.trim();
-            if (!editingId) Object.assign(payload, { username: $('userUsername').value.trim(), password: $('userPassword').value, role: $('userRole').value });
+            if (!editingId) {
+                Object.assign(payload, {
+                    username: $('userUsername').value.trim(),
+                    password: $('userPassword').value,
+                    role: $('userRole').value,
+                });
+                if ($('userRole').value === 'PARENT') {
+                    const childCards = document.querySelectorAll('#childrenList .child-item-card');
+                    const children = [];
+                    childCards.forEach(r => {
+                        const name = (r.querySelector('.child-name')?.value || '').trim();
+                        const dob = r.querySelector('.child-dob')?.value || null;
+                        const gender = r.querySelector('.child-gender')?.value || null;
+                        const school = (r.querySelector('.child-school')?.value || '').trim();
+                        if (name) {
+                            children.push({
+                                fullName: name,
+                                dateOfBirth: dob || null,
+                                gender: gender || null,
+                                schoolName: school || null
+                            });
+                        }
+                    });
+                    if (children.length > 0) payload.children = children;
+                }
+            }
             try {
                 await Admin.request(editingId ? `/users/${editingId}` : '/users', editingId ? 'PUT' : 'POST', payload);
                 close('userDialog'); $('userPassword').value = ''; await onSaved(); Admin.message('Đã lưu tài khoản.', true);

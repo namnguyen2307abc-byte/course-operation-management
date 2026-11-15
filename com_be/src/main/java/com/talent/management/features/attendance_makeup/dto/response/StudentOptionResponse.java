@@ -17,4 +17,6 @@ public class StudentOptionResponse {
     private Long parentId;
     private String parentName;
     private String currentClassName;
+    private Integer makeupCount;
+    private Boolean makeupLimitReached;
 }

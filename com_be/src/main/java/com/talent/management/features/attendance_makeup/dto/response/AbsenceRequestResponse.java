@@ -55,4 +55,8 @@ public class AbsenceRequestResponse {
     private String makeupTargetDate;
     private String makeupTargetClassName;
     private String makeupNote;
+
+    // Thống kê số lần học bù của học viên trong khóa học (tối đa 2 lần)
+    private Integer courseMakeupCount;
+    private Boolean courseMakeupLimitReached;
 }

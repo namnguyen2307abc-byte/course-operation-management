@@ -287,6 +287,24 @@ html { scrollbar-gutter: stable; }
 .workspace-nav-link i { font-size: 18px; }
 .workspace-nav-link:hover { background: #234d42; color: white; }
 .workspace-nav-link.active { background: #e3efdf; color: #174638; font-weight: 700; }
+.workspace-nav-collapsible { position: relative; margin: 4px 0; }
+.workspace-nav-link.has-submenu { width: 100%; border: none; background: transparent !important; color: #d2e0da !important; text-align: left; cursor: pointer; justify-content: space-between; font-family: inherit; font-size: 13px; font-weight: 500; }
+.workspace-nav-link.has-submenu i.bi { color: #d2e0da; }
+.workspace-nav-link.has-submenu:hover { background: #234d42 !important; color: #ffffff !important; }
+.workspace-nav-link.has-submenu:hover i.bi { color: #ffffff; }
+.workspace-nav-collapsible.open .workspace-nav-link.has-submenu { color: #ffffff !important; font-weight: 600; }
+.workspace-nav-collapsible.open .workspace-nav-link.has-submenu i.bi { color: #e8c47a; }
+.workspace-nav-link.has-submenu .nav-label-wrap { display: flex; align-items: center; gap: 13px; flex: 1; }
+.workspace-nav-link.has-submenu .nav-chevron { font-size: 11px; color: #c0d3cb; transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease; }
+.workspace-nav-collapsible.open .nav-chevron { transform: rotate(180deg); color: #e8c47a; }
+.workspace-nav-submenu { display: none; margin: 4px 0 8px 24px; padding-left: 14px; border-left: 1.5px solid rgba(173, 197, 186, 0.35); flex-direction: column; gap: 3px; }
+.workspace-nav-collapsible.open .workspace-nav-submenu { display: flex; }
+.workspace-subnav-link { display: flex; align-items: center; gap: 9px; padding: 7px 11px; font-size: 13px; color: #c2d5cd; text-decoration: none; border-radius: 7px; transition: background-color 0.15s ease, color 0.15s ease; }
+.workspace-subnav-link .subnav-dot { font-size: 14px; line-height: 1; color: rgba(194, 213, 205, 0.55); transition: color 0.15s ease; }
+.workspace-subnav-link:hover { background: #234d42; color: #ffffff; }
+.workspace-subnav-link:hover .subnav-dot { color: #e8c47a; }
+.workspace-subnav-link.active { background: rgba(227, 239, 223, 0.18); color: #e3efdf; font-weight: 600; }
+.workspace-subnav-link.active .subnav-dot { color: #e8c47a; }
 .sidebar-group-label { margin: 27px 14px 10px; color: #adc5ba; font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
 .sidebar-bottom { border-top: 1px solid #37584c; padding: 20px; }
 .sidebar-profile { display: flex; gap: 10px; align-items: center; }

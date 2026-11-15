@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -8,296 +8,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/absence-makeup-flow.css">
-    <style>
-        .id-badge {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.78rem;
-            font-weight: 700;
-            padding: 0.25rem 0.55rem;
-            border-radius: 6px;
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-            display: inline-block;
-        }
-        .badge-status-modern {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 0.35rem 0.75rem;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            line-height: 1.25;
-            white-space: nowrap;
-        }
-        .status-pending {
-            background: #fffbeb;
-            color: #b45309;
-            border: 1px solid #fde68a;
-        }
-        .status-approved {
-            background: #ecfdf5;
-            color: #047857;
-            border: 1px solid #a7f3d0;
-        }
-        .status-rejected {
-            background: #fef2f2;
-            color: #b91c1c;
-            border: 1px solid #fecaca;
-        }
-        .status-scheduled {
-            background: #eff6ff;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
-        }
-        .status-completed {
-            background: #ecfdf5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
-        }
-        .status-noslot {
-            background: #fff1f2;
-            color: #be123c;
-            border: 1px solid #fecdd3;
-        }
-        .status-cancelled {
-            background: #f1f5f9;
-            color: #64748b;
-            border: 1px solid #e2e8f0;
-        }
-        .status-missed {
-            background: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-        }
-        .btn-action-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #e2e8f0;
-            background: #ffffff;
-            color: #475569;
-            font-size: 0.85rem;
-            transition: all 0.15s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-            padding: 0;
-            cursor: pointer;
-        }
-        .btn-action-icon:hover {
-            background: #f1f5f9;
-            color: #1e293b;
-            border-color: #cbd5e1;
-            transform: translateY(-1px);
-        }
-        .btn-action-approve {
-            color: #059669;
-            border-color: #a7f3d0;
-            background: #ecfdf5;
-        }
-        .btn-action-approve:hover {
-            background: #10b981;
-            color: #ffffff;
-            border-color: #10b981;
-        }
-        .btn-action-reject {
-            color: #dc2626;
-            border-color: #fecaca;
-            background: #fef2f2;
-        }
-        .btn-action-reject:hover {
-            background: #ef4444;
-            color: #ffffff;
-            border-color: #ef4444;
-        }
-        .btn-action-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 0.28rem 0.65rem;
-            border-radius: 999px;
-            font-size: 0.74rem;
-            font-weight: 600;
-            border: 1px solid transparent;
-            transition: all 0.16s ease;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-        .btn-action-pill-primary {
-            background: #0d9488;
-            color: #ffffff;
-            border-color: #0d9488;
-        }
-        .btn-action-pill-primary:hover {
-            background: #0f766e;
-            color: #ffffff;
-        }
-        .btn-action-pill-warn {
-            background: #fff1f2;
-            color: #be123c;
-            border-color: #fecdd3;
-        }
-        .btn-action-pill-warn:hover {
-            background: #e11d48;
-            color: #ffffff;
-            border-color: #e11d48;
-        }
-        .btn-action-pill-danger {
-            background: #fef2f2;
-            color: #dc2626;
-            border-color: #fecaca;
-        }
-        .btn-action-pill-danger:hover {
-            background: #dc2626;
-            color: #ffffff;
-            border-color: #dc2626;
-        }
-        .reason-box {
-            padding: 0.35rem 0.65rem;
-            border-radius: 8px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            color: #475569;
-            font-size: 0.78rem;
-            line-height: 1.35;
-        }
-        .modal-modern .modal-content {
-            border: 0;
-            border-radius: 18px;
-            overflow: hidden;
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
-        }
-        .modal-modern .modal-header {
-            padding: 1rem 1.35rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-        }
-        .modal-modern .modal-body {
-            padding: 1.25rem 1.35rem;
-        }
-        .modal-modern .modal-footer {
-            padding: 0.75rem 1.35rem 1.15rem;
-            border-top: 1px solid #f1f5f9;
-            background: #fafbfc;
-        }
-        .detail-info-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 0.85rem 1rem;
-        }
-        .detail-section-label {
-            font-size: 0.74rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: #64748b;
-            margin-bottom: 0.35rem;
-        }
-        .toast-container-custom {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1090;
-        }
-        .policy-card {
-            border-left: 4px solid #f59e0b;
-            background: #fffbeb;
-            border-radius: 12px;
-            padding: 1.25rem;
-        }
-        /* Đồng bộ Hero Banner với màu xanh lá của Sidebar */
-        .schedule-hero {
-            background: linear-gradient(135deg, #143c34 0%, #1e5346 55%, #2a6f5d 100%);
-            color: #ffffff;
-            border-radius: 16px;
-            padding: 22px 28px;
-            box-shadow: 0 10px 25px -5px rgba(20, 60, 52, 0.28);
-        }
-        .hero-title {
-            font-size: 1.6rem;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 6px;
-            letter-spacing: -0.02em;
-        }
-        .hero-sub {
-            color: rgba(255, 255, 255, 0.85);
-            font-size: 0.9rem;
-        }
-        .hero-breadcrumb .breadcrumb-item a {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-        }
-        .hero-breadcrumb .breadcrumb-item.active {
-            color: #ffffff;
-            font-weight: 600;
-        }
-        .hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        /* KPI Summary Cards */
-        .kpi-card-modern {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            padding: 1.15rem 1.25rem;
-            box-shadow: 0 2px 6px -2px rgba(20, 60, 52, 0.05);
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .kpi-card-modern:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -8px rgba(20, 60, 52, 0.12);
-            border-color: #cbd5e1;
-        }
-        .kpi-icon-wrap {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-        .kpi-icon-amber { background: #fef3c7; color: #d97706; }
-        .kpi-icon-green { background: #dcfce7; color: #15803d; }
-        .kpi-icon-forest { background: #e3efdf; color: #143c34; }
-        .kpi-icon-teal { background: #ccfbf1; color: #0f766e; }
-
-        .kpi-badge-amber { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
-        .kpi-badge-green { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
-        .kpi-badge-forest { background: #eaf3ec; color: #174638; border: 1px solid #c7dec1; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
-        .kpi-badge-teal { background: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4; font-weight: 600; font-size: 0.72rem; border-radius: 8px; padding: 0.3rem 0.6rem; }
-
-        .kpi-number {
-            font-size: 1.85rem;
-            font-weight: 800;
-            line-height: 1.2;
-            margin-top: 0.35rem;
-        }
-        .text-amber { color: #d97706 !important; }
-        .text-green { color: #15803d !important; }
-        .text-forest { color: #143c34 !important; }
-        .text-teal { color: #0f766e !important; }
-
-        .kpi-caption {
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            color: #64748b;
-            margin-top: 0.25rem;
-        }
-
-    </style>
 <script src="../js/auth.js"></script>
 </head>
 <body class="has-workspace-sidebar">
@@ -324,12 +34,12 @@
                     <nav class="hero-breadcrumb" aria-label="breadcrumb">
                         <ol class="breadcrumb small mb-1">
                             <li class="breadcrumb-item"><a href="../index.html">Trang Chủ</a></li>
-                            <li class="breadcrumb-item active" aria-current="page" id="pageBreadcrumbText">Viết Đơn</li>
+                            <li class="breadcrumb-item active" aria-current="page" id="pageBreadcrumbText">Gửi Đơn & Học Bù</li>
                         </ol>
                     </nav>
                     <h1 class="hero-title">
                         <i class="bi bi-envelope-paper"></i>
-                        <span id="pageTitleText">Viết Đơn</span>
+                        <span id="pageTitleText">Gửi Đơn & Học Bù</span>
                     </h1>
                     <p class="hero-sub mb-0" id="pageHeroDesc">
                         Đơn xin nghỉ và lịch học bù.
@@ -400,17 +110,17 @@
             </div>
         </div>
 
-        <!-- Điều Hướng 3 Tabs Nghiệp Vụ -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <!-- Điều Hướng 3 Tabs Nghiệp Vụ (Đã tích hợp vào thanh Nav-bar bên trái) -->
+        <div class="d-none" id="makeupTabsWrapper">
             <ul class="nav nav-pills nav-pills-custom mb-0" id="makeupTabs">
                 <li class="nav-item">
                     <button class="nav-link active" id="tabBtnAbsence" onclick="switchMainTab('ABSENCE')">
-                        <i class="bi bi-card-checklist"></i> Xử Lý Đơn
+                        <i class="bi bi-card-checklist"></i> Xem Đơn
                     </button>
                 </li>
                 <li class="nav-item" id="tabItemCreate">
                     <button class="nav-link" id="tabBtnCreate" onclick="switchMainTab('CREATE')">
-                        <i class="bi bi-send-plus"></i> Viết Đơn Xin Nghỉ
+                        <i class="bi bi-send-plus"></i> Gửi Đơn
                     </button>
                 </li>
                 <li class="nav-item">
@@ -543,14 +253,14 @@
         <!-- TAB 2: GỬI YÊU CẦU XIN NGHỈ HỌC                                     -->
         <!-- =================================================================== -->
         <div id="sectionCreate" class="d-none">
-            <div class="row g-4 mb-4 align-items-start">
-                <!-- Cột Trái: Biểu Mẫu Tạo Đơn Gọn Gàng -->
-                <div class="col-lg-7">
-                    <div class="absence-form-card">
+            <div class="row g-4 mb-4">
+                <!-- Biểu Mẫu Tạo Đơn Rộng Rãi -->
+                <div class="col-12">
+                    <div class="absence-form-card mb-4">
                         <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
                             <div>
                                 <h5 class="fw-bold text-dark mb-0">
-                                    <i class="bi bi-pencil-square text-success me-2"></i>Viết Đơn Xin Nghỉ
+                                    <i class="bi bi-pencil-square text-success me-2"></i>Gửi Đơn Xin Nghỉ
                                 </h5>
                                 <div class="small text-muted mt-1">Chọn học viên, buổi học và nhập lý do</div>
                             </div>
@@ -569,6 +279,7 @@
                                 <select id="createStudentSelect" class="form-select form-control-modern d-none" onchange="onStudentSelectChanged()">
                                     <option value="">-- Chọn học viên --</option>
                                 </select>
+                                <div id="studentMakeupWarningBox" class="d-none mt-2"></div>
                             </div>
 
                             <!-- Bước 2: Chọn buổi học -->
@@ -615,59 +326,60 @@
                             </div>
                         </form>
                     </div>
-                </div>
 
-                <!-- Cột Phải: Quy Trình & Lưu Ý Ngắn Gọn -->
-                <div class="col-lg-5 d-flex flex-column gap-3">
+                    <!-- Phần Lưu Ý Quan Trọng Xuống Dưới Form -->
                     <div class="side-flow-card">
-                        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-diagram-3 text-success"></i>Quy Trình Xử Lý
-                        </h6>
-                        <div class="flow-timeline">
-                            <div class="flow-step-row">
-                                <div class="flow-step-dot">1</div>
-                                <div class="flow-step-text">
-                                    <strong>Phụ huynh gửi đơn</strong>
-                                    <span>Giáo viên phụ trách & Học vụ nhận thông báo ngay</span>
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-shield-check text-warning"></i>Lưu Ý Quan Trọng
+                            </h6>
+                            <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Quy định học vụ</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center gap-2.5 p-3 rounded-3 bg-light border h-100">
+                                    <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
+                                        <i class="bi bi-clock-fill fs-5"></i>
+                                    </div>
+                                    <div class="small text-secondary">
+                                        Gửi đơn trước giờ học tối thiểu <strong>12 giờ</strong>.
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flow-step-row">
-                                <div class="flow-step-dot">2</div>
-                                <div class="flow-step-text">
-                                    <strong>Giáo viên xét duyệt</strong>
-                                    <span>Xác nhận đồng ý hoặc từ chối kèm phản hồi</span>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center gap-2.5 p-3 rounded-3 bg-light border h-100">
+                                    <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
+                                        <i class="bi bi-arrow-repeat fs-5"></i>
+                                    </div>
+                                    <div class="small text-secondary">
+                                        Mỗi buổi nghỉ có phép được xếp bù tối đa <strong>02 lần</strong>.
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flow-step-row">
-                                <div class="flow-step-dot">3</div>
-                                <div class="flow-step-text">
-                                    <strong>Học vụ xếp lớp học bù</strong>
-                                    <span>Cập nhật tự động lên Thời khóa biểu tuần</span>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center gap-2.5 p-3 rounded-3 bg-light border h-100">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
+                                        <i class="bi bi-calendar-check-fill fs-5"></i>
+                                    </div>
+                                    <div class="small text-secondary">
+                                        Nên hoàn thành ca học bù trong vòng <strong>30 ngày</strong>.
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="side-flow-card">
-                        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-shield-check text-warning"></i>Lưu Ý Quan Trọng
-                        </h6>
-                        <ul class="policy-list-compact">
-                            <li><i class="bi bi-clock-fill"></i><span>Gửi đơn trước giờ học tối thiểu <strong>12 giờ</strong>.</span></li>
-                            <li><i class="bi bi-arrow-repeat"></i><span>Mỗi buổi nghỉ có phép được xếp bù tối đa <strong>02 lần</strong>.</span></li>
-                            <li><i class="bi bi-calendar-check-fill"></i><span>Nên hoàn thành ca học bù trong vòng <strong>30 ngày</strong>.</span></li>
-                        </ul>
-                    </div>
-
-                    <div class="support-strip d-flex flex-wrap align-items-center justify-content-between gap-2">
-                        <div class="fw-bold text-dark"><i class="bi bi-headset text-success me-1"></i>Hỗ trợ nhanh</div>
-                        <div class="d-flex flex-wrap gap-3 text-secondary">
-                            <span><i class="bi bi-telephone text-success me-1"></i><strong>0243.888.999</strong></span>
-                            <span><i class="bi bi-envelope text-success me-1"></i>support@talentcenter.edu.vn</span>
+                        <!-- Dải Hỗ Trợ Nhanh Gọn Gàng -->
+                        <div class="d-flex flex-wrap align-items-center justify-content-between pt-3 mt-3 border-top small text-muted">
+                            <span class="fw-semibold text-dark"><i class="bi bi-headset text-success me-1.5"></i>Hỗ trợ học vụ:</span>
+                            <div class="d-flex flex-wrap gap-4 text-secondary">
+                                <span><i class="bi bi-telephone text-success me-1"></i>Hotline: <strong>0243.888.999</strong></span>
+                                <span><i class="bi bi-envelope text-success me-1"></i>support@talentcenter.edu.vn</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
         </div>
 
         <!-- =================================================================== -->
@@ -804,28 +516,41 @@
     <!-- Modal 1: Duyệt Đơn Nghỉ -->
     <div class="modal fade modal-modern" id="modalApprove" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header modal-header-emerald">
-                    <h6 class="modal-title fw-bold mb-0">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header modal-header-emerald px-4 py-3">
+                    <h6 class="modal-title fw-bold mb-0 text-white">
                         <i class="bi bi-check-circle-fill me-2"></i>Phê Duyệt Đơn Nghỉ
                     </h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="detail-info-card mb-3 d-flex align-items-center justify-content-between">
-                        <span class="small text-secondary">Học viên</span>
-                        <strong id="approveStudentName" class="text-dark">...</strong>
+                <div class="modal-body p-4">
+                    <div class="detail-info-card mb-3" id="approveSummaryCard">
+                        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                            <span class="small text-secondary">Học viên</span>
+                            <div class="text-end">
+                                <strong id="approveStudentName" class="text-dark d-block">...</strong>
+                                <span id="approveMakeupCountBadge" class="badge bg-light text-secondary border rounded-pill px-2 py-0.5 mt-1" style="font-size:0.72rem;">Đã học bù: 0/2 lần</span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between" id="approveClassRow" style="display: none;">
+                            <span class="small text-secondary">Lớp học</span>
+                            <span id="approveClassName" class="text-dark small fw-semibold">...</span>
+                        </div>
+                    </div>
+                    <div id="approveMakeupWarning" class="alert alert-warning py-2 px-3 small rounded-3 border-warning-subtle mb-3 d-none">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-1.5"></i>
+                        Học viên này đã sử dụng <strong>2/2 lần học bù</strong> trong kỳ/khóa học.
                     </div>
                     <div>
-                        <label class="form-label small fw-semibold text-secondary mb-1">Ghi chú (tùy chọn)</label>
-                        <textarea id="approveNoteInput" class="form-control form-control-modern" rows="2"
-                                  placeholder="Ghi chú gửi phụ huynh và điều phối viên..."></textarea>
+                        <label class="form-label small fw-semibold text-secondary mb-1.5">Ghi chú (tùy chọn)</label>
+                        <textarea id="approveNoteInput" class="form-control form-control-modern" rows="3"
+                                  placeholder="Nhập ghi chú..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" onclick="executeApprove()">
-                        <i class="bi bi-check-lg me-1"></i>Duyệt Đơn
+                <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="executeApprove()">
+                        <i class="bi bi-check2-circle me-1.5"></i>Duyệt Đơn
                     </button>
                 </div>
             </div>
@@ -835,33 +560,39 @@
     <!-- Modal 3: Từ Chối Đơn Nghỉ -->
     <div class="modal fade modal-modern" id="modalReject" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header modal-header-rose">
-                    <h6 class="modal-title fw-bold mb-0">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header modal-header-rose px-4 py-3">
+                    <h6 class="modal-title fw-bold mb-0 text-white">
                         <i class="bi bi-x-circle-fill me-2"></i>Từ Chối Đơn Nghỉ
                     </h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="detail-info-card mb-3 d-flex align-items-center justify-content-between">
-                        <span class="small text-secondary">Học viên</span>
-                        <strong id="rejectStudentName" class="text-dark">...</strong>
+                <div class="modal-body p-4">
+                    <div class="detail-info-card mb-3" id="rejectSummaryCard">
+                        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                            <span class="small text-secondary">Học viên</span>
+                            <strong id="rejectStudentName" class="text-dark">...</strong>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between" id="rejectClassRow" style="display: none;">
+                            <span class="small text-secondary">Lớp học</span>
+                            <span id="rejectClassName" class="text-dark small fw-semibold">...</span>
+                        </div>
                     </div>
                     <div>
-                        <label class="form-label small fw-semibold text-secondary mb-1">
+                        <label class="form-label small fw-semibold text-secondary mb-1.5">
                             Lý do từ chối <span class="text-danger">*</span>
                         </label>
                         <textarea id="rejectNoteInput" class="form-control form-control-modern" rows="3"
                                   placeholder="Nhập lý do từ chối..." required></textarea>
-                        <div class="form-text small text-danger" id="rejectNoteError" style="display: none;">
+                        <div class="form-text small text-danger mt-1.5" id="rejectNoteError" style="display: none;">
                             Vui lòng nhập lý do từ chối.
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-rose-solid rounded-pill px-4 fw-semibold" onclick="executeReject()">
-                        <i class="bi bi-x-lg me-1"></i>Từ Chối
+                <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-rose-solid rounded-pill px-4 fw-semibold shadow-sm" onclick="executeReject()">
+                        <i class="bi bi-x-circle me-1.5"></i>Từ Chối
                     </button>
                 </div>
             </div>
@@ -949,25 +680,25 @@
     <!-- Modal 6: Xác Nhận / Ghi Chú Thao Tác -->
     <div class="modal fade modal-modern" id="modalResolveNote" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header modal-header-emerald" id="resolveModalHeader">
-                    <h6 class="modal-title fw-bold mb-0" id="resolveModalTitle">Xác Nhận Thao Tác</h6>
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header modal-header-emerald px-4 py-3" id="resolveModalHeader">
+                    <h6 class="modal-title fw-bold mb-0 text-white" id="resolveModalTitle">Xác Nhận Thao Tác</h6>
                     <button type="button" class="btn-close btn-close-white" id="resolveModalCloseBtn" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="detail-info-card mb-3 small text-dark" id="resolveModalSummary">...</div>
+                <div class="modal-body p-4">
+                    <div class="detail-info-card mb-3" id="resolveModalSummary">...</div>
                     <div id="resolveNoteGroup">
-                        <label class="form-label small fw-semibold text-secondary mb-1" id="resolveNoteLabel">Ghi chú</label>
-                        <textarea id="resolveNoteInput" class="form-control form-control-modern" rows="3"
+                        <label class="form-label small fw-semibold text-secondary mb-1.5" id="resolveNoteLabel">Ghi chú</label>
+                        <textarea id="resolveNoteInput" class="form-control form-control-modern" rows="4"
                                   placeholder="Nhập nội dung..."></textarea>
-                        <div class="form-text small text-danger" id="resolveNoteError" style="display: none;">
-                            Vui lòng nhập đầy đủ thông tin.
+                        <div class="form-text small text-danger mt-1.5" id="resolveNoteError" style="display: none;">
+                            <i class="bi bi-exclamation-circle-fill me-1"></i>Vui lòng nhập nội dung thông báo.
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-warning rounded-pill px-4 fw-semibold" id="btnConfirmResolve" onclick="executeResolveNote()">
+                <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-warning rounded-pill px-4 fw-semibold shadow-sm" id="btnConfirmResolve" onclick="executeResolveNote()">
                         Xác Nhận
                     </button>
                 </div>
@@ -982,1660 +713,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/api.js"></script>
 
-    <script>
-        // Load Navbar và Footer dùng chung
-        updateNavbarUser();
-        fetch('../components/footer.html').then(r => r.text()).then(h => document.getElementById('footer-container').innerHTML = h);
-
-        // Biến lưu trạng thái toàn cục
-        let currentAbsenceList = [];
-        let currentMakeupList = [];
-        let currentStudents = [];
-        let currentUser = null;
-
-        let absencePage = 1;
-        let absencePageSize = 5;
-        let makeupPage = 1;
-        let makeupPageSize = 5;
-
-        let activeReviewId = null;
-        let activeMakeupId = null;
-        let activeResolveConfig = null;
-
-        // Bootstrap Modals
-        let modalApproveObj = null;
-        let modalRejectObj = null;
-        let modalScheduleObj = null;
-        let modalDetailObj = null;
-        let modalResolveObj = null;
-
-        function formatCleanNote(text) {
-            if (!text) return '';
-            let cleaned = String(text).trim();
-            if (/^Tự động tạo ca học bù/i.test(cleaned)) return '';
-            cleaned = cleaned
-                .replace(/^\[Lần bù:\s*[^\]]+\]\s*/i, '')
-                .replace(/^(?:CHƯA CÓ LỚP PHÙ HỢP|HỦY|CHUYỂN KỲ SAU):\s*/i, '')
-                .replace(/^Xếp lịch bù linh hoạt\s*\([^)]*\):\s*/i, '')
-                .trim();
-            return cleaned;
-        }
-
-        function getAbsenceStatusBadgeHtml(status) {
-            if (status === 'PENDING') return '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Duyệt</span>';
-            if (status === 'APPROVED') return '<span class="badge-status-modern status-approved"><i class="bi bi-check-circle-fill"></i>Đã Duyệt</span>';
-            if (status === 'REJECTED') return '<span class="badge-status-modern status-rejected"><i class="bi bi-x-circle-fill"></i>Từ Chối</span>';
-            return `<span class="badge bg-secondary">${escapeHtml(status || '')}</span>`;
-        }
-
-        function getMakeupStatusBadgeHtml(status, retryCount, maxRetries) {
-            const r = retryCount || 0;
-            const m = maxRetries || 2;
-            if (status === 'PENDING') return '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Xếp Lớp</span>';
-            if (status === 'SCHEDULED') return `<span class="badge-status-modern status-scheduled"><i class="bi bi-calendar2-check"></i>Đã Xếp Lớp (${r}/${m})</span>`;
-            if (status === 'NO_SLOT') return '<span class="badge-status-modern status-noslot"><i class="bi bi-exclamation-triangle"></i>Chưa Có Lớp</span>';
-            if (status === 'MISSED') return `<span class="badge-status-modern status-missed"><i class="bi bi-person-x-fill"></i>Vắng Bù (${r}/${m})</span>`;
-            if (status === 'COMPLETED') return '<span class="badge-status-modern status-completed"><i class="bi bi-check2-all"></i>Hoàn Thành</span>';
-            if (status === 'CANCELLED') return '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
-            return `<span class="badge bg-light text-secondary border">${escapeHtml(status || 'Chưa có')}</span>`;
-        }
-
-        // =========================================================================
-        // KHỞI TẠO TRANG
-        // =========================================================================
-        window.addEventListener('DOMContentLoaded', async () => {
-            currentUser = getCurrentUser();
-            initRoleDisplay();
-
-            modalApproveObj = new bootstrap.Modal(document.getElementById('modalApprove'));
-            modalRejectObj = new bootstrap.Modal(document.getElementById('modalReject'));
-            modalScheduleObj = new bootstrap.Modal(document.getElementById('modalSchedule'));
-            modalDetailObj = new bootstrap.Modal(document.getElementById('modalDetail'));
-            modalResolveObj = new bootstrap.Modal(document.getElementById('modalResolveNote'));
-
-            await reloadData();
-            await handleDeepLinkParams();
-        });
-
-        async function handleDeepLinkParams() {
-            const params = new URLSearchParams(window.location.search);
-            const tab = params.get('tab');
-            const absenceId = params.get('absenceId');
-            const makeupId = params.get('makeupId');
-
-            if (tab === 'MAKEUP') {
-                switchMainTab('MAKEUP');
-            } else if (tab === 'CREATE' && currentUser && currentUser.role === 'PARENT') {
-                switchMainTab('CREATE');
-            } else if (tab === 'ABSENCE') {
-                switchMainTab('ABSENCE');
-            }
-
-            if (absenceId) {
-                await viewAbsenceDetail(Number(absenceId));
-            } else if (makeupId) {
-                await viewMakeupDetail(Number(makeupId));
-            }
-        }
-
-        function initRoleDisplay() {
-            const role = currentUser ? (currentUser.role || 'USER') : 'USER';
-            const isParent = role === 'PARENT';
-
-            // Phân quyền hiển thị: Parent -> "Viết đơn", Teacher / Staff / Admin -> "Xem đơn"
-            const pageTitleEl = document.getElementById('pageTitleText');
-            const breadcrumbEl = document.getElementById('pageBreadcrumbText');
-            const heroDescEl = document.getElementById('pageHeroDesc');
-            const tabItemCreate = document.getElementById('tabItemCreate');
-            const createBtnWrapper = document.getElementById('createBtnWrapper');
-            const statsRow = document.getElementById('statsRow');
-            const makeupDirWrapper = document.getElementById('makeupDirWrapper');
-            if (statsRow) {
-                statsRow.classList.toggle('d-none', role === 'PARENT');
-            }
-            if (makeupDirWrapper) {
-                makeupDirWrapper.classList.toggle('d-none', role !== 'TEACHER');
-            }
-
-            if (isParent) {
-                if (pageTitleEl) pageTitleEl.textContent = 'Viết Đơn';
-                if (breadcrumbEl) breadcrumbEl.textContent = 'Viết Đơn';
-                if (heroDescEl) heroDescEl.textContent = 'Gửi đơn xin nghỉ và theo dõi lịch học bù.';
-                if (tabItemCreate) tabItemCreate.classList.remove('d-none');
-                if (createBtnWrapper) createBtnWrapper.classList.remove('d-none');
-            } else {
-                if (pageTitleEl) pageTitleEl.textContent = 'Xem Đơn';
-                if (breadcrumbEl) breadcrumbEl.textContent = 'Xem Đơn';
-                if (heroDescEl) heroDescEl.textContent = 'Xử lý đơn xin nghỉ và điều phối lịch học bù.';
-                // Ẩn tab Viết đơn và nút Tạo đơn mới cho Teacher, Staff, Admin
-                if (tabItemCreate) tabItemCreate.classList.add('d-none');
-                if (createBtnWrapper) createBtnWrapper.classList.add('d-none');
-            }
-
-            const badge = document.getElementById('userRoleBadge');
-            if (!badge) return;
-            if (!currentUser) {
-                badge.innerText = 'Chưa Đăng Nhập';
-                badge.className = 'badge bg-light text-dark px-3 py-2 rounded-pill fw-bold shadow-sm';
-                return;
-            }
-
-            let roleName = 'Người Dùng';
-            if (role === 'PARENT') roleName = 'Phụ huynh';
-            else if (role === 'TEACHER') roleName = 'Giáo viên';
-            else if (role === 'ADMIN' || role === 'BRANCH_MANAGER') roleName = 'Quản trị';
-            else if (role === 'STAFF') roleName = 'Giáo vụ';
-
-            const displayName = currentUser.fullName || currentUser.username || '';
-            badge.innerHTML = `<i class="bi bi-person-fill me-1"></i>${roleName}: ${escapeHtml(displayName)}`;
-            badge.className = 'badge px-3 py-2 rounded-pill fw-bold shadow-sm';
-            badge.style.background = '#e3efdf';
-            badge.style.color = '#143c34';
-            badge.style.border = '1px solid #c7dec1';
-        }
-
-        async function reloadData() {
-            await Promise.all([
-                loadAbsenceRequests(),
-                loadMakeupRequests(),
-                loadSelectableStudents()
-            ]);
-            updateKpiStats();
-        }
-
-        // =========================================================================
-        // CHUYỂN ĐỔI TAB GIAO DIỆN
-        // =========================================================================
-        function switchMainTab(tab) {
-            const secAbsence = document.getElementById('sectionAbsence');
-            const secCreate = document.getElementById('sectionCreate');
-            const secMakeup = document.getElementById('sectionMakeup');
-
-            const btnAbsence = document.getElementById('tabBtnAbsence');
-            const btnCreate = document.getElementById('tabBtnCreate');
-            const btnMakeup = document.getElementById('tabBtnMakeup');
-
-            btnAbsence.classList.remove('active');
-            btnCreate.classList.remove('active');
-            btnMakeup.classList.remove('active');
-
-            secAbsence.classList.add('d-none');
-            secCreate.classList.add('d-none');
-            secMakeup.classList.add('d-none');
-
-            if (tab === 'ABSENCE') {
-                btnAbsence.classList.add('active');
-                secAbsence.classList.remove('d-none');
-                renderAbsenceTable();
-                updateKpiStats();
-            } else if (tab === 'CREATE') {
-                btnCreate.classList.add('active');
-                secCreate.classList.remove('d-none');
-            } else if (tab === 'MAKEUP') {
-                btnMakeup.classList.add('active');
-                secMakeup.classList.remove('d-none');
-                renderMakeupTable();
-                updateKpiStats();
-            }
-        }
-
-        // =========================================================================
-        // CẬP NHẬT THỐNG KÊ (KPIS)
-        // =========================================================================
-                function updateKpiStats() {
-            const pendingAbsence = (currentAbsenceList || []).filter(a => a.status === 'PENDING').length;
-            const approvedAbsence = (currentAbsenceList || []).filter(a => a.status === 'APPROVED').length;
-            const pendingMakeup = (currentMakeupList || []).filter(m => m.status === 'PENDING' || m.status === 'NO_SLOT').length;
-            const completedMakeup = (currentMakeupList || []).filter(m => m.status === 'COMPLETED').length;
-
-            const elPending = document.getElementById('statPendingCount');
-            if (elPending) elPending.innerText = pendingAbsence;
-            const elApproved = document.getElementById('statApprovedCount');
-            if (elApproved) elApproved.innerText = approvedAbsence;
-            const elMakeupPending = document.getElementById('statMakeupPendingCount');
-            if (elMakeupPending) elMakeupPending.innerText = pendingMakeup;
-            const elMakeupCompleted = document.getElementById('statMakeupCompletedCount');
-            if (elMakeupCompleted) elMakeupCompleted.innerText = completedMakeup;
-        }
-
-        function sortAbsenceList(list) {
-            return [...(list || [])].sort((a, b) => {
-                const pa = a.status === 'PENDING' ? 0 : 1;
-                const pb = b.status === 'PENDING' ? 0 : 1;
-                if (pa !== pb) return pa - pb;
-                const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                if (ta !== tb) return tb - ta;
-                return (b.id || 0) - (a.id || 0);
-            });
-        }
-
-        function populateAbsenceFilterOptions() {
-            const stuSel = document.getElementById('filterAbsenceStudent');
-            const clsSel = document.getElementById('filterAbsenceClass');
-            if (stuSel) {
-                const prev = stuSel.value;
-                const names = Array.from(new Set((currentAbsenceList || []).map(a => a.studentName).filter(Boolean)))
-                    .sort((a, b) => a.localeCompare(b, 'vi'));
-                stuSel.innerHTML = '<option value="">Tất Cả Học Viên</option>'
-                    + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
-                if (prev && names.includes(prev)) stuSel.value = prev;
-            }
-            if (clsSel) {
-                const prev = clsSel.value;
-                const classes = Array.from(new Set((currentAbsenceList || []).map(a => a.className).filter(Boolean)))
-                    .sort((a, b) => a.localeCompare(b, 'vi'));
-                clsSel.innerHTML = '<option value="">Tất Cả Lớp</option>'
-                    + classes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-                if (prev && classes.includes(prev)) clsSel.value = prev;
-            }
-        }
-
-        function applyAbsenceFilter() {
-            renderAbsenceTable(true);
-        }
-
-        function resetAbsenceFilter() {
-            ['filterAbsenceStatus', 'filterAbsenceStudent', 'filterAbsenceClass',
-             'filterAbsenceFromDate', 'filterAbsenceToDate', 'searchAbsenceInput'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            renderAbsenceTable(true);
-        }
-
-        // =========================================================================
-        // LUỒNG 1 & 2: QUẢN LÝ ĐƠN XIN NGHỈ
-        // =========================================================================
-        async function loadAbsenceRequests() {
-            try {
-                const data = await callApi('/api/attendance-makeup/absence-requests');
-                currentAbsenceList = sortAbsenceList(data || []);
-                populateAbsenceFilterOptions();
-                renderAbsenceTable();
-            } catch (err) {
-                console.error("Lỗi khi tải đơn xin nghỉ:", err);
-                document.getElementById('absenceTableBody').innerHTML = `
-                    <tr><td colspan="7" class="text-center text-danger py-4">Lỗi tải dữ liệu: ${err.message}</td></tr>
-                `;
-            }
-        }
-
-        function onAbsencePageSizeChange() {
-            const sel = document.getElementById('absencePageSizeSelect');
-            absencePageSize = Number(sel ? sel.value : 5) || 5;
-            absencePage = 1;
-            renderAbsenceTable(false);
-        }
-
-        function goToAbsencePage(page) {
-            absencePage = page;
-            renderAbsenceTable(false);
-        }
-
-        function renderAbsenceTable(resetPage = false) {
-            if (resetPage) absencePage = 1;
-            const tbody = document.getElementById('absenceTableBody');
-            const paginationWrapper = document.getElementById('absencePaginationWrapper');
-            const paginationInfo = document.getElementById('absencePaginationInfo');
-            const paginationList = document.getElementById('absencePaginationList');
-            const statusFilter = document.getElementById('filterAbsenceStatus').value;
-            const studentFilter = document.getElementById('filterAbsenceStudent')?.value || '';
-            const classFilter = document.getElementById('filterAbsenceClass')?.value || '';
-            const fromDate = document.getElementById('filterAbsenceFromDate')?.value || '';
-            const toDate = document.getElementById('filterAbsenceToDate')?.value || '';
-            const searchKeyword = (document.getElementById('searchAbsenceInput').value || '').trim().toLowerCase();
-
-            let filtered = sortAbsenceList(currentAbsenceList);
-            if (statusFilter) {
-                filtered = filtered.filter(a => a.status === statusFilter);
-            }
-            if (studentFilter) {
-                filtered = filtered.filter(a => a.studentName === studentFilter);
-            }
-            if (classFilter) {
-                filtered = filtered.filter(a => a.className === classFilter);
-            }
-            if (fromDate) {
-                filtered = filtered.filter(a => a.lessonDate && a.lessonDate >= fromDate);
-            }
-            if (toDate) {
-                filtered = filtered.filter(a => a.lessonDate && a.lessonDate <= toDate);
-            }
-            if (searchKeyword) {
-                filtered = filtered.filter(a =>
-                    (a.studentName && a.studentName.toLowerCase().includes(searchKeyword)) ||
-                    (a.className && a.className.toLowerCase().includes(searchKeyword)) ||
-                    (a.lessonTitle && a.lessonTitle.toLowerCase().includes(searchKeyword)) ||
-                    (a.reason && a.reason.toLowerCase().includes(searchKeyword)) ||
-                    (a.id && a.id.toString().includes(searchKeyword))
-                );
-            }
-
-            document.getElementById('absenceCountBadge').innerText = `${filtered.length} đơn`;
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-5">
-                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                            Không có đơn xin nghỉ học nào phù hợp với bộ lọc
-                        </td>
-                    </tr>
-                `;
-                if (paginationWrapper) paginationWrapper.classList.add('d-none');
-                return;
-            }
-
-            const totalItems = filtered.length;
-            const totalPages = Math.max(1, Math.ceil(totalItems / absencePageSize));
-            if (absencePage > totalPages) absencePage = totalPages;
-            if (absencePage < 1) absencePage = 1;
-
-            const startIdx = (absencePage - 1) * absencePageSize;
-            const endIdx = Math.min(startIdx + absencePageSize, totalItems);
-            const pagedItems = filtered.slice(startIdx, endIdx);
-
-            // Giáo viên chỉ được duyệt đơn của buổi học do mình phụ trách (backend cũng kiểm tra lại)
-            const canReviewItem = (item) => {
-                if (!currentUser) return false;
-                if (currentUser.role === 'TEACHER') {
-                    const myId = currentUser.userId ?? currentUser.id;
-                    return myId == null || item.teacherId == null || Number(myId) === Number(item.teacherId);
-                }
-                return ['ADMIN', 'BRANCH_MANAGER', 'STAFF'].includes(currentUser.role);
-            };
-
-            const isCoordinator = currentUser && ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(currentUser.role);
-            const isCreator = currentUser && currentUser.role === 'PARENT';
-
-            tbody.innerHTML = pagedItems.map(item => {
-                const statusBadge = getAbsenceStatusBadgeHtml(item.status);
-                const cleanMakeupNote = formatCleanNote(item.makeupNote);
-
-                let makeupBadge = '<span class="text-muted small">—</span>';
-                if (item.makeupStatus === 'PENDING') {
-                    makeupBadge = `<span class="badge-status-modern status-pending" title="${escapeHtml(cleanMakeupNote || 'Chờ xếp lớp')}"><i class="bi bi-clock-history"></i>Chờ xếp lớp</span>`;
-                } else if (item.makeupStatus === 'SCHEDULED') {
-                    makeupBadge = `<span class="badge-status-modern status-scheduled" title="${escapeHtml(cleanMakeupNote || ('Đã xếp: ' + (item.makeupTargetDate || '')))}"><i class="bi bi-calendar-check"></i>${item.makeupTargetDate || 'Đã xếp'}</span>`;
-                } else if (item.makeupStatus === 'COMPLETED') {
-                    makeupBadge = `<span class="badge-status-modern status-completed" title="${escapeHtml(cleanMakeupNote || 'Hoàn thành')}"><i class="bi bi-check2-all"></i>Đã học bù</span>`;
-                } else if (item.makeupStatus === 'NO_SLOT') {
-                    makeupBadge = `<span class="badge-status-modern status-noslot" title="${escapeHtml(cleanMakeupNote || 'Chưa có lớp phù hợp')}"><i class="bi bi-exclamation-triangle"></i>Chưa có lớp</span>`;
-                } else if (item.makeupStatus === 'MISSED') {
-                    const retryStr = item.makeupRetryCount ? ` (${item.makeupRetryCount}/${item.makeupMaxRetries || 2})` : '';
-                    makeupBadge = `<span class="badge-status-modern status-missed" title="${escapeHtml(cleanMakeupNote || 'Vắng mặt ca bù')}"><i class="bi bi-person-x-fill"></i>Vắng bù${retryStr}</span>`;
-                } else if (item.makeupStatus === 'CANCELLED') {
-                    const isLocked = (item.makeupRetryCount >= 2) || (cleanMakeupNote && cleanMakeupNote.includes('KHÓA'));
-                    makeupBadge = isLocked
-                        ? `<span class="badge-status-modern status-cancelled" title="${escapeHtml(cleanMakeupNote || 'Quá 2 lần học bù')}"><i class="bi bi-lock-fill"></i>Khóa bù</span>`
-                        : `<span class="badge-status-modern status-cancelled" title="${escapeHtml(cleanMakeupNote || 'Đã hủy')}"><i class="bi bi-x-circle"></i>Đã hủy</span>`;
-                }
-
-                const lessonDateStr = item.lessonDate || '';
-                const timeSlotStr = item.timeSlot || '';
-
-                let actionButtons = `
-                    <button class="btn-action-icon" title="Chi tiết" onclick="viewAbsenceDetail(${item.id})">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                `;
-
-                if (canReviewItem(item) && item.status === 'PENDING') {
-                    actionButtons += `
-                        <button class="btn-action-icon btn-action-approve" title="Duyệt" onclick="openApproveModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
-                            <i class="bi bi-check-lg"></i>
-                        </button>
-                        <button class="btn-action-icon btn-action-reject" title="Từ chối" onclick="openRejectModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    `;
-                }
-
-                if ((isCreator || isCoordinator) && item.status === 'PENDING') {
-                    actionButtons += `
-                        <button class="btn-action-pill btn-action-pill-danger" title="Hủy đơn xin nghỉ" onclick="confirmCancelAbsence(${item.id})">
-                            <i class="bi bi-trash3"></i>Hủy
-                        </button>
-                    `;
-                }
-
-                if (isCoordinator && item.status === 'APPROVED' && item.makeupRegistrationId) {
-                    const mStatus = item.makeupStatus;
-                    const canScheduleHere = mStatus === 'PENDING' || mStatus === 'NO_SLOT' || (mStatus === 'MISSED' && (item.makeupRetryCount || 0) < (item.makeupMaxRetries || 2));
-                    if (canScheduleHere) {
-                        actionButtons += `
-                            <button class="btn-action-pill btn-action-pill-primary" title="Xếp lớp học bù" onclick="openScheduleModal(${item.makeupRegistrationId})">
-                                <i class="bi bi-calendar-plus"></i>Xếp lớp
-                            </button>
-                        `;
-                    }
-                    if (mStatus === 'PENDING') {
-                        actionButtons += `
-                            <button class="btn-action-pill btn-action-pill-warn" title="Báo chưa có lớp" onclick="markNoSlot(${item.makeupRegistrationId})">
-                                <i class="bi bi-exclamation-triangle"></i>Chưa có lớp
-                            </button>
-                        `;
-                    }
-                }
-
-                return `
-                    <tr>
-                        <td class="text-center"><span class="id-badge">#${item.id}</span></td>
-                        <td>
-                            <div class="tbl-cell-title">${escapeHtml(item.studentName || 'Học viên')}</div>
-                        </td>
-                        <td>
-                            <div class="tbl-cell-title text-truncate" style="max-width: 290px;" title="${escapeHtml(item.lessonTitle || (`Buổi ${item.sessionNumber || ''}`))}">
-                                ${escapeHtml(item.lessonTitle || (`Buổi ${item.sessionNumber || ''}`))}
-                            </div>
-                            <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
-                                <span class="tbl-date-pill">${lessonDateStr}</span>
-                                <span>${timeSlotStr}</span>
-                                ${item.className ? `<span>&bull; ${escapeHtml(item.className)}</span>` : ''}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="reason-text-clamp" title="${escapeHtml(item.reason || '')}">
-                                ${escapeHtml(item.reason || '—')}
-                            </div>
-                        </td>
-                        <td class="text-center">${statusBadge}</td>
-                        <td class="text-center">${makeupBadge}</td>
-                        <td class="text-end text-nowrap">
-                            <div class="action-group-compact">
-                                ${actionButtons}
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            if (paginationWrapper) {
-                paginationWrapper.classList.remove('d-none');
-                if (paginationInfo) {
-                    paginationInfo.textContent = `Hiển thị ${startIdx + 1} - ${endIdx} / ${totalItems} đơn`;
-                }
-                if (paginationList) {
-                    let html = `
-                        <li class="page-item ${absencePage <= 1 ? 'disabled' : ''}">
-                            <button class="page-link rounded-2" type="button" onclick="goToAbsencePage(${absencePage - 1})">&laquo; Trước</button>
-                        </li>
-                    `;
-                    for (let p = 1; p <= totalPages; p++) {
-                        html += `
-                            <li class="page-item ${p === absencePage ? 'active' : ''}">
-                                <button class="page-link rounded-2" type="button" onclick="goToAbsencePage(${p})">${p}</button>
-                            </li>
-                        `;
-                    }
-                    html += `
-                        <li class="page-item ${absencePage >= totalPages ? 'disabled' : ''}">
-                            <button class="page-link rounded-2" type="button" onclick="goToAbsencePage(${absencePage + 1})">Sau &raquo;</button>
-                        </li>
-                    `;
-                    paginationList.innerHTML = html;
-                }
-            }
-        }
-
-        // =========================================================================
-        // HÀNH ĐỘNG DUYỆT / TỪ CHỐI
-        // =========================================================================
-        function openApproveModal(id, studentName) {
-            activeReviewId = id;
-            document.getElementById('approveStudentName').innerText = studentName;
-            document.getElementById('approveNoteInput').value = '';
-            modalApproveObj.show();
-        }
-
-        async function executeApprove() {
-            if (!activeReviewId) return;
-            const note = document.getElementById('approveNoteInput').value;
-            try {
-                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/review`, 'PATCH', {
-                    decision: 'APPROVED',
-                    reviewNote: note
-                });
-                modalApproveObj.hide();
-                showToast('success', 'Đã phê duyệt đơn nghỉ học.');
-                await reloadData();
-                if (window.refreshNotifications) window.refreshNotifications();
-            } catch (err) {
-                showToast('danger', 'Lỗi phê duyệt: ' + err.message);
-            }
-        }
-
-        function openRejectModal(id, studentName) {
-            activeReviewId = id;
-            document.getElementById('rejectStudentName').innerText = studentName;
-            document.getElementById('rejectNoteInput').value = '';
-            document.getElementById('rejectNoteError').style.display = 'none';
-            modalRejectObj.show();
-        }
-
-        async function executeReject() {
-            if (!activeReviewId) return;
-            const note = document.getElementById('rejectNoteInput').value.trim();
-            if (!note) {
-                document.getElementById('rejectNoteError').style.display = 'block';
-                return;
-            }
-
-            try {
-                await callApi(`/api/attendance-makeup/absence-requests/${activeReviewId}/review`, 'PATCH', {
-                    decision: 'REJECTED',
-                    reviewNote: note
-                });
-                modalRejectObj.hide();
-                showToast('warning', 'Đã từ chối đơn xin nghỉ.');
-                await reloadData();
-                if (window.refreshNotifications) window.refreshNotifications();
-            } catch (err) {
-                showToast('danger', 'Lỗi từ chối: ' + err.message);
-            }
-        }
-
-        // =========================================================================
-        // FORM TẠO ĐƠN XIN NGHỈ (TAB 2)
-        // =========================================================================
-        function formatPickDate(dateStr) {
-            if (!dateStr) return { dow: '--', day: '--' };
-            const d = new Date(dateStr + 'T00:00:00');
-            if (isNaN(d.getTime())) return { dow: '', day: dateStr };
-            const dowNames = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            return { dow: dowNames[d.getDay()], day: `${dd}/${mm}` };
-        }
-
-        function getInitials(name) {
-            if (!name) return 'HV';
-            const parts = String(name).trim().split(/\s+/);
-            if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        }
-
-        function selectStudentCard(studentId) {
-            const select = document.getElementById('createStudentSelect');
-            if (select) select.value = String(studentId);
-            document.querySelectorAll('.student-pick-card').forEach(btn => {
-                btn.classList.toggle('active', Number(btn.dataset.studentId) === Number(studentId));
-            });
-            onStudentSelectChanged();
-        }
-
-        function selectLessonCard(lessonId) {
-            const lessonSelect = document.getElementById('createLessonSelect');
-            if (lessonSelect) lessonSelect.value = String(lessonId);
-            document.querySelectorAll('.lesson-pick-card').forEach(btn => {
-                btn.classList.toggle('active', Number(btn.dataset.lessonId) === Number(lessonId));
-            });
-        }
-
-        function selectReasonChip(btn, text) {
-            document.querySelectorAll('.reason-chip').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const input = document.getElementById('createReasonInput');
-            if (!input) return;
-            if (text) {
-                input.value = text;
-            } else {
-                input.value = '';
-            }
-            updateReasonCharCount();
-            input.focus();
-        }
-
-        function updateReasonCharCount() {
-            const input = document.getElementById('createReasonInput');
-            const counter = document.getElementById('reasonCharCount');
-            if (input && counter) {
-                counter.textContent = `${input.value.length} / 300`;
-            }
-        }
-
-        async function loadSelectableStudents() {
-            try {
-                const data = await callApi('/api/attendance-makeup/students');
-                currentStudents = data || [];
-
-                const select = document.getElementById('createStudentSelect');
-                const grid = document.getElementById('studentPickerGrid');
-                if (currentStudents.length === 0) {
-                    select.innerHTML = '<option value="">Không có học viên nào</option>';
-                    if (grid) grid.innerHTML = '<div class="lesson-empty-box w-100">Chưa có học viên liên kết</div>';
-                    return;
-                }
-
-                select.innerHTML = '<option value="">-- Chọn học viên --</option>' +
-                    currentStudents.map(s => `
-                        <option value="${s.id}">
-                            ${escapeHtml(s.fullName)} (${escapeHtml(s.currentClassName || 'Đào tạo năng khiếu')})
-                        </option>
-                    `).join('');
-
-                if (grid) {
-                    if (currentStudents.length > 6) {
-                        grid.classList.add('d-none');
-                        select.classList.remove('d-none');
-                    } else {
-                        grid.classList.remove('d-none');
-                        select.classList.add('d-none');
-                        grid.innerHTML = currentStudents.map(s => `
-                            <button type="button" class="student-pick-card" data-student-id="${s.id}" onclick="selectStudentCard(${s.id})">
-                                <div class="student-pick-avatar">${escapeHtml(getInitials(s.fullName))}</div>
-                                <div class="min-w-0 flex-grow-1">
-                                    <div class="student-pick-name">${escapeHtml(s.fullName)}</div>
-                                    <div class="student-pick-class">${escapeHtml(s.currentClassName || 'Học viên')}</div>
-                                </div>
-                            </button>
-                        `).join('');
-                    }
-                }
-
-                // Nếu có ít nhất 1 học viên (Phụ huynh) -> tự chọn học viên đầu tiên
-                if (currentUser && currentUser.role === 'PARENT' && currentStudents.length >= 1) {
-                    selectStudentCard(currentStudents[0].id);
-                }
-            } catch (err) {
-                console.error("Lỗi khi tải học viên:", err);
-            }
-        }
-
-        async function onStudentSelectChanged() {
-            const studentId = document.getElementById('createStudentSelect').value;
-            const lessonSelect = document.getElementById('createLessonSelect');
-            const lessonList = document.getElementById('lessonPickerList');
-            const lessonCountEl = document.getElementById('lessonPickerCount');
-
-            if (!studentId) {
-                lessonSelect.innerHTML = '<option value="">-- Chọn buổi học --</option>';
-                lessonSelect.disabled = true;
-                if (lessonCountEl) lessonCountEl.textContent = '';
-                if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box">Chọn học viên ở bước 1 để hiển thị lịch học</div>';
-                return;
-            }
-
-            lessonSelect.innerHTML = '<option value="">Đang tải...</option>';
-            lessonSelect.disabled = true;
-            if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box"><span class="spinner-border spinner-border-sm me-2 text-success"></span>Đang tải các buổi học...</div>';
-
-            try {
-                const lessons = await callApi(`/api/attendance-makeup/students/${studentId}/lessons`);
-                if (!lessons || lessons.length === 0) {
-                    lessonSelect.innerHTML = '<option value="">Chưa có buổi học nào</option>';
-                    lessonSelect.disabled = true;
-                    if (lessonCountEl) lessonCountEl.textContent = '0 buổi';
-                    if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box">Học viên chưa có buổi học sắp tới</div>';
-                    return;
-                }
-
-                lessonSelect.innerHTML = '<option value="">-- Chọn buổi học --</option>' +
-                    lessons.map(l => {
-                        const dateStr = l.lessonDate || '';
-                        const timeStr = l.timeSlot || `${l.startTime} - ${l.endTime}`;
-                        const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
-                        const roomStr = l.roomName ? ` • ${l.roomName}` : '';
-                        return `<option value="${l.id}">${dateStr} (${timeStr}) • ${titleStr} - ${l.className || ''}${roomStr}</option>`;
-                    }).join('');
-                lessonSelect.disabled = false;
-
-                if (lessonCountEl) lessonCountEl.textContent = `${lessons.length} buổi`;
-                if (lessonList) {
-                    lessonList.innerHTML = lessons.map(l => {
-                        const dt = formatPickDate(l.lessonDate);
-                        const timeStr = l.timeSlot || `${l.startTime || ''} - ${l.endTime || ''}`;
-                        const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
-                        const roomStr = l.roomName || 'Phòng học';
-                        return `
-                            <button type="button" class="lesson-pick-card" data-lesson-id="${l.id}" onclick="selectLessonCard(${l.id})">
-                                <div class="lesson-pick-datebox">
-                                    <div class="lesson-pick-dow">${escapeHtml(dt.dow)}</div>
-                                    <div class="lesson-pick-day">${escapeHtml(dt.day)}</div>
-                                </div>
-                                <div class="lesson-pick-info">
-                                    <div class="lesson-pick-title">${escapeHtml(titleStr)}</div>
-                                    <div class="lesson-pick-meta">
-                                        <span><i class="bi bi-clock me-1"></i>${escapeHtml(timeStr)}</span>
-                                        <span><i class="bi bi-easel me-1"></i>${escapeHtml(l.className || '')}</span>
-                                        <span><i class="bi bi-door-open me-1"></i>${escapeHtml(roomStr)}</span>
-                                    </div>
-                                </div>
-                                <div class="lesson-pick-check"><i class="bi bi-check-lg"></i></div>
-                            </button>
-                        `;
-                    }).join('');
-                }
-            } catch (err) {
-                lessonSelect.innerHTML = `<option value="">Lỗi: ${err.message}</option>`;
-                lessonSelect.disabled = true;
-                if (lessonList) lessonList.innerHTML = `<div class="lesson-empty-box text-danger">Lỗi tải lịch học: ${escapeHtml(err.message)}</div>`;
-            }
-        }
-
-        async function submitAbsenceRequest() {
-            const studentId = document.getElementById('createStudentSelect').value;
-            const lessonId = document.getElementById('createLessonSelect').value;
-            const reason = document.getElementById('createReasonInput').value.trim();
-
-            if (!studentId || !lessonId || !reason) {
-                showToast('danger', 'Vui lòng chọn học viên, buổi học và nhập lý do!');
-                return;
-            }
-
-            const btnSubmit = document.getElementById('btnSubmitAbsence');
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang gửi...';
-
-            try {
-                await callApi('/api/attendance-makeup/absence-requests', 'POST', {
-                    studentId: Number(studentId),
-                    lessonId: Number(lessonId),
-                    reason: reason
-                });
-
-                showToast('success', 'Đã gửi đơn xin nghỉ.');
-                document.getElementById('createReasonInput').value = '';
-                document.querySelectorAll('.reason-chip, .lesson-pick-card').forEach(b => b.classList.remove('active'));
-                document.getElementById('createLessonSelect').value = '';
-                updateReasonCharCount();
-
-                await reloadData();
-                if (window.refreshNotifications) window.refreshNotifications();
-                switchMainTab('ABSENCE');
-            } catch (err) {
-                showToast('danger', 'Lỗi khi gửi đơn: ' + err.message);
-            } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '<i class="bi bi-send-fill me-1"></i>Gửi Đơn Xin Nghỉ';
-            }
-        }
-
-        // =========================================================================
-        // LUỒNG 3 & 4: ĐIỀU PHỐI & ĐIỂM DANH HỌC BÙ (TAB 3)
-        // =========================================================================
-        function sortMakeupList(list) {
-            const priorityMap = { PENDING: 0, NO_SLOT: 1, MISSED: 2, SCHEDULED: 3, COMPLETED: 4, CANCELLED: 5 };
-            return [...(list || [])].sort((a, b) => {
-                const pa = priorityMap[a.status] ?? 99;
-                const pb = priorityMap[b.status] ?? 99;
-                if (pa !== pb) return pa - pb;
-                const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                if (ta !== tb) return tb - ta;
-                return (b.id || 0) - (a.id || 0);
-            });
-        }
-
-        function populateMakeupFilterOptions() {
-            const stuSel = document.getElementById('filterMakeupStudent');
-            const clsSel = document.getElementById('filterMakeupClass');
-            if (stuSel) {
-                const prev = stuSel.value;
-                const names = Array.from(new Set((currentMakeupList || []).map(m => m.studentName).filter(Boolean)))
-                    .sort((a, b) => a.localeCompare(b, 'vi'));
-                stuSel.innerHTML = '<option value="">Tất Cả Học Viên</option>'
-                    + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
-                if (prev && names.includes(prev)) stuSel.value = prev;
-            }
-            if (clsSel) {
-                const prev = clsSel.value;
-                const classSet = new Set();
-                (currentMakeupList || []).forEach(m => {
-                    if (m.originalClassName) classSet.add(m.originalClassName);
-                    if (m.targetClassName) classSet.add(m.targetClassName);
-                });
-                const classes = Array.from(classSet).sort((a, b) => a.localeCompare(b, 'vi'));
-                clsSel.innerHTML = '<option value="">Tất Cả Lớp</option>'
-                    + classes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-                if (prev && classes.includes(prev)) clsSel.value = prev;
-            }
-        }
-
-        function applyMakeupFilter() {
-            renderMakeupTable(true);
-        }
-
-        function resetMakeupFilter() {
-            ['filterMakeupStatus', 'filterMakeupStudent', 'filterMakeupClass',
-             'filterMakeupDirection', 'filterMakeupFromDate', 'filterMakeupToDate', 'searchMakeupInput'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            renderMakeupTable(true);
-        }
-
-        async function loadMakeupRequests() {
-            try {
-                const data = await callApi('/api/attendance-makeup/makeup-requests');
-                currentMakeupList = sortMakeupList(data || []);
-                populateMakeupFilterOptions();
-                renderMakeupTable();
-            } catch (err) {
-                console.error("Lỗi khi tải danh sách học bù:", err);
-                document.getElementById('makeupTableBody').innerHTML = `
-                    <tr><td colspan="7" class="text-center text-danger py-4">Lỗi tải dữ liệu: ${err.message}</td></tr>
-                `;
-            }
-        }
-
-        function onMakeupPageSizeChange() {
-            const sel = document.getElementById('makeupPageSizeSelect');
-            makeupPageSize = Number(sel ? sel.value : 5) || 5;
-            makeupPage = 1;
-            renderMakeupTable(false);
-        }
-
-        function goToMakeupPage(page) {
-            makeupPage = page;
-            renderMakeupTable(false);
-        }
-
-        function renderMakeupTable(resetPage = false) {
-            if (resetPage) makeupPage = 1;
-            const tbody = document.getElementById('makeupTableBody');
-            const paginationWrapper = document.getElementById('makeupPaginationWrapper');
-            const paginationInfo = document.getElementById('makeupPaginationInfo');
-            const paginationList = document.getElementById('makeupPaginationList');
-            const statusFilter = document.getElementById('filterMakeupStatus').value;
-            const studentFilter = document.getElementById('filterMakeupStudent')?.value || '';
-            const classFilter = document.getElementById('filterMakeupClass')?.value || '';
-            const dirFilter = document.getElementById('filterMakeupDirection') ? document.getElementById('filterMakeupDirection').value : '';
-            const fromDate = document.getElementById('filterMakeupFromDate')?.value || '';
-            const toDate = document.getElementById('filterMakeupToDate')?.value || '';
-            const searchKeyword = (document.getElementById('searchMakeupInput').value || '').trim().toLowerCase();
-            const myId = currentUser ? (currentUser.userId ?? currentUser.id) : null;
-
-            let filtered = sortMakeupList(currentMakeupList);
-            if (dirFilter === 'OUT' && myId) {
-                filtered = filtered.filter(m => Number(m.originalTeacherId) === Number(myId) && Number(m.targetTeacherId) !== Number(myId));
-            } else if (dirFilter === 'IN' && myId) {
-                filtered = filtered.filter(m => Number(m.targetTeacherId) === Number(myId) && Number(m.originalTeacherId) !== Number(myId));
-            }
-            if (statusFilter) {
-                filtered = filtered.filter(m => m.status === statusFilter);
-            }
-            if (studentFilter) {
-                filtered = filtered.filter(m => m.studentName === studentFilter);
-            }
-            if (classFilter) {
-                filtered = filtered.filter(m => m.originalClassName === classFilter || m.targetClassName === classFilter);
-            }
-            if (fromDate) {
-                filtered = filtered.filter(m =>
-                    (m.originalLessonDate && m.originalLessonDate >= fromDate) ||
-                    (m.targetLessonDate && m.targetLessonDate >= fromDate)
-                );
-            }
-            if (toDate) {
-                filtered = filtered.filter(m =>
-                    (m.originalLessonDate && m.originalLessonDate <= toDate) ||
-                    (m.targetLessonDate && m.targetLessonDate <= toDate)
-                );
-            }
-            if (searchKeyword) {
-                filtered = filtered.filter(m =>
-                    (m.studentName && m.studentName.toLowerCase().includes(searchKeyword)) ||
-                    (m.targetClassName && m.targetClassName.toLowerCase().includes(searchKeyword)) ||
-                    (m.originalClassName && m.originalClassName.toLowerCase().includes(searchKeyword)) ||
-                    (m.targetRoomName && m.targetRoomName.toLowerCase().includes(searchKeyword)) ||
-                    (m.note && m.note.toLowerCase().includes(searchKeyword)) ||
-                    (m.id && m.id.toString().includes(searchKeyword))
-                );
-            }
-
-            document.getElementById('makeupCountBadge').innerText = `${filtered.length} ca bù`;
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-5">
-                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                            Không có yêu cầu học bù nào phù hợp
-                        </td>
-                    </tr>
-                `;
-                if (paginationWrapper) paginationWrapper.classList.add('d-none');
-                return;
-            }
-
-            const totalItems = filtered.length;
-            const totalPages = Math.max(1, Math.ceil(totalItems / makeupPageSize));
-            if (makeupPage > totalPages) makeupPage = totalPages;
-            if (makeupPage < 1) makeupPage = 1;
-
-            const startIdx = (makeupPage - 1) * makeupPageSize;
-            const endIdx = Math.min(startIdx + makeupPageSize, totalItems);
-            const pagedItems = filtered.slice(startIdx, endIdx);
-
-            const isStaffOrTeacher = currentUser && (currentUser.role === 'TEACHER' || currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
-            const isStaffOrAdmin = currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
-
-            tbody.innerHTML = pagedItems.map(item => {
-                const retryCount = item.retryCount || 0;
-                const maxRetries = item.maxRetries || 2;
-                const isLimitExceeded = Boolean(item.limitExceeded) || (retryCount >= maxRetries && (item.status === 'MISSED' || item.status === 'CANCELLED'));
-                const retryTagHtml = retryCount > 0
-                    ? `<div class="mt-1"><span class="badge ${isLimitExceeded ? 'bg-danger-subtle text-danger border-danger-subtle' : (retryCount >= maxRetries ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : 'bg-secondary-subtle text-secondary border-secondary-subtle')} border rounded-pill px-2 py-0.5" style="font-size: 0.68rem;">Lần bù: ${retryCount}/${maxRetries}</span></div>`
-                    : '';
-
-                // Status badge
-                let statusBadge = '';
-                if (item.status === 'PENDING') {
-                    statusBadge = '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Xếp Lịch</span>';
-                } else if (item.status === 'SCHEDULED') {
-                    statusBadge = '<span class="badge-status-modern status-scheduled"><i class="bi bi-calendar2-check"></i>Đã Xếp Lịch</span>' + retryTagHtml;
-                } else if (item.status === 'MISSED') {
-                    statusBadge = '<span class="badge-status-modern status-missed"><i class="bi bi-person-x-fill"></i>Bỏ Lỡ Bù</span>' + retryTagHtml;
-                } else if (item.status === 'COMPLETED') {
-                    statusBadge = '<span class="badge-status-modern status-completed"><i class="bi bi-check2-all"></i>Hoàn Thành</span>' + retryTagHtml;
-                } else if (item.status === 'CANCELLED') {
-                    statusBadge = isLimitExceeded
-                        ? '<span class="badge-status-modern status-cancelled"><i class="bi bi-lock-fill"></i>Khóa Bù (Vắng 2/2)</span>' + retryTagHtml
-                        : '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
-                } else if (item.status === 'NO_SLOT') {
-                    statusBadge = '<span class="badge-status-modern status-noslot"><i class="bi bi-exclamation-triangle"></i>Chưa Có Lớp</span>' + retryTagHtml;
-                }
-
-                // Buổi học gốc
-                const origDateStr = item.originalLessonDate || '';
-                const origTimeStr = item.originalTimeSlot || '';
-
-                // Ca bù mục tiêu
-                let targetCell = '<span class="text-muted small">Chưa xếp</span>';
-                if (item.targetLessonId) {
-                    const sessionCompareBadge = (item.originalSessionNumber && item.targetSessionNumber && item.originalSessionNumber !== item.targetSessionNumber)
-                        ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">Linh hoạt B${item.targetSessionNumber}</span>`
-                        : (item.targetSessionNumber ? `<span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.65rem;">Buổi ${item.targetSessionNumber}</span>` : '');
-                    targetCell = `
-                        <div class="tbl-cell-title text-truncate" style="max-width: 240px;">
-                            ${escapeHtml(item.targetClassName || 'Lớp bù')}${sessionCompareBadge}
-                        </div>
-                        <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
-                            <span class="tbl-date-pill">${item.targetLessonDate || ''}</span>
-                            <span>${item.targetTimeSlot || ''}</span>
-                        </div>
-                        <div class="tbl-cell-sub mt-0.5 text-truncate" style="max-width: 230px;">
-                            ${escapeHtml(item.targetTeacherName || 'Chưa phân công')} &bull; ${escapeHtml(item.targetRoomName || 'Phòng học')}
-                        </div>
-                    `;
-                }
-
-                // Nút thao tác
-                let actionButtons = `
-                    <button class="btn-action-icon" title="Chi tiết" onclick="viewMakeupDetail(${item.id})">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                `;
-
-                if (item.status === 'PENDING' || item.status === 'NO_SLOT') {
-                    if (isStaffOrAdmin && !isLimitExceeded) {
-                        actionButtons += `
-                            <button class="btn-action-pill btn-action-pill-primary" title="Xếp lớp học bù" onclick="openScheduleModal(${item.id})">
-                                <i class="bi bi-calendar-plus"></i>Xếp lớp
-                            </button>
-                            <button class="btn-action-icon btn-action-reject" title="Báo chưa có lớp" onclick="markNoSlot(${item.id})">
-                                <i class="bi bi-exclamation-triangle"></i>
-                            </button>
-                            <button class="btn-action-icon" title="Hủy ca bù (gia đình không học bù)" onclick="familyDeclines(${item.id})">
-                                <i class="bi bi-x-circle"></i>
-                            </button>
-                        `;
-                    }
-                } else if (item.status === 'SCHEDULED') {
-                    if (isStaffOrTeacher) {
-                        actionButtons += `
-                            <button class="btn-action-pill btn-action-pill-primary" style="background:#16a34a;" title="Điểm danh có mặt" onclick="confirmCompleteMakeup(${item.id})">
-                                <i class="bi bi-check2-all"></i>Có mặt
-                            </button>
-                        `;
-                    }
-                    if (isStaffOrAdmin) {
-                        if (retryCount < maxRetries) {
-                            actionButtons += `
-                                <button class="btn-action-icon btn-action-primary" title="Đổi ca học bù (còn ${maxRetries - retryCount} lần)" onclick="openScheduleModal(${item.id})">
-                                    <i class="bi bi-arrow-repeat"></i>
-                                </button>
-                            `;
-                        }
-                        actionButtons += `
-                            <button class="btn-action-icon btn-action-reject" title="Hủy ca bù" onclick="confirmCancelMakeup(${item.id})">
-                                <i class="bi bi-x-circle"></i>
-                            </button>
-                        `;
-                    }
-                } else if (item.status === 'MISSED') {
-                    if (isStaffOrAdmin && !isLimitExceeded && retryCount < maxRetries) {
-                        actionButtons += `
-                            <button class="btn-action-pill btn-action-pill-warn" title="Xếp lại ca bù (${retryCount + 1}/${maxRetries})" onclick="openScheduleModal(${item.id})">
-                                <i class="bi bi-arrow-repeat"></i>Xếp lại (${retryCount + 1}/${maxRetries})
-                            </button>
-                            <button class="btn-action-icon btn-action-reject" title="Hủy ca bù" onclick="confirmCancelMakeup(${item.id})">
-                                <i class="bi bi-x-circle"></i>
-                            </button>
-                        `;
-                    }
-                }
-
-                const cleanNote = formatCleanNote(item.note);
-
-                return `
-                    <tr>
-                        <td class="text-center"><span class="id-badge">#${item.id}</span></td>
-                        <td>
-                            <div class="tbl-cell-title">${escapeHtml(item.studentName || 'Học viên')}</div>
-                        </td>
-                        <td>
-                            <div class="tbl-cell-title text-truncate" style="max-width: 230px;">
-                                ${escapeHtml(item.originalClassName || 'Lớp học')}
-                            </div>
-                            <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
-                                <span class="tbl-date-pill">${origDateStr}</span>
-                                <span>${origTimeStr}</span>
-                            </div>
-                            <div class="tbl-cell-sub mt-0.5 text-truncate" style="max-width: 220px;">
-                                ${escapeHtml(item.originalTeacherName || 'Chưa phân công')}
-                            </div>
-                        </td>
-                        <td>${targetCell}</td>
-                        <td class="text-center">${statusBadge}</td>
-                        <td>
-                            <div class="reason-text-clamp" title="${escapeHtml(cleanNote)}">
-                                ${escapeHtml(cleanNote || '—')}
-                            </div>
-                        </td>
-                        <td class="text-end text-nowrap">
-                            <div class="action-group-compact">
-                                ${actionButtons}
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            if (paginationWrapper) {
-                paginationWrapper.classList.remove('d-none');
-                if (paginationInfo) {
-                    paginationInfo.textContent = `Hiển thị ${startIdx + 1} - ${endIdx} / ${totalItems} ca bù`;
-                }
-                if (paginationList) {
-                    let html = `
-                        <li class="page-item ${makeupPage <= 1 ? 'disabled' : ''}">
-                            <button class="page-link rounded-2" type="button" onclick="goToMakeupPage(${makeupPage - 1})">&laquo; Trước</button>
-                        </li>
-                    `;
-                    for (let p = 1; p <= totalPages; p++) {
-                        html += `
-                            <li class="page-item ${p === makeupPage ? 'active' : ''}">
-                                <button class="page-link rounded-2" type="button" onclick="goToMakeupPage(${p})">${p}</button>
-                            </li>
-                        `;
-                    }
-                    html += `
-                        <li class="page-item ${makeupPage >= totalPages ? 'disabled' : ''}">
-                            <button class="page-link rounded-2" type="button" onclick="goToMakeupPage(${makeupPage + 1})">Sau &raquo;</button>
-                        </li>
-                    `;
-                    paginationList.innerHTML = html;
-                }
-            }
-        }
-
-        // =========================================================================
-        // XẾP LỊCH HỌC BÙ & ĐIỂM DANH HOÀN THÀNH
-        // =========================================================================
-        function selectScheduleTargetCard(lessonId) {
-            const select = document.getElementById('scheduleTargetLessonSelect');
-            if (select) select.value = String(lessonId);
-            document.querySelectorAll('#scheduleTargetPickerList .lesson-pick-card').forEach(btn => {
-                btn.classList.toggle('active', Number(btn.dataset.lessonId) === Number(lessonId));
-            });
-        }
-
-        async function openScheduleModal(makeupId) {
-            activeMakeupId = makeupId;
-            let item = currentMakeupList.find(m => Number(m.id) === Number(makeupId));
-            if (!item) {
-                try {
-                    item = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}`);
-                } catch (err) {
-                    showToast('danger', 'Không tải được ca học bù: ' + err.message);
-                    return;
-                }
-            }
-            if (!item) return;
-
-            const currentRetry = item.retryCount || 0;
-            const maxRetries = item.maxRetries || 2;
-            if (item.limitExceeded || currentRetry >= maxRetries) {
-                showToast('danger', `Đã hết ${maxRetries}/${maxRetries} lần xếp học bù.`);
-                return;
-            }
-
-            const nextAttempt = currentRetry + 1;
-            const origSessionText = item.originalSessionNumber ? `#Buổi ${item.originalSessionNumber} • ` : '';
-            document.getElementById('scheduleStudentName').innerText = item.studentName || '';
-            document.getElementById('scheduleOrigLesson').innerText = `${origSessionText}${item.originalClassName || ''} (${item.originalLessonDate || ''})`;
-            const rawCleanNote = formatCleanNote((item.note || '').replace(/^\[Lần bù:\s*\d+\/\d+(?:\s*-\s*KHÓA)?\]\s*/, ''));
-            document.getElementById('scheduleNoteInput').value = rawCleanNote;
-
-            const retryBadge = document.getElementById('scheduleRetryBadge');
-            if (retryBadge) {
-                retryBadge.className = nextAttempt >= maxRetries
-                    ? 'badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold'
-                    : 'badge rounded-pill px-2.5 py-1 fw-semibold';
-                if (nextAttempt < maxRetries) {
-                    retryBadge.style.background = '#e6f0ec';
-                    retryBadge.style.color = '#143c34';
-                }
-                retryBadge.innerHTML = `<i class="bi bi-repeat me-1"></i>Lần ${nextAttempt}/${maxRetries}${nextAttempt >= maxRetries ? ' (Cuối)' : ''}`;
-            }
-
-            const coordBanner = document.getElementById('scheduleSmartCoordinationBanner');
-            if (coordBanner) {
-                coordBanner.className = 'd-none mb-3';
-                coordBanner.innerHTML = '';
-            }
-
-            const select = document.getElementById('scheduleTargetLessonSelect');
-            const pickerList = document.getElementById('scheduleTargetPickerList');
-            const summaryEl = document.getElementById('scheduleOptionSummary');
-            select.innerHTML = '<option value="">-- Đang tải --</option>';
-            if (summaryEl) summaryEl.textContent = '';
-            if (pickerList) pickerList.innerHTML = '<div class="lesson-empty-box"><span class="spinner-border spinner-border-sm me-2 text-success"></span>Đang tải ca phù hợp...</div>';
-            modalScheduleObj.show();
-
-            try {
-                const availableLessons = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/available-lessons`);
-                if (!availableLessons || availableLessons.length === 0) {
-                    select.innerHTML = '<option value="">-- Không có lớp phù hợp --</option>';
-                    if (pickerList) pickerList.innerHTML = '<div class="lesson-empty-box">Hiện chưa có lớp phù hợp sắp tới</div>';
-                    if (coordBanner) {
-                        coordBanner.className = 'alert alert-warning border-0 rounded-3 p-3 mb-3 small d-flex flex-wrap justify-content-between align-items-center gap-2';
-                        coordBanner.innerHTML = `
-                            <span class="fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>Không tìm thấy ca trống cùng trình độ.</span>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">Báo chưa có lớp</button>
-                            </div>
-                        `;
-                    }
-                    return;
-                }
-
-                const exactLessons = availableLessons.filter(l => l.exactSessionMatch !== false);
-                const flexLessons = availableLessons.filter(l => l.exactSessionMatch === false);
-
-                if (summaryEl) {
-                    const parts = [];
-                    if (exactLessons.length > 0) parts.push(`${exactLessons.length} đúng bài`);
-                    if (flexLessons.length > 0) parts.push(`${flexLessons.length} linh hoạt`);
-                    summaryEl.textContent = parts.join(' • ');
-                }
-
-                if (coordBanner && exactLessons.length === 0 && flexLessons.length > 0) {
-                    coordBanner.className = 'alert alert-warning border-0 rounded-3 py-2 px-3 mb-3 small d-flex flex-wrap justify-content-between align-items-center gap-2';
-                    coordBanner.innerHTML = `
-                        <span><i class="bi bi-lightbulb-fill me-1"></i>Đã qua Buổi #${item.originalSessionNumber || ''} — gợi ý ca ghép linh hoạt:</span>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-2.5" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">Chưa có lớp</button>
-                        </div>
-                    `;
-                }
-
-                select.innerHTML = '<option value="">-- Chọn ca học bù --</option>' +
-                    availableLessons.map(l => `<option value="${l.id}">${l.lessonDate || ''} - ${l.className || ''}</option>`).join('');
-
-                const renderCard = (l, isExact) => {
-                    const dt = formatPickDate(l.lessonDate);
-                    const timeStr = l.timeSlot || `${l.startTime || ''} - ${l.endTime || ''}`;
-                    const titleStr = l.title || `Buổi ${l.sessionNumber || ''}`;
-                    const seatBadge = (l.availableSeats != null && l.maxStudents != null)
-                        ? `<span class="seat-pill">Còn ${l.availableSeats}/${l.maxStudents}</span>` : '';
-                    const matchBadge = isExact
-                        ? `<span class="schedule-match-pill schedule-match-exact">Đúng bài #${l.sessionNumber || ''}</span>`
-                        : `<span class="schedule-match-pill schedule-match-flex">Linh hoạt #${l.sessionNumber || ''}</span>`;
-                    const isActive = item.targetLessonId && Number(item.targetLessonId) === Number(l.id) ? ' active' : '';
-                    return `
-                        <button type="button" class="lesson-pick-card${isActive}" data-lesson-id="${l.id}" onclick="selectScheduleTargetCard(${l.id})">
-                            <div class="lesson-pick-datebox">
-                                <div class="lesson-pick-dow">${escapeHtml(dt.dow)}</div>
-                                <div class="lesson-pick-day">${escapeHtml(dt.day)}</div>
-                            </div>
-                            <div class="lesson-pick-info">
-                                <div class="d-flex align-items-center justify-content-between gap-2 mb-0.5">
-                                    <div class="lesson-pick-title">${escapeHtml(l.className || 'Lớp học')}</div>
-                                    ${matchBadge}
-                                </div>
-                                <div class="small text-secondary text-truncate">${escapeHtml(titleStr)}</div>
-                                <div class="lesson-pick-meta">
-                                    <span><i class="bi bi-clock me-1"></i>${escapeHtml(timeStr)}</span>
-                                    ${l.teacherName ? `<span><i class="bi bi-person me-1"></i>${escapeHtml(l.teacherName)}</span>` : ''}
-                                    ${l.roomName ? `<span><i class="bi bi-door-open me-1"></i>${escapeHtml(l.roomName)}</span>` : ''}
-                                    ${seatBadge}
-                                </div>
-                            </div>
-                            <div class="lesson-pick-check"><i class="bi bi-check-lg"></i></div>
-                        </button>
-                    `;
-                };
-
-                let cardsHtml = '';
-                if (exactLessons.length > 0) {
-                    cardsHtml += `<div class="schedule-picker-group-label"><span>Đúng bài gốc (Ưu tiên)</span><span>${exactLessons.length} ca</span></div>`;
-                    cardsHtml += exactLessons.map(l => renderCard(l, true)).join('');
-                }
-                if (flexLessons.length > 0) {
-                    cardsHtml += `<div class="schedule-picker-group-label mt-1"><span>Ghép bù linh hoạt cùng trình độ</span><span>${flexLessons.length} ca</span></div>`;
-                    cardsHtml += flexLessons.map(l => renderCard(l, false)).join('');
-                }
-                if (pickerList) pickerList.innerHTML = cardsHtml;
-
-                if (item.targetLessonId) {
-                    selectScheduleTargetCard(item.targetLessonId);
-                }
-            } catch (err) {
-                select.innerHTML = `<option value="">Lỗi: ${err.message}</option>`;
-                if (pickerList) pickerList.innerHTML = `<div class="lesson-empty-box text-danger">Lỗi tải ca học: ${escapeHtml(err.message)}</div>`;
-            }
-        }
-
-        async function executeSchedule() {
-            if (!activeMakeupId) return;
-            const targetLessonId = document.getElementById('scheduleTargetLessonSelect').value;
-            const note = document.getElementById('scheduleNoteInput').value.trim();
-
-            if (!targetLessonId) {
-                showToast('danger', 'Vui lòng chọn ca học bù.');
-                return;
-            }
-
-            try {
-                await callApi(`/api/attendance-makeup/makeup-requests/${activeMakeupId}/schedule`, 'PUT', {
-                    targetLessonId: Number(targetLessonId),
-                    note: note
-                });
-                modalScheduleObj.hide();
-                showToast('success', 'Đã xếp lớp học bù thành công.');
-                await reloadData();
-                if (window.refreshNotifications) window.refreshNotifications();
-            } catch (err) {
-                showToast('danger', 'Lỗi xếp lớp: ' + err.message);
-            }
-        }
-
-        function openResolveModal(config) {
-            activeResolveConfig = config;
-            const header = document.getElementById('resolveModalHeader');
-            const closeBtn = document.getElementById('resolveModalCloseBtn');
-            const title = document.getElementById('resolveModalTitle');
-            const summary = document.getElementById('resolveModalSummary');
-            const noteGroup = document.getElementById('resolveNoteGroup');
-            const noteLabel = document.getElementById('resolveNoteLabel');
-            const noteInput = document.getElementById('resolveNoteInput');
-            const noteError = document.getElementById('resolveNoteError');
-            const btnConfirm = document.getElementById('btnConfirmResolve');
-
-            header.className = `modal-header ${config.headerClass || 'modal-header-emerald'}`;
-            if (closeBtn) {
-                closeBtn.className = config.lightHeader ? 'btn-close' : 'btn-close btn-close-white';
-            }
-            title.innerHTML = config.titleHtml;
-            summary.innerHTML = config.summaryHtml;
-            noteGroup.style.display = config.hideNote ? 'none' : 'block';
-            noteLabel.innerHTML = `${config.noteLabel || 'Ghi chú'}${config.noteRequired ? ' <span class="text-danger">*</span>' : ''}`;
-            noteInput.value = config.defaultNote || '';
-            noteInput.placeholder = config.placeholder || 'Nhập nội dung...';
-            noteError.style.display = 'none';
-            btnConfirm.className = `btn rounded-pill px-4 fw-semibold ${config.btnClass || 'btn-primary'}`;
-            btnConfirm.innerHTML = config.btnText || 'Xác Nhận';
-
-            modalResolveObj.show();
-        }
-
-        async function executeResolveNote() {
-            if (!activeResolveConfig) return;
-            const cfg = activeResolveConfig;
-            const noteVal = document.getElementById('resolveNoteInput').value.trim();
-            const noteError = document.getElementById('resolveNoteError');
-
-            if (cfg.noteRequired && !noteVal) {
-                noteError.style.display = 'block';
-                return;
-            }
-
-            try {
-                await cfg.onConfirm(noteVal);
-                modalResolveObj.hide();
-                showToast(cfg.toastType || 'success', cfg.toastMessage || 'Đã cập nhật.');
-                await reloadData();
-                if (window.refreshNotifications) window.refreshNotifications();
-            } catch (err) {
-                showToast('danger', 'Lỗi: ' + err.message);
-            }
-        }
-
-        function confirmCancelAbsence(absenceId) {
-            const found = (currentAbsenceList || []).find(a => Number(a.id) === Number(absenceId));
-            const label = found ? `${escapeHtml(found.studentName || 'Học viên')} • ${escapeHtml(found.className || '')} (${found.lessonDate || ''})` : `Đơn #${absenceId}`;
-            openResolveModal({
-                headerClass: 'modal-header-rose',
-                titleHtml: '<i class="bi bi-trash3-fill me-2"></i>Hủy Đơn Xin Nghỉ',
-                summaryHtml: `Hủy đơn xin nghỉ của <strong>${label}</strong>?`,
-                hideNote: true,
-                btnClass: 'btn-rose-solid',
-                btnText: '<i class="bi bi-trash3 me-1"></i>Hủy Đơn',
-                toastType: 'warning',
-                toastMessage: 'Đã hủy đơn xin nghỉ.',
-                onConfirm: async () => callApi(`/api/attendance-makeup/absence-requests/${absenceId}`, 'DELETE')
-            });
-        }
-
-        function confirmCompleteMakeup(makeupId) {
-            openResolveModal({
-                headerClass: 'modal-header-emerald',
-                titleHtml: '<i class="bi bi-check2-all me-2"></i>Điểm Danh Có Mặt',
-                summaryHtml: `Xác nhận học viên đã hoàn thành ca học bù <strong>#${makeupId}</strong>?`,
-                hideNote: true,
-                btnClass: 'btn-primary',
-                btnText: '<i class="bi bi-check-lg me-1"></i>Xác Nhận Có Mặt',
-                toastType: 'success',
-                toastMessage: 'Đã ghi nhận hoàn thành ca học bù.',
-                onConfirm: async () => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/complete`, 'PUT')
-            });
-        }
-
-        function confirmCancelMakeup(makeupId) {
-            openResolveModal({
-                headerClass: 'modal-header-rose',
-                titleHtml: '<i class="bi bi-x-circle-fill me-2"></i>Hủy Ca Học Bù',
-                summaryHtml: `Hủy ca học bù <strong>#${makeupId}</strong> và thông báo các bên liên quan.`,
-                noteLabel: 'Lý do hủy',
-                noteRequired: true,
-                placeholder: 'Nhập lý do hủy ca học bù...',
-                btnClass: 'btn-rose-solid',
-                btnText: '<i class="bi bi-x-circle me-1"></i>Hủy Ca Bù',
-                toastType: 'warning',
-                toastMessage: 'Đã hủy ca học bù.',
-                onConfirm: async (reason) => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', { reason })
-            });
-        }
-
-        function familyDeclines(makeupId) {
-            openResolveModal({
-                headerClass: 'modal-header-slate',
-                titleHtml: '<i class="bi bi-x-circle me-2"></i>Gia Đình Không Học Bù',
-                summaryHtml: `Xác nhận gia đình báo <strong>không cần học bù</strong> cho ca #${makeupId}?`,
-                hideNote: true,
-                btnClass: 'btn-secondary',
-                btnText: 'Xác Nhận Hủy Bù',
-                toastType: 'warning',
-                toastMessage: 'Đã hủy yêu cầu học bù.',
-                onConfirm: async () => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
-                    reason: 'Gia đình báo không cần học bù'
-                })
-            });
-        }
-
-        function markNoSlot(makeupId) {
-            openResolveModal({
-                headerClass: 'modal-header-amber',
-                lightHeader: true,
-                titleHtml: '<i class="bi bi-exclamation-triangle-fill me-2"></i>Báo Chưa Có Lớp Phù Hợp',
-                summaryHtml: `Gửi thông báo tới phụ huynh và giáo viên cho ca học bù <strong>#${makeupId}</strong>.`,
-                noteLabel: 'Nội dung gửi phụ huynh',
-                noteRequired: true,
-                defaultNote: 'Hiện chưa có lớp phù hợp cùng trình độ để xếp học bù. Phụ huynh theo dõi thông báo mới từ trung tâm.',
-                placeholder: 'Nhập thông báo gửi phụ huynh...',
-                btnClass: 'btn-amber-solid',
-                btnText: '<i class="bi bi-send me-1"></i>Gửi Thông Báo',
-                toastType: 'success',
-                toastMessage: 'Đã gửi thông báo chưa có lớp.',
-                onConfirm: async (note) => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/no-slot`, 'PATCH', { note })
-            });
-        }
-
-        // =========================================================================
-        // XEM CHI TIẾT MODAL
-        // =========================================================================
-        async function viewAbsenceDetail(id) {
-            try {
-                const item = await callApi(`/api/attendance-makeup/absence-requests/${id}`);
-                if (!item) return;
-
-                const cleanReviewNote = formatCleanNote(item.reviewNote);
-                const cleanMakeupNote = formatCleanNote(item.makeupNote);
-
-                document.getElementById('modalDetailTitle').innerHTML = `<i class="bi bi-file-text text-primary me-2"></i>Đơn Xin Nghỉ #${item.id}`;
-                const body = document.getElementById('detailModalBody');
-                body.innerHTML = `
-                    <div class="detail-info-card mb-3">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-bold text-dark fs-6">${escapeHtml(item.studentName || 'Học viên')}</div>
-                                <div class="small text-secondary mt-1">
-                                    PH: ${escapeHtml(item.parentName || 'N/A')}${item.parentPhone ? ` &bull; ${escapeHtml(item.parentPhone)}` : ''}
-                                </div>
-                            </div>
-                            ${getAbsenceStatusBadgeHtml(item.status)}
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="detail-section-label">Buổi học xin nghỉ</div>
-                        <div class="fw-semibold text-dark">${escapeHtml(item.lessonTitle || `Buổi ${item.sessionNumber || ''}`)}</div>
-                        <div class="small text-secondary mt-1">
-                            ${item.lessonDate || ''} (${item.timeSlot || ''}) &bull; ${escapeHtml(item.className || '')}
-                        </div>
-                        <div class="small text-muted mt-0.5">
-                            ${escapeHtml(item.roomName || 'Phòng học')} &bull; GV: ${escapeHtml(item.teacherName || 'N/A')}
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="detail-section-label">Lý do xin nghỉ</div>
-                        <div class="reason-box text-dark">${escapeHtml(item.reason || '')}</div>
-                    </div>
-
-                    ${cleanReviewNote ? `
-                        <div class="mb-3">
-                            <div class="detail-section-label">Phản hồi duyệt</div>
-                            <div class="p-2.5 bg-light rounded-3 text-dark small border">
-                                <div>${escapeHtml(cleanReviewNote)}</div>
-                                <div class="text-muted mt-1" style="font-size: 0.72rem;">Người duyệt: ${escapeHtml(item.approvedByTeacherName || 'Giáo viên')}</div>
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    ${item.makeupRegistrationId ? `
-                        <div class="detail-info-card">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="detail-section-label mb-0 text-success"><i class="bi bi-calendar2-check me-1"></i>Ca học bù #${item.makeupRegistrationId}</span>
-                                ${getMakeupStatusBadgeHtml(item.makeupStatus, item.makeupRetryCount, item.makeupMaxRetries)}
-                            </div>
-                            ${item.makeupTargetDate ? `<div class="small text-dark">Ngày bù: <strong>${item.makeupTargetDate}</strong></div>` : ''}
-                            ${item.makeupTargetClassName ? `<div class="small text-secondary">Lớp bù: <strong>${escapeHtml(item.makeupTargetClassName)}</strong></div>` : ''}
-                            ${cleanMakeupNote ? `<div class="small text-danger mt-2 p-2 bg-white rounded border"><i class="bi bi-bell-fill me-1"></i>${escapeHtml(cleanMakeupNote)}</div>` : ''}
-                        </div>
-                    ` : ''}
-                `;
-
-                const footer = document.getElementById('detailModalFooter');
-                const role = currentUser ? currentUser.role : '';
-                const isCoordinator = ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(role);
-                const isCreator = role === 'PARENT';
-                const myId = currentUser ? (currentUser.userId ?? currentUser.id) : null;
-                const canReview = isCoordinator || (role === 'TEACHER' && (myId == null || item.teacherId == null || Number(myId) === Number(item.teacherId)));
-
-                let footerActions = '';
-                if (canReview && item.status === 'PENDING') {
-                    footerActions += `
-                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3" onclick="modalDetailObj.hide(); openApproveModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
-                            <i class="bi bi-check-lg me-1"></i>Duyệt
-                        </button>
-                        <button type="button" class="btn btn-sm btn-danger rounded-pill px-3" onclick="modalDetailObj.hide(); openRejectModal(${item.id}, '${escapeHtml(item.studentName || '')}')">
-                            <i class="bi bi-x-lg me-1"></i>Từ chối
-                        </button>
-                    `;
-                }
-                if ((isCreator || isCoordinator) && item.status === 'PENDING') {
-                    footerActions += `
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="modalDetailObj.hide(); confirmCancelAbsence(${item.id})">
-                            <i class="bi bi-trash3 me-1"></i>Hủy đơn
-                        </button>
-                    `;
-                }
-                if (isCoordinator && item.status === 'APPROVED' && item.makeupRegistrationId) {
-                    const mStatus = item.makeupStatus;
-                    if (mStatus === 'PENDING' || mStatus === 'NO_SLOT' || (mStatus === 'MISSED' && (item.makeupRetryCount || 0) < (item.makeupMaxRetries || 2))) {
-                        footerActions += `
-                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="modalDetailObj.hide(); openScheduleModal(${item.makeupRegistrationId})">
-                                <i class="bi bi-calendar-plus me-1"></i>Xếp lớp
-                            </button>
-                        `;
-                    }
-                    if (mStatus === 'PENDING') {
-                        footerActions += `
-                            <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3" onclick="modalDetailObj.hide(); markNoSlot(${item.makeupRegistrationId})">
-                                <i class="bi bi-exclamation-triangle me-1"></i>Chưa có lớp
-                            </button>
-                        `;
-                    }
-                }
-
-                footer.innerHTML = `
-                    <div class="d-flex flex-wrap gap-2">${footerActions}</div>
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
-                `;
-
-                modalDetailObj.show();
-            } catch (err) {
-                showToast('danger', 'Lỗi xem chi tiết: ' + err.message);
-            }
-        }
-
-        async function viewMakeupDetail(id) {
-            try {
-                const item = await callApi(`/api/attendance-makeup/makeup-requests/${id}`);
-                if (!item) return;
-
-                const cleanNote = formatCleanNote(item.note);
-                document.getElementById('modalDetailTitle').innerHTML = `<i class="bi bi-calendar2-check text-primary me-2"></i>Ca Học Bù #${item.id}`;
-                const body = document.getElementById('detailModalBody');
-                body.innerHTML = `
-                    <div class="detail-info-card mb-3">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-bold text-dark fs-6">${escapeHtml(item.studentName || 'Học viên')}</div>
-                                <div class="small text-secondary mt-1">PH: ${escapeHtml(item.parentName || 'N/A')}</div>
-                            </div>
-                            ${getMakeupStatusBadgeHtml(item.status, item.retryCount, item.maxRetries)}
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="detail-section-label">Buổi nghỉ gốc</div>
-                        <div class="small text-dark fw-semibold">${escapeHtml(item.originalClassName || '')}</div>
-                        <div class="small text-secondary">${item.originalLessonDate || ''} (${item.originalTimeSlot || ''}) &bull; GV: ${escapeHtml(item.originalTeacherName || 'N/A')}</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="detail-section-label">Ca học bù được xếp</div>
-                        ${item.targetLessonId ? `
-                            <div class="detail-info-card">
-                                <div class="small text-success fw-bold">${item.targetLessonDate || ''} (${item.targetTimeSlot || ''})</div>
-                                <div class="small text-dark mt-0.5">${escapeHtml(item.targetClassName || '')} &bull; ${escapeHtml(item.targetRoomName || '')}</div>
-                                <div class="small text-muted mt-0.5">GV: ${escapeHtml(item.targetTeacherName || 'N/A')}</div>
-                            </div>
-                        ` : `<div class="small text-warning fw-semibold">Chưa xếp buổi học bù</div>`}
-                    </div>
-
-                    ${cleanNote ? `
-                        <div>
-                            <div class="detail-section-label">Ghi chú điều phối</div>
-                            <div class="reason-box text-dark">${escapeHtml(cleanNote)}</div>
-                        </div>
-                    ` : ''}
-                `;
-
-                const footer = document.getElementById('detailModalFooter');
-                const role = currentUser ? currentUser.role : '';
-                const isCoordinator = ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(role);
-                const isTeacher = role === 'TEACHER';
-
-                let footerActions = '';
-                if (isCoordinator && (item.status === 'PENDING' || item.status === 'NO_SLOT' || (item.status === 'MISSED' && (item.retryCount || 0) < (item.maxRetries || 2)))) {
-                    footerActions += `
-                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="modalDetailObj.hide(); openScheduleModal(${item.id})">
-                            <i class="bi bi-calendar-plus me-1"></i>Xếp lớp
-                        </button>
-                    `;
-                }
-                if (isCoordinator && item.status === 'PENDING') {
-                    footerActions += `
-                        <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3" onclick="modalDetailObj.hide(); markNoSlot(${item.id})">
-                            <i class="bi bi-exclamation-triangle me-1"></i>Chưa có lớp
-                        </button>
-                    `;
-                }
-                if ((isCoordinator || isTeacher) && item.status === 'SCHEDULED') {
-                    footerActions += `
-                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3" onclick="modalDetailObj.hide(); confirmCompleteMakeup(${item.id})">
-                            <i class="bi bi-check2-all me-1"></i>Có mặt
-                        </button>
-                    `;
-                }
-
-                footer.innerHTML = `
-                    <div class="d-flex flex-wrap gap-2">${footerActions}</div>
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
-                `;
-
-                modalDetailObj.show();
-            } catch (err) {
-                showToast('danger', 'Lỗi xem chi tiết: ' + err.message);
-            }
-        }
-
-        // =========================================================================
-        // HÀM TIỆN ÍCH TOAST & XỬ LÝ KÝ TỰ
-        // =========================================================================
-        function showToast(type, message) {
-            const toastContainer = document.getElementById('toastContainer');
-            const toastId = 'toast_' + Date.now();
-            const bgClass = type === 'success' ? 'bg-success' : (type === 'warning' ? 'bg-warning text-dark' : 'bg-danger');
-            const iconClass = type === 'success' ? 'bi-check-circle-fill' : (type === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-x-circle-fill');
-
-            const toastHtml = `
-                <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0 shadow-lg mb-2" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="d-flex">
-                        <div class="toast-body d-flex align-items-center gap-2">
-                            <i class="bi ${iconClass} fs-5"></i>
-                            <div>${message}</div>
-                        </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                    </div>
-                </div>
-            `;
-            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-            const toastEl = document.getElementById(toastId);
-            const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-            toast.show();
-            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>"']/g, function(m) {
-                return {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;'
-                }[m];
-            });
-        }
-    </script>
+    <!-- Absence & Makeup Feature Scripts -->
+    <script src="../js/absence-makeup/absence-requests.js"></script>
+    <script src="../js/absence-makeup/makeup-schedule.js"></script>
 </body>
 </html>
