@@ -153,6 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     loadPlacementTests();
+    loadBranchesForScheduling();
     setupEventListeners();
 });
 
@@ -638,6 +639,11 @@ function setupEventListeners() {
         createForm.addEventListener("submit", handleCreatePlacementTest);
     }
 
+    const branchSelect = document.getElementById("createBranch");
+    if (branchSelect) {
+        branchSelect.addEventListener("change", onBranchChange);
+    }
+
     const evalForm = document.getElementById("evaluatePlacementTestForm");
     if (evalForm) {
         evalForm.addEventListener("submit", handleSaveEvaluation);
@@ -794,6 +800,104 @@ async function loadEnrollmentRequestsForScheduling() {
         if (enrollmentRequestsForScheduling.length) field.classList.remove('d-none');
     } catch (error) {
         console.warn('Cannot load pending enrollment requests:', error);
+    }
+}
+
+let branchesForScheduling = [];
+let schedulingBranchLoad = 0;
+let schedulingRoomLoad = 0;
+
+async function loadBranchesForScheduling(force = false) {
+    const branchSelect = document.getElementById('createBranch');
+    const roomSelect = document.getElementById('createRoomName');
+    if (!branchSelect) return;
+    const load = ++schedulingBranchLoad;
+    ++schedulingRoomLoad;
+
+    if (!force && branchesForScheduling.length > 0 && branchSelect.options.length > 1) {
+        branchSelect.value = String(branchesForScheduling[0].id);
+        await onBranchChange();
+        return;
+    }
+
+    branchSelect.replaceChildren(new Option('Đang tải cơ sở...', ''));
+    if (roomSelect) {
+        roomSelect.replaceChildren(new Option('-- Vui lòng chọn cơ sở trước --', ''));
+        roomSelect.disabled = true;
+    }
+
+    try {
+        const branches = await callApi('/api/branches');
+        if (load !== schedulingBranchLoad) return;
+        branchesForScheduling = (Array.isArray(branches) ? branches : []).filter(b => b.active !== false);
+        if (branchesForScheduling.length > 0) {
+            branchSelect.replaceChildren(new Option('-- Chọn cơ sở đào tạo --', ''));
+            for (const b of branchesForScheduling) {
+                const text = b.name + (b.address ? ` - ${b.address}` : '');
+                const opt = new Option(text, String(b.id));
+                opt.dataset.branchName = b.name;
+                branchSelect.add(opt);
+            }
+            branchSelect.value = String(branchesForScheduling[0].id);
+            await onBranchChange();
+        } else {
+            branchSelect.options[0].text = 'Chưa có cơ sở nào khả dụng';
+            if (roomSelect) {
+                roomSelect.options[0].text = 'Chưa có phòng học';
+                roomSelect.disabled = true;
+            }
+        }
+    } catch (error) {
+        if (load !== schedulingBranchLoad) return;
+        console.warn('Lỗi tải danh sách cơ sở:', error);
+        branchSelect.options[0].text = 'Chưa tải được cơ sở. Vui lòng thử lại.';
+        if (roomSelect) {
+            roomSelect.options[0].text = 'Chưa có phòng học';
+            roomSelect.disabled = true;
+        }
+    }
+}
+
+async function onBranchChange() {
+    const branchSelect = document.getElementById('createBranch');
+    const roomSelect = document.getElementById('createRoomName');
+    if (!branchSelect || !roomSelect) return;
+
+    const load = ++schedulingRoomLoad;
+    const branchId = branchSelect.value;
+    if (!branchId) {
+        roomSelect.replaceChildren(new Option('-- Vui lòng chọn cơ sở trước --', ''));
+        roomSelect.disabled = true;
+        return;
+    }
+
+    roomSelect.disabled = true;
+    roomSelect.replaceChildren(new Option('Đang tải phòng học...', ''));
+
+    try {
+        const rooms = await callApi(`/api/branches/${encodeURIComponent(branchId)}/rooms`);
+        if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
+        const roomList = Array.isArray(rooms) ? rooms : [];
+        if (roomList.length > 0) {
+            const availableRooms = roomList.filter(r => !r.status || r.status === 'AVAILABLE');
+            const displayList = availableRooms.length > 0 ? availableRooms : roomList;
+            roomSelect.replaceChildren(new Option('-- Chọn phòng học --', ''));
+            for (const r of displayList) {
+                const roomNameText = r.roomName || r.roomCode || 'Phòng học';
+                const hasCode = r.roomCode && !roomNameText.includes(r.roomCode);
+                const label = hasCode ? `${roomNameText} (${r.roomCode})` : roomNameText;
+                const statusNote = (r.status && r.status !== 'AVAILABLE') ? ` [${r.status}]` : '';
+                roomSelect.add(new Option(label + statusNote, label));
+            }
+            roomSelect.selectedIndex = 1;
+            roomSelect.disabled = false;
+        } else {
+            roomSelect.options[0].text = '-- Cơ sở này chưa có phòng học --';
+        }
+    } catch (error) {
+        if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
+        console.warn('Lỗi tải danh sách phòng học:', error);
+        roomSelect.options[0].text = 'Chưa tải được phòng học';
     }
 }
 
@@ -1070,8 +1174,9 @@ async function openCreateModal() {
     const modal = new bootstrap.Modal(document.getElementById('createModal'));
     const enrollmentRequests = loadEnrollmentRequestsForScheduling();
     const programs = loadProgramsForScheduling();
+    const branches = loadBranchesForScheduling(true);
     modal.show();
-    await Promise.all([enrollmentRequests, programs]);
+    await Promise.all([enrollmentRequests, programs, branches]);
 }
 
 async function handleCreatePlacementTest(e) {
@@ -1083,9 +1188,20 @@ async function handleCreatePlacementTest(e) {
         showNotification('Vui lòng chọn môn kiểm tra có trong danh mục.', 'danger');
         return;
     }
+    const branchSelect = document.getElementById("createBranch");
+    const selectedBranchOpt = branchSelect ? branchSelect.options[branchSelect.selectedIndex] : null;
+    const branch = selectedBranchOpt ? (selectedBranchOpt.dataset.branchName || selectedBranchOpt.text || '') : '';
+    if (!branchSelect || !branchSelect.value || !branch) {
+        showNotification('Vui lòng chọn cơ sở đào tạo.', 'danger');
+        return;
+    }
+    const roomSelect = document.getElementById("createRoomName");
+    const roomName = roomSelect ? roomSelect.value.trim() : '';
+    if (!roomName || roomSelect.disabled) {
+        showNotification('Vui lòng chọn phòng học.', 'danger');
+        return;
+    }
     const title = document.getElementById("createTitle").value.trim();
-    const roomName = document.getElementById("createRoomName").value.trim();
-    const branch = document.getElementById("createBranch").value;
     const testDateVal = document.getElementById("createTestDate").value;
     const testTimeVal = document.getElementById("createTestTime").value;
     const note = document.getElementById("createNote").value.trim();
