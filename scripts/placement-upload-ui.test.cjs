@@ -170,6 +170,38 @@ test('staff sees the parent note and locked program, and can choose a program fo
  }finally{await page.close();}
 });
 
+test('placement rooms remain scoped to the latest branch when an earlier response arrives late',async()=>{
+ let hold=false,release,arrived;
+ const requested=new Promise(resolve=>arrived=resolve);
+ const {page,errors}=await open('STAFF','placement-test.html',async url=>{
+  if(url.pathname==='/api/branches')return [
+   {id:1,name:'Cơ sở A',active:true},{id:2,name:'Cơ sở B',active:true},{id:3,name:'Cơ sở đóng',active:false}
+  ];
+  if(url.pathname==='/api/branches/1/rooms'){
+   if(hold){arrived();await new Promise(resolve=>release=resolve);}
+   return [{id:11,roomCode:'A1',roomName:'Phòng A',status:'AVAILABLE'}];
+  }
+  if(url.pathname==='/api/branches/2/rooms')return [{id:21,roomCode:'B1',roomName:'Phòng B',status:'AVAILABLE'}];
+  if(url.pathname==='/api/placement-tests/programs')return programs;
+ });
+ try{
+  await page.locator('button[onclick="openCreateModal()"]').click();
+  await page.locator('#createRoomName option[value="Phòng A (A1)"]').waitFor({state:'attached'});
+  assert.equal(await page.locator('#createBranch option[value="3"]').count(),0);
+  hold=true;
+  await page.evaluate(()=>{document.getElementById('createBranch').value='1';window.oldRoomLoad=onBranchChange();});
+  await requested;
+  assert.equal(await page.locator('#createRoomName').isDisabled(),true);
+  await page.locator('#createBranch').selectOption('2');
+  await page.locator('#createRoomName option[value="Phòng B (B1)"]').waitFor({state:'attached'});
+  release();await page.evaluate(()=>window.oldRoomLoad);
+  assert.equal(await page.locator('#createBranch').inputValue(),'2');
+  assert.equal(await page.locator('#createRoomName').inputValue(),'Phòng B (B1)');
+  assert.equal(await page.locator('#createRoomName option[value="Phòng A (A1)"]').count(),0);
+  assert.deepEqual(errors,[]);
+ }finally{release?.();await page.close();}
+});
+
 test('placement cancellation requires a reason, preserves a failed draft and retries on the same schedule',async()=>{
  const {page,errors}=await open('STAFF','placement-test.html',u=>u.pathname==='/api/placement-tests'?[assessment]:undefined);
  let attempts=0;

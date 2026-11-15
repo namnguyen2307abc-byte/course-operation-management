@@ -804,11 +804,15 @@ async function loadEnrollmentRequestsForScheduling() {
 }
 
 let branchesForScheduling = [];
+let schedulingBranchLoad = 0;
+let schedulingRoomLoad = 0;
 
 async function loadBranchesForScheduling(force = false) {
     const branchSelect = document.getElementById('createBranch');
     const roomSelect = document.getElementById('createRoomName');
     if (!branchSelect) return;
+    const load = ++schedulingBranchLoad;
+    ++schedulingRoomLoad;
 
     if (!force && branchesForScheduling.length > 0 && branchSelect.options.length > 1) {
         branchSelect.value = String(branchesForScheduling[0].id);
@@ -824,6 +828,7 @@ async function loadBranchesForScheduling(force = false) {
 
     try {
         const branches = await callApi('/api/branches');
+        if (load !== schedulingBranchLoad) return;
         branchesForScheduling = (Array.isArray(branches) ? branches : []).filter(b => b.active !== false);
         if (branchesForScheduling.length > 0) {
             branchSelect.replaceChildren(new Option('-- Chọn cơ sở đào tạo --', ''));
@@ -843,6 +848,7 @@ async function loadBranchesForScheduling(force = false) {
             }
         }
     } catch (error) {
+        if (load !== schedulingBranchLoad) return;
         console.warn('Lỗi tải danh sách cơ sở:', error);
         branchSelect.options[0].text = 'Chưa tải được cơ sở. Vui lòng thử lại.';
         if (roomSelect) {
@@ -857,6 +863,7 @@ async function onBranchChange() {
     const roomSelect = document.getElementById('createRoomName');
     if (!branchSelect || !roomSelect) return;
 
+    const load = ++schedulingRoomLoad;
     const branchId = branchSelect.value;
     if (!branchId) {
         roomSelect.replaceChildren(new Option('-- Vui lòng chọn cơ sở trước --', ''));
@@ -864,11 +871,12 @@ async function onBranchChange() {
         return;
     }
 
-    roomSelect.disabled = false;
+    roomSelect.disabled = true;
     roomSelect.replaceChildren(new Option('Đang tải phòng học...', ''));
 
     try {
         const rooms = await callApi(`/api/branches/${encodeURIComponent(branchId)}/rooms`);
+        if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
         const roomList = Array.isArray(rooms) ? rooms : [];
         if (roomList.length > 0) {
             const availableRooms = roomList.filter(r => !r.status || r.status === 'AVAILABLE');
@@ -881,17 +889,13 @@ async function onBranchChange() {
                 const statusNote = (r.status && r.status !== 'AVAILABLE') ? ` [${r.status}]` : '';
                 roomSelect.add(new Option(label + statusNote, label));
             }
-            if (displayList.length > 0) {
-                const firstRoom = displayList[0];
-                const firstLabel = (firstRoom.roomCode && !(firstRoom.roomName || '').includes(firstRoom.roomCode))
-                    ? `${firstRoom.roomName || firstRoom.roomCode} (${firstRoom.roomCode})`
-                    : (firstRoom.roomName || firstRoom.roomCode);
-                roomSelect.value = firstLabel;
-            }
+            roomSelect.selectedIndex = 1;
+            roomSelect.disabled = false;
         } else {
             roomSelect.options[0].text = '-- Cơ sở này chưa có phòng học --';
         }
     } catch (error) {
+        if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
         console.warn('Lỗi tải danh sách phòng học:', error);
         roomSelect.options[0].text = 'Chưa tải được phòng học';
     }
@@ -1193,7 +1197,7 @@ async function handleCreatePlacementTest(e) {
     }
     const roomSelect = document.getElementById("createRoomName");
     const roomName = roomSelect ? roomSelect.value.trim() : '';
-    if (!roomName) {
+    if (!roomName || roomSelect.disabled) {
         showNotification('Vui lòng chọn phòng học.', 'danger');
         return;
     }
