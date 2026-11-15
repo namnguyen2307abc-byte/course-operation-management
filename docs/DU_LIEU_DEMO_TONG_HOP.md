@@ -4,9 +4,16 @@ File duy nhất để nạp: `database/seed_demo_tong_hop.sql`.
 
 Gồm `du_lieu_theo_word.sql`, `test_attendence_makeup.sql`, `test_d26_absence_makeup.sql`, `-- Seed data for reviewing Weekly S.sql` và dữ liệu nền mà các file này cần. Phần D26 đã chuyển tên cột/giá trị về đúng schema hiện tại. Các file nguồn được giữ lại để tham khảo; không chạy tiếp từng file sau khi đã nạp bản gộp.
 
-File yêu cầu database đã có schema ứng dụng. File tự bổ sung `placement_schedules.cancel_reason NVARCHAR(500) NULL` và `placement_schedules.cancelled_at DATETIME2 NULL` nếu thiếu, sau đó nạp dữ liệu trong cùng transaction. Không cần chạy riêng `placement_schedule_cancellation.sql` khi dùng file gộp này. Các bản ghi cũ giữ giá trị NULL ở hai cột mới; không xóa hoặc đổi dữ liệu đã thao tác.
+File yêu cầu database đã có schema ứng dụng. File tự bổ sung các cột còn thiếu và khóa ngoại tương ứng trong cùng transaction:
 
-Dữ liệu được đánh dấu `COMBINED_DEMO_V1`; chạy lại sẽ bỏ qua phần đã nạp để giữ trạng thái demo, nhưng vẫn kiểm tra/thêm hai cột mới và bổ sung thu ngân thứ hai nếu thiếu. File không tạo toàn bộ schema từ database trống. Ngày tương đối được tính tại lần nạp đầu tiên, không tự dịch chuyển khi mở ứng dụng.
+- `placement_schedules.cancel_reason NVARCHAR(500) NULL`, `cancelled_at DATETIME2 NULL`.
+- `programs.placement_subject VARCHAR(20) NULL`.
+- `enrollment_requests.requested_program_id BIGINT NULL` → `programs.id`.
+- `placement_schedules.program_id BIGINT NULL` → `programs.id`.
+
+Không cần chạy riêng `placement_schedule_cancellation.sql` hoặc `database/migrations/20261115_placement_programs.sql` khi dùng file gộp này. Sau phần nạp dữ liệu, file cấu hình nhóm kiểm tra cho các mã môn đã biết: PIANO/GUITAR → DAN, DANCE → MUA, MARTIAL_ARTS → VO, chỉ khi chưa có cấu hình. Giữ nguyên cấu hình tùy chỉnh và thông tin môn của yêu cầu/lịch kiểm tra cũ; không tự suy đoán để điền lại lịch sử.
+
+Dữ liệu được đánh dấu `COMBINED_DEMO_V1`; chạy lại sẽ bỏ qua phần đã nạp để giữ trạng thái demo, nhưng vẫn kiểm tra/thêm các cột và khóa ngoại nêu trên, cập nhật cấu hình môn còn thiếu và bổ sung thu ngân thứ hai nếu thiếu. File không tạo toàn bộ schema từ database trống. Ngày tương đối được tính tại lần nạp đầu tiên, không tự dịch chuyển khi mở ứng dụng.
 
 ## Tài khoản
 
@@ -43,7 +50,7 @@ D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701
 
 ## Test quyền điều chỉnh giữa hai nhân viên
 
-Chạy lại file tổng hợp trên database đã nạp sẽ bổ sung hai cột hủy Placement Test nếu thiếu và `d26_staff_2` nếu chưa có; không reset mật khẩu, lịch đóng hoặc giao dịch đang test. Nếu tên tài khoản đã thuộc role khác, script báo lỗi thay vì đổi quyền.
+Chạy lại file tổng hợp trên database đã nạp sẽ bổ sung schema còn thiếu nêu trên và `d26_staff_2` nếu chưa có; không reset mật khẩu, lịch đóng hoặc giao dịch đang test. Nếu tên tài khoản đã thuộc role khác, script báo lỗi thay vì đổi quyền.
 
 1. Đăng nhập `d26_staff`, thu một kỳ bằng tiền mặt và ghi lại số biên lai mới. Tài khoản này được gửi yêu cầu điều chỉnh biên lai đó.
 2. Đăng xuất, đăng nhập `d26_staff_2`, mở cùng hóa đơn: được xem biên lai nhưng không thấy nút điều chỉnh khoản do `d26_staff` thu.
