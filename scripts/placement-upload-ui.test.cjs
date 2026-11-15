@@ -123,6 +123,8 @@ test('staff sees the parent note and locked program, and can choose a program fo
  let submitted;
  const {page}=await open('STAFF','placement-test.html',(url,request)=>{
   if(url.pathname.endsWith('/placement-programs')) return programs;
+  if(url.pathname==='/api/branches') return [{id:1,name:'Cơ sở 1 - Cầu Giấy',active:true}];
+  if(url.pathname==='/api/branches/1/rooms') return [{id:1,roomCode:'P101',roomName:'Phòng Đàn 101',status:'AVAILABLE'}];
   if(url.pathname.endsWith('/staff/requests')) return [
    {id:70,childName:'Nguyễn An',placementRequested:true,status:'WAITING_PLACEMENT',requestedProgramId:31,
     requestedProgramName:'Piano',note:'Ưu tiên thứ Bảy'},
@@ -150,7 +152,11 @@ test('staff sees the parent note and locked program, and can choose a program fo
   await program.selectOption('32');
   await request.selectOption('70');
   await page.locator('#createTitle').fill('Kiểm tra Piano');
-  await page.locator('#createRoomName').fill('P101');
+  if(await page.locator('#createRoomName').evaluate(el=>el.tagName==='SELECT')){
+   await page.locator('#createRoomName').selectOption({index:1});
+  }else{
+   await page.locator('#createRoomName').fill('P101');
+  }
   const future=await page.evaluate(()=>{
    const date=new Date();date.setDate(date.getDate()+3);
    return new Date(date.getTime()-date.getTimezoneOffset()*60_000).toISOString().slice(0,10);

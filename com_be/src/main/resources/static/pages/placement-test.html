@@ -99,10 +99,9 @@
                         <li class="breadcrumb-item active">Đánh Giá Năng Khiếu & Xếp Lớp</li>
                     </ol>
                 </nav>
-                <h3 class="page-header-title text-dark mb-1">
+                <h3 class="page-header-title text-dark mb-0">
                     <i class="bi bi-music-note-beamed text-warning me-2"></i>Đánh Giá Năng Khiếu & Xếp Lớp
                 </h3>
-                <p class="text-muted small mb-0">Hệ thống đồng bộ trực tiếp với Spring Boot API (`/api/placement-tests`).</p>
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadPlacementTests()">
@@ -154,11 +153,8 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="stat-card">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="stat-icon-wrapper stat-icon-purple m-0" style="width: 40px; height: 40px; font-size: 1.1rem;">
-                            <i class="bi bi-star-fill text-warning"></i>
-                        </div>
-                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Backend Score</span>
+                    <div class="stat-icon-wrapper stat-icon-purple mb-2" style="width: 40px; height: 40px; font-size: 1.1rem;">
+                        <i class="bi bi-star-fill text-warning"></i>
                     </div>
                     <div class="stat-value" id="statAvgScore">-- / 10</div>
                     <div class="stat-label">Điểm đánh giá trung bình</div>
@@ -281,15 +277,16 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold text-dark">Cơ sở đào tạo <span class="text-danger">*</span></label>
+                                <label for="createBranch" class="form-label fw-semibold text-dark">Cơ sở đào tạo <span class="text-danger">*</span></label>
                                 <select id="createBranch" class="form-select" required>
-                                    <option value="Cơ sở 1 - Cầu Giấy">Cơ sở 1 - Cầu Giấy, Hà Nội</option>
-                                    <option value="Cơ sở 2 - Đống Đa">Cơ sở 2 - Đống Đa, Hà Nội</option>
+                                    <option value="">Đang tải cơ sở...</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold text-dark">Tên phòng học <span class="text-danger">*</span></label>
-                                <input type="text" id="createRoomName" class="form-control" placeholder="Ví dụ: Phòng Đàn 101, Phòng Múa 202, Võ Đường 203" required>
+                                <label for="createRoomName" class="form-label fw-semibold text-dark">Tên phòng học <span class="text-danger">*</span></label>
+                                <select id="createRoomName" class="form-select" required>
+                                    <option value="">-- Vui lòng chọn cơ sở trước --</option>
+                                </select>
                             </div>
 
                             <div class="col-md-6">
@@ -317,13 +314,13 @@
         </div>
     </div>
 
-    <!-- MODAL 2: Chấm điểm tiêu chí & Đánh giá Backend (PlacementAssessmentRequest) -->
+    <!-- MODAL 2: Chấm điểm tiêu chí & Đánh giá (PlacementAssessmentRequest) -->
     <div class="modal fade" id="evaluateModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header bg-dark text-white">
                     <div>
-                        <h5 class="modal-title fw-bold text-warning"><i class="bi bi-award-fill me-2"></i>Chấm Điểm & Tư Vấn Trình Độ Backend</h5>
+                        <h5 class="modal-title fw-bold text-warning"><i class="bi bi-award-fill me-2"></i>Chấm Điểm & Tư Vấn Trình Độ</h5>
                         <small id="evalCandidateMeta" class="text-white-50">Mã Lịch: #PT-1</small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -342,7 +339,6 @@
                                 </div>
                                 <div class="score-badge-circle">
                                     <span class="fs-5 fw-bold" id="calculatedScore100">0 / 100đ</span>
-                                    <small style="font-size: 0.6rem;">Backend Score</small>
                                 </div>
                             </div>
                         </div>
