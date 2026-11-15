@@ -951,28 +951,4 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         };
         return dow + " " + date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
     }
-
-    private int mapTimeToSlotNumber(LocalTime time) {
-        if (time == null)
-            return 1;
-        if (time.isBefore(LocalTime.of(9, 15)))
-            return 1;
-        if (time.isBefore(LocalTime.of(12, 30)))
-            return 2;
-        if (time.isBefore(LocalTime.of(15, 15)))
-            return 3;
-        return 4;
-    }
-
-    private List<TimeSlotDto> getStandardSlots() {
-        return List.of(
-                TimeSlotDto.builder().slotNumber(1).slotName("Slot 1").timeRange("07:00 - 09:00")
-                        .startTime(LocalTime.of(7, 0)).endTime(LocalTime.of(9, 0)).build(),
-                TimeSlotDto.builder().slotNumber(2).slotName("Slot 2").timeRange("09:30 - 11:30")
-                        .startTime(LocalTime.of(9, 30)).endTime(LocalTime.of(11, 30)).build(),
-                TimeSlotDto.builder().slotNumber(3).slotName("Slot 3").timeRange("13:00 - 15:00")
-                        .startTime(LocalTime.of(13, 0)).endTime(LocalTime.of(15, 0)).build(),
-                TimeSlotDto.builder().slotNumber(4).slotName("Slot 4").timeRange("15:30 - 17:30")
-                        .startTime(LocalTime.of(15, 30)).endTime(LocalTime.of(17, 30)).build());
-    }
 }
