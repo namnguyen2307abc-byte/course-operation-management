@@ -828,13 +828,6 @@ function parseLocalDate(dateStr) {
     return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 }
 
-function getInitials(name) {
-    if (!name) return 'HV';
-    const words = name.trim().split(/\s+/);
-    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-}
-
 function showToast(type, title, message) {
     const container = document.getElementById('toastContainer');
     if (!container) {
