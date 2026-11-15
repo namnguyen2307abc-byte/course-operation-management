@@ -65,7 +65,8 @@ async function screen(file, role, width) {
         else if (endpoint.endsWith('/counts')) body = { rooms: 23, equipment: 23, goodEquipment: 23 };
         else if (endpoint.endsWith('/overview')) body = { room, warnings: [] };
         else if (endpoint.endsWith('/detail')) body = room;
-        else if (endpoint === '/api/course-enrollment/courses') body = [{ id: 1, name: 'Chess', code: 'CHESS' }];
+        else if (endpoint === '/api/course-enrollment/programs') body = [{ id: 1, name: 'Chess', placementAvailable: false }];
+        else if (endpoint === '/api/course-enrollment/courses') body = [{ id: 1, name: 'Chess', code: 'CHESS', programId: 1 }];
         else if (endpoint === '/api/course-enrollment/children') body = [{ id: 1, fullName: 'Student' }];
         else if (endpoint === '/api/class-management/classes/99') body = { ...cls, id: 99, className: 'Off-page class' };
         else if (endpoint.includes('/courses/1/classes')) body = [cls];
