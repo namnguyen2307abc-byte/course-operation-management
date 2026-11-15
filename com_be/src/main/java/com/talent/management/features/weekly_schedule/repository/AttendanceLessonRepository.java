@@ -108,11 +108,11 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
 
     /**
      * Ứng viên điều phối ghép bù linh hoạt cùng trình độ khi các lớp song song đã dạy qua buổi gốc:
-     * Tìm các buổi sắp diễn ra có sessionNumber khác buổi gốc trong cùng chương trình + level.
+     * Tìm các buổi sắp diễn ra có sessionNumber lớn hơn buổi gốc (từ buổi nghỉ trở đi, không học lùi bài cũ).
      */
     @Query("SELECT l FROM Lesson l " +
            "WHERE l.lessonDate >= :fromDate " +
-           "AND l.sessionNumber <> :sessionNumber " +
+           "AND l.sessionNumber > :sessionNumber " +
            "AND l.classEntity.id <> :excludeClassId " +
            "AND l.classEntity.course.program.id = :programId " +
            "AND l.classEntity.course.level = :level " +
@@ -125,10 +125,11 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
 
     /**
      * Ứng viên điều phối ghép bù linh hoạt cùng khóa học khi các lớp song song đã dạy qua buổi gốc.
+     * Chỉ tìm các buổi từ bài nghỉ trở đi (sessionNumber > :sessionNumber).
      */
     @Query("SELECT l FROM Lesson l " +
            "WHERE l.lessonDate >= :fromDate " +
-           "AND l.sessionNumber <> :sessionNumber " +
+           "AND l.sessionNumber > :sessionNumber " +
            "AND l.classEntity.id <> :excludeClassId " +
            "AND l.classEntity.course.id = :courseId " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")

@@ -51,13 +51,13 @@ class MakeupSchedulingFlowTest {
         verify(lessons).findMakeupCandidatesByCourse(any(), eq(3), eq(100L), eq(1L));
         verify(makeups, never()).save(any());
     }
-    @Test void noSlotMessageKeepsRegistrationWithoutTargetLesson() {
+    @Test void noSlotMessageCancelsRegistrationWithoutTargetLesson() {
         staff();
         var makeup = request();
         when(makeups.findByIdAndStatusIn(eq(50L), anyList())).thenReturn(Optional.of(makeup));
         when(makeups.save(any())).thenAnswer(inv -> inv.getArgument(0));
         service.markNoSlotAvailable(50L, new MakeupResolveRequest("Trung tâm sẽ liên hệ khi có lớp phù hợp."));
-        assertThat(makeup.getStatus()).isEqualTo(MakeupStatus.NO_SLOT);
+        assertThat(makeup.getStatus()).isEqualTo(MakeupStatus.CANCELLED);
         assertThat(makeup.getTargetLesson()).isNull();
         assertThat(makeup.getNote()).contains("Trung tâm sẽ liên hệ");
     }
@@ -192,4 +192,58 @@ class MakeupSchedulingFlowTest {
         verify(absences, never()).delete(any());
     }
 
+    @Test void createAbsenceRequest_rejectsWhenStudentAlreadyHadTwoMakeupSessions() {
+        User parent = User.builder().id(10L).role(Role.PARENT).username("parent1").build();
+        Student student = Student.builder().id(1L).fullName("Nguyễn Bảo Nam").parent(parent).build();
+        Course course = Course.builder().id(5L).name("Khóa học Piano Grade 1").build();
+        ClassEntity clazz = ClassEntity.builder().id(100L).course(course).className("Piano Grade 1").build();
+        Lesson futureLesson = Lesson.builder()
+                .id(10L)
+                .classEntity(clazz)
+                .lessonDate(LocalDate.now().plusDays(2))
+                .startTime(LocalTime.of(14, 0))
+                .status(LessonStatus.SCHEDULED)
+                .build();
+
+        when(currentUser.getCurrentUser()).thenReturn(parent);
+        when(students.findById(1L)).thenReturn(Optional.of(student));
+        when(lessons.findById(10L)).thenReturn(Optional.of(futureLesson));
+        when(absences.findByStudentIdAndLessonId(1L, 10L)).thenReturn(Optional.empty());
+        when(makeups.countMakeupByStudentAndCourse(eq(1L), eq(5L), anyCollection())).thenReturn(2L);
+
+        assertThatThrownBy(() -> service.createAbsenceRequest(new AbsenceRequestCreateRequest(1L, 10L, "Bé có việc gia đình")))
+                .isInstanceOf(AttendanceMakeupException.class)
+                .hasMessageContaining("đã từng học bù 2 lần")
+                .hasMessageContaining("tối đa 2 lần học bù");
+        verify(absences, never()).save(any());
+    }
+
+    @Test void createAbsenceRequest_countsOnlyCompletedMakeups_andRejectsWhenPendingPlusCompletedExceedsLimit() {
+        User parent = User.builder().id(10L).role(Role.PARENT).username("parent1").build();
+        Student student = Student.builder().id(1L).fullName("Nguyễn Bảo Nam").parent(parent).build();
+        Course course = Course.builder().id(5L).name("Khóa học Piano Grade 1").build();
+        ClassEntity clazz = ClassEntity.builder().id(100L).course(course).className("Piano Grade 1").build();
+        Lesson futureLesson = Lesson.builder()
+                .id(10L)
+                .classEntity(clazz)
+                .lessonDate(LocalDate.now().plusDays(2))
+                .startTime(LocalTime.of(14, 0))
+                .status(LessonStatus.SCHEDULED)
+                .build();
+
+        when(currentUser.getCurrentUser()).thenReturn(parent);
+        when(students.findById(1L)).thenReturn(Optional.of(student));
+        when(lessons.findById(10L)).thenReturn(Optional.of(futureLesson));
+        when(absences.findByStudentIdAndLessonId(1L, 10L)).thenReturn(Optional.empty());
+        // Completed makeups: 1
+        when(makeups.countMakeupByStudentAndCourse(eq(1L), eq(5L), anyCollection())).thenReturn(1L);
+        when(makeups.countMakeupByStudent(eq(1L), anyCollection()))
+                .thenReturn(1L) // totalCompletedCount
+                .thenReturn(1L); // inProgressCount
+
+        assertThatThrownBy(() -> service.createAbsenceRequest(new AbsenceRequestCreateRequest(1L, 10L, "Bé xin nghỉ tiếp")))
+                .isInstanceOf(AttendanceMakeupException.class)
+                .hasMessageContaining("đang chờ xử lý/xếp lịch");
+        verify(absences, never()).save(any());
+    }
 }

@@ -96,9 +96,9 @@ function initNavbarAndRoleBadge() {
             roleBadge.className = 'badge bg-warning text-dark px-3 py-2 rounded-pill small';
         }
     } else if (role === 'PARENT') {
-        document.title = 'Lịch Học Của Con - Học Viện Talent';
-        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Lịch Học Của Con';
-        if (heroTitle) heroTitle.textContent = 'Lịch Học Của Con';
+        document.title = 'Thời Khóa Biểu Của Con - Học Viện Talent';
+        if (heroBreadcrumb) heroBreadcrumb.textContent = 'Thời Khóa Biểu Của Con';
+        if (heroTitle) heroTitle.textContent = 'Thời Khóa Biểu Của Con';
         if (heroSubtitle) heroSubtitle.textContent = 'Theo dõi thời khóa biểu và chuyên cần của con theo từng ca học và ngày trong tuần.';
         if (roleBadge) {
             roleBadge.innerHTML = '<i class="bi bi-people-fill me-1"></i>Phụ Huynh: ' + (currentUser.fullName || currentUser.username);

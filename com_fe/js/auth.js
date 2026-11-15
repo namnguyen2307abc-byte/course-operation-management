@@ -30,7 +30,7 @@ const WORKSPACE_FEATURES = [
     { file: 'class-management', label: 'Quản lý lớp', icon: 'people', group: 'Đào tạo & học vụ', roles: ['ADMIN', 'STAFF', 'BRANCH_MANAGER'], description: 'Quản lý lớp, phân công giáo viên, phòng học và tạo lịch học.' },
     { file: 'course-management', label: 'Khóa học', icon: 'journal-bookmark', group: 'Đào tạo & học vụ', roles: ['STAFF', 'BRANCH_MANAGER', 'ADMIN'], description: 'Quản lý khóa học theo bộ môn, trình độ và học phí.' },
     { file: 'placement-test', label: 'Đánh giá đầu vào', icon: 'clipboard-check', group: 'Đào tạo & học vụ', roles: ['ADMIN', 'TEACHER', 'STAFF', 'BRANCH_MANAGER'], description: 'Sắp xếp lịch kiểm tra và ghi nhận kết quả đánh giá năng khiếu.' },
-    { file: 'absence-makeup', label: 'Viết đơn', icon: 'envelope-paper', group: 'Đào tạo & học vụ', roles: ['PARENT', 'TEACHER', 'STAFF', 'BRANCH_MANAGER', 'ADMIN', 'STUDENT'], description: 'Viết đơn xin nghỉ học, theo dõi phê duyệt và sắp xếp buổi học bù.' },
+    { file: 'absence-makeup', label: 'Gửi đơn & Học bù', icon: 'envelope-paper', group: 'Đào tạo & học vụ', roles: ['PARENT', 'TEACHER', 'STAFF', 'BRANCH_MANAGER', 'ADMIN', 'STUDENT'], description: 'Viết đơn xin nghỉ học, theo dõi phê duyệt và sắp xếp buổi học bù.' },
     { file: 'branch-facility', label: 'Cơ sở & phòng học', icon: 'buildings', group: 'Vận hành trung tâm', roles: ['ADMIN', 'BRANCH_MANAGER', 'STAFF', 'TEACHER', 'PARENT', 'STUDENT'], description: 'Tra cứu chi nhánh, phòng học và cơ sở vật chất của trung tâm.' },
     { file: 'parent-tuition', label: 'Học phí & thông báo', icon: 'wallet2', group: 'Học tập của con', roles: ['PARENT'], description: 'Xem lịch đóng, thông báo, thanh toán online và biên lai học phí.' },
     { file: 'tuition-receivables', label: 'Quản lý học phí', icon: 'cash-stack', group: 'Vận hành trung tâm', roles: ['ADMIN','STAFF','BRANCH_MANAGER'], description: 'Chốt lịch đóng, thu học phí và quản lý công nợ.' },
@@ -38,16 +38,13 @@ const WORKSPACE_FEATURES = [
 function visibleFeatures(user) { return WORKSPACE_FEATURES.filter(feature => feature.roles.includes(user?.role)); }
 function getFeatureLabel(feature, user) {
     if (feature.file === 'weekly-schedule') {
-        if (user && (user.role === 'PARENT' || user.role === 'STUDENT')) {
-            return 'Lịch học';
-        }
         return 'Thời khóa biểu';
     }
     if (feature.file === 'absence-makeup') {
         if (user && (user.role === 'PARENT' || user.role === 'STUDENT')) {
-            return 'Viết đơn';
+            return 'Gửi đơn & Học bù';
         }
-        return 'Xem đơn';
+        return 'Quản lý đơn';
     }
     return feature.label;
 }
@@ -77,6 +74,80 @@ function updateNavbarUser() {
         }
         nav.appendChild(a);
     }
+    function addCollapsibleNav(feature, user) {
+        const wrap = document.createElement('div');
+        wrap.className = 'workspace-nav-collapsible';
+        const isCurrentPage = window.location.pathname.endsWith('/absence-makeup.html');
+        if (isCurrentPage) wrap.classList.add('open');
+
+        const parentBtn = document.createElement('button');
+        parentBtn.type = 'button';
+        parentBtn.className = 'workspace-nav-link has-submenu';
+
+        const label = getFeatureLabel(feature, user);
+        parentBtn.innerHTML = `
+            <span class="nav-label-wrap">
+                <i class="bi bi-${feature.icon}" aria-hidden="true"></i>
+                <span>${label}</span>
+            </span>
+            <i class="bi bi-chevron-down nav-chevron" aria-hidden="true"></i>
+        `;
+
+        parentBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!isCurrentPage) {
+                window.location.href = appPath('/pages/absence-makeup.html');
+                return;
+            }
+            wrap.classList.toggle('open');
+        });
+
+        wrap.appendChild(parentBtn);
+
+        const subNav = document.createElement('div');
+        subNav.className = 'workspace-nav-submenu';
+
+        const subItems = [
+            { id: 'ABSENCE', label: 'Xem đơn', path: '/pages/absence-makeup.html?tab=ABSENCE' }
+        ];
+
+        if (user.role === 'PARENT') {
+            subItems.push({ id: 'CREATE', label: 'Gửi đơn', path: '/pages/absence-makeup.html?tab=CREATE' });
+        }
+
+        subItems.push({ id: 'MAKEUP', label: 'Lịch học bù', path: '/pages/absence-makeup.html?tab=MAKEUP' });
+
+        const currentTab = isCurrentPage ? (new URLSearchParams(window.location.search).get('tab') || 'ABSENCE') : '';
+
+        subItems.forEach(item => {
+            const subLink = document.createElement('a');
+            subLink.href = appPath(item.path);
+            subLink.className = 'workspace-subnav-link';
+            subLink.dataset.tab = item.id;
+            subLink.innerHTML = `<span class="subnav-dot">•</span><span>${item.label}</span>`;
+
+            if (isCurrentPage && currentTab === item.id) {
+                subLink.classList.add('active');
+            }
+
+            subLink.addEventListener('click', (e) => {
+                if (isCurrentPage) {
+                    e.preventDefault();
+                    if (typeof switchMainTab === 'function') {
+                        switchMainTab(item.id);
+                        const newUrl = new URL(window.location);
+                        newUrl.searchParams.set('tab', item.id);
+                        history.replaceState(null, '', newUrl.toString());
+                    }
+                }
+            });
+
+            subNav.appendChild(subLink);
+        });
+
+        wrap.appendChild(subNav);
+        nav.appendChild(wrap);
+    }
     addLink('Trang chủ', 'grid-1x2', '/index.html');
     let group;
     visibleFeatures(user).forEach(feature => {
@@ -84,7 +155,11 @@ function updateNavbarUser() {
             group = feature.group;
             const title = document.createElement('p'); title.className = 'sidebar-group-label'; title.textContent = group; nav.appendChild(title);
         }
-        addLink(getFeatureLabel(feature, user), feature.icon, '/pages/' + feature.file + '.html');
+        if (feature.file === 'absence-makeup') {
+            addCollapsibleNav(feature, user);
+        } else {
+            addLink(getFeatureLabel(feature, user), feature.icon, '/pages/' + feature.file + '.html');
+        }
     });
     addLink('Đổi mật khẩu', 'key', '/pages/change-password.html');
     document.querySelectorAll('[data-app-path]').forEach(link => link.href = appPath(link.dataset.appPath));
@@ -117,7 +192,10 @@ function logout() {
 document.addEventListener('DOMContentLoaded', updateNavbarUser);
 
 async function updateTuitionNoticeIndicator() {
-    if (getCurrentUser()?.role !== 'PARENT' || typeof callApi !== 'function') return;
+    if (window.location.pathname.endsWith('change-password.html') || window.location.pathname.endsWith('login.html')) return;
+    const user = getCurrentUser();
+    if (!user || user.mustChangePassword || user.role !== 'PARENT' || typeof callApi !== 'function') return;
+    if (!document.getElementById('workspaceNavigation')) return;
     try {
         const notices = await callApi('/api/parent-tuition/notifications', 'GET', null, false, false);
         const link = [...document.querySelectorAll('#workspaceNavigation a')].find(a => a.pathname.endsWith('/parent-tuition.html'));

@@ -54,4 +54,6 @@ public class MakeupRegistrationResponse {
     private Boolean limitExceeded;
     private String note;
     private LocalDateTime createdAt;
+    private LocalDateTime reviewedAt;
+    private String reviewerName;
 }

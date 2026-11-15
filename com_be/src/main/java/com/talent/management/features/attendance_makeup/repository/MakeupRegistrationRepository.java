@@ -3,6 +3,8 @@ package com.talent.management.features.attendance_makeup.repository;
 import com.talent.management.shared.entity.MakeupRegistration;
 import com.talent.management.shared.enums.MakeupStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -65,6 +67,10 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
     /** Học viên đã được chuyển khỏi buổi học gốc sang ca bù */
     List<MakeupRegistration> findByOriginalLessonIdAndStatusIn(Long originalLessonId, Collection<MakeupStatus> statuses);
 
+    /** Tìm ca bù theo buổi học gốc, học viên và tập trạng thái */
+    Optional<MakeupRegistration> findFirstByOriginalLessonIdAndStudentIdAndStatusIn(
+            Long originalLessonId, Long studentId, Collection<MakeupStatus> statuses);
+
     /** BATCH — ca bù đến (target) của nhiều buổi học cùng lúc */
     List<MakeupRegistration> findByTargetLessonIdInAndStatusIn(Collection<Long> targetLessonIds, Collection<MakeupStatus> statuses);
 
@@ -76,4 +82,32 @@ public interface MakeupRegistrationRepository extends JpaRepository<MakeupRegist
 
     /** Đếm số học viên bù đang chiếm chỗ trong một buổi học */
     long countByTargetLessonIdAndStatusIn(Long targetLessonId, Collection<MakeupStatus> statuses);
+
+    /** Đếm số ca học bù của học viên trong cùng lớp học */
+    @Query("SELECT COUNT(mr) FROM MakeupRegistration mr " +
+           "WHERE mr.student.id = :studentId " +
+           "AND mr.originalLesson.classEntity.id = :classId " +
+           "AND mr.status IN :statuses")
+    long countMakeupByStudentAndClass(
+            @Param("studentId") Long studentId,
+            @Param("classId") Long classId,
+            @Param("statuses") Collection<MakeupStatus> statuses);
+
+    /** Đếm số ca học bù của học viên trong cùng khóa học */
+    @Query("SELECT COUNT(mr) FROM MakeupRegistration mr " +
+           "WHERE mr.student.id = :studentId " +
+           "AND mr.originalLesson.classEntity.course.id = :courseId " +
+           "AND mr.status IN :statuses")
+    long countMakeupByStudentAndCourse(
+            @Param("studentId") Long studentId,
+            @Param("courseId") Long courseId,
+            @Param("statuses") Collection<MakeupStatus> statuses);
+
+    /** Đếm tổng số ca học bù của học viên */
+    @Query("SELECT COUNT(mr) FROM MakeupRegistration mr " +
+           "WHERE mr.student.id = :studentId " +
+           "AND mr.status IN :statuses")
+    long countMakeupByStudent(
+            @Param("studentId") Long studentId,
+            @Param("statuses") Collection<MakeupStatus> statuses);
 }

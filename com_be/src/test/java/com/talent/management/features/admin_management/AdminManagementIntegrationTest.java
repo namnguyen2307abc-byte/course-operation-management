@@ -94,6 +94,31 @@ class AdminManagementIntegrationTest {
                 && a.getDetails().contains("PIANO"))).isTrue();
     }
 
+    @Test void parentAccountCanBeCreatedWithChildrenAndLinked() throws Exception {
+        var created = body(postJson("/api/admin/users", adminToken, Map.of(
+                "username", "parent_with_kids",
+                "password", "temporary-pass",
+                "fullName", "Phụ huynh có con",
+                "role", "PARENT",
+                "children", List.of(
+                        Map.of("fullName", "Bé Nguyễn Gia Bảo", "dateOfBirth", "2018-05-10", "gender", "Nam", "schoolName", "Tiểu học Dịch Vọng"),
+                        Map.of("fullName", "Bé Nguyễn Bảo Châu", "dateOfBirth", "2020-08-20", "gender", "Nữ")
+                )
+        )).andExpect(status().isCreated()).andExpect(jsonPath("$.role").value("PARENT")));
+
+        long parentId = created.get("id").asLong();
+        var children = students.findByParentId(parentId);
+        assertThat(children).hasSize(2);
+        assertThat(children).extracting(Student::getFullName)
+                .containsExactlyInAnyOrder("Bé Nguyễn Gia Bảo", "Bé Nguyễn Bảo Châu");
+
+        // Verify detail endpoint reflects linked children
+        mvc.perform(get("/api/admin/users/" + parentId).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.children.length()").value(2))
+                .andExpect(jsonPath("$.children[0].name").isString());
+    }
+
     @Test void loginChecksPasswordAndNeverCreatesAnUnknownUser() throws Exception {
         long before = users.count();
         postJson("/api/auth/login", null, Map.of("username", "unknown_admin", "password", "initial-pass")).andExpect(status().isUnauthorized());

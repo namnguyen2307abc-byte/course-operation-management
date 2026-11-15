@@ -2,6 +2,7 @@ package com.talent.management.features.admin_management.dto.request;
 
 import com.talent.management.shared.enums.Role;
 import jakarta.validation.constraints.*;
+import java.util.List;
 
 public record CreateAdminUserRequest(
         @NotBlank @Pattern(regexp = "[A-Za-z0-9_.-]{3,100}") String username,
@@ -12,4 +13,5 @@ public record CreateAdminUserRequest(
         @NotNull Role role,
         @Size(max = 100) String subject,
         Long studentId,
-        @Size(max = 100) String teachingSubject) {}
+        @Size(max = 100) String teachingSubject,
+        List<ChildItemRequest> children) {}

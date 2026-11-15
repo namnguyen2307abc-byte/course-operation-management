@@ -44,39 +44,47 @@ updateNavbarUser();
         }
         .notif-bell-btn {
             position: relative;
-            border: 1px solid #e2e8f0;
+            border: 1px solid rgba(226, 232, 240, 0.9);
             background: #ffffff;
             color: #334155;
             width: 38px;
             height: 38px;
-            border-radius: 999px;
+            border-radius: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.18s ease;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            outline: none;
         }
         .notif-bell-btn:hover {
-            background: #f1f5f9;
-            color: #2563eb;
+            background: #f8fafc;
+            color: #0f766e;
             border-color: #cbd5e1;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .notif-bell-btn.active {
+            background: #f0fdfa;
+            color: #0f766e;
+            border-color: #99f6e4;
         }
         .notif-bell-btn.has-unread {
-            color: #2563eb;
-            background: #eff6ff;
-            border-color: #60a5fa;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2), 0 0 16px rgba(37, 99, 235, 0.45);
-            animation: notifBellGlow 2.5s infinite ease-in-out;
+            color: #0f766e;
+            background: #f0fdfa;
+            border-color: #99f6e4;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15), 0 0 12px rgba(15, 118, 110, 0.25);
+            animation: notifBellGlow 2.8s infinite ease-in-out;
         }
         @keyframes notifBellGlow {
             0%, 100% {
-                box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15), 0 0 8px rgba(37, 99, 235, 0.35);
-                border-color: #93c5fd;
+                box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12), 0 0 8px rgba(15, 118, 110, 0.2);
+                border-color: #99f6e4;
             }
             50% {
-                box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3), 0 0 20px rgba(37, 99, 235, 0.65);
-                border-color: #2563eb;
+                box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.25), 0 0 16px rgba(15, 118, 110, 0.4);
+                border-color: #0f766e;
             }
         }
         .notif-bell-btn.has-unread > i {
@@ -95,91 +103,299 @@ updateNavbarUser();
             position: absolute;
             top: -4px;
             right: -4px;
-            min-width: 19px;
-            height: 19px;
+            min-width: 18px;
+            height: 18px;
             padding: 0 5px;
             border-radius: 999px;
             background: #ef4444;
             color: #ffffff;
-            font-size: 0.7rem;
-            font-weight: 800;
+            font-size: 0.68rem;
+            font-weight: 700;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             border: 2px solid #ffffff;
             line-height: 1;
-            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
         }
         .notif-dropdown-panel {
             position: absolute;
-            top: calc(100% + 10px);
+            top: calc(100% + 12px);
             right: 0;
-            width: 370px;
+            width: 410px;
             max-width: calc(100vw - 24px);
             background: #ffffff;
-            border: 1px solid #e2e8f0;
+            border: 1px solid rgba(226, 232, 240, 0.95);
             border-radius: 16px;
-            box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.18);
+            box-shadow: 0 20px 48px -10px rgba(15, 23, 42, 0.16), 0 4px 16px -2px rgba(15, 23, 42, 0.06);
             z-index: 2050;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: notifFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes notifFadeIn {
+            from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .notif-dropdown-header {
-            padding: 12px 16px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
+            padding: 14px 18px;
+            background: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
+        .notif-header-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .notif-header-unread-pill {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 2px 9px;
+            border-radius: 999px;
+            background: #fee2e2;
+            color: #ef4444;
+            display: inline-flex;
+            align-items: center;
+            letter-spacing: 0.2px;
+        }
+        .notif-header-unread-pill.all-read {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        .notif-mark-all-btn {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #0f766e;
+            background: none;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .notif-mark-all-btn:hover {
+            color: #0d9488;
+            background: #f0fdfa;
+        }
+        .notif-filter-bar {
+            padding: 8px 14px;
+            background: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .notif-filter-chip {
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            line-height: 1.2;
+        }
+        .notif-filter-chip:hover {
+            background: #f1f5f9;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+        .notif-filter-chip.active {
+            background: #0f766e;
+            color: #ffffff;
+            border-color: #0f766e;
+            box-shadow: 0 2px 6px rgba(15, 118, 110, 0.25);
+        }
+        .notif-filter-chip.chip-alert.active {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+        }
+        .notif-filter-chip.chip-alert:not(.active) {
+            color: #ef4444;
+        }
         .notif-dropdown-list {
-            max-height: 380px;
+            max-height: 400px;
             overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+        .notif-dropdown-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .notif-dropdown-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .notif-dropdown-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        .notif-dropdown-list::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
         .notif-item {
-            padding: 12px 16px;
+            padding: 13px 16px;
             border-bottom: 1px solid #f1f5f9;
             display: flex;
             gap: 12px;
             cursor: pointer;
-            transition: background 0.15s ease;
+            transition: all 0.15s ease;
+            position: relative;
+            background: #ffffff;
+            align-items: flex-start;
             text-align: left;
+        }
+        .notif-item:last-child {
+            border-bottom: none;
         }
         .notif-item:hover {
             background: #f8fafc;
         }
         .notif-item.unread {
-            background: #eff6ff;
+            background: #f0fdfa;
+        }
+        .notif-item.unread::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3.5px;
+            background: #0f766e;
+            border-top-right-radius: 2px;
+            border-bottom-right-radius: 2px;
         }
         .notif-item.unread:hover {
-            background: #dbeafe;
+            background: #e6fffa;
         }
         .notif-item-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            font-size: 1rem;
+            font-size: 1.1rem;
+            margin-top: 1px;
+        }
+        .notif-ic-primary { background: #e0f2fe; color: #0284c7; }
+        .notif-ic-info { background: #ccfbf1; color: #0f766e; }
+        .notif-ic-warning { background: #fef3c7; color: #d97706; }
+        .notif-ic-danger { background: #fee2e2; color: #dc2626; }
+        .notif-ic-success { background: #dcfce7; color: #16a34a; }
+
+        .notif-item-content {
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .notif-item-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 3px;
         }
         .notif-item-title {
-            font-size: 0.86rem;
+            font-size: 0.85rem;
             font-weight: 700;
             color: #0f172a;
-            margin-bottom: 2px;
+            line-height: 1.3;
         }
+        .notif-tag {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            line-height: 1.2;
+            display: inline-block;
+            white-space: nowrap;
+            flex-shrink: 0;
+            letter-spacing: 0.2px;
+        }
+        .notif-tag-primary { background: #e0f2fe; color: #0369a1; }
+        .notif-tag-info { background: #ccfbf1; color: #0f766e; }
+        .notif-tag-warning { background: #fef3c7; color: #b45309; }
+        .notif-tag-danger { background: #fee2e2; color: #b91c1c; }
+        .notif-tag-success { background: #dcfce7; color: #15803d; }
+
         .notif-item-msg {
-            font-size: 0.8rem;
+            font-size: 0.79rem;
             color: #475569;
-            line-height: 1.35;
-            margin-bottom: 4px;
+            line-height: 1.45;
+            margin-bottom: 6px;
+            word-break: break-word;
         }
         .notif-item-meta {
-            font-size: 0.72rem;
+            font-size: 0.71rem;
             color: #94a3b8;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+        }
+        .notif-item-meta-sender {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+        }
+        .notif-item-meta-time {
+            font-variant-numeric: tabular-nums;
+        }
+        .notif-pagination-bar {
+            padding: 10px 16px;
+            background: #f8fafc;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .notif-page-info {
+            font-size: 0.74rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .notif-page-btn {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.73rem;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .notif-page-btn:hover:not(:disabled) {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        .notif-page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: #f8fafc;
         }
     `;
     document.head.appendChild(style);
@@ -197,24 +413,28 @@ updateNavbarUser();
         </button>
         <div class="notif-dropdown-panel d-none" id="notifDropdownPanel">
             <div class="notif-dropdown-header">
-                <strong class="small text-dark"><i class="bi bi-bell me-1 text-primary"></i>Thông báo <span class="badge bg-danger-subtle text-danger rounded-pill ms-1" id="notifHeaderUnreadCount">0 chưa đọc</span></strong>
-                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small fw-semibold" id="notifMarkAllBtn">
-                    Đọc tất cả
+                <div class="notif-header-title">
+                    <i class="bi bi-bell-fill" style="color: #0f766e;"></i>
+                    <span>Thông báo</span>
+                    <span class="notif-header-unread-pill" id="notifHeaderUnreadCount">0 chưa đọc</span>
+                </div>
+                <button type="button" class="notif-mark-all-btn" id="notifMarkAllBtn">
+                    <i class="bi bi-check2-all"></i> Đọc tất cả
                 </button>
             </div>
-            <div class="px-3 py-1.5 border-bottom bg-white d-flex gap-1 flex-wrap" id="notifFilterTabs" style="font-size: 0.74rem;">
-                <button type="button" class="btn btn-sm rounded-pill px-2.5 py-0.5 btn-primary" data-filter="ALL" id="notifTabAll" style="font-size: 0.72rem;">Tất cả (0)</button>
-                <button type="button" class="btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border" data-filter="UNREAD" id="notifTabUnread" style="font-size: 0.72rem;">Chưa đọc (0)</button>
-                <button type="button" class="btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border text-danger" data-filter="ALERT" id="notifTabAlert" style="font-size: 0.72rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Cảnh báo (0)</button>
+            <div class="notif-filter-bar" id="notifFilterTabs">
+                <button type="button" class="notif-filter-chip active" data-filter="ALL" id="notifTabAll">Tất cả (0)</button>
+                <button type="button" class="notif-filter-chip" data-filter="UNREAD" id="notifTabUnread">Chưa đọc (0)</button>
+                <button type="button" class="notif-filter-chip chip-alert" data-filter="ALERT" id="notifTabAlert"><i class="bi bi-exclamation-triangle-fill"></i>Cảnh báo (0)</button>
             </div>
             <div class="notif-dropdown-list" id="notifDropdownList">
                 <div class="p-4 text-center text-muted small">Đang tải thông báo...</div>
             </div>
-            <div class="d-none border-top px-3 py-2 bg-light d-flex justify-content-between align-items-center" id="notifPaginationBar">
-                <span class="small text-muted" id="notifPageInfo">Trang 1 / 1</span>
-                <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-secondary py-0 px-2" id="notifPrevBtn">&laquo; Trước</button>
-                    <button type="button" class="btn btn-outline-secondary py-0 px-2" id="notifNextBtn">Sau &raquo;</button>
+            <div class="d-none notif-pagination-bar" id="notifPaginationBar">
+                <span class="notif-page-info" id="notifPageInfo">Trang 1 / 1</span>
+                <div class="d-flex" style="gap: 6px;">
+                    <button type="button" class="notif-page-btn" id="notifPrevBtn"><i class="bi bi-chevron-left"></i> Trước</button>
+                    <button type="button" class="notif-page-btn" id="notifNextBtn">Sau <i class="bi bi-chevron-right"></i></button>
                 </div>
             </div>
         </div>
@@ -270,41 +490,50 @@ updateNavbarUser();
     }
 
     function iconForType(type) {
-        if (!type) return { cls: 'bg-primary-subtle text-primary', icon: 'bi-info-circle-fill', tag: '' };
+        if (!type) return { cls: 'notif-ic-primary', icon: 'bi-info-circle-fill', tag: '' };
         if (type.includes('ATTENDANCE_CRITICAL') || type.includes('MAKEUP_LIMIT_EXCEEDED')) {
-            return { cls: 'bg-danger text-white', icon: 'bi-exclamation-octagon-fill', tag: '<span class="badge bg-danger text-white ms-1" style="font-size:0.62rem;">Khẩn cấp</span>' };
+            return { cls: 'notif-ic-danger', icon: 'bi-exclamation-octagon-fill', tag: '<span class="notif-tag notif-tag-danger">Khẩn cấp</span>' };
         }
         if (type.includes('ATTENDANCE_WARNING') || type.includes('MAKEUP_MISSED')) {
-            return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-exclamation-triangle-fill', tag: '<span class="badge bg-warning text-dark ms-1" style="font-size:0.62rem;">Cảnh báo</span>' };
+            return { cls: 'notif-ic-warning', icon: 'bi-exclamation-triangle-fill', tag: '<span class="notif-tag notif-tag-warning">Cảnh báo</span>' };
         }
         if (type.includes('ABSENCE_CREATED')) {
-            return { cls: 'bg-info-subtle text-info-emphasis', icon: 'bi-envelope-plus-fill', tag: '<span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size:0.62rem;">Đơn mới</span>' };
+            return { cls: 'notif-ic-info', icon: 'bi-envelope-plus-fill', tag: '<span class="notif-tag notif-tag-info">Đơn mới</span>' };
         }
         if (type.includes('MAKEUP_SCHEDULED') || type.includes('MAKEUP_COORDINATED') || type.includes('MAKEUP_PENDING')) {
-            return { cls: 'bg-primary-subtle text-primary', icon: 'bi-calendar2-week-fill', tag: '<span class="badge bg-primary-subtle text-primary ms-1" style="font-size:0.62rem;">Học bù</span>' };
+            return { cls: 'notif-ic-primary', icon: 'bi-calendar2-week-fill', tag: '<span class="notif-tag notif-tag-primary">Học bù</span>' };
         }
         if (type.includes('PAYMENT_SUCCESS')) {
-            return { cls: 'bg-success-subtle text-success', icon: 'bi-cash-coin', tag: '' };
+            return { cls: 'notif-ic-success', icon: 'bi-cash-coin', tag: '' };
+        }
+        if (type === 'TUITION_OVERDUE') {
+            return { cls: 'notif-ic-danger', icon: 'bi-receipt-cutoff', tag: '<span class="notif-tag notif-tag-danger">Quá hạn</span>' };
+        }
+        if (type === 'TUITION_DUE_TODAY') {
+            return { cls: 'notif-ic-warning', icon: 'bi-wallet2', tag: '<span class="notif-tag notif-tag-warning">Đến hạn</span>' };
+        }
+        if (type === 'TUITION_UPCOMING' || type === 'TUITION_PLAN_CONFIRMED') {
+            return { cls: 'notif-ic-info', icon: 'bi-calendar-check', tag: '' };
         }
         if (type.includes('INVOICE') || type.includes('DISCOUNT')) {
-            return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-receipt-cutoff', tag: '' };
+            return { cls: 'notif-ic-warning', icon: 'bi-receipt-cutoff', tag: '' };
         }
         if (type.includes('ENROLLMENT_APPROVED') || type.includes('ENROLLMENT_COMPLETED')) {
-            return { cls: 'bg-success-subtle text-success', icon: 'bi-mortarboard-fill', tag: '' };
+            return { cls: 'notif-ic-success', icon: 'bi-mortarboard-fill', tag: '' };
         }
         if (type.includes('ENROLLMENT_REQUEST')) {
-            return { cls: 'bg-info-subtle text-info-emphasis', icon: 'bi-person-plus-fill', tag: '' };
+            return { cls: 'notif-ic-info', icon: 'bi-person-plus-fill', tag: '' };
         }
         if (type.includes('PLACEMENT')) {
-            return { cls: 'bg-primary-subtle text-primary', icon: 'bi-clipboard2-check-fill', tag: '' };
+            return { cls: 'notif-ic-primary', icon: 'bi-clipboard2-check-fill', tag: '' };
         }
         if (type.includes('APPROVED') || type.includes('COMPLETED') || type.includes('PRESENT')) {
-            return { cls: 'bg-success-subtle text-success', icon: 'bi-check-circle-fill', tag: '' };
+            return { cls: 'notif-ic-success', icon: 'bi-check-circle-fill', tag: '' };
         }
         if (type.includes('REJECTED') || type.includes('ABSENT') || type.includes('CANCELLED') || type.includes('NO_SLOT')) {
-            return { cls: 'bg-danger-subtle text-danger', icon: 'bi-exclamation-circle-fill', tag: '' };
+            return { cls: 'notif-ic-danger', icon: 'bi-exclamation-circle-fill', tag: '' };
         }
-        return { cls: 'bg-primary-subtle text-primary', icon: 'bi-calendar2-event-fill', tag: '' };
+        return { cls: 'notif-ic-primary', icon: 'bi-calendar2-event-fill', tag: '' };
     }
 
     function esc(str) {
@@ -330,26 +559,26 @@ updateNavbarUser();
         if (headerUnreadCountEl) {
             headerUnreadCountEl.textContent = `${unread} chưa đọc`;
             headerUnreadCountEl.className = unread > 0
-                ? 'badge bg-danger text-white rounded-pill ms-1'
-                : 'badge bg-secondary-subtle text-secondary rounded-pill ms-1';
+                ? 'notif-header-unread-pill'
+                : 'notif-header-unread-pill all-read';
         }
         if (tabAllBtn) {
             tabAllBtn.textContent = `Tất cả (${total})`;
             tabAllBtn.className = notifFilter === 'ALL'
-                ? 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-primary'
-                : 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border';
+                ? 'notif-filter-chip active'
+                : 'notif-filter-chip';
         }
         if (tabUnreadBtn) {
             tabUnreadBtn.textContent = `Chưa đọc (${unread})`;
             tabUnreadBtn.className = notifFilter === 'UNREAD'
-                ? 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-primary'
-                : 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border';
+                ? 'notif-filter-chip active'
+                : 'notif-filter-chip';
         }
         if (tabAlertBtn) {
-            tabAlertBtn.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>Cảnh báo (${alertCount})`;
+            tabAlertBtn.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i>Cảnh báo (${alertCount})`;
             tabAlertBtn.className = notifFilter === 'ALERT'
-                ? 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-danger text-white'
-                : 'btn btn-sm rounded-pill px-2.5 py-0.5 btn-light border text-danger';
+                ? 'notif-filter-chip chip-alert active'
+                : 'notif-filter-chip chip-alert';
         }
     }
 
@@ -369,7 +598,7 @@ updateNavbarUser();
         const filteredList = getFilteredNotifications();
 
         if (filteredList.length === 0) {
-            listEl.innerHTML = '<div class="p-4 text-center text-muted small"><i class="bi bi-bell-slash d-block fs-4 mb-1"></i>Không có thông báo nào trong mục này</div>';
+            listEl.innerHTML = '<div class="p-4 text-center text-muted small"><i class="bi bi-bell-slash d-block fs-4 mb-2 text-secondary"></i>Không có thông báo nào trong mục này</div>';
             if (paginationBar) paginationBar.classList.add('d-none');
             return;
         }
@@ -389,12 +618,15 @@ updateNavbarUser();
                     <div class="notif-item-icon ${ic.cls}">
                         <i class="bi ${ic.icon}"></i>
                     </div>
-                    <div class="flex-grow-1">
-                        <div class="notif-item-title">${esc(item.title)}${ic.tag || ''}</div>
+                    <div class="notif-item-content">
+                        <div class="notif-item-title-row">
+                            <span class="notif-item-title">${esc(item.title)}</span>
+                            ${ic.tag || ''}
+                        </div>
                         <div class="notif-item-msg">${esc(item.message)}</div>
                         <div class="notif-item-meta">
-                            <span><i class="bi bi-person me-1"></i>${esc(item.senderName || 'Hệ thống')}</span>
-                            <span>${esc(item.createdAtText || '')}</span>
+                            <span class="notif-item-meta-sender"><i class="bi bi-person me-1"></i>${esc(item.senderName || 'Hệ thống')}</span>
+                            <span class="notif-item-meta-time"><i class="bi bi-clock me-1"></i>${esc(item.createdAtText || '')}</span>
                         </div>
                     </div>
                 </div>
@@ -403,7 +635,7 @@ updateNavbarUser();
 
         if (paginationBar) {
             paginationBar.classList.remove('d-none');
-            if (pageInfoEl) pageInfoEl.textContent = `Trang ${notifPage} / ${totalPages} (${filteredList.length} TB)`;
+            if (pageInfoEl) pageInfoEl.textContent = `Trang ${notifPage} / ${totalPages} (${filteredList.length} thông báo)`;
             if (prevBtn) prevBtn.disabled = notifPage <= 1;
             if (nextBtn) nextBtn.disabled = notifPage >= totalPages;
         }
@@ -476,6 +708,7 @@ updateNavbarUser();
         e.stopPropagation();
         const isHidden = panel.classList.contains('d-none');
         panel.classList.toggle('d-none', !isHidden);
+        bellBtn.classList.toggle('active', isHidden);
         if (isHidden) {
             await loadNotifications();
         }
@@ -490,6 +723,7 @@ updateNavbarUser();
     document.addEventListener('click', (e) => {
         if (!wrap.contains(e.target)) {
             panel.classList.add('d-none');
+            bellBtn.classList.remove('active');
         }
     });
 
