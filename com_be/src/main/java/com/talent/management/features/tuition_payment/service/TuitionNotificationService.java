@@ -8,6 +8,8 @@ import com.talent.management.features.tuition_payment.dto.response.InstallmentRe
 import com.talent.management.features.tuition_payment.repository.*;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.service.CurrentUserService;
+import com.talent.management.features.notification.repository.NotificationRepository;
+import com.talent.management.features.notification.service.NotificationService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +28,8 @@ public class TuitionNotificationService {
     private final PaymentAllocationRepository allocations;
     private final CurrentUserService current;
     private final TuitionIntentRepository intents;
+    private final NotificationRepository bellNotifications;
+    private final NotificationService notificationService;
 
     @Transactional
     public List<NoticeView> mine() {
@@ -108,14 +112,32 @@ public class TuitionNotificationService {
                             ? "OVERDUE"
                             : due.date().equals(today()) ? "DUE_TODAY" : "UPCOMING";
             String key = parent.getId() + "-" + due.id() + "-" + invoice.revision() + "-" + type;
-            if (!notices.existsByEventKey(key)) {
-                TuitionNotice notice = new TuitionNotice();
+            TuitionNotice notice = notices.findByEventKey(key).orElse(null);
+            if (notice == null) {
+                notice = new TuitionNotice();
                 notice.setRecipient(parent);
                 notice.setInstallment(installments.findById(due.id()).orElseThrow());
                 notice.setRevision(invoice.revision());
                 notice.setType(type);
                 notice.setEventKey(key);
                 notices.saveAndFlush(notice);
+            }
+            // The invoice lock serializes the scheduler and parent reads. Also bridge notices
+            // created before the shared bell was integrated, without resending read notices.
+            String bellType = "TUITION_" + type;
+            if (!bellNotifications.existsByRecipientIdAndTypeAndReferenceId(
+                    parent.getId(), bellType, notice.getId())) {
+                String title = switch (type) {
+                    case "OVERDUE" -> "Học phí đã quá hạn";
+                    case "DUE_TODAY" -> "Học phí đến hạn hôm nay";
+                    default -> "Sắp đến hạn đóng học phí";
+                };
+                String message = String.format(Locale.forLanguageTag("vi-VN"),
+                        "%s - %s: đợt %d còn phải đóng %,.0f đ, hạn %s. Mở hóa đơn để xem lịch đóng và thanh toán.",
+                        invoice.student(), invoice.code(), due.sequence(), due.remaining(),
+                        due.date().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                notificationService.sendNotification(parent, null, title, message, bellType,
+                        notice.getId(), "/pages/parent-tuition.html?invoiceId=" + invoiceId);
             }
         }
     }

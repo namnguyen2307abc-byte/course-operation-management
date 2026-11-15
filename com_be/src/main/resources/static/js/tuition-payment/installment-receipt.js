@@ -22,7 +22,11 @@ const tuitionReceipt = (() => {
   const cash=receipt.method==='CASH_AT_DESK';
   paper.append(row('Phương thức',cash?'Tiền mặt tại quầy':receipt.cashier==='PayOS tự động'?'Chuyển khoản · PayOS':'Chuyển khoản · Nhân viên xác nhận'),row(cash?'Người thu':'Nguồn xác nhận',receipt.cashier));
   paper.append(row('SỐ TIỀN LẦN THU NÀY',money(receipt.amount),'receipt-total'));
-  if(cash)paper.append(row('Tiền khách đưa',money(receipt.cashGiven??receipt.amount)),row('Tiền thối lại',money(receipt.changeAmount??0)));
+  if(cash){
+   paper.append(row('Tiền khách đưa',money(receipt.cashGiven??receipt.amount)),row('Tiền trả lại thực tế',money(receipt.changeAmount??0)));
+   const support=Number(receipt.cashRoundingAmount||0);
+   if(support>0)paper.append(row('Trung tâm hỗ trợ làm tròn',money(support)),row('Tiền thực giữ tại quầy',money(Number(receipt.amount)-support)));
+  }
   paper.append(row('Còn thiếu sau lần thu này',receipt.balanceAfter==null?'Chưa có dữ liệu lịch sử':money(receipt.balanceAfter),'receipt-balance'));
   paper.append(node('p',receipt.reversed?'Bản ghi này đã được đảo do nhập sai và không còn được tính vào số tiền đã thu. Biên lai gốc được giữ để tra cứu.':'Biên lai xác nhận khoản thu này. Số dư trên phiếu được lưu tại thời điểm giao dịch; các lần đóng tiếp theo có biên lai riêng.','receipt-note'));
   const footer=node('footer',null,'receipt-footer');footer.append(node('span','Người nộp tiền'),node('span','Người thu / Hệ thống xác nhận'));paper.append(footer);

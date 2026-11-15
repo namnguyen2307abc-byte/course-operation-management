@@ -1,14 +1,10 @@
 package com.talent.management.features.branch_facility_enrollment.service.impl;
 
-import com.talent.management.features.branch_facility_enrollment.dto.request.CreateBranchRequest;
-import com.talent.management.features.branch_facility_enrollment.dto.request.CreateEquipmentRequest;
-import com.talent.management.features.branch_facility_enrollment.dto.request.CreateRoomRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateEquipmentRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.request.UpdateRoomRequest;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchOptionResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.BranchResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.EquipmentResponse;
-import com.talent.management.features.branch_facility_enrollment.dto.response.RoomOptionResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.RoomResponse;
 import com.talent.management.features.branch_facility_enrollment.dto.response.RoomUsageResponse;
 import com.talent.management.features.branch_facility_enrollment.mapper.BranchFacilityMapper;
@@ -24,7 +20,6 @@ import com.talent.management.shared.entity.Equipment;
 import com.talent.management.shared.entity.Room;
 import com.talent.management.shared.entity.ClassEntity;
 import com.talent.management.shared.entity.Lesson;
-import com.talent.management.shared.enums.EquipmentCategory;
 import com.talent.management.shared.enums.EquipmentStatus;
 import com.talent.management.shared.enums.RoomStatus;
 import lombok.RequiredArgsConstructor;
@@ -103,53 +98,6 @@ public class BranchFacilityServiceImpl implements BranchFacilityService {
         RoomResponse roomResponse = roomResponse(room, equipments, warnings);
         return new RoomUsageResponse(roomResponse, equipments.stream().map(branchFacilityMapper::toEquipmentResponse).toList(),
                 classDetails, lessonDetails, warnings, lessons.size());
-    }
-
-    @Override
-    public List<RoomOptionResponse> getRoomOptions(Long branchId) {
-        return roomRepository.findByBranchId(branchId).stream()
-                .sorted(Comparator.comparing(Room::getRoomCode).thenComparing(Room::getId))
-                .map(branchFacilityMapper::toRoomOptionResponse)
-                .toList();
-    }
-
-    @Override
-    public List<EquipmentResponse> getEquipmentsByBranch(Long branchId, EquipmentCategory category) {
-        var equipments = (category != null)
-                ? equipmentRepository.findEquipmentsByBranchIdAndCategory(branchId, category)
-                : equipmentRepository.findEquipmentsByBranchId(branchId);
-
-        return equipments.stream()
-                .map(branchFacilityMapper::toEquipmentResponse)
-                .toList();
-    }
-
-    @Override
-    @Transactional
-    public BranchResponse createBranch(CreateBranchRequest request) {
-        Branch branch = branchFacilityMapper.toBranch(request);
-        Branch saved = branchRepository.save(branch);
-        return branchFacilityMapper.toBranchResponse(saved);
-    }
-
-    @Override
-    @Transactional
-    public RoomResponse createRoom(CreateRoomRequest request) {
-        Branch branch = branchRepository.findById(request.getBranchId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy cơ sở với id: " + request.getBranchId()));
-        Room room = branchFacilityMapper.toRoom(request, branch);
-        Room saved = roomRepository.save(room);
-        return branchFacilityMapper.toRoomResponse(saved);
-    }
-
-    @Override
-    @Transactional
-    public EquipmentResponse createEquipment(CreateEquipmentRequest request) {
-        Room room = roomRepository.findByIdForScheduleUpdate(request.getRoomId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phòng học với id: " + request.getRoomId()));
-        Equipment equipment = branchFacilityMapper.toEquipment(request, room);
-        Equipment saved = equipmentRepository.save(equipment);
-        return branchFacilityMapper.toEquipmentResponse(saved);
     }
 
     @Override

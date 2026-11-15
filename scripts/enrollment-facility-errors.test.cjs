@@ -52,7 +52,10 @@ function screen(kind) {
             const failure = state.failures.get(pathname);
             if (failure === 'network') throw new TypeError('Failed to fetch');
             let body = pathname.endsWith('/classes') ? [{ id: 3, classCode: 'C3', className: 'Demo class', branchId: 1, roomId: 7, availableSeats: 8 }]
-                : pathname === '/api/branches' ? [{ id: 1, name: 'Demo branch' }]
+                : pathname === '/api/branches' ? [
+                    { id: 1, name: 'Demo branch', active: true },
+                    { id: 2, name: 'Tây Hồ', active: false }
+                ]
                 : pathname.endsWith('/rooms') ? [room]
                 : pathname.endsWith('/equipments') ? [equipment]
                 : pathname.endsWith('/overview') ? { room, warnings: [] }
@@ -83,6 +86,19 @@ function screen(kind) {
     }
     return { ctx, state, element };
 }
+
+test('cancelled reservations show center feedback while parent cancellations stay distinct', () => {
+    const { ctx } = screen('enrollment');
+    const cancelled = { status: 'CANCELLED', enrollmentId: 22,
+        reviewedBy: 'Quản trị viên', reviewNote: 'Đã liên hệ, gia đình không tiếp tục học' };
+    assert.match(ctx.requestFeedback(cancelled), /Trung tâm đã hủy giữ chỗ/);
+    assert.match(ctx.requestFeedback(cancelled), /Quản trị viên/);
+    assert.match(ctx.requestFeedback(cancelled), /gia đình không tiếp tục học/);
+    assert.doesNotMatch(ctx.requestFeedback(cancelled), /Phụ huynh đã hủy/);
+    assert.equal(ctx.requestFeedback({ status: 'CANCELLED', enrollmentId: 22 }), 'Trung tâm đã hủy giữ chỗ');
+    assert.equal(ctx.requestFeedback({ status: 'CANCELLED', enrollmentId: null }), 'Phụ huynh đã hủy yêu cầu');
+    assert.equal(ctx.requestFeedback({ status: 'PENDING_PAYMENT', reviewNote: 'Đã xếp lớp' }), 'Đã xếp lớp');
+});
 
 test('assignment list failure stays inside the form and reopening recovers', async () => {
     const { ctx, state, element } = screen('enrollment');
@@ -141,6 +157,14 @@ test('facility preview hides server error details in its own modal', async () =>
     assert.match(element('facilityModalBody').innerHTML, /Chưa tải được thông tin cơ sở vật chất/);
     assert.doesNotMatch(element('facilityModalBody').innerHTML, /SQL|127\.0\.0\.1|backend/);
     assert.deepEqual(state.alerts, []);
+});
+
+test('facility keeps inactive branches visible and separates the active count', async () => {
+    const { ctx, element } = screen('facility');
+    await ctx.loadBranches();
+    assert.equal(element('statBranchesCount').textContent, '2');
+    assert.equal(element('statBranchesStatus').textContent, '1 đang hoạt động · 1 ngừng hoạt động');
+    assert.match(element('branchSelect').innerHTML, /Tây Hồ — Ngừng hoạt động/);
 });
 
 test('facility branches, rooms, equipment and usage failures have friendly retries', async () => {

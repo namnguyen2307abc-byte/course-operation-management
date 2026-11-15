@@ -19,6 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.*;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import com.talent.management.features.notification.service.impl.NotificationServiceImpl;
+import com.talent.management.features.notification.repository.NotificationRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
@@ -40,6 +43,8 @@ import java.util.*;
     TuitionReversalService.class,
     TuitionReservationService.class,
     TuitionPaymentMapper.class,
+    NotificationServiceImpl.class,
+    com.talent.management.features.admin_management.repository.AdminDashboardRepository.class,
     TuitionInstallmentFlowTest.Transactions.class
 })
 @TestPropertySource(
@@ -68,10 +73,14 @@ class TuitionInstallmentFlowTest {
     @Autowired TuitionReservationService reservations;
     @Autowired TuitionInstallmentRepository installments;
     @Autowired TuitionBankEventRepository events;
+    @Autowired TuitionIntentRepository intents;
     @Autowired PaymentRepository payments;
     @MockBean CurrentUserService current;
     @MockBean PayOSGateway payos;
-    @MockBean com.talent.management.features.notification.service.NotificationService notificationService;
+    @SpyBean NotificationServiceImpl notificationService;
+    @Autowired NotificationRepository bellNotifications;
+    @Autowired TuitionNoticeRepository tuitionNotices;
+    @Autowired com.talent.management.features.admin_management.repository.AdminDashboardRepository dashboard;
     User parent, other, staff, manager;
     Invoice invoice;
     ClassEntity clazz;
@@ -161,8 +170,11 @@ class TuitionInstallmentFlowTest {
     @Test
     void installmentNotificationsUseBalanceAndDoNotDuplicateEnrollmentOrReplays() {
         User teacher = user("teacher-notice", Role.TEACHER);
+        User branchManager = user("branch-notice", Role.BRANCH_MANAGER);
         clazz.setTeacher(teacher);
-        configure();
+        ledger.configure(invoice.getId(), new InstallmentRequests.Plan(List.of(
+                new InstallmentRequests.Due(money(3000000), today),
+                new InstallmentRequests.Due(money(3000000), today.plusDays(30)))));
         posting.cash(invoice.getId(), money(3000000), money(3000000), "notice-first");
         posting.cash(invoice.getId(), money(3000000), money(3000000), "notice-first");
         verify(notificationService).sendNotification(eq(parent), eq(staff), eq("Đã nhận học phí"),
@@ -174,6 +186,92 @@ class TuitionInstallmentFlowTest {
         verify(notificationService, times(2)).sendNotification(eq(parent), eq(staff),
                 eq("Đã nhận học phí"), anyString(), eq("PAYMENT_SUCCESS"), anyLong(), anyString());
         assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
+        assertThat(paymentNotifications(parent)).hasSize(2);
+        assertThat(paymentNotifications(staff)).hasSize(2);
+        assertThat(paymentNotifications(manager)).hasSize(2);
+        assertThat(paymentNotifications(branchManager)).hasSize(2);
+        assertThat(paymentNotifications(other)).isEmpty();
+    }
+
+    @Test
+    void confirmedScheduleAppearsOnParentBellWithAmountsDatesAndInvoiceLink() {
+        configure();
+        assertThat(bellNotifications.findByRecipientIdAndIsReadFalse(parent.getId()))
+                .singleElement().satisfies(n -> {
+                    assertThat(n.getType()).isEqualTo("TUITION_PLAN_CONFIRMED");
+                    assertThat(n.getMessage()).contains("Con thử nghiệm", "INV-FLOW", "3.000.000", "đợt 3");
+                    assertThat(n.getTargetUrl()).isEqualTo("/pages/parent-tuition.html?invoiceId=" + invoice.getId());
+                    assertThat(n.getSender().getId()).isEqualTo(staff.getId());
+                });
+        assertThat(bellNotifications.findByRecipientIdAndIsReadFalse(other.getId())).isEmpty();
+    }
+
+    @Test
+    void scheduledRemindersReachBellOncePerStageAndDoNotResendReadNotifications() {
+        ledger.configure(invoice.getId(), new InstallmentRequests.Plan(List.of(
+                new InstallmentRequests.Due(money(3000000), today.plusDays(1)),
+                new InstallmentRequests.Due(money(3000000), today.plusDays(30)))));
+        var due = installments.findById(ledger.view(invoice.getId()).installments().get(0).id()).orElseThrow();
+        when(current.getCurrentUser()).thenThrow(new IllegalStateException("No login in scheduler"));
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        var upcoming = bellNotifications.findByRecipientIdAndIsReadFalse(parent.getId()).stream()
+                .filter(n -> n.getType().equals("TUITION_UPCOMING")).toList();
+        assertThat(upcoming).singleElement().satisfies(n -> {
+            assertThat(n.getMessage()).contains("đợt 1", "3.000.000");
+            assertThat(n.getSender()).isNull();
+            n.setIsRead(true);
+        });
+        db.flush();
+        notices.generate(invoice.getId());
+        due.setDueDate(today);
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        due.setDueDate(today.minusDays(1));
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        var all = bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(parent.getId());
+        assertThat(all.stream().filter(n -> n.getType().startsWith("TUITION_")
+                && !n.getType().equals("TUITION_PLAN_CONFIRMED")))
+                .extracting(Notification::getType)
+                .containsExactlyInAnyOrder("TUITION_UPCOMING", "TUITION_DUE_TODAY", "TUITION_OVERDUE");
+        assertThat(bellNotifications.findByRecipientIdAndIsReadFalse(other.getId())).isEmpty();
+    }
+
+    @Test
+    void existingPrivateReminderIsBridgedToSharedBellWithoutDuplication() {
+        configure();
+        TuitionPlan plan = ledger.ensure(invoice);
+        var due = installments.findByPlanIdOrderBySequenceNumber(plan.getId()).get(0);
+        TuitionNotice legacy = new TuitionNotice();
+        legacy.setRecipient(parent);
+        legacy.setInstallment(due);
+        legacy.setRevision(plan.getRevision());
+        legacy.setType("DUE_TODAY");
+        legacy.setEventKey(parent.getId() + "-" + due.getId() + "-" + plan.getRevision() + "-DUE_TODAY");
+        tuitionNotices.saveAndFlush(legacy);
+        notices.generate(invoice.getId());
+        notices.generate(invoice.getId());
+        assertThat(bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(parent.getId()).stream()
+                .filter(n -> n.getType().equals("TUITION_DUE_TODAY")))
+                .singleElement().satisfies(n -> assertThat(n.getReferenceId()).isEqualTo(legacy.getId()));
+    }
+
+    @Test
+    void settledInvoiceDoesNotCreateDueBellNotifications() {
+        configure();
+        posting.cash(invoice.getId(), money(3000000), money(3000000), "settled-first");
+        posting.cash(invoice.getId(), money(1500000), money(1500000), "settled-second");
+        posting.cash(invoice.getId(), money(1500000), money(1500000), "settled-last");
+        notices.generate(invoice.getId());
+        assertThat(bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(parent.getId()).stream()
+                .filter(n -> List.of("TUITION_UPCOMING", "TUITION_DUE_TODAY", "TUITION_OVERDUE").contains(n.getType())))
+                .isEmpty();
+    }
+
+    private List<Notification> paymentNotifications(User recipient) {
+        return bellNotifications.findTop50ByRecipientIdOrderByCreatedAtDesc(recipient.getId()).stream()
+                .filter(n -> n.getType().equals("PAYMENT_SUCCESS")).toList();
     }
 
     @Test
@@ -186,10 +284,10 @@ class TuitionInstallmentFlowTest {
         assertThat(clazz.getCurrentStudents()).isEqualTo(1);
         assertThat(posting.cash(invoice.getId(), money(3000000), money(3500000), "first").getId())
                 .isEqualTo(first.getId());
-        posting.cash(invoice.getId(), money(1000000), money(1000000), "second");
+        posting.cash(invoice.getId(), money(1500000), money(1500000), "second");
         var after = ledger.view(invoice.getId());
-        assertThat(after.installments().get(1).remaining()).isEqualByComparingTo("500000");
-        posting.cash(invoice.getId(), money(2000000), money(2000000), "last");
+        assertThat(after.installments().get(1).remaining()).isEqualByComparingTo("0");
+        posting.cash(invoice.getId(), money(1500000), money(1500000), "last");
         assertThat(ledger.view(invoice.getId()).balance()).isEqualByComparingTo("0");
         assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
         assertThat(clazz.getCurrentStudents()).isEqualTo(1);
@@ -219,6 +317,64 @@ class TuitionInstallmentFlowTest {
     }
 
     @Test
+    void parentCanRetryMissingGatewayRequestWithoutLosingPayments() {
+        configure();
+        when(payos.createPaymentLink(any(), any(), anyLong(), anyBoolean()))
+                .thenThrow(new IllegalStateException("Network result unknown"));
+        as(parent);
+        assertThatThrownBy(() -> gateway.create(invoice.getId(), money(3000000)))
+                .isInstanceOf(IllegalStateException.class);
+        var failed = intents.findByInvoiceIdAndStatus(invoice.getId(), "UNCERTAIN").get(0);
+        when(payos.isMissingOrClosed(failed.getOrderCode())).thenReturn(true);
+        useRealGatewayStub();
+        var retry = gateway.create(invoice.getId(), money(3000000));
+        assertThat(retry.status()).isEqualTo("PENDING");
+        assertThat(retry.id()).isNotEqualTo(failed.getId());
+        assertThat(intents.findById(failed.getId()).orElseThrow().getStatus()).isEqualTo("FAILED");
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+    }
+
+    @Test
+    void unknownGatewayResultStaysBlockedUntilConfirmedAbsent() {
+        configure();
+        when(payos.createPaymentLink(any(), any(), anyLong(), anyBoolean()))
+                .thenThrow(new IllegalStateException("Timeout"));
+        assertThatThrownBy(() -> gateway.create(invoice.getId(), money(3000000)))
+                .isInstanceOf(IllegalStateException.class);
+        useRealGatewayStub();
+        assertThatThrownBy(() -> gateway.create(invoice.getId(), money(3000000)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(intents.findByInvoiceIdAndStatus(invoice.getId(), "UNCERTAIN")).hasSize(1);
+    }
+
+    @Test
+    void switchingToCashClosesQrAndReturnsExcessCash() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        gateway.prepareCashPayment(invoice.getId());
+        verify(payos).cancelPayment(qr.orderCode());
+        var payment = posting.cash(invoice.getId(), money(3000000), money(3500000), "cash-after-qr");
+        assertThat(payment.getChangeAmount()).isEqualByComparingTo("500000");
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+        assertThat(ledger.view(invoice.getId()).paid()).isEqualByComparingTo("3000000");
+    }
+
+    @Test
+    void failedGatewayCancellationDoesNotAllowCashCollection() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        org.mockito.Mockito.doThrow(new IllegalStateException("Gateway unavailable"))
+                .when(payos).cancelPayment(qr.orderCode());
+        assertThatThrownBy(() -> gateway.prepareCashPayment(invoice.getId()))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> posting.cash(invoice.getId(), money(3000000), money(3500000), "blocked"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+    }
+
+    @Test
     void belowFirstThresholdIsRejected() {
         configure();
         assertThatThrownBy(
@@ -234,7 +390,9 @@ class TuitionInstallmentFlowTest {
         configure();
         var qr = gateway.create(invoice.getId(), money(3000000));
         gateway.cancel(qr.id());
-        posting.cash(invoice.getId(), money(6000000), money(6000000), "cash");
+        posting.cash(invoice.getId(), money(3000000), money(3000000), "cash-first");
+        posting.cash(invoice.getId(), money(1500000), money(1500000), "cash-second");
+        posting.cash(invoice.getId(), money(1500000), money(1500000), "cash-last");
         var payload = webhook(qr.orderCode(), "REF-LATE", money(3000000));
         // Simulated events enter only through the explicitly enabled admin simulation endpoint.
         gateway.simulate(qr.id());
@@ -242,7 +400,7 @@ class TuitionInstallmentFlowTest {
         assertThat(events.findByStatusOrderByIdDesc("RECONCILE"))
                 .singleElement()
                 .satisfies(e -> assertThat(e.getReceivedAmount()).isEqualByComparingTo("3000000"));
-        assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(1);
+        assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(3);
     }
 
     @Test
@@ -280,6 +438,25 @@ class TuitionInstallmentFlowTest {
         assertThat(events.findByReference("BANK-MANUAL-1").orElseThrow().getReviewedBy().getId())
                 .isEqualTo(staff.getId());
         assertThat(events.findByStatusOrderByIdDesc("RECONCILE")).isEmpty();
+        assertThat(paymentNotifications(parent)).hasSize(1);
+        assertThat(paymentNotifications(staff)).hasSize(1);
+    }
+
+    @Test
+    void automaticWebhookNotifiesParentAndStaffOnceWithoutLoggedInUser() {
+        configure();
+        useRealGatewayStub();
+        as(parent);
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        when(current.getCurrentUser()).thenThrow(new IllegalStateException("Webhook has no login"));
+        gateway.webhook(webhook(qr.orderCode(), "BANK-NOTIFY-ONCE", money(3000000)));
+        gateway.webhook(webhook(qr.orderCode(), "BANK-NOTIFY-ONCE", money(3000000)));
+        assertThat(paymentNotifications(parent)).singleElement()
+                .satisfies(n -> assertThat(n.getTargetUrl()).contains("parent-tuition.html?invoiceId=" + invoice.getId()));
+        assertThat(paymentNotifications(staff)).singleElement()
+                .satisfies(n -> assertThat(n.getTargetUrl()).contains("tuition-receivables.html?invoiceId=" + invoice.getId()));
+        assertThat(paymentNotifications(manager)).hasSize(1);
+        assertThat(paymentNotifications(other)).isEmpty();
     }
 
     @Test
@@ -362,15 +539,15 @@ class TuitionInstallmentFlowTest {
     }
 
     private void useRealGatewayStub() {
-        when(payos.createPaymentLink(any(), any(), anyLong(), anyBoolean()))
-                .thenAnswer(
+        doAnswer(
                         call ->
                                 PayOSPaymentLinkResponse.builder()
                                         .orderCode(call.getArgument(2))
                                         .amount(call.getArgument(1))
                                         .status("PENDING")
                                         .simulated(false)
-                                        .build());
+                                        .build())
+                .when(payos).createPaymentLink(any(), any(), anyLong(), anyBoolean());
     }
 
     @Test
@@ -382,7 +559,7 @@ class TuitionInstallmentFlowTest {
                 invoice.getId(),
                 new InstallmentRequests.Change(
                         second.id(), today.plusDays(35), "Gia đình xin đổi hạn"));
-        posting.cash(invoice.getId(), money(500000), money(500000), "extra");
+        posting.cash(invoice.getId(), money(1500000), money(1500000), "extra");
         as(manager);
         long id = changes.list().get(0).id();
         assertThatThrownBy(
@@ -435,25 +612,38 @@ class TuitionInstallmentFlowTest {
     }
 
     @Test
+    void cashierCanRequestOnlyTheirOwnCashCorrectionWhileAdminCanRequestAny() {
+        configure();
+        var payment = posting.cash(invoice.getId(), money(3000000), money(3000000), "owned-receipt");
+        assertThat(ledger.view(invoice.getId()).receipts().get(0).cashierId()).isEqualTo(staff.getId());
+        as(user("different-cashier", Role.STAFF));
+        assertThatThrownBy(() -> reversals.request(payment.getId(), "Khoản người khác thu"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        as(manager);
+        reversals.request(payment.getId(), "Admin kiểm tra khoản thu của nhân viên");
+        assertThat(reversals.list()).singleElement()
+                .satisfies(item -> assertThat(item.requestedBy()).isEqualTo(manager.getFullName()));
+    }
+
+    @Test
     void approvedCashCorrectionRestoresDebtAndKeepsEnrollmentHistory() {
         configure();
         Payment payment = posting.cash(invoice.getId(), money(3000000), money(3000000), "wrong");
-        assertThatThrownBy(() -> reversals.request(payment.getId(), "Nhập nhầm"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("403");
+        reversals.request(payment.getId(), "Nhập nhầm số tiền mặt chưa nhận");
         assertThatThrownBy(() -> reversals.list())
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("403");
         as(manager);
-        reversals.request(payment.getId(), "Nhập nhầm số tiền mặt chưa nhận");
+        var requestId = reversals.list().get(0).id();
+        as(staff);
         assertThatThrownBy(
                         () ->
                                 reversals.review(
-                                        reversals.list().get(0).id(),
+                                        requestId,
                                         new InstallmentRequests.Review(true, "Tự duyệt")))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("không được tự duyệt");
-        as(user("reviewer", Role.BRANCH_MANAGER));
+                .hasMessageContaining("403");
+        as(manager);
         reversals.review(
                 reversals.list().get(0).id(),
                 new InstallmentRequests.Review(true, "Đã kiểm đếm và xác minh"));
@@ -464,6 +654,23 @@ class TuitionInstallmentFlowTest {
         assertThat(payment.getPaymentCode()).startsWith("PAY-");
         assertThat(invoice.getEnrollment().getStatus()).isEqualTo(EnrollmentStatus.ENROLLED);
         assertThat(clazz.getCurrentStudents()).isEqualTo(1);
+    }
+
+    @Test
+    void cashCorrectionRejectsParentsAndManagerSelfApproval() {
+        configure();
+        Payment payment = posting.cash(invoice.getId(), money(3000000), money(3000000), "self-review");
+        as(parent);
+        assertThatThrownBy(() -> reversals.request(payment.getId(), "Nhập nhầm"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("403");
+        as(manager);
+        reversals.request(payment.getId(), "Nhập nhầm");
+        var requestId = reversals.list().get(0).id();
+        assertThatThrownBy(() -> reversals.review(requestId,
+                        new InstallmentRequests.Review(true, "Tự duyệt")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("không được tự duyệt");
     }
 
     @Test
@@ -488,6 +695,145 @@ class TuitionInstallmentFlowTest {
         assertThat(events.findByStatusOrderByIdDesc("RECONCILE"))
                 .singleElement()
                 .satisfies(e -> assertThat(e.getIntent()).isNull());
+    }
+
+    @Test
+    void cashRoundingExamplesRespectExactTenderAndDenominations() {
+        int[][] examples = {{4500,5000,500,0},{4700,5000,400,100},{4850,5000,200,50},{4701,4701,0,0}};
+        for (int[] example : examples) {
+            var quote = CashTenderPolicy.quote(money(example[0]), money(example[1]));
+            assertThat(quote.change()).isEqualByComparingTo(String.valueOf(example[2]));
+            assertThat(quote.support()).isEqualByComparingTo(String.valueOf(example[3]));
+        }
+        for (String invalid : List.of("-1","4499","5000.5","5001"))
+            assertThatThrownBy(() -> CashTenderPolicy.quote(money(4500), new BigDecimal(invalid)))
+                    .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void roundedCashSettlesTuitionButRevenueAndReceiptUseActualCash() {
+        invoice.setOriginalAmount(money(4700));invoice.setFinalAmount(money(4700));
+        ledger.configure(invoice.getId(), new InstallmentRequests.Plan(List.of(new InstallmentRequests.Due(money(4700),today))));
+        var receipt = posting.collectReceipt(invoice.getId(), money(4700), money(5000), "rounding");
+        assertThat(receipt.getChangeAmount()).isEqualByComparingTo("400");
+        assertThat(receipt.getCashRoundingAmount()).isEqualByComparingTo("100");
+        assertThat(receipt.getNetReceivedAmount()).isEqualByComparingTo("4600");
+        assertThat(ledger.view(invoice.getId()).balance()).isEqualByComparingTo("0");
+        assertThat(ledger.view(invoice.getId()).receipts().get(0).cashRoundingAmount()).isEqualByComparingTo("100");
+        assertThat(payments.sumAmountSince(today.atStartOfDay())).isEqualByComparingTo("4600");
+        assertThat(dashboard.revenue(today,today)).singleElement()
+                .satisfies(point -> assertThat(point.amount()).isEqualByComparingTo("4600"));
+        assertThat(posting.replayCashReceipt(invoice.getId(),money(4700),money(5000),"rounding")).isPresent();
+        assertThat(posting.cash(invoice.getId(), money(4700), money(5000), "rounding").getId()).isEqualTo(receipt.getPaymentId());
+        assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(1);
+        reversals.request(receipt.getPaymentId(),"Thu nhầm");as(manager);
+        reversals.review(reversals.list().get(0).id(),new InstallmentRequests.Review(true,"Đã kiểm tra"));
+        assertThat(payments.sumAmountSince(today.atStartOfDay())).isEqualByComparingTo("0");
+        assertThat(ledger.view(invoice.getId()).balance()).isEqualByComparingTo("4700");
+    }
+
+    @Test
+    void changedAmountsAndInvalidTenderCannotCancelQrOrCollect() {
+        configure();var qr=gateway.create(invoice.getId(),money(3000000));
+        assertThatThrownBy(() -> gateway.prepareCashPayment(invoice.getId(),money(3000001),money(5000000)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> gateway.prepareCashPayment(invoice.getId(),money(3000000),new BigDecimal("3500000.5")))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(payos,never()).cancelPayment(anyLong());
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("PENDING");
+        as(parent);
+        assertThatThrownBy(() -> gateway.create(invoice.getId(),money(4000000)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+    }
+
+    @Test
+    void equalNextInstallmentCannotCauseCashCollectionAfterQrWasPaidDuringCancel() {
+        ledger.configure(invoice.getId(),new InstallmentRequests.Plan(List.of(
+                new InstallmentRequests.Due(money(3000000),today),
+                new InstallmentRequests.Due(money(3000000),today.plusDays(30)))));
+        useRealGatewayStub();var qr=gateway.create(invoice.getId(),money(3000000));
+        doAnswer(call -> {gateway.webhook(webhook(qr.orderCode(),"PAID-NO-CASH",money(3000000)));return null;})
+                .when(payos).cancelPayment(qr.orderCode());
+        assertThatThrownBy(() -> gateway.prepareCashPayment(invoice.getId(),money(3000000),money(3500000)))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Không thu thêm tiền mặt");
+        assertThat(payments.findByInvoiceId(invoice.getId())).singleElement()
+                .satisfies(payment -> assertThat(payment.getPaymentMethod()).isEqualTo(PaymentMethod.VIET_QR));
+    }
+
+    @Test
+    void closedQrIsNotReusedAndCancellationIsIdempotent() {
+        configure();var first=gateway.create(invoice.getId(),money(3000000));
+        gateway.cancel(first.id());gateway.cancel(first.id());
+        var next=gateway.create(invoice.getId(),money(3000000));
+        assertThat(next.id()).isNotEqualTo(first.id());assertThat(next.orderCode()).isNotEqualTo(first.orderCode());
+        assertThat(intents.findById(first.id()).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+        assertThat(next.status()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void expiryCancelsUnpaidQrWithoutUserAuthentication() {
+        configure();var qr=gateway.create(invoice.getId(),money(3000000));
+        var intent=intents.findById(qr.id()).orElseThrow();intent.setCreatedAt(LocalDateTime.now().minusMinutes(6));
+        intents.flush();
+        when(current.getCurrentUser()).thenThrow(new IllegalStateException("No user on scheduler"));
+        gateway.expireUnpaidRequests();
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+    }
+
+    @Test
+    void paymentArrivingDuringCancellationWinsAndIsNotPostedTwice() {
+        configure();useRealGatewayStub();var qr=gateway.create(invoice.getId(),money(3000000));
+        doAnswer(call -> {gateway.webhook(webhook(qr.orderCode(),"BANK-RACE",money(3000000)));return null;})
+                .when(payos).cancelPayment(qr.orderCode());
+        gateway.cancel(qr.id());
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("PAID");
+        gateway.webhook(webhook(qr.orderCode(),"BANK-RACE",money(3000000)));
+        gateway.cancel(qr.id());
+        assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(1);
+    }
+
+    @Test
+    void missedWebhookIsRecoveredBeforeCancellingPaidGatewayRequest() {
+        configure();useRealGatewayStub();var qr=gateway.create(invoice.getId(),money(3000000));
+        doThrow(new IllegalStateException("Already paid")).when(payos).cancelPayment(qr.orderCode());
+        when(payos.paymentInformation(qr.orderCode())).thenReturn(new PayOSGateway.GatewayPayment(
+                "PAID",money(3000000),List.of(new PayOSGateway.BankTransfer(money(3000000),"BANK-LOOKUP"))));
+        gateway.cancel(qr.id());
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("PAID");
+        assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(1);
+    }
+
+    @Test
+    void parentCannotCancelAnotherParentsQr() {
+        configure();var qr=gateway.create(invoice.getId(),money(3000000));as(other);
+        assertThatThrownBy(() -> gateway.cancel(qr.id())).isInstanceOf(ResponseStatusException.class);
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void discountInputsAreWholeNumbersWithinInclusiveBounds() {
+        for (String rate : List.of("0", "10", "100"))
+            ledger.validateDiscountValue(money(3200000), "PERCENTAGE", new BigDecimal(rate));
+        for (String amount : List.of("1000", "1001", "3200000"))
+            ledger.validateDiscountValue(money(3200000), "FIXED_AMOUNT", new BigDecimal(amount));
+        for (String rate : List.of("-1", "101", "10.5", "10.0"))
+            assertThatThrownBy(() -> ledger.validateDiscountValue(money(3200000), "PERCENTAGE", new BigDecimal(rate)))
+                    .isInstanceOf(ResponseStatusException.class);
+        for (String amount : List.of("-1", "0", "999", "3200001", "1000.5", "1000.00"))
+            assertThatThrownBy(() -> ledger.validateDiscountValue(money(3200000), "FIXED_AMOUNT", new BigDecimal(amount)))
+                    .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void invalidDiscountCannotBeAppliedThroughPlanApiService() {
+        for (String method : List.of("PERCENTAGE", "FIXED_AMOUNT"))
+            for (String value : List.of("-1", "10.5", "6000001"))
+                assertThatThrownBy(() -> ledger.configure(invoice.getId(), new InstallmentRequests.Plan(
+                        List.of(new InstallmentRequests.Due(money(6000000), today)),
+                        method, new BigDecimal(value), "Ưu đãi")))
+                        .isInstanceOf(ResponseStatusException.class);
+        assertThat(invoice.getFinalAmount()).isEqualByComparingTo("6000000");
     }
 
     @Test
@@ -558,6 +904,15 @@ class TuitionInstallmentFlowTest {
     @Test
     void onlyAdminCanCancelAfterContactAndUnpaidQrClosesAutomatically() {
         configure();
+        EnrollmentRequest request = db.persist(EnrollmentRequest.builder()
+                .student(invoice.getStudent())
+                .requestedBy(parent)
+                .classEntity(clazz)
+                .enrollment(invoice.getEnrollment())
+                .reviewedBy(staff)
+                .reviewNote("Đã xếp lớp, chờ thanh toán")
+                .status(EnrollmentRequestStatus.PENDING_PAYMENT)
+                .build());
         var qr = gateway.create(invoice.getId(), money(3000000));
         var cancel =
                 new InstallmentRequests.Reservation(
@@ -582,6 +937,13 @@ class TuitionInstallmentFlowTest {
         assertThat(gateway.status(qr.id()).status()).isEqualTo("CANCELLED");
         assertThat(result.reservationHistory()).hasSize(1);
         assertThat(invoice.getEnrollment().getStatus()).isEqualTo(EnrollmentStatus.CANCELLED);
+        db.flush();
+        db.clear();
+        EnrollmentRequest cancelled = db.find(EnrollmentRequest.class, request.getId());
+        assertThat(cancelled.getStatus()).isEqualTo(EnrollmentRequestStatus.CANCELLED);
+        assertThat(cancelled.getReviewedBy().getId()).isEqualTo(manager.getId());
+        assertThat(cancelled.getReviewNote()).isEqualTo(cancel.reason());
+        assertThat(cancelled.getReviewedAt()).isNotNull();
     }
 
     @Test

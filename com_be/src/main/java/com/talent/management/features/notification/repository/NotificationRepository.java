@@ -9,6 +9,8 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
+    boolean existsByRecipientIdAndTypeAndReferenceId(Long recipientId, String type, Long referenceId);
+
     List<Notification> findTop50ByRecipientIdOrderByCreatedAtDesc(Long recipientId);
 
     long countByRecipientIdAndIsReadFalse(Long recipientId);

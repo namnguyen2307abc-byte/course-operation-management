@@ -41,6 +41,14 @@ public class Payment {
     @Column(precision = 12, scale = 2)
     private BigDecimal changeAmount;
 
+    @Column(nullable = false, precision = 12, scale = 2, columnDefinition = "decimal(12,2) default 0")
+    @Builder.Default
+    private BigDecimal cashRoundingAmount = BigDecimal.ZERO;
+
+    public BigDecimal getNetReceivedAmount() {
+        return amount.subtract(cashRoundingAmount == null ? BigDecimal.ZERO : cashRoundingAmount);
+    }
+
     @Builder.Default
     private LocalDateTime paymentDate = LocalDateTime.now();
 

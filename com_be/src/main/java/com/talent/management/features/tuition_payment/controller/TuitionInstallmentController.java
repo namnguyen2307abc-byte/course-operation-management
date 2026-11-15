@@ -55,6 +55,9 @@ public class TuitionInstallmentController {
     @PostMapping("/{id}/collections")
     public PaymentReceiptResponse collect(
             @PathVariable Long id, @Valid @RequestBody Collection input) {
+        var replay = posting.replayCashReceipt(id, input.amount(), input.cashGiven(), input.idempotencyKey());
+        if (replay.isPresent()) return replay.get();
+        gateway.prepareCashPayment(id, input.amount(), input.cashGiven());
         return posting.collectReceipt(
                 id, input.amount(), input.cashGiven(), input.idempotencyKey());
     }
@@ -70,8 +73,9 @@ public class TuitionInstallmentController {
     }
 
     @PostMapping("/payment-intents/{id}/cancel")
-    public void cancel(@PathVariable Long id) {
+    public IntentView cancel(@PathVariable Long id) {
         gateway.cancel(id);
+        return gateway.status(id);
     }
 
     @PostMapping("/payment-intents/{id}/confirm-bank")
@@ -116,7 +120,7 @@ public class TuitionInstallmentController {
     }
 
     @PostMapping("/payments/{id}/reversal")
-    @PreAuthorize("hasAnyRole('ADMIN','BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN','BRANCH_MANAGER')")
     public void reversal(@PathVariable Long id, @Valid @RequestBody Reason input) {
         reversals.request(id, input.reason());
     }

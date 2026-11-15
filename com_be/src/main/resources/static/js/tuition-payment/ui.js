@@ -294,7 +294,8 @@ export function renderHistoryDashboard(report, currentPage = 1, pageSize = 5, on
                 <td><span class="text-muted fw-semibold">${formatCurrency(p.originalAmount || p.finalAmount)}</span></td>
                 <td>${discountBadgeHtml}</td>
                 <td>
-                    <strong class="text-success fs-6">${formatCurrency(p.finalAmount)}</strong>
+                    <strong class="text-success fs-6">${formatCurrency(p.netReceivedAmount ?? p.finalAmount)}</strong>
+                    ${Number(p.cashRoundingAmount)>0 ? `<div class="small text-muted">Trung tâm hỗ trợ làm tròn: ${formatCurrency(p.cashRoundingAmount)}</div>` : ''}
                     ${p.paymentMethod === 'CASH_AT_DESK' ? `
                         <div class="small text-muted" style="font-size:0.75rem">Đưa: ${formatCurrency(p.cashGiven || p.finalAmount)} | Thối: ${formatCurrency(p.changeAmount || 0)}</div>
                     ` : `

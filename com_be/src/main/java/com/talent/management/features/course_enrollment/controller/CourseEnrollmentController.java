@@ -6,8 +6,10 @@ import com.talent.management.features.course_enrollment.dto.response.ChildRespon
 import com.talent.management.features.course_enrollment.dto.response.ClassResponse;
 import com.talent.management.features.course_enrollment.dto.response.ClassRecommendationResponse;
 import com.talent.management.features.course_enrollment.dto.response.CourseResponse;
+import com.talent.management.features.course_enrollment.dto.response.EnrollmentProgramResponse;
 import com.talent.management.features.course_enrollment.dto.response.EnrollmentRequestResponse;
 import com.talent.management.features.course_enrollment.service.CourseEnrollmentService;
+import com.talent.management.features.placement_test.dto.response.PlacementProgramResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,6 +28,18 @@ import java.util.List;
 public class CourseEnrollmentController {
 
     private final CourseEnrollmentService service;
+
+    @GetMapping("/programs")
+    @PreAuthorize("hasRole('PARENT')")
+    public ResponseEntity<List<EnrollmentProgramResponse>> getEnrollmentPrograms() {
+        return ResponseEntity.ok(service.getEnrollmentPrograms());
+    }
+
+    @GetMapping("/placement-programs")
+    @PreAuthorize("hasAnyRole('PARENT', 'STAFF', 'BRANCH_MANAGER', 'ADMIN', 'TEACHER')")
+    public ResponseEntity<List<PlacementProgramResponse>> getPlacementPrograms() {
+        return ResponseEntity.ok(service.getPlacementPrograms());
+    }
 
     @GetMapping("/children")
     @PreAuthorize("hasRole('PARENT')")
@@ -52,9 +66,10 @@ public class CourseEnrollmentController {
     @PreAuthorize("hasRole('PARENT')")
     @Operation(summary = "Lấy lớp được đề xuất và toàn bộ lớp đang mở của học viên")
     public ResponseEntity<ClassRecommendationResponse> getClassRecommendations(
-            @PathVariable Long childId
+            @PathVariable Long childId,
+            @RequestParam(required = false) Long programId
     ) {
-        return ResponseEntity.ok(service.getClassRecommendations(childId));
+        return ResponseEntity.ok(service.getClassRecommendations(childId, programId));
     }
 
     @PostMapping("/requests")

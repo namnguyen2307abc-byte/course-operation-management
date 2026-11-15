@@ -37,7 +37,9 @@ public final class InstallmentResponses {
             String cashier,
             LocalDateTime at,
             BigDecimal balanceAfter,
-            boolean reversed) {}
+            boolean reversed,
+            BigDecimal cashRoundingAmount,
+            Long cashierId) {}
 
     public record InvoiceView(
             Long id,

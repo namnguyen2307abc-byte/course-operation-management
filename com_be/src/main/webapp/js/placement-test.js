@@ -100,7 +100,17 @@ let placementTestsData = [
 ];
 
 let currentEditingId = null;
+let cancellingScheduleId = null;
+let placementCancelling = false;
 let uploadedFileUrl = "";
+let attachmentUploadVersion = 0;
+let attachmentUploading = false;
+
+function setAttachmentUploading(busy) {
+    attachmentUploading = busy;
+    const save = document.querySelector("#evaluatePlacementTestForm button[type=submit]");
+    if (save) save.disabled = busy;
+}
 
 function escapeCourseOption(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -109,7 +119,7 @@ function escapeCourseOption(value) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Strict Permission Check: Block PARENT & STUDENT roles completely
+    // 1. Strict Permission Check: Block PARENT role completely
     const isAllowed = checkUserRolePermissions();
     if (!isAllowed) {
         const mainEl = document.querySelector("main");
@@ -143,6 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     loadPlacementTests();
+    loadBranchesForScheduling();
     setupEventListeners();
 });
 
@@ -251,7 +262,7 @@ function checkUserRolePermissions() {
 
     const roleUpper = currentUser && currentUser.role ? String(currentUser.role).toUpperCase().replace("ROLE_", "") : "";
 
-    if (roleUpper === "PARENT" || roleUpper === "STUDENT") {
+    if (roleUpper === "PARENT") {
         const msg = `Tài khoản (${currentUser.fullName || currentUser.username} - Role: ${currentUser.role}) không có quyền truy cập trang Đánh Giá Năng Khiếu & Xếp Lớp. Hệ thống sẽ tự động chuyển bạn về Trang Chủ.`;
         if (typeof showPermissionDeniedModal === 'function') {
             showPermissionDeniedModal(msg, "/index.html");
@@ -498,6 +509,9 @@ function renderTable(dataList) {
             statusBadge = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle me-1"></i>Đã Hoàn Thành</span>`;
         } else {
             statusBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1"><i class="bi bi-x-circle me-1"></i>Đã Hủy</span>`;
+            if (item.cancelReason) {
+                statusBadge += `<div class="small text-danger mt-1 text-truncate" style="max-width: 160px;" title="Lý do hủy: ${escapeCourseOption(item.cancelReason)}"><i class="bi bi-info-circle me-1"></i>${escapeCourseOption(item.cancelReason)}</div>`;
+            }
         }
 
         let levelText = "Chưa xếp trình độ";
@@ -531,7 +545,7 @@ function renderTable(dataList) {
                     <small class="text-muted d-block"><i class="bi bi-person me-1"></i>${item.parentName || item.parentEmail || 'Chưa cập nhật'}</small>
                 </td>
                 <td>
-                    <div class="mb-1">${subjectBadge}</div>
+                    <div class="mb-1">${subjectBadge}${item.programName ? ` <span class="small fw-semibold">${escapeCourseOption(item.programName)}</span>` : ''}</div>
                     <div class="fw-semibold text-dark small text-truncate" style="max-width: 220px;" title="${item.title || ''}">${item.title || 'Đánh giá năng khiếu'}</div>
                 </td>
                 <td>
@@ -555,7 +569,11 @@ function renderTable(dataList) {
                         <button class="btn btn-outline-primary" onclick="openDetailModal(${item.id})" title="Xem Chi Tiết">
                             <i class="bi bi-eye"></i>
                         </button>
-                        ${canGradeThisItem ? `
+                        ${item.status === 'CANCELLED' ? `
+                            <button class="btn btn-outline-secondary opacity-50" disabled title="Đơn đã bị hủy">
+                                <i class="bi bi-slash-circle me-1"></i>Đã Hủy
+                            </button>
+                        ` : canGradeThisItem ? `
                             <button class="btn btn-warning text-dark fw-semibold" onclick="openEvaluateModal(${item.id})" title="Chấm Điểm (Giáo Viên Bộ Môn)">
                                 <i class="bi bi-pencil-square me-1"></i>${item.status === 'COMPLETED' ? 'Sửa' : 'Chấm'}
                             </button>
@@ -564,6 +582,11 @@ function renderTable(dataList) {
                                 <i class="bi bi-lock-fill me-1"></i>Chấm
                             </button>
                         `}
+                        ${item.status === 'SCHEDULED' ? `
+                            <button class="btn btn-outline-danger" onclick="openCancelPlacementModal(${item.id})" title="Hủy đơn Placement Test">
+                                <i class="bi bi-x-circle me-1"></i>Hủy
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -616,6 +639,11 @@ function setupEventListeners() {
         createForm.addEventListener("submit", handleCreatePlacementTest);
     }
 
+    const branchSelect = document.getElementById("createBranch");
+    if (branchSelect) {
+        branchSelect.addEventListener("change", onBranchChange);
+    }
+
     const evalForm = document.getElementById("evaluatePlacementTestForm");
     if (evalForm) {
         evalForm.addEventListener("submit", handleSaveEvaluation);
@@ -631,6 +659,8 @@ function setupEventListeners() {
     const evalModalEl = document.getElementById('evaluateModal');
     if (evalModalEl) {
         evalModalEl.addEventListener('hidden.bs.modal', () => {
+            attachmentUploadVersion++;
+            setAttachmentUploading(false);
             uploadedFileUrl = "";
             currentEditingId = null;
             const fileInput = document.getElementById("evalAttachmentFile");
@@ -721,6 +751,28 @@ function onEnrollmentRequestChange() {
     const nameInput = document.getElementById('createStudentName');
     nameInput.value = selected ? selected.childName : '';
     nameInput.readOnly = Boolean(selected);
+    document.getElementById('createParentNote').classList.toggle('d-none', !selected);
+    document.getElementById('createParentNoteText').textContent = selected?.note || 'Không có ghi chú.';
+    const programSelect = document.getElementById('createProgram');
+    const programId = selected?.requestedProgramId;
+    programSelect.disabled = Boolean(programId);
+    programSelect.value = programId ? String(programId) : '';
+    document.getElementById('createProgramHint').textContent = programId
+        ? (programSelect.value ? 'Môn đã đăng ký trong đơn.' : `${selected.requestedProgramName} chưa có trong danh sách hỗ trợ. Hãy kiểm tra cấu hình hoặc thử mở lại form.`)
+        : (selected ? 'Đơn cũ chưa có môn. Hãy xác nhận với phụ huynh trước khi chọn.' : '');
+}
+
+async function loadProgramsForScheduling() {
+    const select = document.getElementById('createProgram');
+    select.replaceChildren(new Option('Đang tải môn kiểm tra...', ''));
+    try {
+        const programs = await callApi('/api/course-enrollment/placement-programs');
+        select.options[0].text = programs?.length ? 'Chọn môn kiểm tra' : 'Chưa có môn hỗ trợ Placement Test';
+        for (const program of programs || []) select.add(new Option(program.name, program.id));
+    } catch {
+        select.options[0].text = 'Chưa tải được môn. Hãy mở lại form để thử lại.';
+    }
+    if (document.getElementById('createEnrollmentRequest').value) onEnrollmentRequestChange();
 }
 
 async function loadEnrollmentRequestsForScheduling() {
@@ -729,7 +781,7 @@ async function loadEnrollmentRequestsForScheduling() {
     enrollmentRequestsForScheduling = [];
     field.classList.add('d-none');
     select.innerHTML = '<option value="">Lịch test độc lập</option>';
-    document.getElementById('createStudentName').readOnly = false;
+    onEnrollmentRequestChange();
 
     const currentUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     const role = String(currentUser?.role || '').toUpperCase().replace('ROLE_', '');
@@ -742,12 +794,110 @@ async function loadEnrollmentRequestsForScheduling() {
         for (const request of enrollmentRequestsForScheduling) {
             const option = document.createElement('option');
             option.value = String(request.id);
-            option.textContent = `#${request.id} - ${request.childName}`;
+            option.textContent = `#${request.id} - ${request.childName}${request.requestedProgramName ? ' · ' + request.requestedProgramName : ''}`;
             select.appendChild(option);
         }
         if (enrollmentRequestsForScheduling.length) field.classList.remove('d-none');
     } catch (error) {
         console.warn('Cannot load pending enrollment requests:', error);
+    }
+}
+
+let branchesForScheduling = [];
+let schedulingBranchLoad = 0;
+let schedulingRoomLoad = 0;
+
+async function loadBranchesForScheduling(force = false) {
+    const branchSelect = document.getElementById('createBranch');
+    const roomSelect = document.getElementById('createRoomName');
+    if (!branchSelect) return;
+    const load = ++schedulingBranchLoad;
+    ++schedulingRoomLoad;
+
+    if (!force && branchesForScheduling.length > 0 && branchSelect.options.length > 1) {
+        branchSelect.value = String(branchesForScheduling[0].id);
+        await onBranchChange();
+        return;
+    }
+
+    branchSelect.replaceChildren(new Option('Đang tải cơ sở...', ''));
+    if (roomSelect) {
+        roomSelect.replaceChildren(new Option('-- Vui lòng chọn cơ sở trước --', ''));
+        roomSelect.disabled = true;
+    }
+
+    try {
+        const branches = await callApi('/api/branches');
+        if (load !== schedulingBranchLoad) return;
+        branchesForScheduling = (Array.isArray(branches) ? branches : []).filter(b => b.active !== false);
+        if (branchesForScheduling.length > 0) {
+            branchSelect.replaceChildren(new Option('-- Chọn cơ sở đào tạo --', ''));
+            for (const b of branchesForScheduling) {
+                const text = b.name + (b.address ? ` - ${b.address}` : '');
+                const opt = new Option(text, String(b.id));
+                opt.dataset.branchName = b.name;
+                branchSelect.add(opt);
+            }
+            branchSelect.value = String(branchesForScheduling[0].id);
+            await onBranchChange();
+        } else {
+            branchSelect.options[0].text = 'Chưa có cơ sở nào khả dụng';
+            if (roomSelect) {
+                roomSelect.options[0].text = 'Chưa có phòng học';
+                roomSelect.disabled = true;
+            }
+        }
+    } catch (error) {
+        if (load !== schedulingBranchLoad) return;
+        console.warn('Lỗi tải danh sách cơ sở:', error);
+        branchSelect.options[0].text = 'Chưa tải được cơ sở. Vui lòng thử lại.';
+        if (roomSelect) {
+            roomSelect.options[0].text = 'Chưa có phòng học';
+            roomSelect.disabled = true;
+        }
+    }
+}
+
+async function onBranchChange() {
+    const branchSelect = document.getElementById('createBranch');
+    const roomSelect = document.getElementById('createRoomName');
+    if (!branchSelect || !roomSelect) return;
+
+    const load = ++schedulingRoomLoad;
+    const branchId = branchSelect.value;
+    if (!branchId) {
+        roomSelect.replaceChildren(new Option('-- Vui lòng chọn cơ sở trước --', ''));
+        roomSelect.disabled = true;
+        return;
+    }
+
+    roomSelect.disabled = true;
+    roomSelect.replaceChildren(new Option('Đang tải phòng học...', ''));
+
+    try {
+        const rooms = await callApi(`/api/branches/${encodeURIComponent(branchId)}/rooms`);
+        if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
+        const roomList = Array.isArray(rooms) ? rooms : [];
+        if (roomList.length > 0) {
+            const availableRooms = roomList.filter(r => !r.status || r.status === 'AVAILABLE');
+            const displayList = availableRooms.length > 0 ? availableRooms : roomList;
+            roomSelect.replaceChildren(new Option('-- Chọn phòng học --', ''));
+            for (const r of displayList) {
+                const roomNameText = r.roomName || r.roomCode || 'Phòng học';
+                const hasCode = r.roomCode && !roomNameText.includes(r.roomCode);
+                const label = hasCode ? `${roomNameText} (${r.roomCode})` : roomNameText;
+                const statusNote = (r.status && r.status !== 'AVAILABLE') ? ` [${r.status}]` : '';
+                roomSelect.add(new Option(label + statusNote, label));
+            }
+            roomSelect.selectedIndex = 1;
+            roomSelect.disabled = false;
+        } else {
+            roomSelect.options[0].text = '-- Cơ sở này chưa có phòng học --';
+        }
+    } catch (error) {
+        if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
+        console.warn('Lỗi tải danh sách phòng học:', error);
+        roomSelect.options[0].text = 'Chưa tải được phòng học';
     }
 }
 
@@ -757,49 +907,62 @@ async function handleFileUpload(e) {
         e.target.value = "";
         return;
     }
-
     const file = e.target.files[0];
     if (!file) return;
-
     const statusEl = document.getElementById("uploadStatusMessage");
-    if (statusEl) statusEl.innerHTML = `<span class="text-primary"><i class="bi bi-hourglass-split me-1"></i>Đang tải file lên máy chủ...</span>`;
-
+    if (file.size > 50 * 1024 * 1024) {
+        if (statusEl) statusEl.textContent = "File vượt quá 50 MB. Vui lòng chọn file nhỏ hơn.";
+        e.target.value = "";
+        return;
+    }
+    const version = ++attachmentUploadVersion;
+    const assessmentId = currentEditingId;
+    setAttachmentUploading(true);
+    if (statusEl) { statusEl.className = "small mt-1"; statusEl.textContent = "Đang tải file lên máy chủ..."; }
     try {
         const formData = new FormData();
         formData.append("file", file);
-
-        let fileUrl = "";
-        if (typeof callApi === 'function') {
-            const res = await callApi('/api/placement-tests/upload', 'POST', formData, true).catch(err => {
-                console.warn("API upload fallback (backend offline):", err);
-                return null;
-            });
-            if (res && res.fileUrl) {
-                fileUrl = res.fileUrl;
-            }
+        const res = await callApi('/api/placement-tests/upload', 'POST', formData, true, false);
+        if (version !== attachmentUploadVersion || assessmentId !== currentEditingId) return;
+        if (!res || typeof res.fileUrl !== 'string' || !res.fileUrl.startsWith('/uploads/')) {
+            throw new Error("Máy chủ chưa trả về file đã lưu. Vui lòng thử lại.");
         }
-        if (!fileUrl) {
-            fileUrl = `http://localhost:8080/uploads/placement-tests/${file.name}`;
-        }
-
-        uploadedFileUrl = fileUrl;
-        const evalMediaInput = document.getElementById("evalMediaUrl");
-        if (evalMediaInput) evalMediaInput.value = fileUrl;
-
+        uploadedFileUrl = res.fileUrl;
+        document.getElementById("evalMediaUrl").value = res.fileUrl;
         if (statusEl) {
-            statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Đã tải thành công: <a href="${fileUrl}" target="_blank" class="text-success text-decoration-underline">${file.name}</a></span>`;
+            statusEl.replaceChildren();
+            const text = document.createElement('span');
+            text.className = 'text-success';
+            text.textContent = 'Đã tải thành công: ';
+            const link = document.createElement('a');
+            link.href = (typeof BASE_URL === 'string' ? BASE_URL : '') + res.fileUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = file.name;
+            text.append(link);
+            statusEl.append(text);
         }
     } catch (err) {
-        console.error("Upload error:", err);
+        if (version !== attachmentUploadVersion || assessmentId !== currentEditingId) return;
         if (statusEl) {
-            statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Lỗi tải file lên.</span>`;
+            statusEl.className = 'small mt-1 text-danger';
+            statusEl.textContent = 'Chưa tải được file: ' + (err.message || 'Vui lòng thử lại.')
+                + ' Nội dung chấm điểm vẫn được giữ nguyên.';
         }
+        e.target.value = "";
+    } finally {
+        if (version === attachmentUploadVersion) setAttachmentUploading(false);
     }
 }
 
 async function openEvaluateModal(id) {
     const item = placementTestsData.find(x => x.id === id);
     if (!item) return;
+
+    if (item.status === 'CANCELLED') {
+        showNotification('Không thể chấm điểm cho đơn Placement Test đã bị hủy!', 'warning');
+        return;
+    }
 
     // 1. STRICT ROLE & SUBJECT PERMISSION CHECK
     if (!isTeacher()) {
@@ -821,6 +984,8 @@ async function openEvaluateModal(id) {
         }
     }
 
+    attachmentUploadVersion++;
+    setAttachmentUploading(false);
     currentEditingId = id;
     uploadedFileUrl = item.videoUrl || item.audioUrl || item.recordUrl || item.imageUrl || "";
 
@@ -835,7 +1000,7 @@ async function openEvaluateModal(id) {
     const subjectName = cfg.subjectName;
     const teacherDisplayName = currentUser ? (currentUser.subject ? `GV ${getSubjectDisplayName(currentUser.subject)}` : 'GV') : '';
     const examinerInfo = currentUser ? `${currentUser.fullName || currentUser.username} (${teacherDisplayName})` : (item.evaluatedByName || 'Chưa phân công');
-    document.getElementById("evalCandidateMeta").innerText = `Bộ môn: ${subjectName} | Tiêu đề: ${item.title || 'Test Năng Khiếu'} | Cơ sở: ${item.branch || 'Cơ sở 1'} | GV chấm: ${examinerInfo}`;
+    document.getElementById("evalCandidateMeta").innerText = `Môn: ${item.programName || subjectName} | Tiêu đề: ${item.title || 'Test Năng Khiếu'} | Cơ sở: ${item.branch || 'Cơ sở 1'} | GV chấm: ${examinerInfo}`;
 
     const baseScore10 = item.score != null ? (item.score / 10) : 7.5;
 
@@ -872,8 +1037,9 @@ async function openEvaluateModal(id) {
     courseSelect.innerHTML = '<option value="">Đang tải khóa học...</option>';
     try {
         const courses = await callApi('/api/course-enrollment/courses');
+        const eligibleCourses = (courses || []).filter(course => !item.programId || course.programId === item.programId);
         courseSelect.innerHTML = '<option value="">Chọn khóa học phù hợp</option>' +
-            (courses || []).map(course => `<option value="${course.id}">${escapeCourseOption(course.programName)} — ${escapeCourseOption(course.name)}</option>`).join('');
+            eligibleCourses.map(course => `<option value="${course.id}">${escapeCourseOption(course.programName)} — ${escapeCourseOption(course.name)}</option>`).join('');
         courseSelect.value = item.recommendedCourseId == null ? '' : String(item.recommendedCourseId);
     } catch (error) {
         courseSelect.innerHTML = '<option value="">Không tải được khóa học</option>';
@@ -887,7 +1053,8 @@ async function openEvaluateModal(id) {
     document.getElementById("evalMediaUrl").value = uploadedFileUrl;
 
     const statusEl = document.getElementById("uploadStatusMessage");
-    if (statusEl) statusEl.innerHTML = uploadedFileUrl ? `<span class="text-info"><i class="bi bi-link-45deg me-1"></i>Đã có file: <a href="${uploadedFileUrl}" target="_blank" class="text-info text-decoration-underline">${uploadedFileUrl}</a></span>` : "";
+    const existingFileHref = uploadedFileUrl.startsWith("/uploads/") ? (typeof BASE_URL === "string" ? BASE_URL : "") + uploadedFileUrl : uploadedFileUrl;
+    if (statusEl) statusEl.innerHTML = uploadedFileUrl ? `<span class="text-info"><i class="bi bi-link-45deg me-1"></i>Đã có file: <a href="${escapeCourseOption(existingFileHref)}" target="_blank" rel="noopener" class="text-info text-decoration-underline">Xem file đính kèm</a></span>` : "";
 
     const modal = new bootstrap.Modal(document.getElementById('evaluateModal'));
     modal.show();
@@ -896,6 +1063,10 @@ async function openEvaluateModal(id) {
 async function handleSaveEvaluation(e) {
     e.preventDefault();
 
+    if (attachmentUploading) {
+        showNotification('Vui lòng đợi tải file xong trước khi lưu đánh giá.', 'warning');
+        return;
+    }
     if (!currentEditingId) return;
     const item = placementTestsData.find(x => x.id === currentEditingId);
     if (!item) return;
@@ -999,28 +1170,38 @@ async function openCreateModal() {
     const form = document.getElementById("createPlacementTestForm");
     if (form) form.reset();
 
-    // Auto select teacher's subject if logged in as teacher
-    let currentUser = null;
-    if (typeof getCurrentUser === 'function') currentUser = getCurrentUser();
-    const subjectSelect = document.getElementById("createSubject");
-    if (subjectSelect && currentUser && currentUser.subject) {
-        subjectSelect.value = normalizeSubject(currentUser.subject);
-    }
-
     initDateRestrictions();
     const modal = new bootstrap.Modal(document.getElementById('createModal'));
+    const enrollmentRequests = loadEnrollmentRequestsForScheduling();
+    const programs = loadProgramsForScheduling();
+    const branches = loadBranchesForScheduling(true);
     modal.show();
-    await loadEnrollmentRequestsForScheduling();
+    await Promise.all([enrollmentRequests, programs, branches]);
 }
 
 async function handleCreatePlacementTest(e) {
     e.preventDefault();
 
     const studentName = document.getElementById("createStudentName").value.trim();
-    const subject = normalizeSubject(document.getElementById("createSubject")?.value || "DAN");
+    const programId = Number(document.getElementById("createProgram").value);
+    if (!programId) {
+        showNotification('Vui lòng chọn môn kiểm tra có trong danh mục.', 'danger');
+        return;
+    }
+    const branchSelect = document.getElementById("createBranch");
+    const selectedBranchOpt = branchSelect ? branchSelect.options[branchSelect.selectedIndex] : null;
+    const branch = selectedBranchOpt ? (selectedBranchOpt.dataset.branchName || selectedBranchOpt.text || '') : '';
+    if (!branchSelect || !branchSelect.value || !branch) {
+        showNotification('Vui lòng chọn cơ sở đào tạo.', 'danger');
+        return;
+    }
+    const roomSelect = document.getElementById("createRoomName");
+    const roomName = roomSelect ? roomSelect.value.trim() : '';
+    if (!roomName || roomSelect.disabled) {
+        showNotification('Vui lòng chọn phòng học.', 'danger');
+        return;
+    }
     const title = document.getElementById("createTitle").value.trim();
-    const roomName = document.getElementById("createRoomName").value.trim();
-    const branch = document.getElementById("createBranch").value;
     const testDateVal = document.getElementById("createTestDate").value;
     const testTimeVal = document.getElementById("createTestTime").value;
     const note = document.getElementById("createNote").value.trim();
@@ -1049,7 +1230,7 @@ async function handleCreatePlacementTest(e) {
 
     const createPayload = {
         studentName: studentName,
-        subject: subject,
+        programId,
         title: title,
         roomName: roomName,
         branch: branch,
@@ -1058,45 +1239,18 @@ async function handleCreatePlacementTest(e) {
         enrollmentRequestId
     };
 
-    const newTest = {
-        id: placementTestsData.length + 1,
-        studentName: studentName,
-        subject: subject,
-        title: title,
-        roomName: roomName,
-        branch: branch,
-        testDate: isoDateTime,
-        note: note,
-        status: "SCHEDULED",
-        score: null,
-        recommendedLevel: null,
-        teacherNote: "",
-        parentName: "Phụ huynh đăng ký",
-        createdAt: new Date().toISOString()
-    };
-
-    let createdResponse = null;
-    if (enrollmentRequestId && typeof callApi !== 'function') {
-        showNotification('Không thể kết nối để xếp lịch cho yêu cầu này.', 'danger');
+    const submit = e.currentTarget.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    let savedRecord;
+    try {
+        savedRecord = await callApi('/api/placement-tests', 'POST', createPayload);
+        if (!savedRecord?.id) throw new Error('Chưa nhận được xác nhận lưu lịch từ máy chủ.');
+    } catch (error) {
+        showNotification(`Không thể tạo lịch kiểm tra: ${error.message}`, 'danger');
         return;
+    } finally {
+        submit.disabled = false;
     }
-    if (typeof callApi === 'function') {
-        try {
-            createdResponse = await callApi('/api/placement-tests', "POST", createPayload);
-        } catch (err) {
-            console.error("Create test error:", err);
-            showNotification(`Lỗi tạo đơn đăng ký: ${err.message || "Thời gian không hợp lệ"}`, "danger");
-            return;
-        }
-    }
-
-    if (enrollmentRequestId && !createdResponse) {
-        showNotification('Không thể xếp lịch cho yêu cầu này. Hãy làm mới danh sách đơn.', 'danger');
-        return;
-    }
-
-    const savedRecord = (createdResponse && createdResponse.id) ? createdResponse : newTest;
-    savedRecord.subject = normalizeSubject(savedRecord.subject || subject || inferSubject(savedRecord.title));
 
     // Add to dataset
     placementTestsData.unshift(savedRecord);
@@ -1126,7 +1280,7 @@ async function handleCreatePlacementTest(e) {
         }
     }
 
-    const testSubjectDisplayName = getSubjectDisplayName(savedRecord.subject);
+    const testSubjectDisplayName = savedRecord.programName || getSubjectDisplayName(savedRecord.subject);
     showNotification(`Đã đăng ký lịch kiểm tra mới cho học viên ${studentName} (Bộ môn ${testSubjectDisplayName}) thành công!`, "success");
 }
 
@@ -1156,6 +1310,18 @@ function openDetailModal(id) {
 
     document.getElementById("detailLevel").innerText = levelText;
     document.getElementById("detailNotes").innerText = item.teacherNote || item.note || "Chưa có ghi chú.";
+
+    const cancelBox = document.getElementById("detailCancelReasonBox");
+    const cancelText = document.getElementById("detailCancelReason");
+    if (cancelBox && cancelText) {
+        if (item.status === 'CANCELLED' && item.cancelReason) {
+            cancelText.innerText = item.cancelReason;
+            cancelBox.classList.remove("d-none");
+        } else {
+            cancelText.innerText = "—";
+            cancelBox.classList.add("d-none");
+        }
+    }
 
     const baseScore = item.score != null ? item.score : 0;
     const normSubject = normalizeSubject(item.subject || inferSubject(item.title));
@@ -1188,13 +1354,29 @@ function openDetailModal(id) {
     const mediaUrl = item.videoUrl || item.audioUrl || item.recordUrl || item.imageUrl;
     if (mediaContainer) {
         if (mediaUrl) {
+            const fullMediaUrl = mediaUrl.startsWith("/uploads/")
+                ? (typeof BASE_URL === "string" ? BASE_URL : "") + mediaUrl
+                : mediaUrl;
+            const safeHref = escapeCourseOption(fullMediaUrl);
+            const isImg = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(mediaUrl);
+            const isVid = /\.(mp4|webm|mov|avi|mkv)$/i.test(mediaUrl);
+            const isAud = /\.(mp3|wav|ogg|m4a)$/i.test(mediaUrl);
+            let previewHtml = "";
+            if (isImg) {
+                previewHtml = `<div class="mt-2 text-center"><a href="${safeHref}" target="_blank" rel="noopener"><img src="${safeHref}" alt="Ảnh đính kèm bài thi" class="img-fluid rounded-3 border shadow-sm" style="max-height: 280px; object-fit: contain;"></a></div>`;
+            } else if (isVid) {
+                previewHtml = `<div class="mt-2"><video controls class="w-100 rounded-3 border shadow-sm" style="max-height: 320px;" src="${safeHref}"></video></div>`;
+            } else if (isAud) {
+                previewHtml = `<div class="mt-2"><audio controls class="w-100" src="${safeHref}"></audio></div>`;
+            }
             mediaContainer.innerHTML = `
                 <div class="alert alert-info py-2 px-3 small d-flex align-items-center justify-content-between mb-0">
                     <span><i class="bi bi-paperclip me-1"></i>File đính kèm bài thi / ghi âm:</span>
-                    <a href="${mediaUrl}" target="_blank" class="btn btn-sm btn-info text-dark fw-bold rounded-pill">
+                    <a href="${safeHref}" target="_blank" rel="noopener" class="btn btn-sm btn-info text-dark fw-bold rounded-pill">
                         <i class="bi bi-download me-1"></i>Xem / Tải file
                     </a>
                 </div>
+                ${previewHtml}
             `;
         } else {
             mediaContainer.innerHTML = `<span class="text-muted small">Không có đính kèm media</span>`;
@@ -1203,6 +1385,98 @@ function openDetailModal(id) {
 
     const modal = new bootstrap.Modal(document.getElementById('detailModal'));
     modal.show();
+}
+
+function openCancelPlacementModal(id) {
+    if (placementCancelling) return;
+    const item = placementTestsData.find(x => x.id === id);
+    if (!item) return;
+
+    if (item.status === 'CANCELLED') {
+        showNotification('Đơn Placement Test này đã được hủy trước đó.', 'warning');
+        return;
+    }
+    if (item.status === 'COMPLETED') {
+        showNotification('Không thể hủy đơn Placement Test đã hoàn thành chấm điểm.', 'warning');
+        return;
+    }
+
+    cancellingScheduleId = id;
+    const codeEl = document.getElementById('cancelScheduleCodeDisplay');
+    const nameEl = document.getElementById('cancelStudentNameDisplay');
+    const reasonInput = document.getElementById('cancelReasonInput');
+    const reasonError = document.getElementById('cancelReasonError');
+    if (codeEl) codeEl.innerText = `#PT-${item.id}`;
+    if (nameEl) nameEl.innerText = item.studentName || 'Học viên';
+    if (reasonInput) {
+        reasonInput.value = '';
+        reasonInput.classList.remove('is-invalid');
+    }
+    if (reasonError) reasonError.classList.add('d-none');
+
+    const modalEl = document.getElementById('cancelPlacementModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+async function confirmCancelPlacementTest() {
+    if (!cancellingScheduleId || placementCancelling) return;
+    const scheduleId = cancellingScheduleId;
+    const item = placementTestsData.find(x => x.id === scheduleId);
+    if (!item) return;
+
+    const reasonInput = document.getElementById('cancelReasonInput');
+    const reasonError = document.getElementById('cancelReasonError');
+    const cancelReason = reasonInput ? reasonInput.value.trim() : '';
+
+    if (!cancelReason || cancelReason.length > 500) {
+        if (reasonInput) {
+            reasonInput.classList.add('is-invalid');
+            reasonInput.focus();
+        }
+        if (reasonError) reasonError.classList.remove('d-none');
+        showNotification('Vui lòng nhập lý do hủy từ 1 đến 500 ký tự.', 'warning');
+        return;
+    }
+    if (reasonInput) reasonInput.classList.remove('is-invalid');
+    if (reasonError) reasonError.classList.add('d-none');
+
+    const btn = document.getElementById('btnConfirmCancelPlacement');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang hủy...';
+    }
+
+    placementCancelling = true;
+    try {
+        if (typeof callApi !== 'function') throw new Error('Chưa kết nối được máy chủ. Vui lòng tải lại trang.');
+        const updatedResponse = await callApi(`/api/placement-tests/${scheduleId}/cancel`, 'POST', { cancelReason }, false, false);
+        if (!updatedResponse || updatedResponse.id !== scheduleId || updatedResponse.status !== 'CANCELLED') {
+            throw new Error('Máy chủ chưa xác nhận hủy đơn. Vui lòng thử lại.');
+        }
+        const idx = placementTestsData.findIndex(x => x.id === scheduleId);
+        if (idx !== -1) placementTestsData[idx] = updatedResponse;
+
+        const modalEl = document.getElementById('cancelPlacementModal');
+        const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+        if (modal) modal.hide();
+
+        cancellingScheduleId = null;
+        showNotification(`Đã hủy đơn Placement Test #PT-${scheduleId} thành công!`, 'success');
+        renderStats();
+        filterPlacementTests();
+    } catch (err) {
+        console.error('Cancel placement test error:', err);
+        showNotification(`Không thể hủy đơn: ${err.message || 'Vui lòng thử lại.'}`, 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Xác Nhận Hủy Đơn';
+        }
+        placementCancelling = false;
+    }
 }
 
 function setProgressBar(barId, valId, score100) {

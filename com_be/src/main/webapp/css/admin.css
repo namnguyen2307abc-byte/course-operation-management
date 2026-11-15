@@ -531,7 +531,6 @@ body:has(.admin-shell) {
 .admin-avatar.role-admin { color: #81603b; background: #f5ead5; }
 .admin-avatar.role-teacher { color: #5d7190; background: #e8edf6; }
 .admin-avatar.role-parent { color: #88728d; background: #f0e9f3; }
-.admin-avatar.role-student { color: #4a8388; background: #e2f0ef; }
 .admin-role-label { font-size: 12px; white-space: nowrap; color: #6e7969; }
 .admin-role-label.role-admin { color: #8e764e; }
 .admin-badge { display: inline-flex; align-items: center; gap: 6px; background: #f0f3ed; border-radius: 5px; padding: 4px 8px; font-size: 10px; font-weight: 500; }

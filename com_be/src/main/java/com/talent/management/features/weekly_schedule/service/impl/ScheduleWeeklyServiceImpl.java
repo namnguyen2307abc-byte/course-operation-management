@@ -76,19 +76,6 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         Set<Long> viewedStudentIds = new LinkedHashSet<>();
 
         switch (userRole) {
-            case STUDENT -> {
-                // Tìm học viên theo tài khoản
-                Optional<Student> studentOpt = studentRepository.findByAccountId(currentUser.getId());
-                // Do not trust an arbitrary studentId when the account has no linked profile.
-                Long effectiveStudentId = studentOpt.map(Student::getId).orElse(null);
-                if (effectiveStudentId != null) {
-                    viewedStudentIds.add(effectiveStudentId);
-                    lessons = attendanceLessonRepository.findLessonsByStudentIdAndDateBetween(effectiveStudentId,
-                            monday, sunday);
-                } else {
-                    lessons = List.of();
-                }
-            }
             case PARENT -> {
                 if (studentId != null) {
                     Student child = studentRepository.findByIdAndParentId(studentId, currentUser.getId())
@@ -212,7 +199,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
         // Batch fetch học viên chính thức theo lớp để đồng bộ danh sách & sĩ số từng buổi cho GV/Staff
         Map<Long, List<Student>> enrolledByClass = new HashMap<>();
-        if (userRole != Role.STUDENT && userRole != Role.PARENT) {
+        if (userRole != Role.PARENT) {
             Set<Long> classIds = lessons.stream()
                     .map(Lesson::getClassEntity)
                     .filter(Objects::nonNull)
@@ -279,7 +266,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
 
             boolean autoAbsentPast = isPast && l.getStatus() != LessonStatus.CANCELLED;
 
-            if (userRole == Role.STUDENT || userRole == Role.PARENT) {
+            if (userRole == Role.PARENT) {
                 totalStudents = (l.getClassEntity() != null && l.getClassEntity().getCurrentStudents() != null)
                         ? l.getClassEntity().getCurrentStudents()
                         : attendancesOfLesson.size();

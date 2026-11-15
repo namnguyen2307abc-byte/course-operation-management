@@ -423,10 +423,11 @@
                             </div>
                             <!-- Trình độ -->
                             <div class="col-md-6">
-                                <label for="fieldLevel" class="form-label-cm">Trình Độ</label>
-                                <select class="form-select" id="fieldLevel">
-                                    <option value="">-- Không phân cấp --</option>
+                                <label for="fieldLevel" class="form-label-cm">Trình Độ <span class="text-danger">*</span></label>
+                                <select class="form-select" id="fieldLevel" required>
+                                    <option value="">-- Chọn trình độ --</option>
                                 </select>
+                                <div class="invalid-feedback">Vui lòng chọn trình độ.</div>
                             </div>
                             <!-- Mã khóa học -->
                             <div class="col-md-4">
@@ -672,7 +673,7 @@
             const filter = document.getElementById('filterLevel');
             const field = document.getElementById('fieldLevel');
             filter.innerHTML = '<option value="">Tất cả trình độ</option>';
-            field.innerHTML = '<option value="">-- Không phân cấp --</option>';
+            field.innerHTML = '<option value="">-- Chọn trình độ --</option>';
             allLevels.forEach(level => {
                 const label = labels[level] || level;
                 filter.add(new Option(label, level));

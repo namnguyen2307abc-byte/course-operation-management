@@ -27,7 +27,7 @@ public class AdminDashboardRepository {
         result.put("unpaidInvoices", count("select count(i) from Invoice i where i.status in ('UNPAID','PARTIALLY_PAID')"));
         return result;
     }
-    public Map<String, Long> roles() { return grouped("select u.role, count(u) from User u group by u.role"); }
+    public Map<String, Long> roles() { return grouped("select u.role, count(u) from User u where u.role is not null group by u.role"); }
     public Map<String, Long> requestStatuses() { return grouped("select e.status, count(e) from EnrollmentRequest e group by e.status"); }
     public Map<String, Long> queues() {
         Map<String, Long> result = new LinkedHashMap<>();
@@ -37,7 +37,7 @@ public class AdminDashboardRepository {
         return result;
     }
     public List<RevenuePoint> revenue(LocalDate from, LocalDate to) {
-        return em.createQuery("select year(p.paymentDate), month(p.paymentDate), day(p.paymentDate), sum(p.amount) "
+        return em.createQuery("select year(p.paymentDate), month(p.paymentDate), day(p.paymentDate), sum(p.amount - coalesce(p.cashRoundingAmount,0)) "
                 + "from Payment p where p.status = 'SUCCESS' and p.paymentDate >= :from and p.paymentDate < :to "
                 + "and not exists (select r.id from TuitionReversal r where r.payment=p and r.status='APPROVED') "
                 + "group by year(p.paymentDate), month(p.paymentDate), day(p.paymentDate) "

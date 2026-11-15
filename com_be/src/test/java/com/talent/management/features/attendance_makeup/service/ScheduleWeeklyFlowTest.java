@@ -171,9 +171,10 @@ class ScheduleWeeklyFlowTest {
         assertThatThrownBy(() -> attendanceService.getLessonAttendanceSheet(100L)).isInstanceOf(AttendanceMakeupException.class);
     }
 
-    @Test void unlinkedStudentCannotRequestArbitraryStudentId() {
-        when(currentUser.getCurrentUser()).thenReturn(User.builder().id(50L).role(Role.STUDENT).build());
-        assertThat(service.getWeeklySchedule(today, 999L, null, null).getLessons()).isEmpty();
+    @Test void parentCannotRequestAnUnlinkedStudentSchedule() {
+        when(currentUser.getCurrentUser()).thenReturn(parent);
+        assertThatThrownBy(() -> service.getWeeklySchedule(today, 999L, null, null))
+                .isInstanceOf(AttendanceMakeupException.class);
         verify(lessons, never()).findLessonsByStudentIdAndDateBetween(anyLong(), any(), any());
     }
 
@@ -186,6 +187,33 @@ class ScheduleWeeklyFlowTest {
                     .isInstanceOf(AttendanceMakeupException.class);
         }
         verify(records, never()).save(any());
+    }
+
+    @Test void operationalRolesCannotEditOrSaveFutureAttendance() {
+        for (Role role : List.of(Role.ADMIN, Role.STAFF, Role.BRANCH_MANAGER)) {
+            Lesson future = lesson(100);
+            future.setLessonDate(today.plusDays(1));
+            roster(future, child);
+            when(currentUser.getCurrentUser()).thenReturn(User.builder().id(90L).role(role).build());
+            var sheet = attendanceService.getLessonAttendanceSheet(100L);
+            assertThat(sheet.isCanEdit()).isFalse();
+            assertThat(sheet.getLockReason()).contains("tương lai");
+            assertThatThrownBy(() -> attendanceService.saveLessonAttendanceBatch(100L, batch(1L, "PRESENT")))
+                    .isInstanceOf(AttendanceMakeupException.class).hasMessageContaining("tương lai");
+        }
+        verify(records, never()).save(any());
+    }
+
+    @Test void operationalRolesRetainPastAndTodayAttendancePermission() {
+        for (Role role : List.of(Role.ADMIN, Role.STAFF, Role.BRANCH_MANAGER)) {
+            for (int offset : List.of(-1, 0)) {
+                Lesson eligible = lesson(100);
+                eligible.setLessonDate(today.plusDays(offset));
+                roster(eligible, child);
+                when(currentUser.getCurrentUser()).thenReturn(User.builder().id(90L).role(role).build());
+                assertThat(attendanceService.getLessonAttendanceSheet(100L).isCanEdit()).isTrue();
+            }
+        }
     }
 
     @Test void teacherCannotMarkSomeoneElsesLesson() {

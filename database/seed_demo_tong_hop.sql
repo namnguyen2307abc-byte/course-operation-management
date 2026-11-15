@@ -1,7 +1,7 @@
--- DU LIEU DEMO TONG HOP: Word + attendance/makeup + D26 + Weekly Schedule.
+﻿-- DU LIEU DEMO TONG HOP: Word + attendance/makeup + D26 + Weekly Schedule.
 -- Tu chua du lieu nen; khong can file SQL ben ngoai.
--- Nap du lieu va bo sung 2 cot huy Placement Test neu thieu; KHONG reset database.
--- Can schema ung dung hien co; khong can chay rieng placement_schedule_cancellation.sql.
+-- Nap du lieu va bo sung schema huy Placement Test, mon dang ky/kiem tra neu thieu; KHONG reset database.
+-- Can schema ung dung hien co; da gom placement_schedule_cancellation.sql va 20261115_placement_programs.sql.
 -- D26 dung lai Bao An va lop PIA-MD-2701-01 cua kich ban Word.
 -- Mat khau d26_* va teacher_huong: Test@123456; tai khoan nen con lai: 123456.
 -- Chi nap mot lan (COMBINED_DEMO_V1); cac ngay tuong doi tinh tai ngay nap.
@@ -23,6 +23,24 @@ BEGIN TRY
   ALTER TABLE dbo.placement_schedules ADD cancel_reason NVARCHAR(500) NULL;
  IF COL_LENGTH(N'dbo.placement_schedules',N'cancelled_at') IS NULL
   ALTER TABLE dbo.placement_schedules ADD cancelled_at DATETIME2 NULL;
+ -- Placement program migration runs even when the demo data was imported previously.
+ IF OBJECT_ID(N'dbo.programs',N'U') IS NULL OR OBJECT_ID(N'dbo.enrollment_requests',N'U') IS NULL
+  THROW 51804,'Create programs and enrollment_requests before importing the combined demo file.',1;
+ IF COL_LENGTH(N'dbo.programs',N'placement_subject') IS NULL
+  ALTER TABLE dbo.programs ADD placement_subject VARCHAR(20) NULL;
+ IF COL_LENGTH(N'dbo.enrollment_requests',N'requested_program_id') IS NULL
+  ALTER TABLE dbo.enrollment_requests ADD requested_program_id BIGINT NULL;
+ IF COL_LENGTH(N'dbo.placement_schedules',N'program_id') IS NULL
+  ALTER TABLE dbo.placement_schedules ADD program_id BIGINT NULL;
+ -- Dynamic SQL compiles after the new columns have been added in this batch.
+ IF OBJECT_ID(N'dbo.FK_enrollment_requests_requested_program',N'F') IS NULL
+  EXEC sys.sp_executesql N'ALTER TABLE dbo.enrollment_requests
+   ADD CONSTRAINT FK_enrollment_requests_requested_program
+   FOREIGN KEY (requested_program_id) REFERENCES dbo.programs(id);';
+ IF OBJECT_ID(N'dbo.FK_placement_schedules_program',N'F') IS NULL
+  EXEC sys.sp_executesql N'ALTER TABLE dbo.placement_schedules
+   ADD CONSTRAINT FK_placement_schedules_program
+   FOREIGN KEY (program_id) REFERENCES dbo.programs(id);';
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
  IF NOT EXISTS(SELECT 1 FROM dbo.combined_demo_installations WHERE seed_key='COMBINED_DEMO_V1')
@@ -773,13 +791,10 @@ DECLARE @StuNamId BIGINT = (SELECT TOP 1 id FROM students WHERE full_name = N''N
 -- PHẦN 3: CƠ SỞ, PHÒNG HỌC, CHƯƠNG TRÌNH & KHÓA HỌC
 -- =============================================================================
 -- Cơ sở Mỹ Đình
-DECLARE @BranchMdId BIGINT = (SELECT TOP 1 id FROM branches WHERE code IN (''MD01'', ''CS-MD''));
-IF @BranchMdId IS NULL
-BEGIN
+IF NOT EXISTS (SELECT 1 FROM branches WHERE code = ''CS-MD'')
     INSERT INTO branches (code, name, address, phone, email, active)
     VALUES (''CS-MD'', N''Cơ sở Mỹ Đình'', N''Tầng 2, Tòa Mỹ Đình Plaza, Nam Từ Liêm, Hà Nội'', ''02439998811'', ''mydinh@talentacademy.edu.vn'', 1);
-    SET @BranchMdId = SCOPE_IDENTITY();
-END;
+DECLARE @BranchMdId BIGINT = (SELECT TOP 1 id FROM branches WHERE code = ''CS-MD'');
 
 -- Cơ sở Cầu Giấy (lựa chọn ca bù khác cơ sở)
 IF NOT EXISTS (SELECT 1 FROM branches WHERE code = ''CS01'')
@@ -788,16 +803,16 @@ IF NOT EXISTS (SELECT 1 FROM branches WHERE code = ''CS01'')
 DECLARE @BranchCgId BIGINT = (SELECT TOP 1 id FROM branches WHERE code = ''CS01'');
 
 -- Phòng Piano 201 tại Mỹ Đình
-IF NOT EXISTS (SELECT 1 FROM rooms WHERE room_code = ''MD-PIA-201'')
+IF NOT EXISTS (SELECT 1 FROM rooms WHERE room_code = ''MD-PIA-201'' AND branch_id = @BranchMdId)
     INSERT INTO rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
     VALUES (@BranchMdId, ''MD-PIA-201'', N''Phòng Piano 201'', 8, ''PIANO_GROUP'', ''AVAILABLE'', N''Phòng học Piano 8 đàn điện tiêu chuẩn'');
-DECLARE @RoomMd201 BIGINT = (SELECT TOP 1 id FROM rooms WHERE room_code = ''MD-PIA-201'');
+DECLARE @RoomMd201 BIGINT = (SELECT TOP 1 id FROM rooms WHERE room_code = ''MD-PIA-201'' AND branch_id = @BranchMdId);
 
 -- Phòng Piano 101 tại Cầu Giấy
-IF NOT EXISTS (SELECT 1 FROM rooms WHERE room_code = ''P101'')
+IF NOT EXISTS (SELECT 1 FROM rooms WHERE room_code = ''P101'' AND branch_id = @BranchCgId)
     INSERT INTO rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
     VALUES (@BranchCgId, ''P101'', N''Phòng Đàn Piano 101'', 8, ''PIANO_GROUP'', ''AVAILABLE'', N''Phòng thực hành Piano Cầu Giấy'');
-DECLARE @RoomCg101 BIGINT = (SELECT TOP 1 id FROM rooms WHERE room_code = ''P101'');
+DECLARE @RoomCg101 BIGINT = (SELECT TOP 1 id FROM rooms WHERE room_code = ''P101'' AND branch_id = @BranchCgId);
 
 -- Chương trình Âm nhạc
 DECLARE @ProgMusicId BIGINT = (SELECT TOP 1 id FROM programs WHERE code = ''PROG-MUSIC'');
@@ -1367,18 +1382,10 @@ BEGIN TRY
         IF EXISTS (SELECT 1 FROM dbo.classes WHERE class_code = @ClassCode)
             THROW 51705, ''ATT-MD-DEMO-01 already exists without this install marker. Existing class was preserved.'', 1;
 
-        -- Dedicated room: do not occupy or change the Word/D26 demonstration rooms.
-        IF EXISTS (SELECT 1 FROM dbo.rooms WHERE room_code = ''ATT-MD-ROOM-01'')
-            THROW 51707, ''Reserved attendance room already exists without installation marker.'', 1;
-        INSERT dbo.rooms(branch_id, room_code, room_name, capacity, room_type, status, description)
-        VALUES(@Branch, ''ATT-MD-ROOM-01'', N''Phòng Piano - Demo chuyên cần'', 4,
-            ''PIANO_GROUP'', ''AVAILABLE'', N''Phòng riêng cho lớp ATT-MD-DEMO-01.'');
-        DECLARE @RoomId BIGINT = SCOPE_IDENTITY();
-
         DECLARE @ClassId BIGINT;
         INSERT dbo.classes(course_id, branch_id, room_id, teacher_id, class_code, class_name, class_type,
             max_students, current_students, start_date, end_date, schedule_description, status)
-        VALUES(@Course, @Branch, @RoomId, @Teacher, @ClassCode, N''Lớp Piano - Demo điểm danh'', ''GROUP'',
+        VALUES(@Course, @Branch, NULL, @Teacher, @ClassCode, N''Lớp Piano - Demo điểm danh'', ''GROUP'',
             4, 4, DATEADD(DAY, -70, @Today), DATEADD(DAY, 7, @Today),
             N''Lớp dữ liệu test: 10 buổi lịch sử, 1 buổi hôm nay, 1 buổi tương lai.'', ''OPEN'');
         SET @ClassId = SCOPE_IDENTITY();
@@ -1395,6 +1402,15 @@ BEGIN TRY
         SELECT n, DATEADD(DAY, -7 * (11 - n), @Today) FROM N
         UNION ALL SELECT 11, @Today
         UNION ALL SELECT 12, DATEADD(DAY, 7, @Today);
+
+        -- Dedicated room: do not occupy or change the Word/D26 demonstration rooms.
+        IF EXISTS (SELECT 1 FROM dbo.rooms WHERE room_code = ''ATT-MD-ROOM-01'')
+            THROW 51707, ''Reserved attendance room already exists without installation marker.'', 1;
+        INSERT dbo.rooms(branch_id, room_code, room_name, capacity, room_type, status, description)
+        VALUES(@Branch, ''ATT-MD-ROOM-01'', N''Phòng Piano - Demo chuyên cần'', 4,
+            ''PIANO_GROUP'', ''AVAILABLE'', N''Phòng riêng cho lớp ATT-MD-DEMO-01.'');
+        DECLARE @RoomId BIGINT = SCOPE_IDENTITY();
+        UPDATE dbo.classes SET room_id = @RoomId WHERE id = @ClassId;
         DECLARE @Device INT = 1;
         WHILE @Device <= 4
         BEGIN
@@ -1476,6 +1492,17 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;';
   PRINT N'Da nap day du du lieu demo tong hop.';
  END
  ELSE PRINT N'Bo du lieu tong hop da duoc nap; giu nguyen du lieu hien tai.';
+ -- Run after seeding so programs created during the first import are configured too.
+ -- Preserve custom mappings and leave historical requests/schedules unchanged.
+ EXEC sys.sp_executesql N'
+  UPDATE dbo.programs
+  SET placement_subject = CASE
+   WHEN code IN (''PIANO'',''GUITAR'') THEN ''DAN''
+   WHEN code = ''DANCE'' THEN ''MUA''
+   WHEN code = ''MARTIAL_ARTS'' THEN ''VO''
+  END
+  WHERE placement_subject IS NULL
+   AND code IN (''PIANO'',''GUITAR'',''DANCE'',''MARTIAL_ARTS'');';
  -- Additive extension: also runs on databases where COMBINED_DEMO_V1 was installed.
  -- Existing accounts, passwords and payment history are never reset by this extension.
  IF EXISTS(SELECT 1 FROM dbo.users WHERE username='d26_staff_2' AND role<>'STAFF')

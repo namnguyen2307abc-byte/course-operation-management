@@ -65,10 +65,6 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
         if (role == Role.PARENT) {
             students = studentRepository.findByParentId(currentUser.getId());
-        } else if (role == Role.STUDENT) {
-            students = studentRepository.findByAccountId(currentUser.getId())
-                    .map(List::of)
-                    .orElseGet(() -> studentRepository.findByParentId(currentUser.getId()));
         } else if (role == Role.TEACHER) {
             Set<Long> classIds = new LinkedHashSet<>();
             attendanceClassRepository.findAll().stream()
@@ -121,7 +117,11 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         boolean canEdit;
         String lockReason = null;
 
-        if (userRole == Role.ADMIN || userRole == Role.STAFF || userRole == Role.BRANCH_MANAGER) {
+        if (lesson.getLessonDate().isAfter(today)) {
+            canEdit = false;
+            lockReason = "Buổi học ngày " + lesson.getLessonDate()
+                    + " chưa diễn ra. Không được điểm danh hoặc chỉnh sửa điểm danh cho ngày tương lai.";
+        } else if (userRole == Role.ADMIN || userRole == Role.STAFF || userRole == Role.BRANCH_MANAGER) {
             canEdit = true;
         } else if (userRole == Role.TEACHER) {
             boolean isAssignedTeacher = effectiveTeacher != null
@@ -323,9 +323,13 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         Role userRole = currentUser.getRole();
         LocalDate today = LocalDate.now(CENTER_ZONE);
 
-        // 1. Phân quyền: Học sinh/phụ huynh không được điểm danh
-        if (userRole == Role.PARENT || userRole == Role.STUDENT) {
-            throw new AttendanceMakeupException("Tài khoản Phụ huynh/Học viên không có quyền điểm danh!");
+        // 1. Phân quyền: Phụ huynh không được điểm danh
+        if (userRole == Role.PARENT) {
+            throw new AttendanceMakeupException("Tài khoản Phụ huynh không có quyền điểm danh!");
+        }
+        if (lesson.getLessonDate().isAfter(today)) {
+            throw new AttendanceMakeupException("Buổi học ngày " + lesson.getLessonDate()
+                    + " chưa diễn ra. Không được điểm danh hoặc chỉnh sửa điểm danh cho ngày tương lai.");
         }
 
         // 2. Ràng buộc thời gian & giáo viên (Crucial Business Rule)
@@ -944,10 +948,6 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                 throw new AttendanceMakeupException("Tài khoản phụ huynh chưa có thông tin học viên liên kết.");
             }
             return children.get(0).getId();
-        } else if (currentUser.getRole() == Role.STUDENT) {
-            return studentRepository.findByAccountId(currentUser.getId())
-                    .map(Student::getId)
-                    .orElseThrow(() -> new AttendanceMakeupException("Tài khoản chưa được liên kết với hồ sơ học viên."));
         } else {
             if (requestedStudentId == null) {
                 throw new AttendanceMakeupException("Vui lòng chọn học viên cần tra cứu!");
@@ -960,10 +960,6 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         if (currentUser.getRole() == Role.PARENT) {
             if (student.getParent() == null || !student.getParent().getId().equals(currentUser.getId())) {
                 throw new AttendanceMakeupException("Bạn chỉ có quyền xem thông tin con của mình!");
-            }
-        } else if (currentUser.getRole() == Role.STUDENT) {
-            if (student.getAccount() == null || !student.getAccount().getId().equals(currentUser.getId())) {
-                throw new AttendanceMakeupException("Bạn chỉ có quyền xem thông tin của chính mình!");
             }
         }
     }
@@ -980,29 +976,5 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
             case SUNDAY -> "Chủ Nhật";
         };
         return dow + " " + date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-    }
-
-    private int mapTimeToSlotNumber(LocalTime time) {
-        if (time == null)
-            return 1;
-        if (time.isBefore(LocalTime.of(9, 15)))
-            return 1;
-        if (time.isBefore(LocalTime.of(12, 30)))
-            return 2;
-        if (time.isBefore(LocalTime.of(15, 15)))
-            return 3;
-        return 4;
-    }
-
-    private List<TimeSlotDto> getStandardSlots() {
-        return List.of(
-                TimeSlotDto.builder().slotNumber(1).slotName("Slot 1").timeRange("07:00 - 09:00")
-                        .startTime(LocalTime.of(7, 0)).endTime(LocalTime.of(9, 0)).build(),
-                TimeSlotDto.builder().slotNumber(2).slotName("Slot 2").timeRange("09:30 - 11:30")
-                        .startTime(LocalTime.of(9, 30)).endTime(LocalTime.of(11, 30)).build(),
-                TimeSlotDto.builder().slotNumber(3).slotName("Slot 3").timeRange("13:00 - 15:00")
-                        .startTime(LocalTime.of(13, 0)).endTime(LocalTime.of(15, 0)).build(),
-                TimeSlotDto.builder().slotNumber(4).slotName("Slot 4").timeRange("15:30 - 17:30")
-                        .startTime(LocalTime.of(15, 30)).endTime(LocalTime.of(17, 30)).build());
     }
 }

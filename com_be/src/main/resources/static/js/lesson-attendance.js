@@ -38,7 +38,7 @@ function checkRoleAccess() {
         if (user) {
             const role = (user.roleName || user.role || '').toUpperCase();
             if (!['ADMIN', 'STAFF', 'BRANCH_MANAGER', 'TEACHER'].includes(role)) {
-                alert('Tài khoản Học viên / Phụ huynh không có quyền thực hiện điểm danh lớp học. Đang chuyển về Thời Khóa Biểu...');
+                alert('Tài khoản Phụ huynh không có quyền thực hiện điểm danh lớp học. Đang chuyển về Thời Khóa Biểu...');
                 window.location.replace('weekly-schedule.html');
                 return false;
             }
@@ -114,6 +114,17 @@ function setupMode() {
 
     banner.classList.remove('lock', 'saved', 'ready', 'future');
 
+    if (sheet.canEdit === false) {
+        editMode = false;
+        btnSave.classList.add('d-none');
+        btnEdit.classList.remove('d-none');
+        banner.classList.remove('d-none');
+        banner.classList.add('lock');
+        icon.className = 'bi bi-lock-fill';
+        text.innerHTML = `<strong>KHÔNG THỂ CHỈNH SỬA:</strong> ${escapeHtml(sheet.lockReason || 'Buổi học không được phép điểm danh.')}`;
+        return;
+    }
+
     // Xác định thời gian so với ngày hôm nay (YYYY-MM-DD) và giờ hiện tại
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -146,7 +157,7 @@ function setupMode() {
     }
 
     if (isAdmin) {
-        // Staff / Admin: toàn quyền xử lý ở bất kỳ thời điểm nào
+        // Backend determines which lesson dates Staff / Admin may edit.
         if (isSaved()) {
             editMode = false;
             btnEdit.classList.remove('d-none');
@@ -190,6 +201,12 @@ function setupMode() {
 
 function enableEditing() {
     if (saving) return;
+
+    if (sheet?.canEdit === false && typeof getCurrentUser === 'function'
+            && ['ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(getCurrentUser()?.role)) {
+        setupMode();
+        return;
+    }
 
     const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
     const role = (user && (user.roleName || user.role || ''))?.toUpperCase();

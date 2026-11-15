@@ -46,11 +46,17 @@ public class PayOSGateway {
     private String cancelUrl;
 
     public PayOSGateway() {
-        this.restClient = RestClient.create();
+        var client = java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(5)).build();
+        var factory = new org.springframework.http.client.JdkClientHttpRequestFactory(client);
+        factory.setReadTimeout(java.time.Duration.ofSeconds(20));
+        this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
     @Value("${tuition.simulation.enabled:false}")
     private boolean simulation;
+
+    @Value("${tuition.qr-lifetime-seconds:300}")
+    private long qrLifetimeSeconds = 300;
 
     @Value("${tuition.public-base-url:http://127.0.0.1}")
     private String publicBaseUrl;
@@ -81,6 +87,7 @@ public class PayOSGateway {
         signaturePayload.put("returnUrl", returnTarget);
 
         Map<String, Object> requestBody = new LinkedHashMap<>(signaturePayload);
+        requestBody.put("expiredAt", Instant.now().plusSeconds(qrLifetimeSeconds).getEpochSecond());
         requestBody.put("signature", sign(signaturePayload, checksumKey.trim()));
         
         String itemName = "Hoc phi " + invoice.getInvoiceCode();
@@ -135,15 +142,50 @@ public class PayOSGateway {
     }
 
     public void cancelPayment(long orderCode) {
+        if (isMissingOrClosed(orderCode)) return;
         Map<String,Object> response = restClient.post().uri(createPaymentUrl + "/" + orderCode + "/cancel")
                 .header("x-client-id", clientId.trim()).header("x-api-key", apiKey.trim())
                 .body(Map.of("cancellationReason", "Doi phuong thuc thanh toan"))
                 .retrieve().body(new ParameterizedTypeReference<>() {});
         if (response == null || !"00".equals(String.valueOf(response.get("code")))
                 || !(response.get("data") instanceof Map<?,?> data)
-                || !"CANCELLED".equals(String.valueOf(data.get("status")))) {
+                || !"CANCELLED".equals(String.valueOf(data.get("status")))
+                || new BigDecimal(String.valueOf(data.get("amountPaid"))).signum() != 0) {
             throw new IllegalStateException("Chưa hủy được QR ở cổng thanh toán. Cần kiểm tra ngân hàng trước khi thu lại.");
         }
+    }
+
+    /** Only definitive gateway absence/closure permits releasing an uncertain local request. */
+    public boolean isMissingOrClosed(long orderCode) {
+        GatewayPayment payment = paymentInformation(orderCode);
+        return payment.paid().signum() == 0 && List.of("NOT_FOUND", "CANCELLED", "EXPIRED").contains(payment.status());
+    }
+
+    public record BankTransfer(BigDecimal amount, String reference) {}
+    public record GatewayPayment(String status, BigDecimal paid, List<BankTransfer> transfers) {}
+
+    public GatewayPayment paymentInformation(long orderCode) {
+        Map<String, Object> response = restClient.get().uri(createPaymentUrl + "/" + orderCode)
+                .header("User-Agent", "TalentCenter/1.0")
+                .header("x-client-id", clientId.trim()).header("x-api-key", apiKey.trim())
+                .retrieve().body(new ParameterizedTypeReference<>() {});
+        if (response != null && "101".equals(String.valueOf(response.get("code"))))
+            return new GatewayPayment("NOT_FOUND", BigDecimal.ZERO, List.of());
+        if (response == null || !"00".equals(String.valueOf(response.get("code")))
+                || !(response.get("data") instanceof Map<?, ?> data))
+            throw new IllegalStateException("Chưa kiểm tra được yêu cầu QR với PayOS. Vui lòng thử lại sau.");
+        if (!String.valueOf(orderCode).equals(String.valueOf(data.get("orderCode"))))
+            throw new IllegalStateException("Mã đơn PayOS trả về không khớp.");
+        BigDecimal paid = new BigDecimal(String.valueOf(data.get("amountPaid")));
+        List<BankTransfer> transfers = new ArrayList<>();
+        if (data.get("transactions") instanceof List<?> rows) {
+            for (Object row : rows) if (row instanceof Map<?, ?> item) {
+                String reference = String.valueOf(item.get("reference"));
+                if (!reference.isBlank() && !"null".equals(reference) && reference.length() <= 120)
+                    transfers.add(new BankTransfer(new BigDecimal(String.valueOf(item.get("amount"))), reference));
+            }
+        }
+        return new GatewayPayment(String.valueOf(data.get("status")), paid, transfers);
     }
 
     public boolean verifyWebhookSignature(Map<String, Object> body) {

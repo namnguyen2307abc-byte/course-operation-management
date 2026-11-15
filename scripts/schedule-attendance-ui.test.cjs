@@ -71,6 +71,30 @@ test('teacher cannot edit a past attendance sheet and LATE is absent',async()=>{
   assert.equal(posted,false);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
+for (const role of ['ADMIN','STAFF','BRANCH_MANAGER']) {
+ test(role+' cannot edit future attendance even through the edit button',async()=>{
+  let posted=false;
+  const {page,errors}=await open(role,'lesson-attendance.html?lessonId=1',(u,req)=>{
+   if(u.pathname.endsWith('/attendance')){
+    if(req.method()==='POST')posted=true;
+    return {lessonId:1,className:'Piano',lessonDate:'2099-12-31',timeRange:'07:00 - 09:00',canEdit:false,
+     lockReason:'Không được điểm danh hoặc chỉnh sửa điểm danh cho ngày tương lai.',
+     students:[{studentId:1,fullName:'Minh An',studentCode:'HV01',status:null}]};
+   }
+  });
+  try{
+   await page.locator('#studentList .att-row').waitFor();
+   assert.equal(await page.locator('input[type=radio]:enabled').count(),0);
+   assert.equal(await page.locator('#btnSave').isVisible(),false);
+   assert.match(await page.locator('#attBanner').textContent(),/tương lai/);
+   await page.locator('#btnEdit').click();
+   assert.equal(await page.locator('input[type=radio]:enabled').count(),0);
+   assert.equal(await page.locator('#btnSave').isVisible(),false);
+   assert.equal(posted,false);assert.deepEqual(errors,[]);
+  }finally{await page.close();}
+ });
+}
+
 test('notification bell filters alerts, escapes content and marks all read on mobile',async()=>{
  let marked=false;
  const {page,errors}=await open('PARENT','parent-tuition.html',(u,req)=>{

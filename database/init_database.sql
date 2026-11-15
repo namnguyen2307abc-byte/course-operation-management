@@ -52,7 +52,7 @@ CREATE TABLE users (
     full_name NVARCHAR(150) NOT NULL,
     email VARCHAR(150),
     phone VARCHAR(20),
-    role VARCHAR(30) NOT NULL,
+    role VARCHAR(30) NULL,
     status VARCHAR(30) DEFAULT 'ACTIVE',
     subject VARCHAR(100),
     teaching_subject VARCHAR(100),
@@ -113,7 +113,8 @@ CREATE TABLE programs (
     id BIGINT IDENTITY(1,1) PRIMARY KEY,
     code VARCHAR(50) NOT NULL UNIQUE,
     name NVARCHAR(150) NOT NULL,
-    description NVARCHAR(1000)
+    description NVARCHAR(1000),
+    placement_subject VARCHAR(20) NULL
 );
 GO
 
@@ -164,6 +165,7 @@ CREATE TABLE enrollment_requests (
     student_id BIGINT NOT NULL FOREIGN KEY REFERENCES students(id),
     class_id BIGINT NULL FOREIGN KEY REFERENCES classes(id),
     preferred_course_id BIGINT NULL FOREIGN KEY REFERENCES courses(id),
+    requested_program_id BIGINT NULL CONSTRAINT FK_enrollment_requests_requested_program FOREIGN KEY REFERENCES programs(id),
     placement_requested BIT NOT NULL DEFAULT 0,
     requested_by_user_id BIGINT NOT NULL FOREIGN KEY REFERENCES users(id),
     reviewed_by_user_id BIGINT NULL FOREIGN KEY REFERENCES users(id),
@@ -290,6 +292,7 @@ CREATE TABLE placement_schedules (
     id BIGINT IDENTITY(1,1) PRIMARY KEY,
     user_id BIGINT FOREIGN KEY REFERENCES users(id),
     enrollment_request_id BIGINT NULL FOREIGN KEY REFERENCES enrollment_requests(id),
+    program_id BIGINT NULL CONSTRAINT FK_placement_schedules_program FOREIGN KEY REFERENCES programs(id),
     student_name NVARCHAR(100),
     title NVARCHAR(150) NOT NULL,
     room_name NVARCHAR(100) NOT NULL,
@@ -300,6 +303,7 @@ CREATE TABLE placement_schedules (
     status VARCHAR(30) NOT NULL DEFAULT 'SCHEDULED',
     score INT,
     recommended_level VARCHAR(30),
+    recommended_course_id BIGINT NULL FOREIGN KEY REFERENCES courses(id),
     teacher_note NVARCHAR(MAX),
     audio_url VARCHAR(500),
     video_url VARCHAR(500),
@@ -307,6 +311,8 @@ CREATE TABLE placement_schedules (
     record_url VARCHAR(500),
     teacher_id BIGINT FOREIGN KEY REFERENCES users(id),
     evaluated_at DATETIME2,
+    cancel_reason NVARCHAR(500) NULL,
+    cancelled_at DATETIME2 NULL,
     created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 GO
@@ -341,6 +347,7 @@ CREATE TABLE payments (
     amount DECIMAL(12,2) NOT NULL,
     cash_given DECIMAL(12,2),
     change_amount DECIMAL(12,2),
+    cash_rounding_amount DECIMAL(12,2) NOT NULL CONSTRAINT DF_payments_cash_rounding_amount DEFAULT(0),
     payment_date DATETIME2 DEFAULT CURRENT_TIMESTAMP,
     cashier_id BIGINT FOREIGN KEY REFERENCES users(id),
     bank_transaction_id VARCHAR(100),
@@ -448,11 +455,11 @@ INSERT INTO equipments (room_id, name, code, category, status, serial_number, de
 GO
 
 -- 3.4. CHƯƠNG TRÌNH & KHÓA HỌC (PROGRAMS & COURSES)
-INSERT INTO programs (code, name, description) VALUES
-('PIANO', N'Bộ Môn Piano', N'Đào tạo Piano cổ điển, hiện đại và luyện thi chứng chỉ quốc tế ABRSM'),
-('GUITAR', N'Bộ Môn Guitar', N'Đào tạo Guitar đệm hát và cổ điển Fingerstyle'),
-('DANCE', N'Bộ Môn Múa & Nhảy Nghệ Thuật', N'Đào tạo Múa thiếu nhi, Ballet căn bản, Múa dân gian và Múa đương đại giải phóng hình thể'),
-('MARTIAL_ARTS', N'Bộ Môn Võ Thuật', N'Đào tạo Taekwondo, Võ cổ truyền, rèn luyện thể lực, tấn pháp, phản xạ tự vệ và kỷ luật võ đạo');
+INSERT INTO programs (code, name, description, placement_subject) VALUES
+('PIANO', N'Bộ Môn Piano', N'Đào tạo Piano cổ điển, hiện đại và luyện thi chứng chỉ quốc tế ABRSM', 'DAN'),
+('GUITAR', N'Bộ Môn Guitar', N'Đào tạo Guitar đệm hát và cổ điển Fingerstyle', 'DAN'),
+('DANCE', N'Bộ Môn Múa & Nhảy Nghệ Thuật', N'Đào tạo Múa thiếu nhi, Ballet căn bản, Múa dân gian và Múa đương đại giải phóng hình thể', 'MUA'),
+('MARTIAL_ARTS', N'Bộ Môn Võ Thuật', N'Đào tạo Taekwondo, Võ cổ truyền, rèn luyện thể lực, tấn pháp, phản xạ tự vệ và kỷ luật võ đạo', 'VO');
 
 INSERT INTO courses (program_id, code, name, level, duration_weeks, total_sessions, tuition_fee, description) VALUES
 (1, 'PIA-PRE', N'Piano Mầm Non (Cảm thụ âm nhạc)', N'Khởi động', 12, 24, 3600000.00, N'Dành cho bé từ 4-6 tuổi làm quen phím đàn'),

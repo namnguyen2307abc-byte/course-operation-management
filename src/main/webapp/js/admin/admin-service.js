@@ -1,6 +1,6 @@
 /* Shared transport/presentation helpers. Domain rules are enforced by the backend. */
 const Admin = (() => {
-    const roles = ['ADMIN', 'BRANCH_MANAGER', 'STAFF', 'TEACHER', 'PARENT', 'STUDENT'];
+    const roles = ['ADMIN', 'BRANCH_MANAGER', 'STAFF', 'TEACHER', 'PARENT'];
     const actions = { CREATE_USER: 'Cấp tài khoản', UPDATE_USER: 'Sửa thông tin', CHANGE_ROLE: 'Đổi vai trò', CHANGE_STATUS: 'Khóa / mở khóa', RESET_PASSWORD: 'Đặt lại mật khẩu', SEED_TEST_DATA: 'Tạo dữ liệu test' };
     const statuses = { PENDING: 'Chờ xử lý', WAITING_PLACEMENT: 'Chờ kiểm tra đầu vào', READY_FOR_ASSIGNMENT: 'Chờ xếp lớp', PENDING_PAYMENT: 'Chờ thanh toán', APPROVED: 'Đã ghi danh', REJECTED: 'Từ chối', CANCELLED: 'Đã hủy' };
     const $ = id => document.getElementById(id);

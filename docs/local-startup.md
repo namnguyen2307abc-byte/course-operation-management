@@ -29,3 +29,20 @@ Log nằm trong `.local-run/backend.log` và `.local-run/backend-error.log`. N�
 Build phục vụ tiến trình nền nằm trong `.local-run/build`, độc lập với `com_be/target` mà IDE dùng. Runtime, PID và log được Git bỏ qua.
 
 Ngrok cho webhook thanh toán có thể chạy riêng khi cần kiểm thử thanh toán. Các nghiệp vụ đọc dữ liệu, học vụ và lịch tuần chỉ cần backend, frontend và SQL Server.
+
+## Chọn ảnh làm đóng hộp chấm điểm khi dùng Live Server
+
+Live Server có thể theo dõi cả thư mục backend. Khi upload tạo file trong `com_be/uploads`, Live Server reload trang và làm mất bản nháp chấm điểm dù API upload đã thành công.
+
+Trong `.vscode/settings.json` của workspace, giữ các thiết lập hiện có và bổ sung các mục sau vào `liveServer.settings.ignoreFiles`:
+
+```json
+{
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**", "**/*.scss", "**/*.sass", "**/*.ts", "node_modules/**",
+    "**/uploads/**", "com_be/uploads", "uploads", ".local-run", "**/target/**", "**/*.log"
+  ]
+}
+```
+
+Dừng rồi mở lại Live Server để nạp cấu hình, sau đó refresh trình duyệt. Thư mục `.vscode` là cấu hình local và không được Git theo dõi. File upload là dữ liệu runtime, không đưa lên Git. Frontend chỉ báo tải thành công khi backend trả URL file thực tế; khi lỗi vẫn giữ nhận xét và điểm đang nhập, không tạo đường dẫn dự phòng giả.

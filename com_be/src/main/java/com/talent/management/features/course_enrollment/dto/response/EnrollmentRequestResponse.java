@@ -10,6 +10,8 @@ public record EnrollmentRequestResponse(
         String childName,
         Long preferredCourseId,
         String preferredCourseName,
+        Long requestedProgramId,
+        String requestedProgramName,
         boolean placementRequested,
         Long classId,
         String classCode,

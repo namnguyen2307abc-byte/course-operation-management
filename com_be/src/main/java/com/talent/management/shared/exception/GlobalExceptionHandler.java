@@ -5,10 +5,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -77,6 +80,24 @@ public class GlobalExceptionHandler {
         body.put("error", "Unauthorized");
         body.put("message", "Tài khoản hoặc mật khẩu không chính xác");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleMissingRoute() {
+        HttpStatus status = HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(status).body(routeError(status, "Không tìm thấy đường dẫn yêu cầu"));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnsupportedMethod(HttpRequestMethodNotSupportedException ex) {
+        HttpStatus status = HttpStatus.METHOD_NOT_ALLOWED;
+        return ResponseEntity.status(status).headers(ex.getHeaders())
+                .body(routeError(status, "Phương thức HTTP không được hỗ trợ cho đường dẫn này"));
+    }
+
+    private Map<String, Object> routeError(HttpStatus status, String message) {
+        return Map.of("timestamp", LocalDateTime.now(), "status", status.value(),
+                "error", status.getReasonPhrase(), "message", message);
     }
 
     @ExceptionHandler(Exception.class)

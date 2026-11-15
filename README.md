@@ -4,10 +4,14 @@ Chạy trên Windows: nhấn đúp `start_all.bat`. Xem [hướng dẫn khởi �
 
 Phân hệ quản trị admin: xem [hướng dẫn nâng cấp database, phân quyền và sử dụng](docs/admin-management.md). Với database hiện có, chạy `database/admin_management_upgrade.sql` trước khi khởi động bản có chức năng admin.
 
+Học viên được quản lý bằng hồ sơ `students`, không có role đăng nhập `STUDENT`. Với database cũ, sao lưu rồi chạy [remove_student_login.sql](database/remove_student_login.sql) trước khi khởi động backend mới. Script khóa tài khoản học viên cũ, bỏ role đăng nhập và giữ nguyên ID cùng các liên kết lịch sử; phụ huynh tiếp tục theo dõi hồ sơ của con.
+
 > **Hệ Thống Quản Lý Vận Hành Học Viện Âm Nhạc & Nghệ Thuật (Talent Academy)**  
 > | Phiên bản kiến trúc: **Spring Boot 3 (Java 17) & Frontend Web Modular**
 
 ---
+
+Với database đang có, bổ sung cột lưu lý do/thời điểm hủy Placement Test bằng `database/placement_schedule_cancellation.sql` trước khi chạy bản mới. Script không reset dữ liệu và có thể chạy lại; database tạo mới từ `database/init_database.sql` đã có các cột này.
 
 ## 📑 Mục Lục
 1. [Tổng Quan Kiến Trúc Dự Án](#1-tổng-quan-kiến-trúc-dự-án-architecture-overview)
@@ -152,19 +156,14 @@ Phân hệ `branch_facility_enrollment` đã được triển khai hoàn chỉnh
 - **Áp dụng**: Lấy danh mục nhạc cụ/đàn theo cơ sở khi bảng `equipments` không có cột `branch_id` mà liên kết thông qua `rooms`:
   ```java
   public interface EquipmentRepository extends JpaRepository<Equipment, Long> {
-      @Query("SELECT e FROM Equipment e JOIN e.room r WHERE r.branch.id = :branchId ORDER BY e.id ASC")
-      List<Equipment> findEquipmentsByBranchId(@Param("branchId") Long branchId);
-
-      @Query("SELECT e FROM Equipment e JOIN e.room r WHERE r.branch.id = :branchId AND e.category = :category ORDER BY e.id ASC")
-      List<Equipment> findEquipmentsByBranchIdAndCategory(
-              @Param("branchId") Long branchId,
-              @Param("category") EquipmentCategory category
-      );
+      @Query("SELECT e FROM Equipment e WHERE e.room.branch.id = :branchId")
+      Page<Equipment> findByBranch(@Param("branchId") Long branchId, Pageable pageable);
   }
   ```
+  Ví dụ JPQL rút gọn; code dùng `EquipmentRepository.searchPage` để lọc và phân trang.
 
 ### 3. Tầng Mapper (`BranchFacilityMapper.java`)
-- Chuyển đổi an toàn từ Entity sang Response DTO và Request DTO sang Entity:
+- Chuyển đổi an toàn từ Entity sang Response DTO:
   ```java
   @Component
   public class BranchFacilityMapper {
@@ -192,11 +191,9 @@ Phân hệ `branch_facility_enrollment` đã được triển khai hoàn chỉnh
       List<BranchResponse> getAllBranches();
       List<BranchOptionResponse> getBranchOptions();
       List<RoomResponse> getRoomsByBranch(Long branchId);
-      List<RoomOptionResponse> getRoomOptions(Long branchId);
-      List<EquipmentResponse> getEquipmentsByBranch(Long branchId, EquipmentCategory category);
-      BranchResponse createBranch(CreateBranchRequest request);
-      RoomResponse createRoom(CreateRoomRequest request);
-      EquipmentResponse createEquipment(CreateEquipmentRequest request);
+      RoomUsageResponse getRoomUsage(Long roomId);
+      RoomResponse updateRoom(Long roomId, UpdateRoomRequest request);
+      EquipmentResponse updateEquipment(Long equipmentId, UpdateEquipmentRequest request);
   }
   ```
 - **Implementation [BranchFacilityServiceImpl.java]**:
@@ -248,7 +245,7 @@ com_fe/
 | :--- | :--- |
 | **`login.html`** | - Tiếp nhận `username` và `password` từ người dùng.<br>- Bắt sự kiện submit form, gọi hàm `login(username, password)` trong `auth.js`.<br>- Khi API `/api/auth/login` trả về thành công, lưu JWT Token và thông tin User vào `localStorage`, sau đó chuyển hướng ngay về `index.html`.<br>- Hiển thị thông báo lỗi trực quan nếu sai mật khẩu hoặc tài khoản bị khóa. |
 | **`index.html`** | - Bảng điều khiển trung tâm (Dashboard) sau khi đăng nhập thành công.<br>- Gọi `requireAuth()` từ `auth.js` ngay khi mở trang: Nếu chưa đăng nhập thì tự động chuyển hướng về `login.html`.<br>- Tải động `components/navbar.html` và `components/footer.html`.<br>- Gọi API `/api/branches` để hiển thị thống kê tổng quan cơ sở, danh sách lối tắt điều hướng tới 4 phân hệ chính. |
-| **`pages/branch-facility.html`** | - Giao diện quản lý phân hệ Cơ sở & CSVC.<br>- Chứa 3 Tab chức năng: **Danh sách cơ sở**, **Phòng học âm nhạc**, và **Trang thiết bị nhạc cụ (Đàn Piano/Guitar)**.<br>- Tích hợp dropdown lọc phòng học và thiết bị theo từng cơ sở (gọi `/api/branches/{id}/rooms` và `/api/branches/{id}/equipments`).<br>- Cung cấp bộ lọc theo danh mục nhạc cụ (Grand Piano, Upright Piano, Digital Piano, Phụ kiện). |
+| **`pages/branch-facility.html`** | Chọn cơ sở để tra cứu hai danh sách phân trang: phòng học (`/api/branches/{id}/rooms/page`) và thiết bị (`/api/branches/{id}/equipments/page`). Admin có thể cập nhật phòng và thiết bị hiện có. Màn hình không hỗ trợ tạo mới hoặc đổi trạng thái cơ sở. |
 | **`pages/attendance-makeup.html`** | - Giao diện quản lý Điểm danh & Học bù.<br>- Hiển thị lịch dạy/học theo tuần, bảng điểm danh chuyên cần của học viên.<br>- Cho phép học viên/phụ huynh gửi đơn xin nghỉ học có lý do.<br>- Cung cấp giao diện cho giáo viên duyệt đơn và tìm các ca học trống phù hợp để xếp lớp học bù. |
 | **`pages/placement-test.html`** | - Giao diện kiểm tra năng khiếu đầu vào & thiết lập lộ trình học.<br>- Tiếp nhận hồ sơ test của học viên mới, cho phép giáo viên nhập điểm thẩm âm, tiết tấu, cảm thụ âm nhạc.<br>- Hỗ trợ xem các file ghi âm, video clip bài biểu diễn của học viên.<br>- Tự động đề xuất khóa học và lộ trình đào tạo phù hợp theo kết quả đánh giá. |
 | **`pages/tuition-payment.html`** | - Giao diện nghĩa vụ đóng học phí.<br>- Hiển thị danh sách hóa đơn theo trạng thái (Chờ thanh toán, Đã thanh toán, Quá hạn).<br>- Tích hợp tính năng áp dụng chính sách học bổng, mã giảm giá khuyến học.<br>- Tự động tạo mã thanh toán **VietQR động** chứa số tiền và nội dung chuyển khoản để phụ huynh quét mã chuyển khoản nhanh. |
@@ -305,7 +302,7 @@ com_fe/
 | Tiêu Chí So Sánh | Java Web Truyền Thống (Servlet + JSP + JDBC) | Spring Boot 3 REST API + Modern Web (COM Project) | Lợi Thế Vượt Trội Của Spring Boot & REST API |
 | :--- | :--- | :--- | :--- |
 | **Tầng Giao Diện (Presentation)** | **JSP (JavaServer Pages)**:<br>- Mã Java nhúng lẫn lộn trong HTML qua thẻ `<% ... %>`, JSTL và EL.<br>- Cơ chế **Server-Side Rendering (SSR)**: Server phải biên dịch JSP thành Servlet rồi dựng toàn bộ trang HTML trước khi gửi về client.<br>- Mỗi lần click nút hay lọc dữ liệu là toàn bộ trang web bị reload trắng màn hình. | **Tách Rời Hoàn Toàn (HTML5/CSS3/JS)**:<br>- Server chỉ đóng vai trò cung cấp REST API trả về dữ liệu thô dạng JSON.<br>- Client tự sử dụng JavaScript để render giao diện động ngay trên trình duyệt.<br>- Chuyển tab, lọc dữ liệu không cần tải lại trang (Single Page mindset). | **Trải nghiệm người dùng (UX) mượt mà tối đa**.<br>Tách rời hoàn toàn đội ngũ Frontend và Backend: Mỗi bên có thể code độc lập, kiểm thử riêng biệt mà không phụ thuộc vào nhau. 1 Backend có thể phục vụ cùng lúc cả Web, Mobile App (iOS/Android) và Hệ thống bên thứ 3. |
-| **Tầng Điều Khiển (Controller)** | **HttpServlet**:<br>- Phải kế thừa `HttpServlet` và override hàm `doGet()`, `doPost()`.<br>- Lấy tham số thủ công: `request.getParameter("id")`.<br>- Tự ép kiểu: `Long.parseLong(...)`.<br>- Đẩy dữ liệu ra view bằng `request.setAttribute("list", list)`.<br>- Chuyển trang thủ công bằng `RequestDispatcher.forward()`. | **`@RestController` + `@RequestMapping`**:<br>- Viết hàm như hàm Java bình thường.<br>- Tự động parse URL path: `@PathVariable Long id`.<br>- Tự động parse JSON Body sang Object: `@RequestBody CreateBranchRequest request`.<br>- Tự động kiểm tra dữ liệu: `@Valid`.<br>- Trả về kết quả bọc trong `ResponseEntity<T>`. | **Giảm 80% code thừa (Boilerplate code)**.<br>Tự động hóa hoàn toàn việc mapping kiểu dữ liệu, validate dữ liệu đầu vào và chuyển đổi định dạng JSON hai chiều. |
+| **Tầng Điều Khiển (Controller)** | **HttpServlet**:<br>- Phải kế thừa `HttpServlet` và override hàm `doGet()`, `doPost()`.<br>- Lấy tham số thủ công: `request.getParameter("id")`.<br>- Tự ép kiểu: `Long.parseLong(...)`.<br>- Đẩy dữ liệu ra view bằng `request.setAttribute("list", list)`.<br>- Chuyển trang thủ công bằng `RequestDispatcher.forward()`. | **`@RestController` + `@RequestMapping`**:<br>- Viết hàm như hàm Java bình thường.<br>- Tự động parse URL path: `@PathVariable Long id`.<br>- Tự động parse JSON Body sang Object: `@RequestBody UpdateRoomRequest request`.<br>- Tự động kiểm tra dữ liệu: `@Valid`.<br>- Trả về kết quả bọc trong `ResponseEntity<T>`. | **Giảm 80% code thừa (Boilerplate code)**.<br>Tự động hóa hoàn toàn việc mapping kiểu dữ liệu, validate dữ liệu đầu vào và chuyển đổi định dạng JSON hai chiều. |
 | **Tầng Truy Vấn CSDL (Data Access)** | **JDBC thuần (Java Database Connectivity)**:<br>- Mở kết nối `Connection = DriverManager.getConnection()`.<br>- Tạo `PreparedStatement`, viết câu lệnh SQL thô bằng chuỗi String.<br>- Dùng vòng lặp `while (rs.next())` đọc từng cột gán vào đối tượng.<br>- Bắt buộc phải nhớ đóng `Connection`, `PreparedStatement`, `ResultSet` trong khối `finally` để tránh rò rỉ bộ nhớ (Memory leak/Connection leak). | **Spring Data JPA & Hibernate (ORM)**:<br>- Khai báo Entity (`@Entity`, `@Table`) phản ánh cấu trúc bảng CSDL.<br>- Khai báo Interface kế thừa `JpaRepository<Entity, ID>`.<br>- Tự động có sẵn mọi hàm CRUD cơ bản (`save`, `findById`, `findAll`, `deleteById`).<br>- Tự động quản lý Connection Pool tối ưu hiệu năng cao (**HikariCP**). | **Triệt tiêu hoàn toàn code truy vấn lặp đi lặp lại**.<br>Loại bỏ rủi ro rò rỉ kết nối CSDL, an toàn tuyệt đối trước các cuộc tấn công SQL Injection và nâng cao tốc độ phát triển tính năng gấp nhiều lần. |
 | **Quản Lý Vòng Đời & Phụ Thuộc (Object Management)** | **Khởi Tạo Thủ Công (Tightly Coupled)**:<br>- Muốn dùng class nào phải tự gõ `new BranchService()`, `new BranchDao()`.<br>- Khi một class thay đổi constructor, hàng loạt class khác bị lỗi biên dịch theo.<br>- Rất khó viết Unit Test vì các lớp bị gắn chặt vào nhau, không thể thay thế bằng Mock object. | **Spring IoC & Dependency Injection (Loosely Coupled)**:<br>- Đánh dấu các lớp bằng `@Service`, `@Component`, `@Repository`.<br>- Spring tự động khởi tạo và tiêm phụ thuộc thông qua `@RequiredArgsConstructor`.<br>- Lập trình hướng giao diện (Programming to Interface): Controller chỉ biết đến `BranchFacilityService` interface mà không cần quan tâm class cài đặt cụ thể. | **Kiến trúc linh hoạt, dễ bảo trì và mở rộng**.<br>Dễ dàng thay đổi logic hoặc thay thế các module mà không làm ảnh hưởng đến tầng khác. Hỗ trợ viết Unit Test tự động cực kỳ thuận tiện. |
 | **Đóng Gói & Triển Khai (Deployment)** | **File WAR & Máy chủ ngoài**:<br>- Phải build ứng dụng thành file `.war`.<br>- Cài đặt và cấu hình máy chủ web Apache Tomcat hoặc WildFly độc lập trên máy chủ vật lý.<br>- Copy file war vào thư mục `webapps` của Tomcat rồi khởi động server. | **File JAR Độc Lập (Fat JAR / Uber JAR)**:<br>- Đóng gói toàn bộ mã nguồn, thư viện phụ thuộc và cả máy chủ Tomcat nhúng vào **một file `.jar` duy nhất**.<br>- Chạy ở bất cứ nơi đâu có cài Java chỉ bằng câu lệnh: `java -jar talent-management.jar`. | **Triển khai thần tốc, sẵn sàng cho môi trường Cloud & DevOps**.<br>Dễ dàng đóng gói thành Docker Container, tích hợp quy trình tự động hóa CI/CD và triển khai lên AWS, Azure, Google Cloud hoặc Kubernetes. |
