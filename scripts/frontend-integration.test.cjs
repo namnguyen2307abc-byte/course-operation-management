@@ -120,7 +120,7 @@ test('refreshing the authenticated user preserves the existing sidebar nodes and
     const nodes = {};
     let clears = 0;
     function element(tag = 'div') {
-        return { tagName: tag, dataset: {}, children: [], classList: { add() {} }, setAttribute() {},
+        return { tagName: tag, dataset: {}, children: [], classList: { add() {} }, setAttribute() {}, addEventListener() {},
             appendChild(child) { this.children.push(child); }, replaceChildren() { this.children = []; clears++; } };
     }
     for (const id of ['workspaceNavigation', 'sidebarUserName', 'sidebarUserRole', 'sidebarAvatar']) nodes[id] = element();

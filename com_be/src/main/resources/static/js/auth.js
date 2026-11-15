@@ -11,13 +11,15 @@ function checkAuth() {
 }
 function sanitizeUserData(user) {
     if (!user || typeof user !== 'object' || !user.role) return null;
-    return { ...user, role: String(user.role).toUpperCase().replace(/^ROLE_/, '') };
+    const role = String(user.role).toUpperCase().replace(/^ROLE_/, '');
+    if (!['ADMIN', 'BRANCH_MANAGER', 'STAFF', 'TEACHER', 'PARENT', 'CASHIER'].includes(role)) return null;
+    return { ...user, role };
 }
 function getCurrentUser() {
     try { return sanitizeUserData(JSON.parse(localStorage.getItem('user'))); } catch { return null; }
 }
 function roleLabel(role) {
-    return { ADMIN: 'Quản trị viên', BRANCH_MANAGER: 'Quản lý chi nhánh', STAFF: 'Nhân viên', CASHIER: 'Thu ngân', TEACHER: 'Giáo viên', PARENT: 'Phụ huynh' }[role] || 'Tài khoản trung tâm';
+    return { ADMIN: 'Quản trị viên', BRANCH_MANAGER: 'Quản lý chi nhánh', STAFF: 'Nhân viên', CASHIER: 'Thu ngân', TEACHER: 'Giáo viên', PARENT: 'Phụ huynh' }[role] || (role == null ? 'Lưu trữ' : 'Tài khoản trung tâm');
 }
 const WORKSPACE_FEATURES = [
     { file: 'admin-dashboard', label: 'Tổng quan quản trị', icon: 'bar-chart-line', group: 'Quản trị hệ thống', roles: ['ADMIN'], description: 'Theo dõi số liệu vận hành, học phí và các công việc chờ xử lý.' },

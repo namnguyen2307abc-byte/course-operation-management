@@ -49,38 +49,17 @@ const AdminUserForm = (() => {
     }
 
     function showRoleFields(role, prefix = 'user') {
-        const needed = role === 'STUDENT';
-        if ($(prefix + 'StudentFields')) $(prefix + 'StudentFields').hidden = !needed;
-        if ($(prefix + 'StudentId')) $(prefix + 'StudentId').required = needed;
-        if (needed) loadStudents(prefix);
-
         if (prefix === 'user') {
             const hints = {
                 ADMIN: 'Quản lý tài khoản và theo dõi hoạt động toàn trung tâm.',
                 BRANCH_MANAGER: 'Điều phối học vụ và các nghiệp vụ dành cho quản lý.',
                 STAFF: 'Thực hiện nghiệp vụ tuyển sinh, học vụ và thu học phí.',
                 TEACHER: 'Theo dõi lịch dạy, điểm danh và đánh giá đầu vào.',
-                PARENT: 'Đăng ký lớp và theo dõi việc học của con.',
-                STUDENT: 'Xem lịch và thông tin của đúng hồ sơ học viên được liên kết.'
+                PARENT: 'Đăng ký lớp và theo dõi việc học của con.'
             };
             $('userRoleHint').textContent = hints[role] || '';
             $('userTeachingSubjectFields').hidden = role !== 'TEACHER';
             if ($('parentChildrenFields')) $('parentChildrenFields').hidden = (editingId !== null || role !== 'PARENT');
-        }
-    }
-
-    async function loadStudents(prefix) {
-        const input = $(prefix + 'StudentSearch');
-        const keyword = input ? input.value : '';
-        try {
-            const students = await Admin.request('/users/student-options?' + Admin.query({ keyword }));
-            const select = $(prefix + 'StudentId');
-            if (select) {
-                select.replaceChildren(new Option('Chọn hồ sơ học viên', ''));
-                students.forEach(s => select.add(new Option(`#${s.id} · ${s.name}`, s.id)));
-            }
-        } catch (e) {
-            error(prefix === 'user' ? 'userFormError' : 'actionError', e.message);
         }
     }
 
@@ -106,10 +85,11 @@ const AdminUserForm = (() => {
             ].map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value || '—')}</dd></div>`).join('')}</dl>`;
             function links(title, records) { return `<section class="admin-linked-records"><h3>${title}</h3><ul>${records.length ? records.map(r => `<li>${esc(r.name)} <span class="text-muted">#${r.id}</span></li>`).join('') : '<li>Chưa có liên kết nghiệp vụ. Có thể đổi vai trò nếu đáp ứng các điều kiện khác.</li>'}</ul></section>`; }
             $('detailLinks').innerHTML = (selected.role === 'TEACHER' || result.classes.length ? links('Lớp được phân công', result.classes) : '')
-                + (selected.role === 'PARENT' || result.children.length ? links('Hồ sơ con của phụ huynh', result.children) : '')
-                + (selected.role === 'STUDENT' || result.studentProfiles.length ? links('Hồ sơ học viên độc lập', result.studentProfiles) : '');
+                + (selected.role === 'PARENT' || result.children.length ? links('Hồ sơ con của phụ huynh', result.children) : '');
             const self = selected.id === getCurrentUser().userId;
-            $('changeRole').disabled = self; $('changeStatus').disabled = self; $('resetPassword').disabled = self;
+            $('changeRole').disabled = self || !selected.role;
+            $('changeStatus').disabled = self || !selected.role;
+            $('resetPassword').disabled = self || !selected.role;
             $('changeStatus').textContent = selected.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản';
             $('selfAccountNote').hidden = !self;
             $('userAuditLink').href = appPath('/pages/admin-audit.html') + '?targetId=' + id;
@@ -175,7 +155,6 @@ const AdminUserForm = (() => {
                     username: $('userUsername').value.trim(),
                     password: $('userPassword').value,
                     role: $('userRole').value,
-                    studentId: $('userRole').value === 'STUDENT' ? Number($('userStudentId').value) : null
                 });
                 if ($('userRole').value === 'PARENT') {
                     const childCards = document.querySelectorAll('#childrenList .child-item-card');
@@ -207,7 +186,7 @@ const AdminUserForm = (() => {
             event.preventDefault(); error('actionError'); $('saveAction').disabled = true;
             const payload = { reason: $('actionReason').value.trim() };
             let path, method = 'PATCH';
-            if (mode === 'role') { path = 'role'; payload.role = $('actionRole').value; payload.studentId = payload.role === 'STUDENT' ? Number($('actionStudentId').value) : null; }
+            if (mode === 'role') { path = 'role'; payload.role = $('actionRole').value; }
             if (mode === 'status') { path = 'status'; payload.status = selected.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'; }
             if (mode === 'password') { path = 'reset-password'; method = 'POST'; payload.password = $('actionPassword').value; }
             try {
