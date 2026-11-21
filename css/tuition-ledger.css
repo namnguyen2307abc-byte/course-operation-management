@@ -1,4 +1,8 @@
 .tuition-ledger { box-sizing: border-box; width: 100%; min-width: 0; max-width: 1400px; margin: auto; padding: clamp(1rem, 3vw, 2.5rem); }
+#action-form .invalid-feedback { display: block; color: #b42336; font-size: .85rem; line-height: 1.5; margin-top: .35rem; }
+#action-form .invalid-feedback[hidden] { display: none !important; }
+#action-form .form-control.is-invalid { border-color: #b42336; }
+#action-form .form-control.is-invalid:focus { box-shadow: 0 0 0 .2rem #b4233620; }
 .tuition-ledger h1 { color: #153f33; font-size: clamp(1.75rem, 3vw, 2.5rem); }
 .tuition-ledger h2 { font-size: 1.2rem; }
 .ledger-card, .ledger-summary>div, #notices { border: 1px solid #d9e5df; border-radius: 14px; background: white; padding: 1.25rem; margin-bottom: 1rem; overflow-wrap: anywhere; }

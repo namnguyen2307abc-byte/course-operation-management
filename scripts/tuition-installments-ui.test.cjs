@@ -385,6 +385,75 @@ test('unconfirmed invoice only offers a combined discount and schedule form',asy
  }finally{await page.close();}
 });
 
+test('schedule identifies late dates and zero or decimal amounts before any API write',async()=>{
+ let writes=0;
+ const end=new Date(today+'T00:00:00Z');end.setUTCDate(end.getUTCDate()+30);
+ const classEndDate=end.toISOString().slice(0,10);
+ const later=new Date(end);later.setUTCDate(later.getUTCDate()+1);
+ const late=later.toISOString().slice(0,10);
+ const {page,errors}=await open('STAFF',(url,req)=>{
+  if(req.method()==='POST'){writes++;return {};}
+  if(url.pathname.endsWith('/receivables'))return [{...invoice,paid:0,status:'UNPAID',confirmed:false,classEndDate}];
+ });
+ try{
+  await page.getByRole('button',{name:'Chốt lịch đóng',exact:true}).click();
+  await page.getByLabel('Phương án đóng').selectOption('2');
+  await page.locator('[name=date1]').fill(late);
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  assert.match(await page.locator('#action-content').innerText(),/Kỳ 2:.*vượt ngày kết thúc lớp/);
+  assert.equal(await page.locator('[name=date1]').getAttribute('max'),classEndDate);
+  await page.locator('[name=date1]').fill(classEndDate);
+  for(const [amount,message] of [['0',/Kỳ 2:.*lớn hơn 0đ/],['4200000.5',/Kỳ 2:.*số thập phân/]]){
+   await page.locator('[name=amount1]').fill(amount);
+   await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+   assert.match(await page.locator('#action-content').innerText(),message);
+  }
+  assert.equal(writes,0);assert.deepEqual(errors,[]);
+  await page.locator('[name=amount1]').fill('4200000');
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.getByText('Đã lưu và cập nhật số dư.',{exact:true}).waitFor();
+  assert.equal(writes,1);
+ }finally{await page.close();}
+});
+
+test('placement discount shows score and locks policy while submitting the authoritative percentage',async()=>{
+ let posted;
+ const discountPolicy={source:'PLACEMENT_TEST',locked:true,placementTestId:81,placementScore:8.5,percentage:20,method:'PERCENTAGE',value:20,amount:1200000,reason:'Placement Test #81: 8.5/10 điểm; ưu đãi 20%.'};
+ const {page,errors}=await open('STAFF',(url,req)=>{
+  if(req.method()==='POST'&&url.pathname.endsWith('/plan')){posted=req.postDataJSON();return {};}
+  if(url.pathname.endsWith('/receivables'))return [{...invoice,paid:0,status:'UNPAID',confirmed:false,discountPolicy}];
+ });
+ try{
+  await page.getByRole('button',{name:'Chốt lịch đóng',exact:true}).click();
+  assert.equal(await page.getByLabel('Kiểu ưu đãi').isDisabled(),true);
+  assert.equal(await page.getByLabel('Mức giảm (đ hoặc %)').getAttribute('readonly'),'');
+  assert.match(await page.locator('#action-content').innerText(),/8.5\/10 điểm/);
+  assert.match(await page.locator('#action-content').innerText(),/4.800.000/);
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.getByText('Đã lưu và cập nhật số dư.',{exact:true}).waitFor();
+  assert.equal(posted.discountMethod,'PERCENTAGE');assert.equal(posted.discountValue,20);
+  assert.equal(posted.installments[0].amount,4800000);assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('a period under 1000 is rejected and no-discount is explicit',async()=>{
+ let writes=0;
+ const {page}=await open('STAFF',(url,req)=>{
+  if(req.method()==='POST'){writes++;return {};}
+  if(url.pathname.endsWith('/receivables'))return [{...invoice,paid:0,status:'UNPAID',confirmed:false}];
+ });
+ try{
+  await page.getByRole('button',{name:'Chốt lịch đóng',exact:true}).click();
+  assert.equal(await page.getByLabel('Kiểu ưu đãi').inputValue(),'NONE');
+  await page.getByLabel('Phương án đóng').selectOption('2');
+  await page.locator('[name=amount1]').fill('999');
+  await page.locator('[name=date1]').fill('2099-12-31');
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  assert.match(await page.locator('#action-content').innerText(),/Kỳ 2:.*1.000đ/);
+  assert.equal(writes,0);
+ }finally{await page.close();}
+});
+
 test('discount fields reject negatives, decimals and values beyond their bounds',async()=>{
  let writes=0;
  const data={...structuredClone(invoice),originalAmount:3200000,total:3200000,paid:0,balance:3200000,status:'UNPAID',confirmed:false};
@@ -396,12 +465,12 @@ test('discount fields reject negatives, decimals and values beyond their bounds'
   await page.getByRole('button',{name:'Chốt lịch đóng',exact:true}).click();
   const value=page.getByLabel('Mức giảm (đ hoặc %)',{exact:true});
   for(const [method,max,invalid,valid] of [
-   ['PERCENTAGE','100',['-1','101','10.5','10.0'],['0','10','100']],
-   ['FIXED_AMOUNT','3200000',['-1','0','999','3200001','1000.5'],['1000','1001','3200000']]
+   ['PERCENTAGE','30',['-1','0','31','101','10.5','10.0'],['1','10','30']],
+   ['FIXED_AMOUNT','960000',['-1','0','999','960001','3200001','1000.5'],['1000','1001','960000']]
   ]){
    await page.getByLabel('Kiểu ưu đãi').selectOption(method);
    assert.equal(await value.getAttribute('max'),max);
-   assert.equal(await value.getAttribute('min'),method==='PERCENTAGE'?'0':'1000');assert.equal(await value.getAttribute('step'),'1');
+   assert.equal(await value.getAttribute('min'),method==='PERCENTAGE'?'1':'1000');assert.equal(await value.getAttribute('step'),'1');
    for(const input of invalid){
     await value.fill(input);assert.equal(await value.evaluate(el=>el.checkValidity()),false,input);
     await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
@@ -409,6 +478,66 @@ test('discount fields reject negatives, decimals and values beyond their bounds'
    for(const input of valid){await value.fill(input);assert.equal(await value.evaluate(el=>el.checkValidity()),true,input);}
   }
   assert.equal(writes,0);
+ }finally{await page.close();}
+});
+
+test('two periods reserve a day for the last payment and show errors beside fields without native popups',async()=>{
+ let writes=0;
+ const classEndDate='2099-01-14';
+ const {page,errors}=await open('STAFF',(url,req)=>{
+  if(req.method()==='POST'){writes++;return {};}
+  if(url.pathname.endsWith('/receivables'))return [{...invoice,originalAmount:2160000,total:2160000,paid:0,status:'UNPAID',confirmed:false,classEndDate}];
+ });
+ try{
+  await page.getByRole('button',{name:'Chốt lịch đóng',exact:true}).click();
+  await page.getByLabel('Phương án đóng').selectOption('2');
+  assert.equal(await page.locator('[name=date0]').getAttribute('max'),'2099-01-13');
+  await page.locator('[name=date0]').fill(classEndDate);
+  await page.locator('[name=date1]').fill(classEndDate);
+  await page.locator('[name=amount1]').fill('');
+  await page.evaluate(()=>{window.nativeValidationPopups=0;HTMLFormElement.prototype.reportValidity=function(){window.nativeValidationPopups++;return false;};});
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  assert.match(await page.locator('#tuition-plan-date-0-error').innerText(),/13\/01\/2099/);
+  assert.match(await page.locator('#tuition-plan-amount-1-error').innerText(),/vui lòng nhập/);
+  assert.equal(await page.locator('#tuition-plan-date-1-error').innerText(),'');
+  assert.equal(await page.evaluate(()=>window.nativeValidationPopups),0);
+  assert.equal(writes,0);
+  await page.locator('[name=date0]').fill('2099-01-13');
+  await page.locator('[name=amount1]').fill('1512000');
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.getByText('Đã lưu và cập nhật số dư.',{exact:true}).waitFor();
+  assert.equal(writes,1);assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('three periods propagate the first date through an invalid second date and display the exact allowed range',async()=>{
+ let writes=0;
+ const classEndDate='2099-01-14';
+ const {page,errors}=await open('STAFF',(url,req)=>{
+  if(req.method()==='POST'){writes++;return {};}
+  if(url.pathname.endsWith('/receivables'))return [{...invoice,paid:0,status:'UNPAID',confirmed:false,classEndDate}];
+ });
+ try{
+  await page.getByRole('button',{name:'Chốt lịch đóng',exact:true}).click();
+  await page.getByLabel('Phương án đóng').selectOption('3');
+  assert.match(await page.locator('[data-date-hint="0"]').innerText(),/^Hạn đóng chỉ được chọn từ .* đến 12\/01\/2099\.$/);
+  await page.locator('[name=date0]').fill('2099-01-12');
+  const earlySecond=await page.evaluate(()=>tuitionScheduleValidation.shift(new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date()),5));
+  const earlyThird=await page.evaluate(()=>tuitionScheduleValidation.shift(new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date()),7));
+  await page.locator('[name=date1]').fill(earlySecond);
+  await page.locator('[name=date2]').fill(earlyThird);
+  assert.equal(await page.locator('[name=date2]').getAttribute('min'),'2099-01-14');
+  assert.equal(await page.locator('[name=date2]').getAttribute('max'),'2099-01-14');
+  assert.equal(await page.locator('[data-date-hint="2"]').innerText(),'Hạn đóng chỉ được chọn từ 14/01/2099 đến 14/01/2099.');
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  assert.match(await page.locator('#tuition-plan-date-2-error').innerText(),/14\/01\/2099/);
+  assert.equal(writes,0);
+  await page.locator('[name=date1]').fill('2099-01-13');
+  assert.equal(await page.locator('[name=date2]').inputValue(),earlyThird);
+  await page.locator('[name=date2]').fill(classEndDate);
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.getByText('Đã lưu và cập nhật số dư.',{exact:true}).waitFor();
+  assert.equal(writes,1);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
 

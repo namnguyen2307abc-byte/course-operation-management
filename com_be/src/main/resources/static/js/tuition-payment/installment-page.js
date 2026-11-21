@@ -75,6 +75,7 @@
  }
  function open(title,fn) {
   clearTimeout(qrTimer);
+  $('action-form').noValidate=false;
   $('action-dialog').removeAttribute('data-mode');
   $('action-title').textContent=title;
   $('action-content').replaceChildren();
@@ -116,57 +117,115 @@
    button('In biên lai',()=>window.print(),'btn btn-success receipt-print'));
  }
  function configure(invoice) {
+  const policy=invoice.discountPolicy||{source:'MANUAL',locked:false};
+  const locked=policy.source==='PLACEMENT_TEST';
+  const methodOf=data=>locked?policy.method:data.get('discountMethod');
+  const valueOf=data=>locked?String(policy.value):data.get('discountValue');
+  const reasonOf=data=>locked?policy.reason:data.get('discountReason');
   open('Chốt lịch đóng · '+invoice.code, async data=>{
    const dues=[];
-   for(let i=0;i<Number(data.get('count'));i++)dues.push({amount:integer(data.get('amount'+i)),date:data.get('date'+i)});
-   await api.plan(invoice.id,{installments:dues,discountMethod:data.get('discountMethod'),discountValue:discountValue(data.get('discountMethod'),data.get('discountValue')),discountReason:data.get('discountReason')});
+   const discount=discountValue(methodOf(data),valueOf(data));
+   if(discount>0&&!String(reasonOf(data)||'').trim())throw new Error('Vui lòng nhập lý do áp dụng ưu đãi học phí.');
+   if(String(reasonOf(data)||'').length>255)throw new Error('Lý do ưu đãi không được dài quá 255 ký tự.');
+   for(let i=0;i<Number(data.get('count'));i++)dues.push({amount:data.get('amount'+i),date:data.get('date'+i)});
+   const errors=tuitionScheduleValidation.validate(dues,total,today,invoice.classEndDate);
+   showScheduleErrors(errors);
+   if(Object.keys(errors).length){
+    rows.querySelector('.is-invalid')?.focus();
+    throw new Error(errors.installments||('Có '+Object.keys(errors).length+' trường cần sửa. Vui lòng xem thông báo dưới từng ô được đánh dấu.'));
+   }
+   dues.forEach(d=>d.amount=Number(d.amount));
+   await api.plan(invoice.id,{installments:dues,discountMethod:methodOf(data),discountValue:discountValue(methodOf(data),valueOf(data)),discountReason:reasonOf(data)});
   });
+  $('action-form').noValidate=true;
   const base=Number(invoice.originalAmount??invoice.total);
+  if(policy.blockingReason){$('action-content').append(node('p',policy.blockingReason,'alert alert-danger'));$('submit-action').disabled=true;return;}
+  if(locked)$('action-content').append(node('p','Placement Test #'+policy.placementTestId+' · '+policy.placementScore+'/10 điểm · Ưu đãi cố định '+policy.percentage+'%.','alert alert-info'));
   const discountLabel=node('label','Kiểu ưu đãi'),method=node('select',null,'form-select');
   method.name='discountMethod';
-  method.add(new Option('Giảm theo số tiền','FIXED_AMOUNT'));method.add(new Option('Giảm theo phần trăm','PERCENTAGE'));
-  method.value=Number(invoice.discountAmount)>0?'FIXED_AMOUNT':'PERCENTAGE';
+  method.add(new Option('Không giảm','NONE'));method.add(new Option('Giảm theo số tiền','FIXED_AMOUNT'));method.add(new Option('Giảm theo phần trăm','PERCENTAGE'));
+  method.value=locked?policy.method:Number(invoice.discountAmount)>0?'FIXED_AMOUNT':'NONE';
+  method.disabled=locked;
   discountLabel.append(method);$('action-content').append(discountLabel);
-  const value=field('Mức giảm (đ hoặc %)','discountValue',{type:'number',min:'0',step:'1',inputMode:'numeric',value:invoice.discountAmount||0});
-  const reason=field('Lý do ưu đãi','discountReason',{maxLength:255,required:false,value:invoice.discountReason||''});
+  const value=field('Mức giảm (đ hoặc %)','discountValue',{type:'number',min:'0',step:'1',inputMode:'numeric',value:locked?policy.value:invoice.discountAmount||0});
+  value.readOnly=locked;
+  const reason=field('Lý do ưu đãi','discountReason',{maxLength:255,required:false,value:locked?policy.reason:invoice.discountReason||''});
+  reason.readOnly=locked;
   const totalLabel=node('p',null,'alert alert-light');$('action-content').append(totalLabel);
   let total=base;
+  if(invoice.classEndDate)$('action-content').append(node('p','Ngày kết thúc lớp: '+date(invoice.classEndDate)+'. Hạn đóng các kỳ không được sau ngày này.','ledger-help'));
   const label=node('label','Phương án đóng'),select=node('select',null,'form-select');
   select.name='count';
   [1,2,3].forEach(n=>select.add(new Option(n===1?'Đóng một lần':n+' kỳ',n)));
   label.append(select);$('action-content').append(label);
   const rows=node('div');$('action-content').append(rows);
+  const errorsByField=new Map();
+  function showFieldError(name,message){
+   const control=$('action-form').elements.namedItem(name),feedback=errorsByField.get(name);
+   if(!control||!feedback)return;
+   control.setCustomValidity(message||'');control.classList.toggle('is-invalid',!!message);
+   control.setAttribute('aria-invalid',message?'true':'false');
+   feedback.textContent=message||'';feedback.hidden=!message;
+  }
+  function showScheduleErrors(errors){
+   for(let i=0;i<Number(select.value);i++)for(const name of ['amount','date'])showFieldError(name+i,errors[`installments[${i}].${name}`]);
+  }
+  function updateDateLimits(){
+   const count=Number(select.value),form=$('action-form');
+   const dues=Array.from({length:count},(_,i)=>({date:form.elements.namedItem('date'+i)?.value||''}));
+   for(let i=0;i<count;i++){
+    const due=form.elements.namedItem('date'+i);if(!due)continue;
+    const range=tuitionScheduleValidation.bounds(dues,today,invoice.classEndDate,i);
+    due.min=range.min;due.max=range.max;
+    const hint=rows.querySelector('[data-date-hint="'+i+'"]');
+    hint.textContent=range.max&&range.max<range.min?'Không còn ngày hợp lệ cho kỳ này. Vui lòng sửa hạn kỳ trước hoặc chọn ít kỳ hơn.':tuitionScheduleValidation.rangeText(range);
+   }
+  }
   function discountValue(type,raw) {
-   if(!/^\d+$/.test(String(raw??'').trim()))throw new Error('Mức giảm phải là số nguyên không âm, không được nhập số thập phân.');
-   const result=Number(raw),maximum=type==='PERCENTAGE'?100:base;
-   if(!Number.isSafeInteger(result)||result>maximum||(type==='FIXED_AMOUNT'&&result<1000))throw new Error(type==='PERCENTAGE'?'Phần trăm giảm phải từ 0 đến 100.':'Số tiền giảm phải từ 1.000đ đến học phí gốc.');
-   return result;
+   return tuitionScheduleValidation.discount(base,type,raw);
   }
   function render() {
-   rows.replaceChildren();
-   value.max=String(method.value==='PERCENTAGE'?100:base);
-   value.min=String(method.value==='PERCENTAGE'?0:1000);
+   rows.replaceChildren();errorsByField.clear();$('action-error').textContent='';
+   value.max=String(method.value==='NONE'?0:method.value==='PERCENTAGE'?30:Math.floor(base*30/100));
+   value.min=String(method.value==='NONE'?0:method.value==='PERCENTAGE'?1:1000);
+   value.readOnly=locked||method.value==='NONE';
+   if(method.value==='NONE')value.value='0';
    value.setCustomValidity('');
    let discount;
    try{discount=discountValue(method.value,value.value);}
    catch(error){value.setCustomValidity(error.message);totalLabel.className='alert alert-danger';totalLabel.textContent=error.message;return;}
    totalLabel.className='alert alert-light';
-   const reduction=method.value==='PERCENTAGE'?Math.round(base*discount/100):discount;
+   const reduction=locked?Number(policy.amount):method.value==='NONE'?0:method.value==='PERCENTAGE'?Number((BigInt(base)*BigInt(discount)+50n)/100n):discount;
    total=base-reduction;
    reason.required=reduction>0;
    totalLabel.textContent='Học phí gốc '+money(base)+' · Giảm '+money(reduction)+' · Còn phải đóng '+money(total);
-   const count=Number(select.value),first=count===1?total:Math.ceil(total/2);
+   const count=Number(select.value),first=count===1?total:Math.max(1000,Number((BigInt(total)*30n+99n)/100n));
    const amounts=count===1?[first]:count===2?[first,total-first]:[first,Math.floor((total-first)/2),total-first-Math.floor((total-first)/2)];
    for(let i=0;i<count;i++) {
     const group=node('div',null,'ledger-card');
     const amountLabel=node('label','Kỳ '+(i+1)+' · Số tiền (đ)'),amount=node('input',null,'form-control');
     Object.assign(amount,{name:'amount'+i,required:true,inputMode:'numeric',value:amounts[i]});
     const dateLabel=node('label','Hạn đóng'),due=node('input',null,'form-control');
-    Object.assign(due,{type:'date',name:'date'+i,required:true,min:today,value:i===0?today:''});
-    amountLabel.append(amount);dateLabel.append(due);group.append(amountLabel,dateLabel);rows.append(group);
+    Object.assign(due,{type:'date',name:'date'+i,required:true,min:today,max:invoice.classEndDate||'',value:i===0?today:''});
+    for(const [name,input] of [['amount',amount],['date',due]]){
+     const feedback=node('small',null,'invalid-feedback d-block');feedback.hidden=true;
+     feedback.id='tuition-plan-'+name+'-'+i+'-error';
+     input.setAttribute('aria-describedby',feedback.id);
+     errorsByField.set(name+i,feedback);
+     input.addEventListener('input',()=>{showFieldError(name+i,'');$('action-error').textContent='';});
+    }
+    due.addEventListener('change',()=>{
+     updateDateLimits();
+     const dues=Array.from({length:count},(_,j)=>({amount:$('action-form').elements.namedItem('amount'+j).value,date:$('action-form').elements.namedItem('date'+j).value}));
+     const errors=tuitionScheduleValidation.validate(dues,total,today,invoice.classEndDate);
+     for(let j=0;j<count;j++)showFieldError('date'+j,errors[`installments[${j}].date`]);
+    });
+    const hint=node('small',null,'ledger-help');hint.dataset.dateHint=String(i);
+    amountLabel.append(amount,errorsByField.get('amount'+i));dateLabel.append(due,hint,errorsByField.get('date'+i));group.append(amountLabel,dateLabel);rows.append(group);
    }
+   updateDateLimits();
   }
-  select.addEventListener('change',render);method.addEventListener('change',render);value.addEventListener('input',render);render();
+  select.addEventListener('change',render);method.addEventListener('change',()=>{value.value=method.value==='NONE'?'0':method.value==='PERCENTAGE'?'10':'1000';render();});value.addEventListener('input',render);render();
  }
  function payment(invoice) {
   const next=invoice.installments.find(d=>Number(d.remaining)>0);
@@ -338,6 +397,8 @@
   if(invoice.escalation)el.append(node('p','Quá hạn trên 7 ngày — cần quản lý liên hệ xử lý.','alert alert-warning'));
   el.append(table(['Kỳ','Phải đóng','Đã đóng','Còn thiếu','Hạn','Tình trạng'],invoice.installments.map(d=>
    ['Đợt '+d.sequence,money(d.amount),money(d.paid),money(d.remaining),date(d.date),badge(Number(d.remaining)===0?'Đã đủ':d.overdue?'Quá hạn':d.date===today?'Đến hạn hôm nay':'Chưa đến hạn',Number(d.remaining)===0?'success':d.overdue?'danger':'neutral')])));
+  if(invoice.discountPolicy?.source==='PLACEMENT_TEST')el.append(node('p','Ưu đãi Placement Test #'+invoice.discountPolicy.placementTestId+' · '+invoice.discountPolicy.placementScore+'/10 điểm · Giảm '+invoice.discountPolicy.percentage+'% ('+money(invoice.discountPolicy.amount)+').','ledger-help'));
+  if(invoice.classEndDate)el.append(node('p','Ngày kết thúc lớp: '+date(invoice.classEndDate)+'. Hạn đóng học phí không được sau ngày này.','ledger-help'));
   const actions=node('div',null,'ledger-actions');
   if(role==='ADMIN' && invoice.reservationPending && Number(invoice.paid)===0 && invoice.status!=='CANCELLED')
    actions.append(button('Hủy giữ chỗ',()=>reservation(invoice),'btn btn-outline-danger btn-sm'));
@@ -346,7 +407,7 @@
     if(!parent)actions.append(button('Chốt lịch đóng',()=>configure(invoice),'btn btn-success'));
     else el.append(node('p','Trung tâm đang chốt lịch đóng học phí.','text-secondary'));
    } else {
-    if(Number(invoice.balance)>0 || (Number(invoice.total)===0 && invoice.status!=='PAID')) {
+    if(Number(invoice.balance)>0) {
      const next=invoice.installments.find(d=>Number(d.remaining)>0);
      actions.append(button('Thanh toán đợt '+(next?.sequence||1),()=>payment(invoice),'btn btn-success'));
     }

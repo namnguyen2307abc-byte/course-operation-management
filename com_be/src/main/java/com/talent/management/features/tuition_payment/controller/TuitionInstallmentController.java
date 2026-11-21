@@ -1,9 +1,25 @@
 package com.talent.management.features.tuition_payment.controller;
 
-import com.talent.management.features.tuition_payment.dto.request.InstallmentRequests.*;
-import com.talent.management.features.tuition_payment.dto.response.InstallmentResponses.*;
+import com.talent.management.features.tuition_payment.dto.request.CancelReservationRequest;
+import com.talent.management.features.tuition_payment.dto.request.CollectCashRequest;
+import com.talent.management.features.tuition_payment.dto.request.ConfigureTuitionPlanRequest;
+import com.talent.management.features.tuition_payment.dto.request.ConfirmBankPaymentRequest;
+import com.talent.management.features.tuition_payment.dto.request.CreatePaymentIntentRequest;
+import com.talent.management.features.tuition_payment.dto.request.RequestDueDateChangeRequest;
+import com.talent.management.features.tuition_payment.dto.request.ReviewTuitionRequest;
+import com.talent.management.features.tuition_payment.dto.response.InstallmentResponses.ChangeView;
+import com.talent.management.features.tuition_payment.dto.response.InstallmentResponses.IntentView;
+import com.talent.management.features.tuition_payment.dto.response.InstallmentResponses.InvoiceView;
+import com.talent.management.features.tuition_payment.dto.response.InstallmentResponses.OverdueContact;
 import com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse;
-import com.talent.management.features.tuition_payment.service.*;
+import com.talent.management.features.tuition_payment.service.CashCollectionService;
+import com.talent.management.features.tuition_payment.service.PaymentIntentService;
+import com.talent.management.features.tuition_payment.service.PaymentResultService;
+import com.talent.management.features.tuition_payment.service.PlanChangeService;
+import com.talent.management.features.tuition_payment.service.TuitionPlanService;
+import com.talent.management.features.tuition_payment.service.TuitionQueryService;
+import com.talent.management.features.tuition_payment.service.TuitionReservationService;
+import com.talent.management.features.tuition_payment.service.TuitionReversalService;
 
 import jakarta.validation.Valid;
 
@@ -19,19 +35,22 @@ import java.util.List;
 @RequestMapping("/api/tuition-payment")
 @PreAuthorize("hasAnyRole('ADMIN','STAFF','BRANCH_MANAGER')")
 public class TuitionInstallmentController {
-    private final TuitionReservationService reservations;
+    private final TuitionReservationService tuitionReservationService;
 
     @PostMapping("/{id}/reservation")
     @PreAuthorize("hasRole('ADMIN')")
-    public InvoiceView reservation(@PathVariable Long id, @Valid @RequestBody Reservation input) {
-        return reservations.decide(id, input);
+    public InvoiceView reservation(
+            @PathVariable Long id, @Valid @RequestBody CancelReservationRequest input) {
+        return tuitionReservationService.decide(id, input);
     }
 
-    private final TuitionPlanService plans;
-    private final PaymentPostingService posting;
-    private final InstallmentGatewayService gateway;
-    private final PlanChangeService changes;
-    private final TuitionReversalService reversals;
+    private final TuitionPlanService tuitionPlanService;
+    private final CashCollectionService cashCollectionService;
+    private final TuitionQueryService tuitionQueryService;
+    private final PaymentResultService paymentResultService;
+    private final PaymentIntentService paymentIntentService;
+    private final PlanChangeService planChangeService;
+    private final TuitionReversalService tuitionReversalService;
 
     public record Reason(
             @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 500)
@@ -39,95 +58,96 @@ public class TuitionInstallmentController {
 
     @GetMapping("/receivables")
     public List<InvoiceView> list() {
-        return plans.list();
+        return tuitionQueryService.list();
     }
 
     @GetMapping("/{id}/plan")
     public InvoiceView view(@PathVariable Long id) {
-        return plans.view(id);
+        return tuitionQueryService.view(id);
     }
 
     @PostMapping("/{id}/plan")
-    public InvoiceView plan(@PathVariable Long id, @Valid @RequestBody Plan input) {
-        return plans.configure(id, input);
+    public InvoiceView plan(
+            @PathVariable Long id, @Valid @RequestBody ConfigureTuitionPlanRequest input) {
+        return tuitionPlanService.configure(id, input);
     }
 
     @PostMapping("/{id}/collections")
     public PaymentReceiptResponse collect(
-            @PathVariable Long id, @Valid @RequestBody Collection input) {
-        var replay = posting.replayCashReceipt(id, input.amount(), input.cashGiven(), input.idempotencyKey());
-        if (replay.isPresent()) return replay.get();
-        gateway.prepareCashPayment(id, input.amount(), input.cashGiven());
-        return posting.collectReceipt(
+            @PathVariable Long id, @Valid @RequestBody CollectCashRequest input) {
+        return cashCollectionService.collectReceipt(
                 id, input.amount(), input.cashGiven(), input.idempotencyKey());
     }
 
     @PostMapping("/{id}/payment-intents")
-    public IntentView intent(@PathVariable Long id, @Valid @RequestBody Intent input) {
-        return gateway.create(id, input.amount());
+    public IntentView intent(
+            @PathVariable Long id, @Valid @RequestBody CreatePaymentIntentRequest input) {
+        return paymentIntentService.create(id, input.amount());
     }
 
     @GetMapping("/payment-intents/{id}")
     public IntentView intentStatus(@PathVariable Long id) {
-        return gateway.status(id);
+        return paymentIntentService.status(id);
     }
 
     @PostMapping("/payment-intents/{id}/cancel")
     public IntentView cancel(@PathVariable Long id) {
-        gateway.cancel(id);
-        return gateway.status(id);
+        paymentIntentService.cancel(id);
+        return paymentIntentService.status(id);
     }
 
     @PostMapping("/payment-intents/{id}/confirm-bank")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN','BRANCH_MANAGER')")
     public PaymentReceiptResponse confirmBank(
-            @PathVariable Long id, @Valid @RequestBody ManualBankConfirmation input) {
-        return gateway.confirmBank(id, input);
+            @PathVariable Long id, @Valid @RequestBody ConfirmBankPaymentRequest input) {
+        return paymentResultService.confirmBank(id, input);
     }
 
     @PostMapping("/payment-intents/{id}/simulate")
     @PreAuthorize("hasRole('ADMIN')")
     public PaymentReceiptResponse simulate(@PathVariable Long id) {
-        return gateway.simulate(id);
+        return paymentIntentService.simulate(id);
     }
 
     @PostMapping("/{id}/plan-change-requests")
-    public void change(@PathVariable Long id, @Valid @RequestBody Change input) {
-        changes.request(id, input);
+    public void change(
+            @PathVariable Long id, @Valid @RequestBody RequestDueDateChangeRequest input) {
+        planChangeService.request(id, input);
     }
 
     @GetMapping("/plan-change-requests")
     public List<ChangeView> changes() {
-        return changes.list();
+        return planChangeService.list();
     }
 
     @PostMapping("/plan-change-requests/{id}/review")
     @PreAuthorize("hasAnyRole('ADMIN','BRANCH_MANAGER')")
-    public void review(@PathVariable Long id, @Valid @RequestBody Review input) {
-        changes.review(id, input);
+    public void review(@PathVariable Long id, @Valid @RequestBody ReviewTuitionRequest input) {
+        planChangeService.review(id, input);
     }
 
     @GetMapping("/overdue-follow-ups")
     @PreAuthorize("hasRole('ADMIN')")
     public List<OverdueContact> followUps() {
-        return plans.overdueContacts();
+        return tuitionQueryService.overdueContacts();
     }
 
     @GetMapping("/reversals")
     @PreAuthorize("hasAnyRole('ADMIN','BRANCH_MANAGER')")
     public List<TuitionReversalService.View> reversals() {
-        return reversals.list();
+        return tuitionReversalService.list();
     }
 
     @PostMapping("/payments/{id}/reversal")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN','BRANCH_MANAGER')")
     public void reversal(@PathVariable Long id, @Valid @RequestBody Reason input) {
-        reversals.request(id, input.reason());
+        tuitionReversalService.request(id, input.reason());
     }
 
     @PostMapping("/reversals/{id}/review")
     @PreAuthorize("hasAnyRole('ADMIN','BRANCH_MANAGER')")
-    public void reviewReversal(@PathVariable Long id, @Valid @RequestBody Review input) {
-        reversals.review(id, input);
+    public void reviewReversal(
+            @PathVariable Long id, @Valid @RequestBody ReviewTuitionRequest input) {
+        tuitionReversalService.review(id, input);
     }
 }

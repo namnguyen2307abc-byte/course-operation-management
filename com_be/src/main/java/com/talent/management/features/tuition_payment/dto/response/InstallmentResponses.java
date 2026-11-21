@@ -67,7 +67,9 @@ public final class InstallmentResponses {
             LocalDateTime reservationDeadline,
             boolean reservationExpired,
             boolean reservationPending,
-            List<ReservationAction> reservationHistory) {}
+            List<ReservationAction> reservationHistory,
+            LocalDate classEndDate,
+            TuitionDiscountQuote discountPolicy) {}
 
     public record ReservationAction(
             String action,

@@ -1,6 +1,8 @@
-package com.talent.management.features.tuition_payment.service;
+package com.talent.management.features.tuition_payment.job;
 
 import com.talent.management.features.tuition_payment.repository.InvoiceRepository;
+import com.talent.management.features.tuition_payment.service.PaymentIntentService;
+import com.talent.management.features.tuition_payment.service.TuitionNotificationService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class TuitionReminderJob {
     private final InvoiceRepository invoices;
     private final TuitionNotificationService notices;
-    private final InstallmentGatewayService gateway;
+    private final PaymentIntentService gateway;
 
     @Scheduled(fixedDelay = 60000, initialDelay = 30000)
     public void refresh() {

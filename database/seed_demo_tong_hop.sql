@@ -41,6 +41,26 @@ BEGIN TRY
   EXEC sys.sp_executesql N'ALTER TABLE dbo.placement_schedules
    ADD CONSTRAINT FK_placement_schedules_program
    FOREIGN KEY (program_id) REFERENCES dbo.programs(id);';
+-- Snapshot policy at tuition confirmation; no historical invoice is recalculated.
+IF OBJECT_ID(N'dbo.tuition_discount_snapshots',N'U') IS NULL
+BEGIN
+ CREATE TABLE dbo.tuition_discount_snapshots (
+  invoice_id BIGINT NOT NULL PRIMARY KEY,
+  source VARCHAR(30) NOT NULL,
+  placement_test_id BIGINT NULL,
+  placement_score DECIMAL(5,2) NULL,
+  percentage INT NOT NULL,
+  method VARCHAR(30) NOT NULL,
+  discount_value DECIMAL(12,2) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  original_amount DECIMAL(12,2) NOT NULL,
+  reason NVARCHAR(255) NULL,
+  policy_version VARCHAR(40) NOT NULL,
+  confirmed_at DATETIME2 NOT NULL,
+  CONSTRAINT FK_tuition_discount_snapshot_invoice FOREIGN KEY(invoice_id) REFERENCES dbo.invoices(id)
+ );
+END;
+
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
  IF NOT EXISTS(SELECT 1 FROM dbo.combined_demo_installations WHERE seed_key='COMBINED_DEMO_V1')
@@ -297,10 +317,10 @@ INSERT programs(code,name)
 SELECT x.code,x.name FROM (VALUES(''PIANO'',N''Bộ môn Piano''),(''GUITAR'',N''Bộ môn Guitar''),(''DANCE'',N''Bộ môn Múa''),(''MARTIAL_ARTS'',N''Bộ môn Võ'')) x(code,name)
 WHERE NOT EXISTS(SELECT 1 FROM programs p WHERE p.code=x.code);
 DECLARE @C TABLE(program varchar(30),code varchar(30),name nvarchar(150),level nvarchar(50),weeks int,sessions int,fee decimal(12,2));
-INSERT @C VALUES(''PIANO'',''PIA-G1'',N''Piano Sơ Cấp (Grade 1)'',N''Grade 1'',16,32,4800000),
-(''GUITAR'',''GUI-BASIC'',N''Guitar Đệm Hát Cơ Bản'',N''Cơ bản'',12,24,3200000),
-(''DANCE'',''DAN-KIDS'',N''Múa Thiếu Nhi & Ballet Căn Bản'',N''Căn bản'',16,32,4200000),
-(''MARTIAL_ARTS'',''MA-BASIC'',N''Võ Thuật Thiếu Nhi - Đai Trắng Nhập Môn'',N''Khởi động'',16,32,3800000);
+INSERT @C VALUES(''PIANO'',''PIA-G1'',N''Piano Sơ Cấp (Grade 1)'',''BEGINNER'',16,32,4800000),
+(''GUITAR'',''GUI-BASIC'',N''Guitar Đệm Hát Cơ Bản'',''BEGINNER'',12,24,3200000),
+(''DANCE'',''DAN-KIDS'',N''Múa Thiếu Nhi & Ballet Căn Bản'',''BEGINNER'',16,32,4200000),
+(''MARTIAL_ARTS'',''MA-BASIC'',N''Võ Thuật Thiếu Nhi - Đai Trắng Nhập Môn'',''BEGINNER'',16,32,3800000);
 INSERT courses(program_id,code,name,level,duration_weeks,total_sessions,tuition_fee,description)
 SELECT p.id,x.code,x.name,x.level,x.weeks,x.sessions,x.fee,N''[MAKEUP TEST] Khóa học kiểm thử'' FROM @C x JOIN programs p ON p.code=x.program
 WHERE NOT EXISTS(SELECT 1 FROM courses c WHERE c.code=x.code);
@@ -695,7 +715,8 @@ JOIN students s ON mr.student_id = s.id
 JOIN lessons lo ON mr.original_lesson_id = lo.id
 LEFT JOIN lessons lt ON mr.target_lesson_id = lt.id
 WHERE lo.lesson_date BETWEEN @D_M6 AND @D_P6
-ORDER BY mr.id;';
+ORDER BY mr.id;
+';
 
 -- ================= 4. D26 - TUONG THICH SCHEMA HIEN TAI =================
 EXEC sys.sp_executesql N'-- =============================================================================
@@ -814,13 +835,13 @@ IF NOT EXISTS (SELECT 1 FROM rooms WHERE room_code = ''P101'' AND branch_id = @B
     VALUES (@BranchCgId, ''P101'', N''Phòng Đàn Piano 101'', 8, ''PIANO_GROUP'', ''AVAILABLE'', N''Phòng thực hành Piano Cầu Giấy'');
 DECLARE @RoomCg101 BIGINT = (SELECT TOP 1 id FROM rooms WHERE room_code = ''P101'' AND branch_id = @BranchCgId);
 
--- Chương trình Âm nhạc
-DECLARE @ProgMusicId BIGINT = (SELECT TOP 1 id FROM programs WHERE code = ''PROG-MUSIC'');
-IF @ProgMusicId IS NULL
+-- Dùng bộ môn Piano thực tế, không tạo bộ môn tổng hợp PROG-MUSIC.
+DECLARE @PianoProgramId BIGINT = (SELECT TOP 1 id FROM programs WHERE code = ''PIANO'');
+IF @PianoProgramId IS NULL
 BEGIN
     INSERT INTO programs (code, name, description)
-    VALUES (''PROG-MUSIC'', N''Chương Trình Âm Nhạc & Nhạc Cụ'', N''Đào tạo nhạc cụ Piano, Guitar, Thanh nhạc'');
-    SET @ProgMusicId = SCOPE_IDENTITY();
+    VALUES (''PIANO'', N''Piano'', N''Đào tạo kỹ năng chơi đàn Piano theo trình độ.'');
+    SET @PianoProgramId = SCOPE_IDENTITY();
 END;
 
 -- Khóa học PIA-CB-12 (Piano nền tảng)
@@ -828,7 +849,7 @@ DECLARE @CoursePiaId BIGINT = (SELECT TOP 1 id FROM courses WHERE code = ''PIA-C
 IF @CoursePiaId IS NULL
 BEGIN
     INSERT INTO courses (program_id, code, name, level, duration_weeks, total_sessions, tuition_fee, description)
-    VALUES (@ProgMusicId, ''PIA-CB-12'', N''Piano nền tảng'', N''Cơ bản'', 12, 12, 3600000, N''Khóa học Piano nền tảng trang bị tư thế tay, nhận diện nốt, đọc bản nhạc và thị tấu.'');
+    VALUES (@PianoProgramId, ''PIA-CB-12'', N''Piano nền tảng'', ''BEGINNER'', 12, 12, 3600000, N''Khóa học Piano nền tảng trang bị tư thế tay, nhận diện nốt, đọc bản nhạc và thị tấu.'');
     SET @CoursePiaId = SCOPE_IDENTITY();
 END;
 
@@ -1487,7 +1508,8 @@ FROM dbo.students s JOIN dbo.enrollments e ON e.student_id = s.id
 JOIN dbo.classes c ON c.id = e.class_id
 LEFT JOIN dbo.lessons l ON l.class_id = c.id
 LEFT JOIN dbo.attendances a ON a.lesson_id = l.id AND a.student_id = s.id
-WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;';
+WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
+';
   INSERT dbo.combined_demo_installations(seed_key) VALUES('COMBINED_DEMO_V1');
   PRINT N'Da nap day du du lieu demo tong hop.';
  END
@@ -1504,6 +1526,67 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;';
   WHERE placement_subject IS NULL
    AND code IN (''PIANO'',''GUITAR'',''DANCE'',''MARTIAL_ARTS'');';
  -- Additive extension: also runs on databases where COMBINED_DEMO_V1 was installed.
+ -- Normalize the legacy demo labels to the three course levels supported by the UI.
+ UPDATE dbo.courses SET level='BEGINNER'
+ WHERE level IN (N'Grade 1',N'Khởi động',N'Cơ bản',N'Căn bản',N'Sơ cấp');
+ UPDATE dbo.courses SET level='INTERMEDIATE' WHERE level=N'Trung cấp';
+ UPDATE dbo.courses SET level='ADVANCED' WHERE level=N'Nâng cao';
+ IF EXISTS(SELECT 1 FROM dbo.courses WHERE level IS NULL OR level NOT IN ('BEGINNER','INTERMEDIATE','ADVANCED'))
+  THROW 51805,'A course has an unsupported level. Use BEGINNER, INTERMEDIATE or ADVANCED.',1;
+ -- This redundant program had no dependent data in the original combined fixture.
+ -- Foreign keys prevent accidental deletion if someone has linked new business data to it.
+ DELETE FROM dbo.programs WHERE code='PROG-MUSIC';
+
+ -- Fixed-date demonstration: one class, Slot 1 and Slot 2 on Monday 16/11/2026.
+ -- Six Mondays / twelve lessons match the existing PIA-CB-12 course.
+ DECLARE @HuongDemoDate date='20261116',
+  @HuongDemoTeacher bigint=(SELECT id FROM dbo.users WHERE username='teacher_huong' AND role='TEACHER'),
+  @HuongDemoStaff bigint=(SELECT id FROM dbo.users WHERE username='d26_staff'),
+  @HuongDemoParent bigint=(SELECT id FROM dbo.users WHERE username='parent_lan'),
+  @HuongDemoCourse bigint=(SELECT id FROM dbo.courses WHERE code='PIA-CB-12'),
+  @HuongDemoBranch bigint=(SELECT id FROM dbo.branches WHERE code='CS01');
+ DECLARE @HuongDemoRoom bigint=(SELECT id FROM dbo.rooms WHERE branch_id=@HuongDemoBranch AND room_code='P102');
+ IF @HuongDemoTeacher IS NULL OR @HuongDemoStaff IS NULL OR @HuongDemoParent IS NULL
+  OR @HuongDemoCourse IS NULL OR @HuongDemoRoom IS NULL
+  THROW 51806,'Missing teacher, parent, course or room for the Huong morning demo.',1;
+ IF EXISTS(SELECT 1 FROM dbo.classes WHERE class_code='HUONG-1611-AM'
+  AND (teacher_id<>@HuongDemoTeacher OR course_id<>@HuongDemoCourse OR room_id<>@HuongDemoRoom))
+  THROW 51807,'HUONG-1611-AM is already used by another class.',1;
+ IF NOT EXISTS(SELECT 1 FROM dbo.classes WHERE class_code='HUONG-1611-AM')
+ BEGIN
+  DECLARE @HuongDemoLessons TABLE(session_number int,lesson_date date,start_time time,end_time time);
+  DECLARE @HuongDemoSession int=1;
+  WHILE @HuongDemoSession<=12
+  BEGIN
+   INSERT @HuongDemoLessons VALUES(@HuongDemoSession,DATEADD(day,7*((@HuongDemoSession-1)/2),@HuongDemoDate),
+    CASE WHEN @HuongDemoSession%2=1 THEN '07:00' ELSE '09:30' END,
+    CASE WHEN @HuongDemoSession%2=1 THEN '09:00' ELSE '11:30' END);
+   SET @HuongDemoSession+=1;
+  END;
+  IF EXISTS(SELECT 1 FROM @HuongDemoLessons d JOIN dbo.lessons l ON l.lesson_date=d.lesson_date
+   AND l.start_time<d.end_time AND l.end_time>d.start_time
+   WHERE l.status<>'CANCELLED' AND (l.teacher_id=@HuongDemoTeacher OR l.room_id=@HuongDemoRoom))
+   THROW 51808,'The Huong morning demo conflicts with an existing teacher or room schedule.',1;
+  INSERT dbo.classes(course_id,branch_id,room_id,teacher_id,class_code,class_name,class_type,max_students,current_students,
+   start_date,end_date,schedule_description,status)
+  VALUES(@HuongDemoCourse,@HuongDemoBranch,@HuongDemoRoom,@HuongDemoTeacher,'HUONG-1611-AM',
+   N'Piano sáng thứ Hai - Cô Vũ Thu Hương','GROUP',6,3,@HuongDemoDate,DATEADD(day,35,@HuongDemoDate),
+   N'Thứ Hai: Slot 1 (07:00-09:00) và Slot 2 (09:30-11:30), khai giảng 16/11/2026','OPEN');
+  DECLARE @HuongDemoClass bigint=SCOPE_IDENTITY();
+  INSERT dbo.lessons(class_id,room_id,teacher_id,session_number,lesson_date,start_time,end_time,title,status,lesson_note)
+  SELECT @HuongDemoClass,@HuongDemoRoom,@HuongDemoTeacher,session_number,lesson_date,start_time,end_time,
+   N'Piano nền tảng - Buổi '+CONVERT(nvarchar(2),session_number),'SCHEDULED',
+   N'[HUONG-1611] Buổi học chưa điểm danh, dùng kiểm tra lịch tuần và điểm danh.' FROM @HuongDemoLessons;
+  DECLARE @HuongDemoChildren TABLE(full_name nvarchar(150),gender nvarchar(20));
+  INSERT @HuongDemoChildren VALUES(N'Nguyễn An Nhiên',N'Nữ'),(N'Trần Minh Khang',N'Nam'),(N'Lê Ngọc Anh',N'Nữ');
+  INSERT dbo.students(parent_id,full_name,date_of_birth,gender,school_name,notes,created_at)
+  SELECT @HuongDemoParent,full_name,'20180520',gender,N'Trường demo',
+   N'[HUONG-1611] Học viên lớp Piano sáng thứ Hai.',SYSDATETIME() FROM @HuongDemoChildren;
+  INSERT dbo.enrollments(student_id,class_id,registered_by_user_id,enrollment_date,status,notes)
+  SELECT s.id,@HuongDemoClass,@HuongDemoStaff,DATEADD(day,-1,@HuongDemoDate),'ENROLLED',
+   N'[HUONG-1611] Ghi danh demo để kiểm tra điểm danh; không tạo giao dịch tiền thật.'
+  FROM dbo.students s WHERE s.parent_id=@HuongDemoParent AND s.notes=N'[HUONG-1611] Học viên lớp Piano sáng thứ Hai.';
+ END;
  -- Existing accounts, passwords and payment history are never reset by this extension.
  IF EXISTS(SELECT 1 FROM dbo.users WHERE username='d26_staff_2' AND role<>'STAFF')
   THROW 51802,'d26_staff_2 already exists with a different role; no account was changed.',1;

@@ -3,91 +3,103 @@ package com.talent.management.features.tuition_payment.controller;
 import com.talent.management.features.tuition_payment.dto.request.ApplyDiscountRequest;
 import com.talent.management.features.tuition_payment.dto.request.CreateReservationRequest;
 import com.talent.management.features.tuition_payment.dto.request.ProcessPaymentRequest;
-import com.talent.management.features.tuition_payment.dto.response.*;
+import com.talent.management.features.tuition_payment.dto.response.CashierDashboardStatsResponse;
+import com.talent.management.features.tuition_payment.dto.response.CashierOptionResponse;
+import com.talent.management.features.tuition_payment.dto.response.InvoicePaymentStatusResponse;
+import com.talent.management.features.tuition_payment.dto.response.PayOSPaymentLinkResponse;
+import com.talent.management.features.tuition_payment.dto.response.PaymentHistoryReportResponse;
+import com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse;
+import com.talent.management.features.tuition_payment.dto.response.PendingInvoiceResponse;
+import com.talent.management.features.tuition_payment.dto.response.VietQrResponse;
 import com.talent.management.features.tuition_payment.service.TuitionPaymentService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tuition-payment")
 @RequiredArgsConstructor
-@Tag(name = "4. Nghĩa vụ Thanh toán học phí", description = "Quản lý hóa đơn học phí, tra cứu quầy thu ngân, miễn giảm học phí, thanh toán VietQR và ghi danh học viên")
+@Tag(
+        name = "4. Nghĩa vụ Thanh toán học phí",
+        description =
+                "Quản lý hóa đơn học phí, tra cứu quầy thu ngân, miễn giảm học phí, thanh toán"
+                        + " VietQR và ghi danh học viên")
 public class TuitionPaymentController {
 
     private final TuitionPaymentService tuitionPaymentService;
 
     @GetMapping("/search")
-    @Operation(summary = "Thu ngân tra cứu phiếu giữ chỗ theo số điện thoại phụ huynh hoặc tên học sinh")
+    @Operation(
+            summary =
+                    "Thu ngân tra cứu phiếu giữ chỗ theo số điện thoại phụ huynh hoặc tên học sinh")
     public ResponseEntity<List<PendingInvoiceResponse>> searchPendingInvoices(
-            @RequestParam(required = false) String keyword
-    ) {
+            @RequestParam(required = false) String keyword) {
         return ResponseEntity.ok(tuitionPaymentService.searchPendingInvoices(keyword));
     }
 
-
-
     @PostMapping("/{invoiceId}/apply-discount")
-    @Operation(summary = "Xác nhận số tiền: Tính toán miễn giảm phí (đăng ký sớm, anh chị em, học bổng 100%)")
+    @Operation(
+            summary =
+                    "Xác nhận số tiền: Tính toán miễn giảm phí (đăng ký sớm, anh chị em, học bổng"
+                            + " 100%)")
     public ResponseEntity<PendingInvoiceResponse> calculateDiscount(
-            @PathVariable Long invoiceId,
-            @Valid @RequestBody ApplyDiscountRequest request
-    ) {
+            @PathVariable Long invoiceId, @Valid @RequestBody ApplyDiscountRequest request) {
         return ResponseEntity.ok(tuitionPaymentService.calculateDiscount(invoiceId, request));
     }
 
     @GetMapping("/{invoiceId}/vietqr")
     @Operation(summary = "Sinh mã QR VietQR động thanh toán học phí qua ngân hàng")
     public ResponseEntity<VietQrResponse> generateVietQr(
-            @PathVariable Long invoiceId,
-            @RequestParam(required = false) BigDecimal amount
-    ) {
+            @PathVariable Long invoiceId, @RequestParam(required = false) BigDecimal amount) {
         return ResponseEntity.ok(tuitionPaymentService.generateVietQr(invoiceId, amount));
     }
 
     @PostMapping("/process")
-    @Operation(summary = "Thu ngân bấm xác nhận đã thu tiền & Hoàn tất ghi danh chính thức vào lớp học")
+    @Operation(
+            summary =
+                    "Thu ngân bấm xác nhận đã thu tiền & Hoàn tất ghi danh chính thức vào lớp học")
     public ResponseEntity<PaymentReceiptResponse> processPayment(
-            @Valid @RequestBody ProcessPaymentRequest request,
-            Authentication authentication
-    ) {
+            @Valid @RequestBody ProcessPaymentRequest request, Authentication authentication) {
         String cashierUsername = authentication != null ? authentication.getName() : null;
         return ResponseEntity.ok(tuitionPaymentService.processPayment(request, cashierUsername));
     }
 
     @GetMapping("/{invoiceId}/status")
-    @Operation(summary = "Kiểm tra trạng thái thanh toán của hóa đơn (phục vụ tự động nhận diện thanh toán Auto-Detect)")
-    public ResponseEntity<InvoicePaymentStatusResponse> checkPaymentStatus(@PathVariable Long invoiceId) {
+    @Operation(
+            summary =
+                    "Kiểm tra trạng thái thanh toán của hóa đơn (phục vụ tự động nhận diện thanh"
+                            + " toán Auto-Detect)")
+    public ResponseEntity<InvoicePaymentStatusResponse> checkPaymentStatus(
+            @PathVariable Long invoiceId) {
         return ResponseEntity.ok(tuitionPaymentService.checkPaymentStatus(invoiceId));
     }
 
     @PostMapping("/{invoiceId}/bank-webhook-simulate")
-    @Operation(summary = "Mô phỏng Webhook Ngân Hàng báo có (Ting-Ting tự động kích hoạt thanh toán)")
+    @Operation(
+            summary = "Mô phỏng Webhook Ngân Hàng báo có (Ting-Ting tự động kích hoạt thanh toán)")
     public ResponseEntity<PaymentReceiptResponse> simulateBankWebhook(
-            @PathVariable Long invoiceId,
-            @RequestParam(required = false) BigDecimal amount
-    ) {
+            @PathVariable Long invoiceId, @RequestParam(required = false) BigDecimal amount) {
         return ResponseEntity.ok(tuitionPaymentService.simulateBankWebhook(invoiceId, amount));
     }
 
     @PostMapping("/reservations")
     @Operation(summary = "Tạo phiếu giữ chỗ tạm thời trong vòng 24 giờ cho học sinh")
     public ResponseEntity<PendingInvoiceResponse> createReservation(
-            @Valid @RequestBody CreateReservationRequest request,
-            Authentication authentication
-    ) {
+            @Valid @RequestBody CreateReservationRequest request, Authentication authentication) {
         String username = authentication != null ? authentication.getName() : null;
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(tuitionPaymentService.createDemoReservation(request, username));
@@ -96,8 +108,7 @@ public class TuitionPaymentController {
     @GetMapping("/history")
     @Operation(summary = "Lịch sử thu học phí tại quầy thu ngân (hỗ trợ tìm kiếm theo từ khóa)")
     public ResponseEntity<List<PaymentReceiptResponse>> getPaymentHistory(
-            @RequestParam(required = false) String keyword
-    ) {
+            @RequestParam(required = false) String keyword) {
         return ResponseEntity.ok(tuitionPaymentService.getPaymentHistory(keyword));
     }
 
@@ -114,27 +125,28 @@ public class TuitionPaymentController {
             @RequestParam(required = false) BigDecimal amount,
             @RequestParam(required = false) String discountType,
             @RequestParam(required = false) BigDecimal discountAmount,
-            @RequestParam(required = false) String discountReason
-    ) {
-        return ResponseEntity.ok(tuitionPaymentService.createPayOSPaymentLink(invoiceId, amount, discountType, discountAmount, discountReason));
-    }
-
-    @PostMapping("/payos-webhook")
-    @Operation(summary = "Webhook tự động từ Cổng thanh toán PayOS (kèm xác thực chữ ký HMAC-SHA256)")
-    public ResponseEntity<PaymentReceiptResponse> handlePayOSWebhook(@RequestBody Map<String, Object> payload) {
-        return ResponseEntity.ok(tuitionPaymentService.processPayOSWebhook(payload));
+            @RequestParam(required = false) String discountReason) {
+        return ResponseEntity.ok(
+                tuitionPaymentService.createPayOSPaymentLink(
+                        invoiceId, amount, discountType, discountAmount, discountReason));
     }
 
     @GetMapping("/history-report")
-    @Operation(summary = "Dashboard Báo cáo Lịch sử thu ngân cho Admin (bộ lọc Hôm nay/Tuần/Tháng, chọn Thu ngân, 3 thẻ tổng KPI)")
+    @Operation(
+            summary =
+                    "Dashboard Báo cáo Lịch sử thu ngân cho Admin (bộ lọc Hôm nay/Tuần/Tháng, chọn"
+                            + " Thu ngân, 3 thẻ tổng KPI)")
     public ResponseEntity<PaymentHistoryReportResponse> getPaymentHistoryReport(
             @RequestParam(required = false, defaultValue = "TODAY") String timeRange,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate endDate,
             @RequestParam(required = false) String cashier,
-            @RequestParam(required = false) String keyword
-    ) {
-        return ResponseEntity.ok(tuitionPaymentService.getPaymentHistoryReport(timeRange, startDate, endDate, cashier, keyword));
+            @RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok(
+                tuitionPaymentService.getPaymentHistoryReport(
+                        timeRange, startDate, endDate, cashier, keyword));
     }
 
     @GetMapping("/cashiers")

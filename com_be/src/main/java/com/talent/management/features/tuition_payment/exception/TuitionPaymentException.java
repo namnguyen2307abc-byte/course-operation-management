@@ -1,9 +1,9 @@
 package com.talent.management.features.tuition_payment.exception;
 
-import com.talent.management.shared.exception.BusinessException;
+import org.springframework.http.HttpStatus;
 
-public class TuitionPaymentException extends BusinessException {
+public class TuitionPaymentException extends TuitionOperationException {
     public TuitionPaymentException(String message) {
-        super(message);
+        super(HttpStatus.BAD_REQUEST, "TUITION_REQUEST_INVALID", message);
     }
 }

@@ -1,86 +1,16 @@
 package com.talent.management.features.tuition_payment.service;
 
-import static com.talent.management.features.tuition_payment.service.TuitionPlanService.conflict;
-
-import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
-import com.talent.management.features.tuition_payment.repository.*;
-import com.talent.management.shared.entity.*;
-import com.talent.management.shared.enums.*;
-import com.talent.management.shared.service.CurrentUserService;
-import com.talent.management.features.notification.service.NotificationService;
-
-import jakarta.persistence.*;
-
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.talent.management.shared.entity.Invoice;
+import com.talent.management.shared.entity.Payment;
+import com.talent.management.shared.entity.TuitionPlan;
+import com.talent.management.shared.entity.User;
+import com.talent.management.shared.enums.PaymentMethod;
 
 import java.math.BigDecimal;
-import java.util.*;
 
-@Service
-@RequiredArgsConstructor
-public class PaymentPostingService {
-    private final TuitionPlanService ledger;
-    private final PaymentRepository payments;
-    private final TuitionPlanRepository plans;
-    private final TuitionInstallmentRepository installments;
-    private final EnrollmentRequestRepository requests;
-    private final CurrentUserService current;
-    private final EntityManager em;
-    private final com.talent.management.features.tuition_payment.mapper.TuitionPaymentMapper mapper;
-
-    private final NotificationService notificationService;
-
-    @Transactional
-    public com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse
-            collectReceipt(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key) {
-        return mapper.toPaymentReceiptResponse(cash(invoiceId, amount, cashGiven, key), null, null);
-    }
-
-    @Transactional
-    public Payment cash(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key) {
-        Invoice invoice = ledger.lock(invoiceId);
-        User actor = current.getCurrentUser();
-        Optional<Payment> duplicate = existingCashPayment(invoiceId, amount, cashGiven, key, actor);
-        if (duplicate.isPresent()) return duplicate.get();
-        TuitionPlan plan = ledger.ensure(invoice);
-        if (em.createQuery("select count(i) from TuitionPaymentIntent i where i.invoice.id=:id and i.status in ('CREATING','PENDING','UNCERTAIN')", Long.class)
-                .setParameter("id", invoiceId).getSingleResult() > 0)
-            throw conflict("QR chưa đóng thành công; cần xác minh ngân hàng trước khi thu tiền mặt.");
-        ledger.requireCurrentInstallment(invoice, plan, amount);
-        CashTenderPolicy.quote(amount, cashGiven);
-        return post(invoice, plan, amount, PaymentMethod.CASH_AT_DESK, actor, "CASH-" + key, null, cashGiven);
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<com.talent.management.features.tuition_payment.dto.response.PaymentReceiptResponse>
-            replayCashReceipt(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key) {
-        return existingCashPayment(invoiceId, amount, cashGiven, key, current.getCurrentUser())
-                .map(payment -> mapper.toPaymentReceiptResponse(payment, null, null));
-    }
-
-    private Optional<Payment> existingCashPayment(Long invoiceId, BigDecimal amount, BigDecimal cashGiven, String key, User actor) {
-        if (key == null || key.isBlank() || key.length() > 80)
-            throw conflict("Thiếu mã chống gửi lặp.");
-        String scoped = "CASH-" + key;
-        Optional<Payment> duplicate = payments.findByRequestKey(scoped);
-        if (duplicate.isPresent()) {
-            Payment old = duplicate.get();
-            if (!old.getInvoice().getId().equals(invoiceId)
-                    || amount == null || old.getAmount().compareTo(amount) != 0
-                    || cashGiven == null
-                    || old.getCashGiven().compareTo(cashGiven) != 0
-                    || old.getCashier() == null
-                    || !old.getCashier().getId().equals(actor.getId())) {
-                throw conflict("Mã yêu cầu đã dùng với nội dung khác.");
-            }
-        }
-        return duplicate;
-    }
-
-    public Payment post(
+/** Application contract for PaymentPostingService. */
+public interface PaymentPostingService {
+    Payment post(
             Invoice invoice,
             TuitionPlan plan,
             BigDecimal amount,
@@ -88,79 +18,5 @@ public class PaymentPostingService {
             User cashier,
             String key,
             String bankReference,
-            BigDecimal cashGiven) {
-        CashTenderPolicy.Quote cash = method == PaymentMethod.CASH_AT_DESK
-                ? CashTenderPolicy.quote(amount, cashGiven)
-                : new CashTenderPolicy.Quote(BigDecimal.ZERO, BigDecimal.ZERO);
-        Payment payment =
-                Payment.builder()
-                        .invoice(invoice)
-                        .paymentCode("PAY-" + UUID.randomUUID())
-                        .amount(amount)
-                        .paymentMethod(method)
-                        .cashier(cashier)
-                        .bankTransactionId(bankReference)
-                        .cashGiven(cashGiven)
-                        .changeAmount(cash.change())
-                        .cashRoundingAmount(cash.support())
-                        .status(PaymentStatus.SUCCESS)
-                        .build();
-        payment.setRequestKey(key);
-        payment.setBalanceAfter(ledger.balance(invoice).subtract(amount));
-        payments.saveAndFlush(payment);
-        ledger.allocate(payment, plan);
-        BigDecimal paid = ledger.paid(invoice);
-        invoice.setStatus(
-                paid.compareTo(invoice.getFinalAmount()) == 0
-                        ? InvoiceStatus.PAID
-                        : InvoiceStatus.PARTIALLY_PAID);
-        plan.setRevision(plan.getRevision() + 1);
-        BigDecimal first =
-                installments.findByPlanIdOrderBySequenceNumber(plan.getId()).get(0).getAmountDue();
-        Enrollment linked = invoice.getEnrollment();
-        boolean newlyEnrolled = false;
-        if (linked != null) {
-            Enrollment enrollment =
-                    em.find(Enrollment.class, linked.getId(), LockModeType.PESSIMISTIC_WRITE);
-            if (enrollment.getStatus() == EnrollmentStatus.PENDING_PAYMENT
-                    && paid.compareTo(first) >= 0) {
-                ClassEntity clazz =
-                        em.find(
-                                ClassEntity.class,
-                                enrollment.getClassEntity().getId(),
-                                LockModeType.PESSIMISTIC_WRITE);
-                em.refresh(clazz, LockModeType.PESSIMISTIC_WRITE);
-                enrollment.setStatus(EnrollmentStatus.ENROLLED);
-                newlyEnrolled = true;
-                clazz.setCurrentStudents(
-                        Optional.ofNullable(clazz.getCurrentStudents()).orElse(0) + 1);
-                requests.findByEnrollmentId(enrollment.getId())
-                        .ifPresent(r -> r.setStatus(EnrollmentRequestStatus.APPROVED));
-            }
-        }
-        if (notificationService != null) {
-            String receipt = com.talent.management.features.tuition_payment.mapper.PaymentReference.receipt(payment);
-            String message = String.format(java.util.Locale.forLanguageTag("vi-VN"),
-                    "%s: đã nhận %,.0f đ cho %s; còn phải đóng %,.0f đ.",
-                    receipt, payment.getNetReceivedAmount(), invoice.getStudent().getFullName(), payment.getBalanceAfter());
-            if (cash.support().signum() > 0)
-                message += " Trung tâm hỗ trợ làm tròn " + cash.support().toPlainString() + "đ; học phí ghi nhận " + amount.toPlainString() + "đ.";
-            if (invoice.getStudent().getParent() != null) {
-                notificationService.sendNotification(invoice.getStudent().getParent(), cashier,
-                        "Đã nhận học phí", message, "PAYMENT_SUCCESS", payment.getId(),
-                        "/pages/parent-tuition.html?invoiceId=" + invoice.getId());
-            }
-            notificationService.sendToRoles(List.of(Role.ADMIN, Role.STAFF, Role.BRANCH_MANAGER), cashier,
-                    "Đã ghi nhận khoản thu học phí", message, "PAYMENT_SUCCESS", payment.getId(),
-                    "/pages/tuition-receivables.html?invoiceId=" + invoice.getId());
-            if (newlyEnrolled && linked.getClassEntity().getTeacher() != null) {
-                notificationService.sendNotification(linked.getClassEntity().getTeacher(), cashier,
-                        "Học viên nhập học chính thức",
-                        invoice.getStudent().getFullName() + " đã đủ điều kiện học lớp "
-                                + linked.getClassEntity().getClassName() + ".",
-                        "ENROLLMENT_COMPLETED", linked.getId(), "/pages/teacher-classes.html");
-            }
-        }
-        return payment;
-    }
+            BigDecimal cashGiven);
 }

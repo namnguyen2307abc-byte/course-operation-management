@@ -46,7 +46,18 @@ Tổng cộng **21 tài khoản**: 2 Admin, 4 Staff, 8 Teacher và 7 Parent. M�
 2. Đăng nhập `d26_parent_new`, xem chuyên cần lớp trên: Bảo An 0%, An Nhiên 8,3%, Minh Quân 16,7% (cảnh báo), Ngọc Hân 25% (nguy cơ cao). Chi tiết tại `docs/DEMO_WEEKLY_ATTENDANCE.md`.
 3. Dùng `d26_staff`, `d26_parent_new`, `teacher_huong` kiểm tra đơn xin nghỉ và học bù của bộ D26; dùng `staff_minh` và các phụ huynh dữ liệu cũ kiểm tra các trường hợp còn lại.
 
-D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701-01` mà kịch bản Word ban đầu dành cho thao tác tạo mới. Vì vậy sau khi nạp gộp, lớp này đã tồn tại. Bộ tổng hợp sau khi bổ sung thu ngân thứ hai có 21 tài khoản, 10 học viên, 13 lớp, 61 buổi, 21 đơn nghỉ, 17 lượt học bù và 62 bản ghi điểm danh.
+D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701-01` mà kịch bản Word ban đầu dành cho thao tác tạo mới. Vì vậy sau khi nạp gộp, lớp này đã tồn tại. Bộ tổng hợp sau khi bổ sung lớp cô Hương có 21 tài khoản, 13 học viên, 14 lớp, 73 buổi, 21 đơn nghỉ, 17 lượt học bù và 62 bản ghi điểm danh.
+
+## Lớp cô Vũ Thu Hương ngày 16/11/2026
+
+- Mã lớp: `HUONG-1611-AM`, tên: Piano sáng thứ Hai - Cô Vũ Thu Hương.
+- Giáo viên: `teacher_huong`, mật khẩu `Test@123456`.
+- Cơ sở Cầu Giấy (`CS01`), phòng Piano Nhóm 1 (`P102`), khóa `PIA-CB-12` / trình độ `BEGINNER`.
+- Ngày 16/11/2026 có Slot 1 **07:00–09:00** và Slot 2 **09:30–11:30**. Lớp có 12 buổi trong 6 thứ Hai, kết thúc 21/12/2026.
+- Ba học viên đã ghi danh: Nguyễn An Nhiên, Trần Minh Khang, Lê Ngọc Anh; phụ huynh `parent_lan` (mật khẩu `123456`). Các buổi mới chưa có bản ghi điểm danh.
+- Mở lịch tuần chứa ngày 16/11/2026, lọc cô Vũ Thu Hương và mở điểm danh từng slot. Backend vẫn giữ quy định không điểm danh buổi tương lai.
+
+File chung chuẩn hóa các nhãn trình độ demo cũ về `BEGINNER`, `INTERMEDIATE`, `ADVANCED`; các khóa đang có đều là sơ cấp nên dùng `BEGINNER`. Không tạo bộ môn tổng hợp `PROG-MUSIC`; dữ liệu Piano dùng bộ môn `PIANO`. Khi chạy lại, lớp và học viên của phần bổ sung này không bị tạo trùng. Nếu còn dữ liệu liên kết tới `PROG-MUSIC` hoặc lịch cô Hương/phòng bị trùng, script báo lỗi và rollback để tránh làm sai dữ liệu.
 
 ## Test quyền điều chỉnh giữa hai nhân viên
 
@@ -60,3 +71,14 @@ Chạy lại file tổng hợp trên database đã nạp sẽ bổ sung schema c
 Lần reset này chỉ nạp bộ tổng hợp trên; dữ liệu demo HD/DD và các giao dịch trước reset không được nạp lại. Bộ tổng hợp không tạo hóa đơn hay giao dịch thanh toán; có thể bắt đầu luồng đăng ký/xếp lớp để tạo học phí mới.
 
 Ứng dụng: http://127.0.0.1:5500/login.html — backend: http://127.0.0.1:8080.
+
+
+## Chính sách ưu đãi học phí (20/11/2026)
+
+- File `database/seed_demo_tong_hop.sql` đã gồm phần tạo bảng `tuition_discount_snapshots` nếu chưa có, kể cả database đã nạp dữ liệu demo.
+- Database đang có dữ liệu có thể chỉ chạy `database/migrations/20261120_tuition_discount_snapshots.sql`; không cần reset hoặc nạp lại demo.
+- Bảng mới lưu chính sách, điểm test thang 10, mã test, mức giảm, học phí gốc và thời điểm chốt. Không tính lại hóa đơn lịch sử.
+- Điểm test nguồn trong `placement_schedules.score` theo thang 100: dưới 70 không giảm; 70–79 giảm 10%; 80–89 giảm 20%; 90–100 giảm 30%. Chỉ dùng kết quả COMPLETED phù hợp với khóa học và hồ sơ đã xếp lớp.
+- Đăng ký không qua test: Không giảm / phần trăm nguyên 1–30 / số tiền nguyên từ 1.000đ đến tối đa 30% học phí gốc. Có giảm phải có lý do.
+- Tối đa 3 kỳ, mỗi kỳ ít nhất 1.000đ; kỳ đầu ít nhất 30% học phí sau giảm (làm tròn lên đến đồng). Tổng kỳ bằng học phí sau giảm. Hạn đóng tăng dần, từ hôm nay và không sau ngày kết thúc lớp.
+- Chốt lịch không tạo giao dịch thu tiền. Giao dịch/biên lai 0đ bị từ chối; thanh toán tiền mặt/PayOS tiếp tục dùng luồng xác nhận riêng.
