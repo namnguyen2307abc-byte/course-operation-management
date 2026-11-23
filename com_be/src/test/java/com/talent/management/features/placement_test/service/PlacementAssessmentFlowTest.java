@@ -5,10 +5,15 @@ import com.talent.management.features.auth.repository.UserRepository;
 import com.talent.management.features.course_enrollment.repository.CourseRepository;
 import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
+import com.talent.management.features.placement_test.dto.request.PlacementCriteriaScoreItemRequest;
+import com.talent.management.features.placement_test.dto.request.SavePlacementCriteriaRequest;
+import com.talent.management.features.placement_test.entity.PlacementCriteria;
 import com.talent.management.features.placement_test.entity.PlacementLevel;
 import com.talent.management.features.placement_test.entity.PlacementSchedule;
 import com.talent.management.features.placement_test.entity.PlacementScheduleStatus;
 import com.talent.management.features.placement_test.mapper.PlacementScheduleMapper;
+import com.talent.management.features.placement_test.repository.PlacementCriteriaRepository;
+import com.talent.management.features.placement_test.repository.PlacementScheduleCriteriaScoreRepository;
 import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
 import com.talent.management.features.placement_test.repository.PlacementTestRepository;
 import com.talent.management.features.placement_test.service.impl.PlacementTestServiceImpl;
@@ -23,8 +28,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +47,8 @@ class PlacementAssessmentFlowTest {
     @Mock PlacementScheduleMapper scheduleMapper;
     @Mock EnrollmentRequestRepository enrollmentRequestRepository;
     @Mock CourseRepository courseRepository;
+    @Mock PlacementCriteriaRepository criteriaRepository;
+    @Mock PlacementScheduleCriteriaScoreRepository criteriaScoreRepository;
     @InjectMocks PlacementTestServiceImpl service;
 
     @Test
@@ -189,5 +198,52 @@ class PlacementAssessmentFlowTest {
                 .isInstanceOf(BusinessException.class).hasMessageContaining("không có quyền hủy");
         assertThat(schedule.getStatus()).isEqualTo(PlacementScheduleStatus.SCHEDULED);
         verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void deletingUsedCriteriaSoftDeletesToPreserveHistoricalAssessments() {
+        ReflectionTestUtils.setField(service, "criteriaRepository", criteriaRepository);
+        ReflectionTestUtils.setField(service, "criteriaScoreRepository", criteriaScoreRepository);
+        PlacementCriteria criteria = PlacementCriteria.builder()
+                .id(11L).subject("DAN").criteriaName("1. Cảm âm").displayOrder(1).active(true).build();
+        when(criteriaRepository.findById(11L)).thenReturn(Optional.of(criteria));
+        when(criteriaScoreRepository.existsByCriteriaId(11L)).thenReturn(true);
+
+        service.deleteCriteria(11L);
+
+        assertThat(criteria.getActive()).isFalse();
+        verify(criteriaRepository).save(criteria);
+        verify(criteriaRepository, never()).delete(any());
+    }
+
+    @Test
+    void assessmentWithCriteriaScoresCalculatesNormalizedScoreAndStoresSnapshots() {
+        ReflectionTestUtils.setField(service, "criteriaRepository", criteriaRepository);
+        ReflectionTestUtils.setField(service, "criteriaScoreRepository", criteriaScoreRepository);
+        PlacementSchedule schedule = PlacementSchedule.builder().id(9L).testDate(LocalDateTime.now()).build();
+        PlacementCriteria c1 = PlacementCriteria.builder().id(1L).subject("DAN").criteriaName("Cảm âm").displayOrder(1).build();
+        PlacementCriteria c2 = PlacementCriteria.builder().id(2L).subject("DAN").criteriaName("Nhịp phách").displayOrder(2).build();
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.save(schedule)).thenReturn(schedule);
+        when(criteriaRepository.findById(1L)).thenReturn(Optional.of(c1));
+        when(criteriaRepository.findById(2L)).thenReturn(Optional.of(c2));
+
+        PlacementAssessmentRequest request = PlacementAssessmentRequest.builder()
+                .score(0)
+                .recommendedLevel(PlacementLevel.INTERMEDIATE)
+                .criteriaScores(List.of(
+                        PlacementCriteriaScoreItemRequest.builder().criteriaId(1L).score(8.0).build(),
+                        PlacementCriteriaScoreItemRequest.builder().criteriaId(2L).score(9.0).build()
+                ))
+                .build();
+
+        service.saveAssessment(9L, request, null);
+
+        assertThat(schedule.getScore()).isEqualTo(85);
+        verify(criteriaScoreRepository).deleteByScheduleId(9L);
+        verify(criteriaScoreRepository).saveAll(argThat(items -> {
+            var list = (List<?>) items;
+            return list.size() == 2;
+        }));
     }
 }

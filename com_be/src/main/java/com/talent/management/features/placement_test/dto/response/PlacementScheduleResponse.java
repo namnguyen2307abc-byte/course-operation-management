@@ -5,6 +5,7 @@ import com.talent.management.features.placement_test.entity.PlacementScheduleSta
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -43,4 +44,5 @@ public class PlacementScheduleResponse {
     private String parentName;
     private String parentEmail;
     private LocalDateTime createdAt;
+    private List<PlacementScheduleCriteriaScoreResponse> criteriaScores;
 }
