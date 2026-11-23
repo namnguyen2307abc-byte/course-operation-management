@@ -1,5 +1,7 @@
 package com.talent.management.shared.entity;
 
+import com.talent.management.features.tuition_payment.enums.BankTransferReason;
+
 import jakarta.persistence.*;
 
 import lombok.*;
@@ -44,4 +46,48 @@ public class TuitionBankEvent {
 
     @Column(nullable = false)
     private LocalDateTime receivedAt = LocalDateTime.now();
+
+    @Column(length = 500)
+    private String transferContent;
+
+    @Column(length = 150)
+    private String senderName;
+
+    @Column(length = 100)
+    private String senderAccount;
+
+    @Column(length = 100)
+    private String senderBank;
+
+    private LocalDateTime transferredAt;
+
+    @Column(length = 30)
+    private String source;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 40)
+    private BankTransferReason reason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Invoice resolvedInvoice;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User recordedBy;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal allocatedAmount;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal refundedAmount;
+
+    @Column(length = 120)
+    private String refundReference;
+
+    @Column(length = 500)
+    private String resolutionNote;
+
+    private Long resolvedInstallmentId;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal expectedAmount;
 }

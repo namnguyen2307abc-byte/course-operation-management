@@ -9,7 +9,11 @@ public class TuitionValidationException extends TuitionOperationException {
     private final Map<String, String> details;
 
     public TuitionValidationException(Map<String, String> details) {
-        super(HttpStatus.BAD_REQUEST, "TUITION_PLAN_INVALID", String.join(" ", details.values()));
+        this("TUITION_PLAN_INVALID", details);
+    }
+
+    protected TuitionValidationException(String code, Map<String, String> details) {
+        super(HttpStatus.BAD_REQUEST, code, String.join(" ", details.values()));
         this.details = Map.copyOf(details);
     }
 

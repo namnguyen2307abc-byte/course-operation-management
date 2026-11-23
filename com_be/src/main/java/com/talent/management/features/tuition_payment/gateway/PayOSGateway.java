@@ -61,11 +61,11 @@ public class PayOSGateway {
     @Value("${tuition.simulation.enabled:false}")
     private boolean simulation;
 
-    @Value("${tuition.qr-lifetime-seconds:300}")
-    private long qrLifetimeSeconds = 300;
+    @Value("${tuition.qr-lifetime-seconds:0}")
+    private long qrLifetimeSeconds = 0;
 
-    @Value("${tuition.public-base-url:http://127.0.0.1}")
-    private String publicBaseUrl;
+    @Value("${tuition.public-base-url:http://127.0.0.1:5500}")
+    private String publicBaseUrl = "http://127.0.0.1:5500";
 
     public PayOSPaymentLinkResponse createPaymentLink(Invoice invoice, BigDecimal amount) {
         return createPaymentLink(
@@ -109,7 +109,8 @@ public class PayOSGateway {
         signaturePayload.put("returnUrl", returnTarget);
 
         Map<String, Object> requestBody = new LinkedHashMap<>(signaturePayload);
-        requestBody.put("expiredAt", Instant.now().plusSeconds(qrLifetimeSeconds).getEpochSecond());
+        if (qrLifetimeSeconds > 0)
+            requestBody.put("expiredAt", Instant.now().plusSeconds(qrLifetimeSeconds).getEpochSecond());
         requestBody.put("signature", sign(signaturePayload, checksumKey.trim()));
 
         String itemName = "Hoc phi " + invoice.getInvoiceCode();
@@ -205,7 +206,18 @@ public class PayOSGateway {
                 && List.of("NOT_FOUND", "CANCELLED", "EXPIRED").contains(payment.status());
     }
 
-    public record BankTransfer(BigDecimal amount, String reference) {}
+    public record BankTransfer(
+            BigDecimal amount,
+            String reference,
+            String content,
+            String senderName,
+            String senderAccount,
+            String senderBank,
+            java.time.LocalDateTime transferredAt) {
+        public BankTransfer(BigDecimal amount, String reference) {
+            this(amount, reference, null, null, null, null, null);
+        }
+    }
 
     public record GatewayPayment(String status, BigDecimal paid, List<BankTransfer> transfers) {}
 
@@ -240,10 +252,29 @@ public class PayOSGateway {
                         transfers.add(
                                 new BankTransfer(
                                         new BigDecimal(String.valueOf(item.get("amount"))),
-                                        reference));
+                                        reference,
+                                        optional(item, "description"),
+                                        optional(item, "counterAccountName"),
+                                        optional(item, "counterAccountNumber"),
+                                        optional(item, "counterAccountBankName"),
+                                        bankTime(item.get("transactionDateTime"))));
                 }
         }
         return new GatewayPayment(String.valueOf(data.get("status")), paid, transfers);
+    }
+
+    private static String optional(Map<?, ?> item, String key) {
+        return item.get(key) == null ? null : String.valueOf(item.get(key));
+    }
+
+    private static java.time.LocalDateTime bankTime(Object value) {
+        try {
+            return value == null
+                    ? null
+                    : java.time.LocalDateTime.parse(String.valueOf(value).replace(" ", "T"));
+        } catch (java.time.format.DateTimeParseException ignored) {
+            return null;
+        }
     }
 
     public boolean verifyWebhookSignature(Map<String, Object> body) {
