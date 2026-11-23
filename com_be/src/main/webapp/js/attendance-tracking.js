@@ -374,6 +374,13 @@ function renderAttendanceTablePage() {
             if (item.note && item.note !== '-') {
                 noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
             }
+        } else if (item.makeupStatus === 'CANCELLED') {
+            noteHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
+                <i class="bi bi-slash-circle-fill me-1"></i>Hết quyền học bù (CẤM HỌC BÙ)
+            </span>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
+            }
         } else if (item.makeupStatus === 'COMPLETED' || item.isMakeup) {
             noteHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold">
                 <i class="bi bi-check2-all me-1"></i>${escapeHtml(item.makeupInfo || 'Đã học bù ca khác')}
