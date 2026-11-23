@@ -26,10 +26,10 @@ public class Notification {
     @JoinColumn(name = "sender_user_id")
     private User sender;
 
-    @Column(name = "title", nullable = false, length = 255)
+    @Column(name = "title", nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
     private String title;
 
-    @Column(name = "message", nullable = false, length = 1000)
+    @Column(name = "message", nullable = false, length = 1000, columnDefinition = "NVARCHAR(1000)")
     private String message;
 
     @Column(name = "type", nullable = false, length = 50)
