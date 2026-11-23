@@ -69,6 +69,10 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
         return lesson.getClassEntity() != null ? lesson.getClassEntity().getTeacher() : null;
     }
 
+    // =========================================================================
+    // 1. LẤY DANH SÁCH HỌC VIÊN ĐƯỢC PHÉP TRA CỨU THEO VAI TRÒ
+    // =========================================================================
+
     @Override
     public List<Map<String, Object>> getTrackableStudents() {
         User currentUser = currentUserService.getCurrentUser();
@@ -104,6 +108,10 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
             return item;
         }).toList();
     }
+
+    // =========================================================================
+    // 2. BẢNG ĐIỂM DANH BUỔI HỌC & RÀNG BUỘC KHÓA THỜI GIAN TIME-LOCK
+    // =========================================================================
 
     @Override
     public LessonAttendanceSheetResponse getLessonAttendanceSheet(Long lessonId) {
@@ -608,6 +616,10 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
                     .build();
         }).toList();
     }
+
+    // =========================================================================
+    // 5. TIẾN ĐỘ CHUYÊN CẦN TOÀN KHÓA HỌC & CẢNH BÁO 3 MỨC (NORMAL / WARNING / CRITICAL)
+    // =========================================================================
 
     @Override
     public StudentAttendanceTrackingResponse getStudentAttendanceTracking(Long studentId, Long classId) {

@@ -369,7 +369,14 @@ function renderAttendanceTablePage() {
         let noteHtml = '';
         if (item.makeupStatus === 'MISSED') {
             noteHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
-                <i class="bi bi-person-x-fill me-1"></i>Bỏ lỡ học bù
+                <i class="bi bi-person-x-fill me-1"></i>${escapeHtml(item.makeupInfo || 'Bỏ lỡ học bù')}
+            </span>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
+            }
+        } else if (item.makeupStatus === 'CANCELLED' && (String(item.note || '').includes('- KHÓA]') || /hết quyền/i.test(item.makeupInfo || ''))) {
+            noteHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
+                <i class="bi bi-slash-circle-fill me-1"></i>Hết quyền học bù (CẤM HỌC BÙ)
             </span>`;
             if (item.note && item.note !== '-') {
                 noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;

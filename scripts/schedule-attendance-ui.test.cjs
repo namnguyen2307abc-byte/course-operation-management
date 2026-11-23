@@ -173,3 +173,24 @@ for (const exhausted of [false,true]) test(`parent absence form submits the corr
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
+
+test('tracking distinguishes cancelled makeup from a locked missed makeup',async()=>{
+ const {page,errors}=await open('PARENT','attendance-tracking.html',u=>{
+  if(u.pathname==='/api/attendance-tracking/students')return [{id:1,fullName:'Bé kiểm thử'}];
+  if(u.pathname.endsWith('/enrolled-classes'))return [{id:1,classId:1,className:'Piano'}];
+  if(u.pathname==='/api/schedule/attendance-tracking')return {studentName:'Bé kiểm thử',className:'Piano',totalSessions:3,lessons:[
+   {sessionNumber:1,status:'ABSENT',makeupStatus:'CANCELLED',makeupInfo:'Đã hủy lịch bù'},
+   {sessionNumber:2,status:'ABSENT',makeupStatus:'CANCELLED',makeupInfo:'Hết quyền bù (Vắng buổi bù)',note:'[Lần bù: 1/1 - KHÓA]'},
+   {sessionNumber:3,status:'ABSENT',makeupStatus:'MISSED',makeupInfo:'Hết quyền bù (Vắng buổi bù)',isMakeup:true}
+  ]};
+ });
+ try{
+  await page.locator('#attendanceTableBody tr').nth(2).waitFor();
+  const rows=page.locator('#attendanceTableBody tr');
+  assert.match(await rows.nth(0).textContent(),/Đã hủy lịch bù/);
+  assert.doesNotMatch(await rows.nth(0).textContent(),/CẤM HỌC BÙ/);
+  assert.match(await rows.nth(1).textContent(),/CẤM HỌC BÙ/);
+  assert.match(await rows.nth(2).textContent(),/Hết quyền bù/);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});

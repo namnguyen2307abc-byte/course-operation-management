@@ -230,7 +230,7 @@ class MakeupSchedulingFlowTest {
         verify(absences, never()).save(any());
     }
 
-    @Test void createAbsenceRequest_countsOnlyCompletedMakeups_andRejectsWhenPendingPlusCompletedExceedsLimit() {
+    @Test void createAbsenceRequest_rejectsWhenUsedAndPendingAbsencesFillCourseQuota() {
         User parent = User.builder().id(10L).role(Role.PARENT).username("parent1").build();
         Student student = Student.builder().id(1L).fullName("Nguyễn Bảo Nam").parent(parent).build();
         Course course = Course.builder().id(5L).name("Khóa học Piano Grade 1").build();

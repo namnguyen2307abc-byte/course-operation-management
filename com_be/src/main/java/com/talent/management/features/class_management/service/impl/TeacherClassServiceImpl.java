@@ -42,6 +42,10 @@ public class TeacherClassServiceImpl implements TeacherClassService {
     private static final ZoneId CENTER_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
+    // =========================================================================
+    // 1. DANH SÁCH LỚP PHỤ TRÁCH & TIẾN ĐỘ GIẢNG DẠY
+    // =========================================================================
+
     @Override
     public List<TeacherClassSummaryResponse> getTeacherClasses(Long requestedTeacherId) {
         User currentUser = currentUserService.getCurrentUser();
@@ -125,6 +129,10 @@ public class TeacherClassServiceImpl implements TeacherClassService {
                     .build();
         }).toList();
     }
+
+    // =========================================================================
+    // 2. CHI TIẾT LỚP PHỤ TRÁCH, DANH SÁCH HỌC VIÊN & LỘ TRÌNH BÀI HỌC
+    // =========================================================================
 
     @Override
     public TeacherClassDetailResponse getTeacherClassDetail(Long classId) {
