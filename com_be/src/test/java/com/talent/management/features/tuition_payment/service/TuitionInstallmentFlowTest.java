@@ -43,6 +43,8 @@ import java.util.*;
 @DataJpaTest
 @Import({
     TuitionPlanServiceImpl.class,
+    BankTransferServiceImpl.class,
+    PaymentIntentLedgerRepository.class,
     TuitionDiscountServiceImpl.class,
     TuitionLedgerServiceImpl.class,
     TuitionQueryServiceImpl.class,
@@ -462,6 +464,23 @@ class TuitionInstallmentFlowTest {
     }
 
     @Test
+    void reopeningHostedCheckoutCancelsThePreviousAttemptAndCreatesANewCode() {
+        configure();
+        useRealGatewayStub();
+        as(parent);
+        var first = gateway.create(invoice.getId(), money(3000000));
+        var reopened = gateway.create(invoice.getId(), money(3000000));
+        assertThat(reopened.id()).isNotEqualTo(first.id());
+        assertThat(reopened.orderCode()).isNotEqualTo(first.orderCode());
+        assertThat(intents.findById(first.id()).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+        assertThat(reopened.status()).isEqualTo("PENDING");
+        verify(payos).cancelPayment(first.orderCode());
+        verify(payos, org.mockito.Mockito.times(2))
+                .createPaymentLink(any(), any(), anyLong(), anyBoolean());
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+    }
+
+    @Test
     void switchingToCashClosesQrAndReturnsExcessCash() {
         configure();
         useRealGatewayStub();
@@ -683,20 +702,19 @@ class TuitionInstallmentFlowTest {
     }
 
     @Test
-    void paymentWhileChangePendingPreventsStaleApproval() {
+    void paidPeriodCannotBeExtendedDirectly() {
         configure();
-        cashCollections.cash(invoice.getId(), money(3000000), money(3000000), "first");
-        var second = queries.view(invoice.getId()).installments().get(1);
-        changes.request(
-                invoice.getId(),
-                new RequestDueDateChangeRequest(
-                        second.id(), today.plusDays(35), "Gia đình xin đổi hạn"));
-        cashCollections.cash(invoice.getId(), money(1500000), money(1500000), "extra");
-        as(manager);
-        long id = changes.list().get(0).id();
-        assertThatThrownBy(() -> changes.review(id, new ReviewTuitionRequest(true, "Đã trao đổi")))
-                .isInstanceOf(ApplicationException.class)
-                .hasMessageContaining("Có giao dịch");
+        cashCollections.cash(
+                invoice.getId(), money(3000000), money(3000000), "first-before-extension");
+        var first = queries.view(invoice.getId()).installments().get(0);
+        assertThatThrownBy(
+                        () ->
+                                changes.extend(
+                                        invoice.getId(),
+                                        new RequestDueDateChangeRequest(
+                                                first.id(), today.plusDays(1), "Xin đổi")))
+                .hasMessageContaining("đã có khoản thanh toán");
+        assertThat(changes.list()).isEmpty();
     }
 
     @Test
@@ -717,8 +735,6 @@ class TuitionInstallmentFlowTest {
         changes.request(
                 invoice.getId(),
                 new RequestDueDateChangeRequest(due.getId(), today.plusDays(10), "Xin gia hạn"));
-        as(manager);
-        changes.review(changes.list().get(0).id(), new ReviewTuitionRequest(true, "Đồng ý"));
         as(parent);
         assertThat(notices.mine()).isEmpty();
     }
@@ -971,7 +987,7 @@ class TuitionInstallmentFlowTest {
     }
 
     @Test
-    void expiryCancelsUnpaidQrWithoutUserAuthentication() {
+    void checkoutDoesNotExpireAutomaticallyByDefault() {
         configure();
         var qr = gateway.create(invoice.getId(), money(3000000));
         var intent = intents.findById(qr.id()).orElseThrow();
@@ -979,7 +995,7 @@ class TuitionInstallmentFlowTest {
         intents.flush();
         when(current.getCurrentUser()).thenThrow(new IllegalStateException("No user on scheduler"));
         gateway.expireUnpaidRequests();
-        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("PENDING");
     }
 
     @Test
@@ -1371,24 +1387,150 @@ class TuitionInstallmentFlowTest {
         assertThat(invoice.getEnrollment().getStatus()).isEqualTo(EnrollmentStatus.ENROLLED);
     }
 
-    @Test
-    void adminCanVerifyBankMismatchThroughTheExistingConfirmationAction() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(longs = {2500000, 3500000})
+    void unexpectedGatewayAmountIsRetainedWithoutPartialPaymentOrRefundWorkflow(long amount) {
         configure();
         useRealGatewayStub();
         var qr = gateway.create(invoice.getId(), money(3000000));
-        paymentResults.webhook(webhook(qr.orderCode(), "BANK-CHECK", money(3500000)));
-        as(manager);
-        paymentResults.confirmBank(
-                qr.id(),
-                new ConfirmBankPaymentRequest(
-                        money(3500000),
-                        "BANK-CHECK",
-                        "Đã kiểm tra số tiền ngân hàng thực nhận",
-                        true));
-        paymentResults.webhook(webhook(qr.orderCode(), "BANK-CHECK", money(3500000)));
+        paymentResults.webhook(webhook(qr.orderCode(), "UNEXPECTED-" + amount, money(amount)));
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+        assertThat(queries.view(invoice.getId()).paid()).isEqualByComparingTo("0");
+        assertThat(events.findByReference("UNEXPECTED-" + amount)).isPresent();
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("RECONCILE");
+    }
+
+    @Test
+    void virtualAccountOrderWithDifferentDescriptionIsPaidByVerifiedOrderAndAmount() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        var body = webhook(qr.orderCode(), "VALID-VA", money(3000000));
+        var data =
+                new java.util.HashMap<String, Object>(
+                        (java.util.Map<String, Object>) body.get("data"));
+        data.put("description", "Different bank transfer description");
+        body = new java.util.HashMap<>(body);
+        body.put("data", data);
+        paymentResults.webhook(body);
+        paymentResults.webhook(body);
         assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(1);
-        assertThat(queries.view(invoice.getId()).paid()).isEqualByComparingTo("3500000");
-        assertThat(events.findByStatusOrderByIdDesc("RECONCILE")).isEmpty();
+        assertThat(queries.view(invoice.getId()).paid()).isEqualByComparingTo("3000000");
+    }
+
+    @Test
+    void directExtensionClosesUnpaidQrAndOnlyChangesDate() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        var first = queries.view(invoice.getId()).installments().get(0);
+        changes.request(
+                invoice.getId(),
+                new RequestDueDateChangeRequest(first.id(), today.plusDays(1), "Đã trao đổi"));
+        verify(payos).cancelPayment(qr.orderCode());
+        assertThat(intents.findById(qr.id()).orElseThrow().getStatus()).isEqualTo("CANCELLED");
+        assertThat(installments.findById(first.id()).orElseThrow().getDueDate())
+                .isEqualTo(today.plusDays(1));
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+    }
+
+    @Test
+    void staffAppliesExtensionImmediatelyButPaidPeriodsAndParentsAreRejected() {
+        configure();
+        var first = queries.view(invoice.getId()).installments().get(0);
+        as(parent);
+        assertThatThrownBy(
+                        () ->
+                                changes.request(
+                                        invoice.getId(),
+                                        new RequestDueDateChangeRequest(
+                                                first.id(), today.plusDays(1), "Xin đổi")))
+                .hasMessageContaining("Chỉ Staff hoặc Admin");
+        as(staff);
+        changes.request(
+                invoice.getId(),
+                new RequestDueDateChangeRequest(first.id(), today.plusDays(1), "Xin đổi"));
+        long request = changes.list().get(0).id();
+        assertThatThrownBy(
+                        () -> changes.review(request, new ReviewTuitionRequest(true, "Tự duyệt")))
+                .hasMessageContaining("Không còn bước duyệt");
+        cashCollections.cash(invoice.getId(), money(3000000), money(3000000), "before-extension");
+        assertThatThrownBy(
+                        () ->
+                                changes.request(
+                                        invoice.getId(),
+                                        new RequestDueDateChangeRequest(
+                                                first.id(), today.plusDays(1), "Xin đổi")))
+                .hasMessageContaining("đã có khoản thanh toán");
+    }
+
+    @Test
+    void failedQrCancellationLeavesDateAndHistoryUnchanged() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        var first = queries.view(invoice.getId()).installments().get(0);
+        doThrow(new IllegalStateException("Gateway unavailable"))
+                .when(payos)
+                .cancelPayment(qr.orderCode());
+        assertThatThrownBy(
+                        () ->
+                                changes.extend(
+                                        invoice.getId(),
+                                        new RequestDueDateChangeRequest(
+                                                first.id(), today.plusDays(1), "Xin đổi")))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(installments.findById(first.id()).orElseThrow().getDueDate())
+                .isEqualTo(first.date());
+        assertThat(changes.list()).isEmpty();
+    }
+
+    @Test
+    void adminCanApplyExtensionWithoutAnyApprovalAndKeepsAudit() {
+        configure();
+        as(manager);
+        var first = queries.view(invoice.getId()).installments().get(0);
+        changes.extend(
+                invoice.getId(),
+                new RequestDueDateChangeRequest(first.id(), today.plusDays(1), "Đã trao đổi"));
+        assertThat(installments.findById(first.id()).orElseThrow().getDueDate())
+                .isEqualTo(today.plusDays(1));
+        assertThat(changes.list())
+                .singleElement()
+                .satisfies(
+                        h -> {
+                            assertThat(h.status()).isEqualTo("APPROVED");
+                            assertThat(h.requestedBy()).isEqualTo(manager.getFullName());
+                            assertThat(h.reviewedBy()).isEqualTo(manager.getFullName());
+                        });
+        assertThat(payments.findByInvoiceId(invoice.getId())).isEmpty();
+    }
+
+    @Test
+    void paymentArrivingWhileClosingQrPreventsDirectDateChange() {
+        configure();
+        useRealGatewayStub();
+        var qr = gateway.create(invoice.getId(), money(3000000));
+        var first = queries.view(invoice.getId()).installments().get(0);
+        doAnswer(
+                        invocation -> {
+                            paymentResults.webhook(
+                                    webhook(qr.orderCode(), "PAY-DURING-EXTEND", money(3000000)));
+                            return null;
+                        })
+                .when(payos)
+                .cancelPayment(qr.orderCode());
+        assertThatThrownBy(
+                        () ->
+                                changes.extend(
+                                        invoice.getId(),
+                                        new RequestDueDateChangeRequest(
+                                                first.id(), today.plusDays(1), "Xin đổi")))
+                .isInstanceOf(ApplicationException.class);
+        assertThat(installments.findById(first.id()).orElseThrow().getDueDate())
+                .isEqualTo(first.date());
+        assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(1);
+        assertThat(changes.list()).isEmpty();
     }
 
     private BigDecimal money(long value) {

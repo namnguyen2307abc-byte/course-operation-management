@@ -209,7 +209,8 @@ public class TuitionQueryServiceImpl implements TuitionQueryService {
                                                 && !d.date().plusDays(7).isAfter(today())),
                 schedule,
                 receipts,
-                java.util.stream.Stream.of("CREATING", "PENDING", "UNCERTAIN", "RECONCILE")
+                java.util.stream.Stream.of(
+                                "CREATING", "PENDING", "UNCERTAIN", "PARTIALLY_PAID", "RECONCILE")
                         .flatMap(
                                 status ->
                                         intents
@@ -224,7 +225,27 @@ public class TuitionQueryServiceImpl implements TuitionQueryService {
                                                 i.getStatus(),
                                                 i.getCheckoutUrl(),
                                                 i.getQrCode(),
-                                                i.isSimulated()))
+                                                i.isSimulated(),
+                                                schedule.stream()
+                                                        .filter(
+                                                                d ->
+                                                                        java.util.Objects.equals(
+                                                                                d.id(),
+                                                                                i
+                                                                                        .getInstallmentId()))
+                                                        .map(Due::paid)
+                                                        .findFirst()
+                                                        .orElse(BigDecimal.ZERO),
+                                                schedule.stream()
+                                                        .filter(
+                                                                d ->
+                                                                        java.util.Objects.equals(
+                                                                                d.id(),
+                                                                                i
+                                                                                        .getInstallmentId()))
+                                                        .map(Due::remaining)
+                                                        .findFirst()
+                                                        .orElse(i.getExpectedAmount())))
                         .toList(),
                 plan.getCreatedBy() != null || tuitionLedgerService.paid(invoice).signum() > 0,
                 invoice.getOriginalAmount(),

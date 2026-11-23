@@ -12,7 +12,10 @@ import com.talent.management.features.tuition_payment.dto.response.PaymentReceip
 import com.talent.management.features.tuition_payment.enums.PaymentIntentStatus;
 import com.talent.management.features.tuition_payment.exception.TuitionOperationException;
 import com.talent.management.features.tuition_payment.gateway.PayOSGateway;
+import com.talent.management.features.tuition_payment.gateway.VerifiedBankTransfer;
 import com.talent.management.features.tuition_payment.policy.CashTenderPolicy;
+import com.talent.management.features.tuition_payment.repository.PaymentAllocationRepository;
+import com.talent.management.features.tuition_payment.repository.PaymentIntentLedgerRepository;
 import com.talent.management.features.tuition_payment.repository.TuitionIntentRepository;
 import com.talent.management.features.tuition_payment.service.PaymentIntentService;
 import com.talent.management.features.tuition_payment.service.PaymentResultService;
@@ -41,6 +44,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PaymentIntentServiceImpl implements PaymentIntentService {
     private final TuitionLedgerService tuitionLedgerService;
+    private final PaymentIntentLedgerRepository bankRepository;
+    private final PaymentAllocationRepository bankAllocations;
     private final TuitionQueryService tuitionQueryService;
     private final PaymentResultService paymentResults;
     private final TuitionIntentRepository intents;
@@ -51,8 +56,8 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
     @Value("${tuition.simulation.enabled:false}")
     private boolean simulation;
 
-    @Value("${tuition.qr-lifetime-seconds:300}")
-    private long qrLifetimeSeconds = 300;
+    @Value("${tuition.qr-lifetime-seconds:0}")
+    private long qrLifetimeSeconds = 0;
 
     @Override
     public IntentView create(Long invoiceId, BigDecimal amount) {
@@ -94,17 +99,23 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                                             .map(TuitionPaymentIntent::getId)
                                             .toList());
             for (Long id : pending) {
+                // A user starts a fresh checkout. Verify and close the previous attempt first,
+                // without holding an invoice lock while calling the gateway.
                 cancelIntent(id);
                 String outcome =
                         transactionTemplate.execute(
-                                status ->
+                                tx ->
                                         intents.findById(id)
                                                 .orElseThrow(TuitionOperationException::notFound)
                                                 .getStatus());
-                if (!PaymentIntentStatus.CANCELLED.code().equals(outcome))
+                if (!List.of(
+                                PaymentIntentStatus.CANCELLED.code(),
+                                PaymentIntentStatus.FAILED.code())
+                        .contains(outcome)) {
                     throw conflict(
-                            "QR trước đã nhận tiền hoặc đang cần xác minh. Vui lòng tải lại hóa"
-                                    + " đơn.");
+                            "Yêu cầu trước đã nhận tiền hoặc đang xác minh. Số dư đã thay đổi; vui"
+                                    + " lòng tải lại hóa đơn trước khi thanh toán phần còn thiếu.");
+                }
             }
         }
         TuitionPaymentIntent intent =
@@ -156,6 +167,15 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                             }
                             TuitionPaymentIntent created = new TuitionPaymentIntent();
                             created.setInvoice(invoice);
+                            created.setInstallmentId(
+                                    bankRepository
+                                            .firstUnpaid(plan.getId())
+                                            .orElseThrow(
+                                                    () ->
+                                                            conflict(
+                                                                    "Không còn kỳ học phí nào chưa"
+                                                                            + " đóng."))
+                                            .getId());
                             created.setExpectedAmount(amount);
                             created.setPlanRevision(plan.getRevision());
                             created.setInitiatedBy(actor);
@@ -234,6 +254,7 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                             intents.findById(id).orElseThrow(TuitionOperationException::notFound);
                     tuitionLedgerService.checkParent(found.getInvoice());
                 });
+        refreshBankTransfers(id);
         refreshUncertain(id);
         return transactionTemplate.execute(
                 status -> {
@@ -298,9 +319,23 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
      */
     @Override
     public void prepareCashPayment(Long invoiceId) {
+        try {
+            closeUnpaidRequests(invoiceId);
+        } catch (TuitionOperationException failure) {
+            if ("PAYMENT_REQUEST_NOT_CLOSED".equals(failure.getCode()))
+                throw conflict(
+                        "QR đã nhận tiền hoặc đang cần xác minh. Không thu thêm tiền mặt; vui lòng"
+                            + " tải lại hóa đơn.");
+            throw failure;
+        }
+    }
+
+    @Override
+    public void closeUnpaidRequests(Long invoiceId) {
         if (!List.of(Role.STAFF, Role.ADMIN, Role.BRANCH_MANAGER)
                 .contains(currentUserService.getCurrentUser().getRole()))
-            throw new TuitionOperationException(FORBIDDEN, "Chỉ nhân viên được thu tiền mặt.");
+            throw new TuitionOperationException(
+                    FORBIDDEN, "Chỉ Staff hoặc Admin được đóng yêu cầu thanh toán.");
         List<Long> active =
                 transactionTemplate.execute(
                         status -> {
@@ -309,8 +344,8 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                                             invoiceId, PaymentIntentStatus.CREATING.code())
                                     .isEmpty())
                                 throw conflict(
-                                        "QR đang được tạo. Vui lòng đợi hoàn tất trước khi thu tiền"
-                                                + " mặt.");
+                                        "QR đang được tạo. Vui lòng đợi hoàn tất trước khi đóng yêu"
+                                            + " cầu thanh toán.");
                             List<TuitionPaymentIntent> pending =
                                     new ArrayList<>(
                                             intents.findByInvoiceIdAndStatus(
@@ -330,8 +365,10 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                                             .getStatus());
             if (!List.of(PaymentIntentStatus.CANCELLED.code(), PaymentIntentStatus.FAILED.code())
                     .contains(outcome))
-                throw conflict(
-                        "QR đã nhận tiền hoặc đang cần xác minh. Không thu thêm tiền mặt; vui lòng"
+                throw new TuitionOperationException(
+                        CONFLICT,
+                        "PAYMENT_REQUEST_NOT_CLOSED",
+                        "QR đã nhận tiền hoặc đang cần xác minh. Chưa thể đóng yêu cầu; vui lòng"
                                 + " tải lại hóa đơn.");
         }
     }
@@ -368,12 +405,19 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                                             .orElseThrow(TuitionOperationException::notFound);
                             return intent;
                         });
+        refreshBankTransfers(id);
+        var refreshed =
+                transactionTemplate.execute(
+                        status ->
+                                intents.findById(id)
+                                        .orElseThrow(TuitionOperationException::notFound));
         if (List.of(
                         PaymentIntentStatus.PAID.code(),
+                        PaymentIntentStatus.PARTIALLY_PAID.code(),
                         PaymentIntentStatus.CANCELLED.code(),
                         PaymentIntentStatus.FAILED.code(),
                         PaymentIntentStatus.RECONCILE.code())
-                .contains(snapshot.getStatus())) return;
+                .contains(refreshed.getStatus())) return;
         if (!snapshot.isSimulated()) {
             try {
                 payOSGateway.cancelPayment(snapshot.getOrderCode());
@@ -387,7 +431,7 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                     throw failure;
                 }
                 if (remote != null
-                        && PaymentIntentStatus.PAID.code().equals(remote.status())
+                        && remote.paid().signum() > 0
                         && !remote.transfers().isEmpty()
                         && remote.transfers().stream()
                                         .map(PayOSGateway.BankTransfer::amount)
@@ -396,10 +440,16 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                                 == 0) {
                     for (PayOSGateway.BankTransfer transfer : remote.transfers())
                         paymentResults.applyVerifiedTransfer(
-                                snapshot.getOrderCode(),
-                                transfer.amount(),
-                                transfer.reference(),
-                                false);
+                                new VerifiedBankTransfer(
+                                        snapshot.getOrderCode(),
+                                        transfer.amount(),
+                                        transfer.reference(),
+                                        transfer.content(),
+                                        transfer.senderName(),
+                                        transfer.senderAccount(),
+                                        transfer.senderBank(),
+                                        transfer.transferredAt(),
+                                        false));
                     return;
                 }
                 throw failure;
@@ -422,6 +472,7 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
     @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 30000, initialDelay = 15000)
     @Override
     public void expireUnpaidRequests() {
+        if (qrLifetimeSeconds <= 0) return;
         List<Long> expired =
                 transactionTemplate.execute(
                         status ->
@@ -454,7 +505,53 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                 true);
     }
 
+    @Override
+    public void refreshFromBank(Long id) {
+        refreshBankTransfers(id);
+    }
+
+    private void refreshBankTransfers(Long id) {
+        var intent =
+                transactionTemplate.execute(
+                        status ->
+                                intents.findById(id)
+                                        .orElseThrow(TuitionOperationException::notFound));
+        if (intent.isSimulated()
+                || !java.util.List.of("PENDING", "UNCERTAIN", "PARTIALLY_PAID")
+                        .contains(intent.getStatus())) return;
+        var remote = payOSGateway.paymentInformation(intent.getOrderCode());
+        if (remote == null || remote.paid().signum() == 0) return;
+        var sum =
+                remote.transfers().stream()
+                        .map(PayOSGateway.BankTransfer::amount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (remote.transfers().isEmpty() || sum.compareTo(remote.paid()) != 0)
+            throw conflict(
+                    "Ngân hàng có tiền nhưng chưa có đủ mã giao dịch để ghi nhận an toàn. Vui lòng"
+                            + " chờ hoặc liên hệ trung tâm; không chuyển lại khoản đã gửi.");
+        for (var transfer : remote.transfers())
+            paymentResults.applyVerifiedTransfer(
+                    new VerifiedBankTransfer(
+                            intent.getOrderCode(),
+                            transfer.amount(),
+                            transfer.reference(),
+                            transfer.content(),
+                            transfer.senderName(),
+                            transfer.senderAccount(),
+                            transfer.senderBank(),
+                            transfer.transferredAt(),
+                            false));
+    }
+
     private IntentView map(TuitionPaymentIntent intent) {
+        BigDecimal received = BigDecimal.ZERO, remaining = intent.getExpectedAmount();
+        if (intent.getInstallmentId() != null) {
+            var due = bankRepository.installment(intent.getInstallmentId()).orElse(null);
+            if (due != null) {
+                received = bankAllocations.paid(due.getId());
+                remaining = due.getAmountDue().subtract(received).max(BigDecimal.ZERO);
+            }
+        }
         return new IntentView(
                 intent.getId(),
                 intent.getOrderCode(),
@@ -462,6 +559,8 @@ public class PaymentIntentServiceImpl implements PaymentIntentService {
                 intent.getStatus(),
                 intent.getCheckoutUrl(),
                 intent.getQrCode(),
-                intent.isSimulated());
+                intent.isSimulated(),
+                received,
+                remaining);
     }
 }

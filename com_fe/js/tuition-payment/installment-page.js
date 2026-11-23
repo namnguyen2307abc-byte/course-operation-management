@@ -29,13 +29,15 @@
  let loadId=0;
  let qrTimer;
  let activeQr=null,closingQr=false;
- function selectTab(adjustments,updateUrl=true) {
+ function selectTab(tab,updateUrl=true) {
   if(!manager||!$('tuition-tabs'))return;
+  const adjustments=tab===true;
   $('tuition-panel').hidden=adjustments;$('reversals').hidden=!adjustments;
   for(const [id,selected] of [['tuition-tab',!adjustments],['corrections-tab',adjustments]]) {
    $(id).classList.toggle('active',selected);$(id).setAttribute('aria-selected',String(selected));$(id).tabIndex=selected?0:-1;
   }
   if(updateUrl){const url=new URL(location.href);if(adjustments){url.searchParams.set('tab','adjustments');url.searchParams.delete('invoiceId');url.searchParams.delete('invoiceCode');}else url.searchParams.delete('tab');history.replaceState(null,'',url);}
+
  }
  if(manager && $('tuition-tabs')) {
   $('tuition-tabs').hidden=false;
@@ -47,15 +49,17 @@
    $('action-content').append(node('p',item.student+' · '+item.code+' · '+money(item.amount),'payment-context'),node('p','Lý do đề nghị: '+item.reason,'ledger-help'));
    field('Ghi chú xác minh và quyết định','note',{multiline:true,maxLength:500});
   }});
-  for(const [id,adjustments] of [['tuition-tab',false],['corrections-tab',true]]) {
+  const tabs=[['tuition-tab',false],['corrections-tab',true]];
+  for(const [index,[id,adjustments]] of tabs.entries()) {
    $(id).addEventListener('click',()=>selectTab(adjustments));
    $(id).addEventListener('keydown',event=>{
     if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
-    const next=event.key==='Home'?false:event.key==='End'?true:!adjustments;
-    selectTab(next);$(next?'corrections-tab':'tuition-tab').focus();
+    const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:tabs.length-1))%tabs.length;
+    selectTab(tabs[next][1]);$(tabs[next][0]).focus();
    });
   }
-  selectTab(!initialInvoiceId && new URLSearchParams(location.search).get('tab')==='adjustments',false);
+  const requestedTab=new URLSearchParams(location.search).get('tab');
+  selectTab(!initialInvoiceId&&requestedTab==='adjustments',false);
  }
  function node(tag,text,cls) {
   const n=document.createElement(tag);
@@ -238,7 +242,7 @@
    } else {
     const intent=await api.intent(invoice.id,amount,parent);
     if(['CANCELLED','FAILED'].includes(intent.status))throw new Error('Yêu cầu QR đã đóng. Vui lòng tạo mã mới.');
-    showIntent(intent,invoice);return {keepOpen:true};
+    await checkout(intent,invoice);return {keepOpen:true};
    }
   });
   const context=node('div',null,'payment-context');
@@ -264,7 +268,7 @@
   }
   function toggle() {
    given.parentElement.hidden=method.value!=='CASH';given.required=method.value==='CASH';
-   $('submit-action').textContent=method.value==='CASH'?'Xác nhận đã thu tiền':'Tạo mã QR';
+   $('submit-action').textContent=method.value==='CASH'?'Xác nhận đã thu tiền':'Thanh toán qua PayOS';
    updateChange();
   }
   given.addEventListener('input',updateChange);
@@ -278,51 +282,61 @@
   let change=Math.ceil(raw/100)*100;if(change===100||change===300)change+=100;
   return {change,support:change-raw};
  }
- function qrView(intent,width=256) {
-  const qr=node('div',null,'payment-qr');
-  if(/^https:\/\//.test(intent.qrCode)) {
-   const img=node('img',null,'qr-image');img.src=intent.qrCode;img.alt='Mã QR thanh toán';qr.append(img);
-  } else if(intent.qrCode && typeof QRCode!=='undefined') {
-   const canvas=node('canvas',null,'qr-image');qr.append(canvas);
-   QRCode.toCanvas(canvas,intent.qrCode,{width,margin:2},error=>{
-    if(error)qr.replaceChildren(node('p','Không dựng được QR. Vui lòng mở trang PayOS.'));
-   });
-  }
-  return qr;
+ const checkoutKey='tuition-payos-checkout';
+ function checkoutUrl(value) {
+  let url;try{url=new URL(value);}catch{throw new Error('Chưa nhận được đường dẫn thanh toán PayOS. Vui lòng kiểm tra lại trạng thái yêu cầu.');}
+  if(url.protocol!=='https:'||url.hostname!=='pay.payos.vn'||url.username||url.password||url.port)
+   throw new Error('Đường dẫn thanh toán PayOS không hợp lệ. Vui lòng liên hệ trung tâm.');
+  return url.href;
  }
- function confirmBank(intent,invoice) {
-  open('Xác nhận đã thu tiền chuyển khoản',async data=>{
-   await api.confirmBank(intent.id,{amount:integer(data.get('amount')),reference:data.get('reference').trim(),reason:data.get('reason').trim(),bankVerified:data.get('bankVerified')==='on'});
-  });
-  $('action-content').append(node('p',invoice.student+' · '+invoice.code+' · '+money(intent.amount),'payment-context'),
-   node('p','Dùng khi ngân hàng đã ghi có nhưng hệ thống chưa nhận được xác nhận tự động. Kiểm tra tài khoản ngân hàng của trung tâm, đúng người chuyển, số tiền và nội dung. Không chỉ dựa vào ảnh thông báo chuyển tiền của khách.','ledger-help'));
-  field('Mã giao dịch ngân hàng','reference',{maxLength:120});
-  field('Số tiền ngân hàng thực nhận (đ)','amount',{inputMode:'numeric',value:intent.amount});
-  field('Lý do xác nhận thủ công và kết quả kiểm tra','reason',{multiline:true,maxLength:400});
-  const label=node('label',null,'bank-verification'),check=node('input',null,'form-check-input');
-  Object.assign(check,{name:'bankVerified',type:'checkbox',required:true});
-  label.append(check,node('span','Tôi đã kiểm tra ngân hàng trung tâm thực nhận đúng khoản tiền này.'));$('action-content').append(label);
-  $('submit-action').textContent='Xác nhận đã thu tiền';
+ async function checkout(intent,invoice) {
+  if(intent.simulated){showIntent(intent,invoice);return;}
+  if(intent.status!=='PENDING'){await finishCheckout(intent);return;}
+  const url=checkoutUrl(intent.checkoutUrl);
+  sessionStorage.setItem(checkoutKey,JSON.stringify({intentId:intent.id,invoiceId:invoice.id,path:location.pathname,user:getCurrentUser().username}));
+  // Leaving for the hosted checkout must never cancel the payment being opened.
+  activeQr=null;clearTimeout(qrTimer);
+  location.assign(url);
+ }
+ async function finishCheckout(intent) {
+  activeQr=null;clearTimeout(qrTimer);$('action-dialog').close();
+  await load();
+  const messages={PAID:'Đợt học phí đã được ghi nhận đủ. Vui lòng xem biên lai và thông báo để đối chiếu.',
+   CANCELLED:'Đã hủy lần thanh toán này. Lần thanh toán tiếp theo sẽ tạo mã mới.',
+   FAILED:'Yêu cầu thanh toán đã đóng. Bạn có thể thanh toán lại để tạo mã mới.',
+   PARTIALLY_PAID:'Đã ghi nhận tiền thực nhận. Vui lòng xem số còn thiếu của đợt và thanh toán bổ sung.',
+   RECONCILE:'Khoản chuyển chưa được xác minh. Vui lòng không chuyển lại số tiền đã gửi.'};
+  if(messages[intent.status])sessionStorage.removeItem(checkoutKey);
+  feedback(messages[intent.status]||'Yêu cầu đang được xác minh với ngân hàng. Hệ thống sẽ tự cập nhật số dư; vui lòng không chuyển lại khoản đã gửi.',!messages[intent.status]);
+  window.refreshNotifications?.();
+ }
+ let resumingCheckout=false;
+ async function resumeCheckout() {
+  if(resumingCheckout)return;
+  const saved=sessionStorage.getItem(checkoutKey);if(!saved)return;
+  let context;try{context=JSON.parse(saved);}catch{sessionStorage.removeItem(checkoutKey);return;}
+  if(context.path!==location.pathname||context.user!==getCurrentUser().username)return;
+  const invoice=invoices.find(item=>String(item.id)===String(context.invoiceId));if(!invoice)return;
+  resumingCheckout=true;
+  try{
+   // Returning/back from the hosted page ends this attempt. The backend verifies bank
+   // receipts before cancellation, including when the URL misleadingly says PAID.
+   const intent=await api.cancelIntent(context.intentId,parent);
+   await finishCheckout(intent);
+  }catch(error){feedback('Chưa xác minh được kết quả PayOS: '+error.message+' Vui lòng tải lại để kiểm tra; không chuyển lại khoản đã gửi.',true);}
+  finally{resumingCheckout=false;}
  }
  function showIntent(intent,invoice) {
-  open('Thanh toán bằng mã QR',null);
-  activeQr={id:intent.id,token:localStorage.getItem('token')};
+  open('Mô phỏng thanh toán',null);
+  activeQr=intent.simulated?{id:intent.id,token:localStorage.getItem('token')}:null;
   const content=$('action-content');
   content.append(node('p',invoice.student+' · '+invoice.code,'ledger-help'),node('p',money(intent.amount),'qr-amount'));
   const state=node('p',intent.status==='PENDING'?'Đang chờ chuyển khoản':(status[intent.status]||intent.status),'fw-semibold');content.append(state);
-  if(intent.simulated) content.append(node('p','MÔ PHỎNG LOCAL · Không chuyển tiền thật. Quản trị viên dùng nút mô phỏng để kiểm thử.','alert alert-warning'));
-  else {
-   if(intent.qrCode)content.append(qrView(intent));
-   if(intent.checkoutUrl && /^https:\/\//.test(intent.checkoutUrl)) {
-    const link=node('a','Mở trang thanh toán PayOS','btn btn-success');
-    link.href=intent.checkoutUrl;link.target='_blank';link.rel='noopener noreferrer';content.append(link);
-   }
-   content.append(node('p','Đóng hoặc rời trang sẽ gửi yêu cầu hủy QR chưa trả. QR tự hết hiệu lực sau tối đa 5 phút; lần thanh toán sau tạo mã mới.'));
-  }
+  const paymentArea=node('div');content.append(paymentArea);
+  content.append(node('p','MÔ PHỎNG LOCAL · Không chuyển tiền thật. Quản trị viên dùng nút mô phỏng để kiểm thử.','alert alert-warning'));
   const actions=node('div',null,'ledger-actions');content.append(actions);
-  if(!parent && !intent.simulated && (['PENDING','UNCERTAIN'].includes(intent.status) || role==='ADMIN' && intent.status==='RECONCILE'))
-   actions.append(button('Xác nhận đã thu tiền',()=>confirmBank(intent,invoice),'btn btn-success'));
-  if(intent.simulated && role==='ADMIN')actions.append(button('Mô phỏng nhận tiền',async()=>{await api.simulate(intent.id);await poll();}));
+  let simulationButton=null;
+  if(role==='ADMIN'){simulationButton=button('Mô phỏng nhận tiền',async()=>{await api.simulate(intent.id);await poll();});actions.append(simulationButton);}
   async function poll() {
    clearTimeout(qrTimer);
    if(!$('action-dialog').open)return;
@@ -331,17 +345,19 @@
     state.textContent=current.status==='PENDING'?'Đang chờ chuyển khoản':(status[current.status]||current.status);
     if(current.status==='PAID') {
      activeQr=null;
-     state.textContent='Đã nhận tiền. Biên lai đã được cập nhật.';
+     sessionStorage.removeItem(checkoutKey);
+     state.textContent='Đợt học phí này đã đóng đủ. Hóa đơn đã được cập nhật.';
      $('action-dialog').close();
-     feedback('Đã nhận tiền chuyển khoản. Giao dịch và biên lai đã hoàn tất.');
+     feedback('Đợt học phí đã được ghi nhận đủ. Vui lòng xem biên lai và thông báo để đối chiếu.');
      await load();window.refreshNotifications?.();return;
     }
     if(['FAILED','CANCELLED'].includes(current.status)) {
      activeQr=null;
+     sessionStorage.removeItem(checkoutKey);
      $('action-dialog').close();feedback('Yêu cầu QR cũ không còn hiệu lực. Bạn có thể chọn thanh toán để tạo mã QR mới.',true);
      await load();return;
     }
-    if(['RECONCILE','CANCELLED'].includes(current.status))return;
+    if(current.status==='RECONCILE'){activeQr=null;paymentArea.hidden=true;actions.replaceChildren();state.textContent='Đã nhận thông tin chuyển khoản. Giao dịch chưa khớp yêu cầu thanh toán và đang được xác minh; vui lòng không chuyển lại khoản đã gửi.';return;}
    } catch(e) {state.textContent=e.message;}
    if($('action-dialog').open)qrTimer=setTimeout(poll,4000);
   }
@@ -349,12 +365,12 @@
  }
  async function closeAction() {
   if(busy||closingQr)return;
-  if(!activeQr){$('action-dialog').close();return;}
+  if(!activeQr){$('action-dialog').close();try{await load();}catch(error){feedback(error.message,true);}return;}
   closingQr=true;$('close-action').disabled=true;clearTimeout(qrTimer);
   try {
    const result=await api.cancelIntent(activeQr.id,parent);
    activeQr=null;$('action-dialog').close();
-   feedback(result?.status==='PAID'?'Đã nhận tiền chuyển khoản. Biên lai đã cập nhật.':'Đã hủy QR chưa thanh toán. Lần sau hệ thống sẽ tạo mã mới.');
+   feedback(result?.status==='PAID'?'Đợt học phí đã đóng đủ. Hóa đơn đã cập nhật.':result?.status==='PARTIALLY_PAID'?'Đã ghi nhận tiền chuyển khoản một phần. Bạn có thể mở thanh toán để đóng bổ sung.':'Đã hủy QR chưa thanh toán. Lần sau hệ thống sẽ tạo mã mới.');
    await load();window.refreshNotifications?.();
   } catch(error){$('action-error').textContent='Chưa xác nhận hủy QR: '+error.message;}
   finally{closingQr=false;$('close-action').disabled=false;}
@@ -377,6 +393,43 @@
   field('Kết quả liên hệ và lý do hủy','reason',{multiline:true,maxLength:500});
   const label=node('label',null,'bank-verification'),check=node('input',null,'form-check-input');Object.assign(check,{name:'contactConfirmed',type:'checkbox',required:true});
   label.append(check,node('span','Tôi đã liên hệ phụ huynh và kiểm tra trung tâm chưa nhận tiền.'));$('action-content').append(label);
+ }
+ function addDay(value,days) {
+  const parsed=new Date(value+'T00:00:00Z');if(!Number.isFinite(parsed.getTime()))return null;
+  parsed.setUTCDate(parsed.getUTCDate()+days);return parsed.toISOString().slice(0,10);
+ }
+ function extensionRange(invoice,due) {
+  if(!invoice.classEndDate)return {error:'Chưa có ngày kết thúc lớp để xác định khoảng gia hạn.'};
+  let min=[today,addDay(due.date,1)].sort().at(-1),max=invoice.classEndDate;
+  for(const other of invoice.installments){
+   if(other.sequence<due.sequence){const lower=addDay(other.date,1);if(lower>min)min=lower;}
+   if(other.sequence>due.sequence){const upper=addDay(other.date,-1);if(upper<max)max=upper;}
+  }
+  if(min>max)return {error:'Kỳ '+due.sequence+' không còn khoảng ngày hợp lệ để gia hạn trước kỳ sau và ngày kết thúc lớp.'};
+  return {min,max,hint:'Hạn đóng mới chỉ được chọn từ '+date(min)+' đến '+date(max)+'.'};
+ }
+ function extendDue(invoice,due) {
+  const range=extensionRange(invoice,due);if(range.error)throw new Error(range.error);
+  let proposed,reason,error;
+  const validate=()=>{
+   const message=!proposed.value?'Vui lòng chọn hạn đóng mới. '+range.hint
+    :proposed.value<range.min||proposed.value>range.max?range.hint:'';
+   error.textContent=message;proposed.classList.toggle('is-invalid',!!message);return message;
+  };
+  open('Gia hạn kỳ '+due.sequence+' · '+invoice.code,async data=>{
+   if(validate())throw new Error('Vui lòng sửa hạn đóng mới theo khoảng ngày được hướng dẫn.');
+   if(!reason.value.trim())throw new Error('Vui lòng nhập lý do gia hạn.');
+   await api.extendDue(invoice.id,{installmentId:due.id,proposedDate:proposed.value,reason:reason.value.trim()});
+   return {message:'Đã gia hạn kỳ '+due.sequence+'. Hạn đóng đã được cập nhật.'};
+  });
+  $('action-form').noValidate=true;
+  $('action-content').append(node('p',invoice.student+' · Kỳ '+due.sequence+' · Hạn hiện tại '+date(due.date),'payment-context'));
+  proposed=field('Hạn đóng mới','proposedDate',{type:'date',min:range.min,max:range.max,value:range.min});
+  proposed.setAttribute('aria-label','Hạn đóng mới');
+  proposed.parentElement.append(node('small',range.hint,'ledger-help'));
+  error=node('small','','text-danger');error.id='extension-date-error';proposed.parentElement.append(error);
+  proposed.addEventListener('input',validate);
+  reason=field('Lý do gia hạn','reason',{multiline:true,maxLength:500});
  }
  function card(invoice) {
   const el=node('article',null,'ledger-card');el.id='invoice-'+invoice.id;
@@ -407,11 +460,18 @@
     if(!parent)actions.append(button('Chốt lịch đóng',()=>configure(invoice),'btn btn-success'));
     else el.append(node('p','Trung tâm đang chốt lịch đóng học phí.','text-secondary'));
    } else {
-    if(Number(invoice.balance)>0) {
+    if(invoice.intents.some(i=>i.status==='RECONCILE'))el.append(node('p','Giao dịch chuyển khoản chưa được xác minh. Vui lòng không chuyển lại khoản tiền đang được kiểm tra.','alert alert-warning'));
+    if(Number(invoice.balance)>0 && !invoice.intents.some(i=>i.status==='RECONCILE')) {
      const next=invoice.installments.find(d=>Number(d.remaining)>0);
      actions.append(button('Thanh toán đợt '+(next?.sequence||1),()=>payment(invoice),'btn btn-success'));
     }
    }
+  }
+  if(!parent&&invoice.confirmed&&!invoice.reviewRequired&&invoice.status!=='CANCELLED')for(const due of invoice.installments){
+   if(Number(due.paid)>0||Number(due.remaining)<=0)continue;
+   const range=extensionRange(invoice,due);
+   if(range.error){actions.append(node('span',range.error,'ledger-help'));continue;}
+   actions.append(button('Gia hạn kỳ '+due.sequence,()=>extendDue(invoice,due)));
   }
   el.append(actions);
   if(invoice.receipts.length) {
@@ -486,7 +546,7 @@
    invoices=data;
    if(initialInvoiceId){pagination.select('hóa đơn',invoices.findIndex(i=>String(i.id)===initialInvoiceId));initialInvoiceId=null;}
    render();
-   if(parent)await renderNotices();else await renderInternal();
+   if(parent)await renderNotices();else {await renderInternal();}
   } finally {if(id===loadId)$('refresh').disabled=false;}
  }
  $('keyword').addEventListener('input',()=>{pagination.reset('hóa đơn');render();});
@@ -506,10 +566,12 @@
   } catch(error){$('action-error').textContent=error.message;}
   finally {busy=false;$('submit-action').disabled=false;}
  });
- load().then(()=>{
+ load().then(async()=>{
+  await resumeCheckout();
   const id=new URLSearchParams(location.search).get('invoiceId');
   if(id)document.getElementById('invoice-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
  }).catch(e=>feedback(e.message,true));
+ window.addEventListener('pageshow',event=>{if(event.persisted)load().then(resumeCheckout).catch(e=>feedback(e.message,true));});
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!$('action-dialog').open)load().catch(()=>{});});
  if(parent)setInterval(()=>{
   if(!document.hidden && !$('action-dialog').open && !busy && !$('refresh').disabled)

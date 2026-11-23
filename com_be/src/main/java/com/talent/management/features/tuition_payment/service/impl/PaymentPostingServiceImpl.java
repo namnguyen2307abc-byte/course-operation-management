@@ -63,7 +63,13 @@ public class PaymentPostingServiceImpl implements PaymentPostingService {
                     HttpStatus.BAD_REQUEST,
                     "PAYMENT_AMOUNT_ZERO",
                     "Số tiền thanh toán phải lớn hơn 0đ. Không được tạo giao dịch hoặc biên lai"
-                        + " 0đ.");
+                            + " 0đ.");
+        if (amount.compareTo(tuitionLedgerService.balance(invoice)) > 0)
+            throw new TuitionOperationException(
+                    HttpStatus.CONFLICT,
+                    "PAYMENT_EXCEEDS_BALANCE",
+                    "Số tiền ghi nhận vượt khoản học phí còn thiếu. Vui lòng tải lại hóa đơn và"
+                            + " kiểm tra giao dịch.");
         CashTenderPolicy.Quote cash =
                 method == PaymentMethod.CASH_AT_DESK
                         ? CashTenderPolicy.quote(amount, cashGiven)

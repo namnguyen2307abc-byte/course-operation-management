@@ -61,6 +61,29 @@ BEGIN
  );
 END;
 
+-- Gateway receipt audit and installment binding. Legacy reconciliation columns are retained for history; no Admin workflow is enabled.
+IF COL_LENGTH(N'dbo.tuition_payment_intents',N'installment_id') IS NULL ALTER TABLE dbo.tuition_payment_intents ADD installment_id BIGINT NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'transfer_content') IS NULL ALTER TABLE dbo.tuition_bank_events ADD transfer_content NVARCHAR(500) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'sender_name') IS NULL ALTER TABLE dbo.tuition_bank_events ADD sender_name NVARCHAR(150) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'sender_account') IS NULL ALTER TABLE dbo.tuition_bank_events ADD sender_account VARCHAR(100) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'sender_bank') IS NULL ALTER TABLE dbo.tuition_bank_events ADD sender_bank NVARCHAR(100) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'transferred_at') IS NULL ALTER TABLE dbo.tuition_bank_events ADD transferred_at DATETIME2 NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'source') IS NULL ALTER TABLE dbo.tuition_bank_events ADD source VARCHAR(30) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'reason') IS NULL ALTER TABLE dbo.tuition_bank_events ADD reason VARCHAR(40) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'resolved_invoice_id') IS NULL ALTER TABLE dbo.tuition_bank_events ADD resolved_invoice_id BIGINT NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'recorded_by_id') IS NULL ALTER TABLE dbo.tuition_bank_events ADD recorded_by_id BIGINT NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'allocated_amount') IS NULL ALTER TABLE dbo.tuition_bank_events ADD allocated_amount DECIMAL(12,2) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'refunded_amount') IS NULL ALTER TABLE dbo.tuition_bank_events ADD refunded_amount DECIMAL(12,2) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'refund_reference') IS NULL ALTER TABLE dbo.tuition_bank_events ADD refund_reference VARCHAR(120) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'resolution_note') IS NULL ALTER TABLE dbo.tuition_bank_events ADD resolution_note NVARCHAR(500) NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'resolved_installment_id') IS NULL ALTER TABLE dbo.tuition_bank_events ADD resolved_installment_id BIGINT NULL;
+IF COL_LENGTH(N'dbo.tuition_bank_events',N'expected_amount') IS NULL ALTER TABLE dbo.tuition_bank_events ADD expected_amount DECIMAL(12,2) NULL;
+IF OBJECT_ID(N'dbo.FK_bank_event_resolved_invoice',N'F') IS NULL EXEC sys.sp_executesql N'ALTER TABLE dbo.tuition_bank_events ADD CONSTRAINT FK_bank_event_resolved_invoice FOREIGN KEY(resolved_invoice_id) REFERENCES dbo.invoices(id);';
+IF OBJECT_ID(N'dbo.FK_bank_event_recorded_by',N'F') IS NULL EXEC sys.sp_executesql N'ALTER TABLE dbo.tuition_bank_events ADD CONSTRAINT FK_bank_event_recorded_by FOREIGN KEY(recorded_by_id) REFERENCES dbo.users(id);';
+IF OBJECT_ID(N'dbo.FK_bank_event_resolved_installment',N'F') IS NULL EXEC sys.sp_executesql N'ALTER TABLE dbo.tuition_bank_events ADD CONSTRAINT FK_bank_event_resolved_installment FOREIGN KEY(resolved_installment_id) REFERENCES dbo.tuition_installments(id);';
+IF OBJECT_ID(N'dbo.FK_bank_intent_installment',N'F') IS NULL EXEC sys.sp_executesql N'ALTER TABLE dbo.tuition_payment_intents ADD CONSTRAINT FK_bank_intent_installment FOREIGN KEY(installment_id) REFERENCES dbo.tuition_installments(id);';
+IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.tuition_bank_events') AND name=N'UX_bank_event_refund_reference') EXEC sys.sp_executesql N'CREATE UNIQUE INDEX UX_bank_event_refund_reference ON dbo.tuition_bank_events(refund_reference) WHERE refund_reference IS NOT NULL;';
+
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
  IF NOT EXISTS(SELECT 1 FROM dbo.combined_demo_installations WHERE seed_key='COMBINED_DEMO_V1')
@@ -178,11 +201,11 @@ BEGIN
         INSERT dbo.programs(code,name,description) VALUES(''PIANO'',N''Piano'',N''Đào tạo kỹ năng chơi đàn Piano theo trình độ.'');
     IF NOT EXISTS(SELECT 1 FROM dbo.courses WHERE code=''PIA-CB-12'')
         INSERT dbo.courses(program_id,code,name,level,duration_weeks,total_sessions,tuition_fee,description)
-        SELECT id,''PIA-CB-12'',N''Piano nền tảng'',''BEGINNER'',6,12,2400000,
+        SELECT id,''PIA-CB-12'',N''Piano nền tảng'',''BEGINNER'',6,12,30000,
             N''Làm quen phím đàn, tư thế, đọc nốt, nhịp cơ bản và phối hợp hai tay; mỗi học viên một đàn.''
         FROM dbo.programs WHERE code=''PIANO'';
     IF EXISTS(SELECT 1 FROM dbo.courses c JOIN dbo.programs p ON p.id=c.program_id WHERE c.code=''PIA-CB-12''
-        AND (c.name<>N''Piano nền tảng'' OR p.code<>''PIANO'' OR c.tuition_fee<>2400000))
+        AND (c.name<>N''Piano nền tảng'' OR p.code<>''PIANO'' OR c.tuition_fee<>30000))
         THROW 51608,''PIA-CB-12 has different business data. No existing course was overwritten.'',1;
     IF NOT EXISTS(SELECT 1 FROM dbo.branches WHERE code=''MD01'')
         INSERT dbo.branches(code,name,address,email,active,created_at)
@@ -849,7 +872,7 @@ DECLARE @CoursePiaId BIGINT = (SELECT TOP 1 id FROM courses WHERE code = ''PIA-C
 IF @CoursePiaId IS NULL
 BEGIN
     INSERT INTO courses (program_id, code, name, level, duration_weeks, total_sessions, tuition_fee, description)
-    VALUES (@PianoProgramId, ''PIA-CB-12'', N''Piano nền tảng'', ''BEGINNER'', 12, 12, 3600000, N''Khóa học Piano nền tảng trang bị tư thế tay, nhận diện nốt, đọc bản nhạc và thị tấu.'');
+    VALUES (@PianoProgramId, ''PIA-CB-12'', N''Piano nền tảng'', ''BEGINNER'', 12, 12, 30000, N''Khóa học Piano nền tảng trang bị tư thế tay, nhận diện nốt, đọc bản nhạc và thị tấu.'');
     SET @CoursePiaId = SCOPE_IDENTITY();
 END;
 
@@ -1587,6 +1610,12 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
    N'[HUONG-1611] Ghi danh demo để kiểm tra điểm danh; không tạo giao dịch tiền thật.'
   FROM dbo.students s WHERE s.parent_id=@HuongDemoParent AND s.notes=N'[HUONG-1611] Học viên lớp Piano sáng thứ Hai.';
  END;
+ -- Payment manual-test price: applies to fresh installs and reruns with COMBINED_DEMO_V1.
+ -- Only the course catalogue changes. Existing invoices, plans, receipts and discounts are preserved.
+ IF (SELECT COUNT(*) FROM dbo.courses WHERE code='PIA-CB-12')<>1
+  THROW 51805,'Expected exactly one PIA-CB-12 course for the 30000 VND payment demo.',1;
+ UPDATE dbo.courses SET tuition_fee=30000 WHERE code='PIA-CB-12' AND tuition_fee<>30000;
+ SELECT code,name,tuition_fee FROM dbo.courses WHERE code='PIA-CB-12';
  -- Existing accounts, passwords and payment history are never reset by this extension.
  IF EXISTS(SELECT 1 FROM dbo.users WHERE username='d26_staff_2' AND role<>'STAFF')
   THROW 51802,'d26_staff_2 already exists with a different role; no account was changed.',1;

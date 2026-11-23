@@ -45,4 +45,6 @@ public class TuitionPaymentIntent {
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    private Long installmentId;
 }

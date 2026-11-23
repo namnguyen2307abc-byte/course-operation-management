@@ -3,6 +3,7 @@ const installmentApi = (() => {
  const parent='/api/parent-tuition';
  const call=(url,method='GET',data=null)=>callApi(url,method,data,false,false);
  return {
+  extendDue: (id,data)=>call(staff+'/'+id+'/due-date','POST',data),
   invoices: isParent=>call(isParent?parent+'/invoices':staff+'/receivables'),
   detail: (id,isParent)=>call(isParent?parent+'/invoices/'+id:staff+'/'+id+'/plan'),
   plan: (id,data)=>call(staff+'/'+id+'/plan','POST',data),

@@ -86,7 +86,29 @@ public final class InstallmentResponses {
             String status,
             String checkoutUrl,
             String qrCode,
-            boolean simulated) {}
+            boolean simulated,
+            BigDecimal received,
+            BigDecimal remaining) {
+        public IntentView(
+                Long id,
+                long orderCode,
+                BigDecimal amount,
+                String status,
+                String checkoutUrl,
+                String qrCode,
+                boolean simulated) {
+            this(
+                    id,
+                    orderCode,
+                    amount,
+                    status,
+                    checkoutUrl,
+                    qrCode,
+                    simulated,
+                    BigDecimal.ZERO,
+                    amount);
+        }
+    }
 
     public record ChangeView(
             Long id,

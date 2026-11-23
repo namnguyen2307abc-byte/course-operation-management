@@ -8,6 +8,9 @@ import java.util.List;
 
 /** Application contract for PlanChangeService. */
 public interface PlanChangeService {
+    void extend(Long invoiceId, RequestDueDateChangeRequest input);
+
+    /** Compatibility endpoint: now applies the extension directly. */
     void request(Long invoiceId, RequestDueDateChangeRequest input);
 
     void review(Long id, ReviewTuitionRequest input);

@@ -4,6 +4,7 @@ package com.talent.management.features.tuition_payment.enums;
 public enum PaymentIntentStatus {
     CREATING,
     PENDING,
+    PARTIALLY_PAID,
     UNCERTAIN,
     PAID,
     CANCELLED,
