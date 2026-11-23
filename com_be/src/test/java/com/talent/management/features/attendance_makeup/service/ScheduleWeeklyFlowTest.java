@@ -250,6 +250,40 @@ class ScheduleWeeklyFlowTest {
         assertThat(sheet.getStudents()).extracting("status").containsExactly("PRESENT", null);
     }
 
+    @Test void absentMakeupLocksOnFirstScheduledAttempt() {
+        Lesson target = lesson(200);
+        roster(target);
+        MakeupRegistration makeup = MakeupRegistration.builder().id(5L).student(child)
+                .originalLesson(lesson(100)).targetLesson(target).status(MakeupStatus.SCHEDULED)
+                .note("[Lần bù: 1/1] Buổi bù duy nhất").build();
+        when(makeups.findByTargetLessonIdAndStatusIn(eq(200L), any())).thenReturn(List.of(makeup));
+        when(makeups.findFirstByTargetLessonIdAndStudentIdAndStatusIn(eq(200L), eq(1L), any()))
+                .thenReturn(Optional.of(makeup));
+        when(students.findById(1L)).thenReturn(Optional.of(child));
+
+        attendanceService.saveLessonAttendanceBatch(200L, batch(1L, "ABSENT"));
+
+        assertThat(makeup.getStatus()).isEqualTo(MakeupStatus.CANCELLED);
+        assertThat(makeup.getNote()).contains("[Lần bù: 1/1 - KHÓA]");
+        verify(makeups).save(makeup);
+    }
+
+    @Test void markingPresentDoesNotReviveManuallyCancelledMakeup() {
+        Lesson target = lesson(200);
+        roster(target, child);
+        MakeupRegistration makeup = MakeupRegistration.builder().id(5L).student(child)
+                .originalLesson(lesson(100)).targetLesson(target).status(MakeupStatus.CANCELLED)
+                .note("HỦY: Phụ huynh không cần học bù").build();
+        when(makeups.findFirstByTargetLessonIdAndStudentIdAndStatusIn(eq(200L), eq(1L), any()))
+                .thenReturn(Optional.of(makeup));
+        when(students.findById(1L)).thenReturn(Optional.of(child));
+
+        attendanceService.saveLessonAttendanceBatch(200L, batch(1L, "PRESENT"));
+
+        assertThat(makeup.getStatus()).isEqualTo(MakeupStatus.CANCELLED);
+        verify(makeups, never()).save(any());
+    }
+
     @Test void makeupAttendanceCompletesRegistrationAndKeepsLearnerInRoster() {
         Lesson target = lesson(200);
         roster(target);
