@@ -447,6 +447,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
         return merged;
     }
 
+    // =========================================================================
     // 2. TẠO LỚP HỌC MỚI VÀ TỰ ĐỘNG SINH CÁC BUỔI HỌC VÀO THỜI KHÓA BIỂU
     // =========================================================================
 
