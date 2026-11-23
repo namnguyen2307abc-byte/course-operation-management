@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 @Component
 public class AttendanceMakeupMapper {
 
-    public static final int MAX_MAKEUP_RETRIES = 1;
+    public static final int MAX_MAKEUP_RETRIES = 2;
     private static final Pattern RETRY_TAG_PATTERN = Pattern.compile("\\[Lần bù:\\s*(\\d+)/(\\d+)(?:\\s*-\\s*KHÓA)?\\]\\s*");
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");

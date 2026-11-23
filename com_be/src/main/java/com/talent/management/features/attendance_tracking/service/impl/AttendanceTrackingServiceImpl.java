@@ -459,25 +459,26 @@ public class AttendanceTrackingServiceImpl implements AttendanceTrackingService 
 
                     if (retry >= AttendanceMakeupMapper.MAX_MAKEUP_RETRIES) {
                         mr.setStatus(MakeupStatus.CANCELLED);
-                        String lockBody = "Hủy quyền học bù do học viên đã vắng mặt tại ca học bù đã xếp (ngày " + lesson.getLessonDate() + ")" + reasonSuffix;
+                        String lockBody = "Hủy quyền học bù do học viên đã vắng mặt tại ca học bù lần " + retry + " (ngày " + lesson.getLessonDate() + ")" + reasonSuffix;
                         mr.setNote(AttendanceMakeupMapper.buildRetryNote(retry, true, lockBody));
                         makeupRegistrationRepository.save(mr);
-                        log.info("Ca học bù #{} của học viên [{}] TỰ ĐỘNG KHÓA/HỦY do không tham gia buổi bù",
-                                mr.getId(), student.getFullName());
+                        log.info("Ca học bù #{} của học viên [{}] TỰ ĐỘNG KHÓA/HỦY do không tham gia buổi bù lần {}",
+                                mr.getId(), student.getFullName(), retry);
 
                         if (notificationService != null) {
                             if (student.getParent() != null) {
                                 notificationService.sendNotification(
                                         student.getParent(), currentUser,
-                                        "Kết thúc quyền học bù: " + student.getFullName(),
+                                        "Kết thúc quyền học bù (Quá " + AttendanceMakeupMapper.MAX_MAKEUP_RETRIES + " lần): " + student.getFullName(),
                                         "Bé " + student.getFullName() + " đã vắng mặt tại buổi học bù ngày " + lesson.getLessonDate()
-                                                + ". Theo quy định, mỗi buổi nghỉ chỉ xếp bù tối đa 1 lần, ca học bù này đã kết thúc.",
+                                                + ". Theo quy định, mỗi buổi nghỉ chỉ xếp bù tối đa " + AttendanceMakeupMapper.MAX_MAKEUP_RETRIES
+                                                + " lần. Học viên đã vắng mặt 2 buổi học bù nên quyền học bù cho buổi nghỉ này đã kết thúc.",
                                         "MAKEUP_LIMIT_EXCEEDED", mr.getId(), "/pages/absence-makeup.html");
                             }
                             notificationService.sendToRoles(
                                     List.of(Role.STAFF, Role.ADMIN), currentUser,
                                     "Học viên không tham gia ca học bù: " + student.getFullName(),
-                                    "Học viên " + student.getFullName() + " đã vắng mặt tại buổi học bù (Ca bù #" + mr.getId() + "). Hệ thống đã tự động khóa quyền xếp lại.",
+                                    "Học viên " + student.getFullName() + " đã vắng mặt tại buổi học bù lần " + retry + " (Ca bù #" + mr.getId() + "). Hệ thống đã tự động khóa quyền xếp lại.",
                                     "MAKEUP_LIMIT_EXCEEDED", mr.getId(), "/pages/absence-makeup.html");
                         }
                     } else {
