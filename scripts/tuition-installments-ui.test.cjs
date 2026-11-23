@@ -60,7 +60,7 @@ test('parent sees notices and requests only an online payment for the chosen amo
   await page.getByRole('heading',{name:'Thông báo học phí'}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Thu tiền mặt',exact:true}).count(),0);
   await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).click();
-  await page.getByRole('button',{name:'Tạo mã QR',exact:true}).click();
+  await page.getByRole('button',{name:'Thanh toán qua PayOS',exact:true}).click();
   await page.getByText('MÔ PHỎNG LOCAL',{exact:false}).waitFor();
   assert.equal(posted.amount,1500000);
   assert.equal(await page.getByRole('button',{name:'Mô phỏng nhận tiền'}).count(),0);
@@ -116,47 +116,30 @@ test('parent bell shows tuition reminders in alerts and opens the related invoic
  }finally{await page.close();}
 });
 
-test('cashier may confirm a real QR only after entering bank verification details',async()=>{
- let posted;
- const qr={id:7,orderCode:700,amount:1500000,status:'PENDING',simulated:false,qrCode:'DEMO-ONLY-QR'};
- const {page,errors}=await open('STAFF',(url,req)=>{
-  if(url.pathname.endsWith('/receivables'))return [{...invoice,intents:[qr]}];
-  if(req.method()==='POST'&&url.pathname.endsWith('/payment-intents'))return qr;
-  if(req.method()==='POST'&&url.pathname.endsWith('/confirm-bank')){posted=req.postDataJSON();return {};}
- });
+test('cashier has only installment payment entry without an extra PayOS status button',async()=>{
+ const {page,errors}=await open('STAFF',()=>undefined);
  try{
-  assert.equal(await page.getByRole('button',{name:'Mở QR đang chờ',exact:true}).count(),0);
-  await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).click();
-  await page.getByLabel('Phương thức thanh toán',{exact:true}).selectOption('QR');
-  await page.getByRole('button',{name:'Tạo mã QR',exact:true}).click();
-  assert.equal(await page.getByRole('button',{name:'Kiểm tra kết quả',exact:true}).count(),0);
-  await page.getByRole('button',{name:'Xác nhận đã thu tiền',exact:true}).click();
-  await page.getByLabel('Mã giao dịch ngân hàng',{exact:true}).fill('BANK-700');
-  await page.getByLabel('Lý do xác nhận thủ công và kết quả kiểm tra',{exact:true}).fill('Đã kiểm tra ghi có ngân hàng, webhook chậm');
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button',{name:'Xác nhận đã thu tiền',exact:true}).click();
-  await page.getByText('Đã lưu và cập nhật số dư.',{exact:true}).waitFor();
-  assert.deepEqual(posted,{amount:1500000,reference:'BANK-700',reason:'Đã kiểm tra ghi có ngân hàng, webhook chậm',bankVerified:true});
+  await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Kiểm tra thanh toán PayOS',exact:true}).count(),0);
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
 
-test('parent receives a due notification with QR and cannot manually confirm receipt',async()=>{
- const qr={id:7,orderCode:700,amount:1500000,status:'PENDING',simulated:false,qrCode:'DEMO-ONLY-QR'};
+test('parent goes directly to the hosted PayOS checkout without an intermediate QR or cancellation',async()=>{
+ let created=0,cancelled=0;
+ const qr={id:7,orderCode:700,amount:1500000,status:'PENDING',simulated:false,qrCode:'DEMO-ONLY-QR',checkoutUrl:'https://pay.payos.vn/web/demo-only'};
  const {page,errors}=await open('PARENT',(url,req)=>{
-  if(url.pathname.endsWith('/notifications'))return [{id:8,invoiceId:11,code:'DEMO-11',student:'Minh An',remaining:1500000,date:today,type:'DUE_TODAY',sequence:2,paymentIntent:qr}];
-  if(req.method()==='POST'&&url.pathname.endsWith('/payment-intents'))return qr;
+  if(url.pathname.endsWith('/notifications'))return [{id:8,invoiceId:11,code:'DEMO-11',student:'Minh An',remaining:1500000,date:today,type:'DUE_TODAY',sequence:2}];
+  if(req.method()==='POST'&&url.pathname.endsWith('/payment-intents')){created++;return qr;}
+  if(url.pathname.endsWith('/cancel')){cancelled++;return {};}
  },{width:390,height:844});
  try{
-  assert.equal(await page.locator('#notices canvas').count(),0);
+  await page.route('https://pay.payos.vn/**',r=>r.fulfill({contentType:'text/html',body:'<h1>Hosted checkout test fixture</h1>'}));
   await page.locator('#notices').getByRole('button',{name:'Thanh toán học phí',exact:true}).click();
-  await page.getByRole('button',{name:'Tạo mã QR',exact:true}).click();
-  await page.locator('#action-dialog canvas').waitFor();
-  assert.equal(await page.getByRole('button',{name:'Xác nhận đã thu tiền',exact:true}).count(),0);
-  assert.equal(await page.getByRole('button',{name:'Kiểm tra kết quả',exact:true}).count(),0);
-  assert.equal(await page.getByRole('button',{name:'Hủy yêu cầu QR',exact:true}).count(),0);
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
-  assert.deepEqual(errors,[]);
+  assert.equal(await page.locator('#action-dialog canvas').count(),0);
+  await page.getByRole('button',{name:'Thanh toán qua PayOS',exact:true}).click();
+  await page.waitForURL('https://pay.payos.vn/web/demo-only');
+  assert.equal(created,1);assert.equal(cancelled,0);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
 
@@ -175,8 +158,8 @@ test('QR completion polling closes modal and advances to the next installment',a
  });
  try{
   await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).click();
-  await page.getByRole('button',{name:'Tạo mã QR',exact:true}).click();
-  await page.getByText('Đã nhận tiền chuyển khoản. Giao dịch và biên lai đã hoàn tất.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Thanh toán qua PayOS',exact:true}).click();
+  await page.getByText('Đợt học phí đã được ghi nhận đủ. Vui lòng xem biên lai và thông báo để đối chiếu.',{exact:true}).waitFor();
   assert.ok(polls>0);
   assert.equal(await page.locator('#action-dialog').evaluate(el=>el.open),false);
   await page.getByRole('button',{name:'Thanh toán đợt 3',exact:true}).waitFor();
@@ -347,20 +330,18 @@ test('adjustment review refreshes its status and works on a mobile layout',async
  }finally{await page.close();}
 });
 
-for(const role of ['ADMIN','STAFF','PARENT'])test(role+' tuition page omits reconciliation filter and extension workflow',async()=>{
- let extensionReads=0;
+for(const role of ['ADMIN','STAFF','PARENT'])test(role+' extension visibility follows role and paid periods',async()=>{
+ let reads=0;
+ const data={...invoice,classEndDate:'2099-12-31',installments:invoice.installments.map(d=>({...d,date:d.sequence===3?'2099-12-20':d.date}))};
  const {page,errors}=await open(role,url=>{
-  if(url.pathname.includes('plan-change-requests')){extensionReads++;return [{id:1,status:'PENDING'}];}
+  if(url.pathname.includes('plan-change-requests')){reads++;return [];}
+  if(url.pathname.endsWith('/invoices')||url.pathname.endsWith('/receivables'))return [data];
  });
  try{
   await page.locator('#records article').first().waitFor();
-  assert.deepEqual(await page.locator('#state option').allTextContents(),['Tất cả','Còn phải đóng','Quá hạn','Đã đóng đủ']);
-  assert.equal(await page.locator('#changes').count(),0);
-  assert.equal(await page.getByRole('button',{name:/Gia hạn kỳ|Duyệt gia hạn/}).count(),0);
-  assert.equal(extensionReads,0);
-  await page.locator('#state').selectOption('outstanding');
-  assert.equal(await page.locator('#records article').count(),1);
-  assert.deepEqual(errors,[]);
+  assert.equal(await page.getByRole('button',{name:'Gia hạn kỳ 1',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Gia hạn kỳ 2',exact:true}).count(),role==='PARENT'?0:1);
+  assert.equal(reads,0);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
 
@@ -595,7 +576,7 @@ test('closing an unpaid QR cancels it and reopening creates a new request',async
  try{
   for(let i=0;i<2;i++){
    await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).click();
-   await page.getByRole('button',{name:'Tạo mã QR',exact:true}).click();
+   await page.getByRole('button',{name:'Thanh toán qua PayOS',exact:true}).click();
    await page.getByText('MÔ PHỎNG LOCAL',{exact:false}).waitFor();
    assert.equal(await page.getByRole('button',{name:'Mở QR đang chờ',exact:true}).count(),0);
    if(i===0){await page.getByRole('button',{name:'Đóng',exact:true}).click();await page.getByText('Đã hủy QR chưa thanh toán. Lần sau hệ thống sẽ tạo mã mới.',{exact:true}).waitFor();}
@@ -615,9 +596,94 @@ test('payment during QR cancellation is shown as paid instead of cancelled',asyn
  });
  try{
   await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).click();
-  await page.getByRole('button',{name:'Tạo mã QR',exact:true}).click();
+  await page.getByRole('button',{name:'Thanh toán qua PayOS',exact:true}).click();
   await page.getByText('MÔ PHỎNG LOCAL',{exact:false}).waitFor();
   await page.getByRole('button',{name:'Đóng',exact:true}).click();
-  await page.getByText('Đã nhận tiền chuyển khoản. Biên lai đã cập nhật.',{exact:true}).waitFor();
+  await page.getByText('Đợt học phí đã đóng đủ. Hóa đơn đã cập nhật.',{exact:true}).waitFor();
+ }finally{await page.close();}
+});
+
+for(const state of ['CANCELLED','PARTIALLY_PAID','RECONCILE','PAID'])
+test(`returning from PayOS ends the attempt automatically and preserves verified state ${state}`,async()=>{
+ let cancels=0;
+ const current={id:7,amount:1500000,status:state,received:500000,remaining:1000000,simulated:false};
+ const {page,errors}=await open('PARENT',(url,req)=>{
+  if(url.pathname.endsWith('/cancel')){cancels++;return current;}
+ });
+ try{
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(()=>sessionStorage.setItem('tuition-payos-checkout',JSON.stringify({intentId:7,invoiceId:11,path:location.pathname,user:'demo'})));
+  await page.goto(origin+'/pages/parent-tuition.html?invoiceId=11&status=PAID&code=00');
+  const text={CANCELLED:'Đã hủy lần thanh toán này',PAID:'Đợt học phí đã được ghi nhận đủ',PARTIALLY_PAID:'Đã ghi nhận tiền thực nhận',RECONCILE:'Khoản chuyển chưa được xác minh'}[state];
+  await page.locator('#feedback').filter({hasText:text}).waitFor();
+  assert.equal(cancels,1);
+  assert.equal(await page.locator('#action-dialog').evaluate(el=>el.open),false);
+  assert.equal(await page.getByRole('button',{name:'Kiểm tra thanh toán PayOS',exact:true}).count(),0);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('checkout rejects an external URL outside the PayOS payment host',async()=>{
+ const {page}=await open('PARENT',(url,req)=>{
+  if(req.method()==='POST'&&url.pathname.endsWith('/payment-intents'))return {id:7,amount:1500000,status:'PENDING',simulated:false,checkoutUrl:'https://example.org/fake-checkout'};
+ });
+ try{
+  await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).click();
+  await page.getByRole('button',{name:'Thanh toán qua PayOS',exact:true}).click();
+  await page.locator('#action-error').filter({hasText:'Đường dẫn thanh toán PayOS không hợp lệ'}).waitFor();
+  assert.match(page.url(),/parent-tuition/);
+ }finally{await page.close();}
+});
+
+test('admin keeps tuition and cash corrections without bank reconciliation UI or requests',async()=>{
+ let bankReads=0;
+ const {page,errors}=await open('ADMIN',url=>{if(url.pathname.includes('bank-reconciliation'))bankReads++;});
+ try{
+  await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).waitFor();
+  assert.equal(await page.locator('#bank-transfers-tab, #bank-transfers').count(),0);
+  await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).click();
+  assert.equal(await page.locator('#reversals').isVisible(),true);
+  assert.equal(bankReads,0);assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('staff extension form shows the exact range and rejects a date past the next period before posting',async()=>{
+ let posted;
+ const data={...invoice,classEndDate:'2099-12-31',installments:invoice.installments.map(d=>({...d,date:d.sequence===3?'2099-12-20':d.date}))};
+ const {page}=await open('STAFF',(url,req)=>{
+  if(url.pathname.endsWith('/receivables'))return [data];
+  if(req.method()==='POST'&&url.pathname.endsWith('/due-date')){posted=req.postDataJSON();return {};}
+ });
+ try{
+  await page.getByRole('button',{name:'Gia hạn kỳ 2',exact:true}).click();
+  const date=page.getByLabel('Hạn đóng mới',{exact:true});
+  assert.equal(await date.getAttribute('max'),'2099-12-19');
+  await date.fill('2099-12-20');await page.getByLabel('Lý do gia hạn',{exact:true}).fill('Đã trao đổi với phụ huynh');
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  assert.equal(posted,undefined);assert.match(await page.locator('#extension-date-error').innerText(),/19\/12\/2099/);
+  await date.fill('2099-12-19');await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.locator('#feedback').filter({hasText:'Đã gia hạn kỳ 2'}).waitFor();
+  assert.equal(posted.installmentId,2);assert.equal(posted.proposedDate,'2099-12-19');
+ }finally{await page.close();}
+});
+
+for(const role of ['ADMIN','STAFF'])test(role+' directly extends without an approval action even with legacy pending history',async()=>{
+ let posted,reviews=0;
+ const data={...invoice,classEndDate:'2099-12-31',installments:invoice.installments.map(d=>({...d,date:d.sequence===3?'2099-12-20':d.date}))};
+ const {page}=await open(role,(url,req)=>{
+  if(url.pathname.endsWith('/receivables'))return [data];
+  if(req.method()==='POST'&&url.pathname.endsWith('/due-date')){posted=req.postDataJSON();return {};}
+  if(url.pathname.endsWith('/review')){reviews++;return {};}
+  if(url.pathname.endsWith('/plan-change-requests'))return [{id:5,invoiceId:11,invoiceCode:'DEMO-11',student:'Minh An',sequence:2,oldDate:today,proposedDate:'2099-12-19',reason:'Đề nghị cũ',status:'PENDING',requestedBy:'Staff'}];
+ });
+ try{
+  await page.getByRole('button',{name:'Gia hạn kỳ 2',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'Duyệt gia hạn',exact:true}).count(),0);
+  await page.getByLabel('Hạn đóng mới',{exact:true}).fill('2099-12-19');
+  await page.getByLabel('Lý do gia hạn',{exact:true}).fill('Đã trao đổi');
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.locator('#feedback').filter({hasText:'Đã gia hạn kỳ 2'}).waitFor();
+  assert.equal(posted.proposedDate,'2099-12-19');assert.equal(reviews,0);
+  assert.equal(await page.locator('#due-date-changes').count(),0);
  }finally{await page.close();}
 });

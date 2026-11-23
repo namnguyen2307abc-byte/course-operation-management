@@ -8,8 +8,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Map;
 
 class PayOSGatewaySecurityTest {
-    @Test
-    void paymentCreationHasAFiveMinuteGatewayExpiry() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void paymentCreationReturnsToFrontendPortWithoutAnArtificialExpiry(boolean parent) {
         var builder = org.springframework.web.client.RestClient.builder();
         var server =
                 org.springframework.test.web.client.MockRestServiceServer.bindTo(builder).build();
@@ -20,8 +21,6 @@ class PayOSGatewaySecurityTest {
         ReflectionTestUtils.setField(gateway, "checksumKey", "test");
         ReflectionTestUtils.setField(
                 gateway, "createPaymentUrl", "https://gateway.test/payment-requests");
-        ReflectionTestUtils.setField(gateway, "publicBaseUrl", "http://127.0.0.1:5500");
-        long before = java.time.Instant.now().getEpochSecond();
         server.expect(
                         org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo(
                                 "https://gateway.test/payment-requests"))
@@ -34,8 +33,12 @@ class PayOSGatewaySecurityTest {
                             var data =
                                     new com.fasterxml.jackson.databind.ObjectMapper()
                                             .readTree(body);
-                            assertThat(data.get("expiredAt").asLong())
-                                    .isBetween(before + 300, before + 305);
+                            assertThat(data.has("expiredAt")).isFalse();
+                            String target = "http://127.0.0.1:5500/pages/"
+                                    + (parent ? "parent-tuition" : "tuition-receivables")
+                                    + ".html?invoiceId=1";
+                            assertThat(data.get("returnUrl").asText()).isEqualTo(target);
+                            assertThat(data.get("cancelUrl").asText()).isEqualTo(target);
                         })
                 .andRespond(
                         org.springframework.test.web.client.response.MockRestResponseCreators
@@ -47,7 +50,7 @@ class PayOSGatewaySecurityTest {
         invoice.setInvoiceCode("HP123");
         assertThat(
                         gateway.createPaymentLink(
-                                        invoice, new java.math.BigDecimal("5000"), 123L, false)
+                                        invoice, new java.math.BigDecimal("5000"), 123L, parent)
                                 .getQrCode())
                 .isEqualTo("qr-data");
         server.verify();

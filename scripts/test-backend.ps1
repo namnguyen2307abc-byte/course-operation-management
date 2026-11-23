@@ -17,7 +17,7 @@ try {
         '-Dspring.datasource.url=jdbc:h2:mem:regression;MODE=MSSQLServer;DB_CLOSE_DELAY=-1' `
         '-Dspring.datasource.driver-class-name=org.h2.Driver' '-Dspring.datasource.username=sa' '-Dspring.datasource.password=' `
         '-Dspring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect' `
-        '-Dspring.jpa.hibernate.ddl-auto=create-drop' '-Dapp.seed.enabled=false' test
+        '-Dspring.jpa.hibernate.ddl-auto=create-drop' '-Dapp.seed.enabled=false' clean test
     $testExitCode = $LASTEXITCODE
 } finally { $env:JAVA_HOME = $previousJavaHome }
 exit $testExitCode
