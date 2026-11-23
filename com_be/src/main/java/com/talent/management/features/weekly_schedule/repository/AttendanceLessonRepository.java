@@ -1,31 +1,42 @@
 package com.talent.management.features.weekly_schedule.repository;
 
 import com.talent.management.shared.entity.Lesson;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> {
 
     /**
-     * Lấy danh sách các buổi học của học viên thông qua lớp học viên đã đăng ký
+     * Buổi học của học viên thông qua lớp đang ghi danh chính thức (ENROLLED)
      */
-    @Query("SELECT l FROM Lesson l " +
+    @Query("SELECT DISTINCT l FROM Lesson l " +
            "JOIN Enrollment e ON e.classEntity.id = l.classEntity.id " +
            "WHERE e.student.id = :studentId " +
+           "AND e.status = com.talent.management.shared.enums.EnrollmentStatus.ENROLLED " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")
     List<Lesson> findLessonsByStudentId(@Param("studentId") Long studentId);
 
     /**
-     * Lấy tên các lớp học mà học viên đang theo học
+     * Tên các lớp học viên đang học (ENROLLED)
      */
-    @Query("SELECT DISTINCT e.classEntity.className FROM Enrollment e WHERE e.student.id = :studentId")
+    @Query("SELECT DISTINCT e.classEntity.className FROM Enrollment e " +
+           "WHERE e.student.id = :studentId " +
+           "AND e.status = com.talent.management.shared.enums.EnrollmentStatus.ENROLLED")
     List<String> findClassNamesByStudentId(@Param("studentId") Long studentId);
+
+    /** Khóa buổi học khi xếp học bù để hai thao tác đồng thời không vượt sĩ số. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM Lesson l WHERE l.id = :id")
+    Optional<Lesson> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Lấy toàn bộ ca học trong khoảng ngày (Tuần)
@@ -33,10 +44,16 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
     List<Lesson> findByLessonDateBetweenOrderByLessonDateAscStartTimeAsc(LocalDate startDate, LocalDate endDate);
 
     /**
-     * Lấy ca học của giáo viên trong khoảng ngày (Tuần)
+     * Ca dạy của giáo viên trong tuần (fallback sang giáo viên của lớp nếu buổi chưa gán trực tiếp)
      */
+    @Query("SELECT DISTINCT l FROM Lesson l LEFT JOIN l.classEntity c " +
+           "WHERE (l.teacher.id = :teacherId OR (l.teacher IS NULL AND c.teacher.id = :teacherId)) " +
+           "AND l.lessonDate BETWEEN :startDate AND :endDate " +
+           "ORDER BY l.lessonDate ASC, l.startTime ASC")
     List<Lesson> findByTeacherIdAndLessonDateBetweenOrderByLessonDateAscStartTimeAsc(
-            Long teacherId, LocalDate startDate, LocalDate endDate);
+            @Param("teacherId") Long teacherId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     /**
      * Lấy ca học của học viên trong khoảng ngày (Tuần)
@@ -83,6 +100,8 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
            "WHERE l.lessonDate >= :fromDate " +
            "AND l.sessionNumber = :sessionNumber " +
            "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.status = com.talent.management.shared.enums.LessonStatus.SCHEDULED " +
+           "AND l.classEntity.status IN (com.talent.management.shared.enums.ClassStatus.OPEN, com.talent.management.shared.enums.ClassStatus.IN_PROGRESS) " +
            "AND l.classEntity.course.program.id = :programId " +
            "AND l.classEntity.course.level = :level " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")
@@ -99,6 +118,8 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
            "WHERE l.lessonDate >= :fromDate " +
            "AND l.sessionNumber = :sessionNumber " +
            "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.status = com.talent.management.shared.enums.LessonStatus.SCHEDULED " +
+           "AND l.classEntity.status IN (com.talent.management.shared.enums.ClassStatus.OPEN, com.talent.management.shared.enums.ClassStatus.IN_PROGRESS) " +
            "AND l.classEntity.course.id = :courseId " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")
     List<Lesson> findMakeupCandidatesByCourse(@Param("fromDate") LocalDate fromDate,
@@ -114,6 +135,8 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
            "WHERE l.lessonDate >= :fromDate " +
            "AND l.sessionNumber > :sessionNumber " +
            "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.status = com.talent.management.shared.enums.LessonStatus.SCHEDULED " +
+           "AND l.classEntity.status IN (com.talent.management.shared.enums.ClassStatus.OPEN, com.talent.management.shared.enums.ClassStatus.IN_PROGRESS) " +
            "AND l.classEntity.course.program.id = :programId " +
            "AND l.classEntity.course.level = :level " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")
@@ -131,6 +154,8 @@ public interface AttendanceLessonRepository extends JpaRepository<Lesson, Long> 
            "WHERE l.lessonDate >= :fromDate " +
            "AND l.sessionNumber > :sessionNumber " +
            "AND l.classEntity.id <> :excludeClassId " +
+           "AND l.status = com.talent.management.shared.enums.LessonStatus.SCHEDULED " +
+           "AND l.classEntity.status IN (com.talent.management.shared.enums.ClassStatus.OPEN, com.talent.management.shared.enums.ClassStatus.IN_PROGRESS) " +
            "AND l.classEntity.course.id = :courseId " +
            "ORDER BY l.lessonDate ASC, l.startTime ASC")
     List<Lesson> findFlexibleMakeupCandidatesByCourse(@Param("fromDate") LocalDate fromDate,

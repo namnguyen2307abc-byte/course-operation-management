@@ -1,6 +1,7 @@
 package com.talent.management.features.attendance_makeup.dto.request;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,6 +29,7 @@ public class AbsenceReviewRequest {
      * - Bắt buộc khi REJECTED (lý do từ chối, thông báo tới phụ huynh)
      * - Tùy chọn khi APPROVED
      */
+    @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
     private String reviewNote;
 
     public enum ReviewDecision {

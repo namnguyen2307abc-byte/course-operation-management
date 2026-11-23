@@ -23,9 +23,9 @@
             ].map(([icon, label, value, file]) => `<a class="admin-stat" href="${esc(appPath('/pages/' + file + '.html'))}"><i class="bi bi-${icon}" aria-hidden="true"></i><span>${esc(label)}</span><strong>${esc(value)}</strong></a>`).join('');
             barChart(data.revenueByDay);
             $('requestBreakdown').innerHTML = Object.entries(Admin.statuses).map(([status, label]) => Admin.link('course-enrollment', label, data.enrollmentRequests[status] || 0)).join('');
-            $('workQueues').innerHTML = Admin.link('absence-makeup', 'Đơn nghỉ chờ duyệt', data.queues.absencePending)
-                + Admin.link('absence-makeup', 'Ca bù chờ xếp lịch', data.queues.makeupPending)
-                + Admin.link('absence-makeup', 'Ca bù chưa có lớp phù hợp', data.queues.makeupNoSlot)
+            $('workQueues').innerHTML = Admin.link('absence-makeup', 'Đơn nghỉ chờ duyệt', data.queues.absencePending, 'tab=ABSENCE')
+                + Admin.link('absence-makeup', 'Ca bù chờ xếp lịch', data.queues.makeupPending, 'tab=MAKEUP')
+                + Admin.link('absence-makeup', 'Ca bù chưa có lớp phù hợp', data.queues.makeupNoSlot, 'tab=MAKEUP')
                 + Admin.link('tuition-payment', 'Hóa đơn chưa thanh toán', data.overview.unpaidInvoices);
             $('roleBreakdown').innerHTML = Admin.roles.map(role => `<li><span>${esc(roleLabel(role))}</span><strong>${esc(data.roles[role] || 0)}</strong></li>`).join('');
             $('accountSummary').textContent = `${data.overview.users} tài khoản · ${data.overview.activeUsers} hoạt động · ${data.overview.inactiveUsers} đã khóa`;
