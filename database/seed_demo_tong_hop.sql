@@ -83,6 +83,8 @@ IF OBJECT_ID(N'dbo.FK_bank_event_recorded_by',N'F') IS NULL EXEC sys.sp_executes
 IF OBJECT_ID(N'dbo.FK_bank_event_resolved_installment',N'F') IS NULL EXEC sys.sp_executesql N'ALTER TABLE dbo.tuition_bank_events ADD CONSTRAINT FK_bank_event_resolved_installment FOREIGN KEY(resolved_installment_id) REFERENCES dbo.tuition_installments(id);';
 IF OBJECT_ID(N'dbo.FK_bank_intent_installment',N'F') IS NULL EXEC sys.sp_executesql N'ALTER TABLE dbo.tuition_payment_intents ADD CONSTRAINT FK_bank_intent_installment FOREIGN KEY(installment_id) REFERENCES dbo.tuition_installments(id);';
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.tuition_bank_events') AND name=N'UX_bank_event_refund_reference') EXEC sys.sp_executesql N'CREATE UNIQUE INDEX UX_bank_event_refund_reference ON dbo.tuition_bank_events(refund_reference) WHERE refund_reference IS NOT NULL;';
+IF OBJECT_ID(N'dbo.absence_requests',N'U') IS NOT NULL AND COL_LENGTH(N'dbo.absence_requests',N'need_makeup') IS NULL
+ ALTER TABLE dbo.absence_requests ADD need_makeup BIT NOT NULL CONSTRAINT DF_absence_requests_need_makeup DEFAULT(1) WITH VALUES;
 
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
@@ -450,7 +452,7 @@ DECLARE @BranchCs2Id    BIGINT = (SELECT TOP 1 id FROM branches WHERE code = ''C
 -- 1. CHUẨN HÓA TAG CŨ & DỌN CỬA SỔ LỊCH HIỆN TẠI (-6 ĐẾN +6 NGÀY)
 -- =============================================================================
 UPDATE makeup_registrations
-SET note = REPLACE(note, N''[RETRY:1][LOCKED:0] '', N''[Lần bù: 1/2] '')
+SET note = REPLACE(note, N''[RETRY:1][LOCKED:0] '', N''[Lần bù: 1/1] '')
 WHERE note LIKE N''%[RETRY:1][LOCKED:0]%'';
 
 -- Lớp Piano Grade 1 đã đủ sĩ số (1/1) dùng kiểm tra bộ lọc lớp đầy chỗ
@@ -650,68 +652,68 @@ DECLARE @ArYenPending BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
 VALUES (@ArYenPending, @StuYenId, @L_C3_S11, NULL, ''PENDING'', N''Đơn đã phê duyệt, đang chờ Giáo vụ sắp xếp lịch học bù.'', DATEADD(hour, -2, GETDATE()));
 
--- Case 4: Đơn APPROVED -> Ca bù NO_SLOT (Ngọc Hân - Buổi 7 Múa Ballet)
+-- Case 4: Đơn APPROVED -> Chưa có lớp phù hợp -> CANCELLED (Ngọc Hân - Buổi 7 Múa Ballet)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuHanId, @L_C5_S7, @ParentHoangId, N''Bé Ngọc Hân bị đau họng nhẹ, xin phép cô Linh nghỉ buổi múa.'', ''APPROVED'', @TeacherLinhId, N''Cô Linh đồng ý cho bé nghỉ và chuyển bộ phận học vụ rà soát lớp.'', DATEADD(day, -1, GETDATE()), DATEADD(day, -2, GETDATE()));
 DECLARE @ArHanNoSlot BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArHanNoSlot, @StuHanId, @L_C5_S7, NULL, ''NO_SLOT'', N''CHƯA CÓ LỚP PHÙ HỢP: Hiện trung tâm chưa có lớp Múa Ballet thiếu nhi căn bản song song ở Buổi 7.'', DATEADD(day, -1, GETDATE()));
+VALUES (@ArHanNoSlot, @StuHanId, @L_C5_S7, NULL, ''CANCELLED'', N''ĐÃ HỦY (Chưa có lớp phù hợp): Hiện trung tâm chưa có lớp Múa Ballet thiếu nhi căn bản song song ở Buổi 7.'', DATEADD(day, -1, GETDATE()));
 
 -- Case 5: Đơn APPROVED -> Ca bù CANCELLED (Trọng Anh - Gia đình không sắp xếp được lịch)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuAnhId, @L_C4_S9, @ParentLanId, N''Bé Trọng Anh bận ôn thi học kỳ trên trường, xin nghỉ buổi Guitar 9.'', ''APPROVED'', @TeacherTuanId, N''Thầy Tuấn đồng ý cho bé nghỉ.'', DATEADD(day, -1, GETDATE()), DATEADD(day, -1, GETDATE()));
 DECLARE @ArAnhCancelled BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArAnhCancelled, @StuAnhId, @L_C4_S9, NULL, ''CANCELLED'', N''Gia đình xác nhận bận lịch thi cả tuần nên không tham gia học bù buổi này.'', DATEADD(hour, -10, GETDATE()));
+VALUES (@ArAnhCancelled, @StuAnhId, @L_C4_S9, NULL, ''CANCELLED'', N''HỦY: Gia đình xác nhận bận lịch thi cả tuần nên không tham gia học bù buổi này.'', DATEADD(hour, -10, GETDATE()));
 
--- Case 6: Đơn APPROVED -> Ca bù SCHEDULED Lần 1/2 hôm nay (Trọng Anh -> Class 7)
+-- Case 6: Đơn APPROVED -> Ca bù SCHEDULED Lần 1/1 hôm nay (Trọng Anh -> Class 7)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuAnhId, @L_C4_S10, @ParentLanId, N''Bé Trọng Anh trùng lịch ngoại khóa buổi chiều, xin chuyển ca học hôm nay.'', ''APPROVED'', @TeacherTuanId, N''Đã duyệt chuyển sang lớp thầy Dũng dạy bù.'', DATEADD(hour, -6, GETDATE()), DATEADD(day, -1, GETDATE()));
 DECLARE @ArAnhScheduledToday BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArAnhScheduledToday, @StuAnhId, @L_C4_S10, @L_C7_S10, ''SCHEDULED'', N''[Lần bù: 1/2] Đã xếp lịch học bù tại lớp Guitar Nhập Môn Chiều Thứ 7 (Thầy Dũng).'', DATEADD(hour, -5, GETDATE()));
+VALUES (@ArAnhScheduledToday, @StuAnhId, @L_C4_S10, @L_C7_S10, ''SCHEDULED'', N''[Lần bù: 1/1] Xếp lịch học bù tại lớp Guitar Nhập Môn Chiều Thứ 7 (Thầy Dũng).'', DATEADD(hour, -5, GETDATE()));
 
--- Case 7: Đơn APPROVED -> Ca bù SCHEDULED Lần 1/2 lớp 1-1 (Bảo Nam chuyển buổi 11 sang Class 3)
+-- Case 7: Đơn APPROVED -> Ca bù SCHEDULED Lần 1/1 lớp 1-1 (Bảo Nam chuyển buổi 11 sang Class 3)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuNamId, @L_C1_S11, @ParentLanId, N''Xin chuyển buổi Piano 1-1 ngày mai sang học ghép cùng nhóm tối.'', ''APPROVED'', @TeacherHuongId, N''Cô Hương đồng ý chuyển bù.'', DATEADD(hour, -5, GETDATE()), DATEADD(hour, -8, GETDATE()));
 DECLARE @ArNamHide11 BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArNamHide11, @StuNamId, @L_C1_S11, @L_C3_S11, ''SCHEDULED'', N''[Lần bù: 1/2] Đã xếp học bù tại lớp Piano Grade 1 - Nhóm Chiều Tối.'', DATEADD(hour, -4, GETDATE()));
+VALUES (@ArNamHide11, @StuNamId, @L_C1_S11, @L_C3_S11, ''SCHEDULED'', N''[Lần bù: 1/1] Xếp lịch học bù tại lớp Piano Grade 1 - Nhóm Chiều Tối.'', DATEADD(hour, -4, GETDATE()));
 
--- Case 8: Đơn APPROVED -> Ca bù MISSED Lần 1/2 (Bảo Nam vắng tại C3-S8 ngày @D_M2)
+-- Case 8: Đơn APPROVED -> Ca bù MISSED (Bảo Nam vắng tại C3-S8 ngày @D_M2)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuNamId, @L_C1_S8, @ParentLanId, N''Bé Bảo Nam bị sốt nhẹ nên xin nghỉ Buổi 8 Piano.'', ''APPROVED'', @TeacherHuongId, N''Cô Hương đã duyệt đơn.'', DATEADD(day, -3, GETDATE()), DATEADD(day, -3, GETDATE()));
 DECLARE @ArNamMissed BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArNamMissed, @StuNamId, @L_C1_S8, @L_C3_S8, ''MISSED'', N''[Lần bù: 1/2] Bỏ lỡ / Vắng mặt tại buổi học bù (Còn tối đa 1 lần xếp lại cuối cùng).'', DATEADD(day, -2, GETDATE()));
+VALUES (@ArNamMissed, @StuNamId, @L_C1_S8, @L_C3_S8, ''MISSED'', N''[Lần bù: 1/1 - KHÓA] Vắng mặt tại buổi học bù đã xếp (hết lượt xếp cho buổi nghỉ này).'', DATEADD(day, -2, GETDATE()));
 
--- Case 9: Đơn APPROVED -> Ca bù SCHEDULED Lần 2/2 hôm nay (Hải Yến -> Class 8)
+-- Case 9: Đơn APPROVED -> Ca bù SCHEDULED Lần 1/1 hôm nay (Hải Yến -> Class 8)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuYenId, @L_C3_S10, @ParentLanId, N''Gia đình có việc bận đột xuất, xin nghỉ Buổi 10 Piano.'', ''APPROVED'', @TeacherHaId, N''Cô Hà đã duyệt đơn.'', DATEADD(day, -2, GETDATE()), DATEADD(day, -2, GETDATE()));
 DECLARE @ArYenRetry2 BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArYenRetry2, @StuYenId, @L_C3_S10, @L_C8_S10, ''SCHEDULED'', N''[Lần bù: 2/2] Xếp lịch học bù lần cuối tại lớp Piano Grade 1 - Cơ Sở Đống Đa.'', DATEADD(day, -1, GETDATE()));
+VALUES (@ArYenRetry2, @StuYenId, @L_C3_S10, @L_C8_S10, ''SCHEDULED'', N''[Lần bù: 1/1] Xếp lịch học bù tại lớp Piano Grade 1 - Cơ Sở Đống Đa.'', DATEADD(day, -1, GETDATE()));
 
--- Case 10: Đơn APPROVED -> Ca bù CANCELLED Khóa 2/2 (Trọng Anh đã vắng đủ 2/2 lần)
+-- Case 10: Đơn APPROVED -> Ca bù CANCELLED Khóa 1/1 (Trọng Anh đã vắng tại buổi học bù)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuAnhId, @L_C4_S8, @ParentLanId, N''Bé Trọng Anh tham gia thi Olympic Toán cấp trường, xin nghỉ Buổi 8.'', ''APPROVED'', @TeacherTuanId, N''Thầy Tuấn duyệt đơn.'', DATEADD(day, -3, GETDATE()), DATEADD(day, -3, GETDATE()));
 DECLARE @ArAnhLocked2 BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArAnhLocked2, @StuAnhId, @L_C4_S8, @L_C7_S8, ''CANCELLED'', N''[Lần bù: 2/2 - KHÓA] Hủy quyền học bù do học viên đã vắng mặt cả 2/2 lần học bù quy định.'', DATEADD(day, -1, GETDATE()));
+VALUES (@ArAnhLocked2, @StuAnhId, @L_C4_S8, @L_C7_S8, ''CANCELLED'', N''[Lần bù: 1/1 - KHÓA] Hủy quyền học bù do học viên đã vắng mặt tại ca học bù quy định.'', DATEADD(day, -1, GETDATE()));
 
 -- Case 11: Đơn APPROVED -> Ca bù COMPLETED (Tuấn Kiệt đã hoàn thành tại C6-S8)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (@StuKietId, @L_C6_S7, @ParentDungId, N''Bé Tuấn Kiệt xin nghỉ Buổi 7 Võ thuật do trùng lịch tiêm chủng.'', ''APPROVED'', @TeacherLongId, N''Thầy Long đồng ý.'', DATEADD(day, -3, GETDATE()), DATEADD(day, -3, GETDATE()));
 DECLARE @ArKietCompleted BIGINT = SCOPE_IDENTITY();
 INSERT INTO makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
-VALUES (@ArKietCompleted, @StuKietId, @L_C6_S7, @L_C6_S8, ''COMPLETED'', N''[Lần bù: 1/2] Tự động hoàn thành sau khi giáo viên điểm danh Có mặt.'', DATEADD(day, -1, GETDATE()));
+VALUES (@ArKietCompleted, @StuKietId, @L_C6_S7, @L_C6_S8, ''COMPLETED'', N''[Lần bù: 1/1] Tự động hoàn thành sau khi giáo viên điểm danh Có mặt.'', DATEADD(day, -1, GETDATE()));
 
 -- =============================================================================
 -- 4. INSERT DỮ LIỆU ĐIỂM DANH LỊCH SỬ (ATTENDANCES)
 -- =============================================================================
 INSERT INTO attendances (lesson_id, student_id, status, note, marked_at) VALUES
-(@L_C3_S8,   @StuNamId,  ''ABSENT'',  N''Học viên vắng mặt tại buổi học bù lần 1/2'', DATEADD(day, -2, GETDATE())),
-(@L_C7_S8,   @StuAnhId,  ''ABSENT'',  N''Học viên vắng mặt tại buổi học bù lần 2/2'', DATEADD(day, -1, GETDATE())),
+(@L_C3_S8,   @StuNamId,  ''ABSENT'',  N''Học viên vắng mặt tại buổi học bù'', DATEADD(day, -2, GETDATE())),
+(@L_C7_S8,   @StuAnhId,  ''ABSENT'',  N''Học viên vắng mặt tại buổi học bù'', DATEADD(day, -1, GETDATE())),
 (@L_C4_S5,   @StuAnhId,  ''ABSENT'',  N''Nghỉ có việc gia đình'', DATEADD(day, -6, GETDATE())),
 (@L_C4_S6,   @StuAnhId,  ''ABSENT'',  N''Nghỉ ốm'', DATEADD(day, -5, GETDATE())),
 (@L_C4_S7,   @StuAnhId,  ''ABSENT'',  N''Nghỉ bận lịch trường'', DATEADD(day, -4, GETDATE())),
@@ -754,7 +756,7 @@ EXEC sys.sp_executesql N'-- ====================================================
 -- ĐẶC TÍNH:
 --   - Cửa sổ ngày động xoay quanh ngày hiện tại GETDATE() (-6 ngày đến +6 ngày).
 --   - Đầy đủ 10 trường hợp nghiệp vụ toàn diện của quy trình Xin nghỉ & Học bù.
---   - Chuẩn hóa tag điều phối: [Lần bù: 1/2], [Lần bù: 2/2], [Lần bù: 2/2 - KHÓA].
+--   - Chuẩn hóa tag điều phối: [Lần bù: 1/1], [Lần bù: 1/1 - KHÓA].
 --   - Không chứa bất kỳ tiền tố test thừa nào trong văn bản giao diện.
 --   - Idempotent: An toàn chạy lại nhiều lần bất cứ lúc nào.
 -- =============================================================================
@@ -1086,8 +1088,8 @@ VALUES (
     DATEADD(hour, -2, GETDATE())
 );
 
--- CASE 4: ĐƠN APPROVED -> CA BÙ NO_SLOT (Chưa có lớp phù hợp)
--- Nghiệp vụ: Giáo vụ rà soát chưa có lớp song song phù hợp -> Đánh dấu NO_SLOT, giữ mở để theo dõi.
+-- CASE 4: ĐƠN APPROVED -> CHƯA CÓ LỚP PHÙ HỢP -> CANCELLED
+-- Nghiệp vụ: Giáo vụ rà soát chưa có lớp song song phù hợp -> Đóng ca bù với thông báo gửi phụ huynh.
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (
     @StuNamId,
@@ -1108,8 +1110,8 @@ VALUES (
     @StuNamId,
     @L_Main_S5,
     NULL,
-    ''NO_SLOT'',
-    N''Chưa có lớp phù hợp: Các lớp cùng trình độ trong tuần hiện chưa mở hoặc đã kín lịch.'',
+    ''CANCELLED'',
+    N''ĐÃ HỦY (Chưa có lớp phù hợp): Các lớp cùng trình độ trong tuần hiện chưa mở hoặc đã kín lịch.'',
     DATEADD(day, -1, GETDATE())
 );
 
@@ -1140,11 +1142,11 @@ VALUES (
     DATEADD(day, -3, GETDATE())
 );
 
--- CASE 6: CA BÙ SCHEDULED LẦN 1/2 DIỄN RA HÔM NAY
+-- CASE 6: CA BÙ SCHEDULED LẦN 1/1 DIỄN RA HÔM NAY
 -- Thao tác kiểm thử:
 --   - teacher_huong vào Lịch dạy / Điểm danh hôm nay: thấy bé Bảo An tại lớp S5 có nhãn [Học bù].
 --   - Điểm danh Có mặt -> chuyển COMPLETED.
---   - Điểm danh Vắng mặt -> chuyển MISSED (Lần 1).
+--   - Điểm danh Vắng mặt -> tự động khóa quyền bù (CANCELLED - KHÓA).
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (
     @StuAnId,
@@ -1166,12 +1168,11 @@ VALUES (
     @L_Main_S3,
     @L_ParaMd_S5,
     ''SCHEDULED'',
-    N''[Lần bù: 1/2] Đã xếp lịch học bù tại lớp Piano sáng Chủ Nhật Mỹ Đình.'',
+    N''[Lần bù: 1/1] Xếp lịch học bù tại lớp Piano sáng Chủ Nhật Mỹ Đình.'',
     DATEADD(day, -1, GETDATE())
 );
 
--- CASE 7: BỎ LỠ CA BÙ LẦN 1/2 -> TRẠNG THÁI MISSED (CÒN 1 LẦN BÙ CUỐI CÙNG)
--- Nghiệp vụ: Đã xếp buổi bù (-1 ngày) nhưng học viên vắng mặt -> Ghi nhận MISSED, tag [Lần bù: 1/2], còn 1 quyền xếp lại.
+-- CASE 7: BỎ LỠ CA BÙ -> TRẠNG THÁI MISSED (HẾT QUYỀN XẾP LẠI 1/1)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (
     @StuNamId,
@@ -1193,18 +1194,15 @@ VALUES (
     @L_Main_S3,
     @L_ParaMd_S4,
     ''MISSED'',
-    N''[Lần bù: 1/2] Học viên vắng mặt tại buổi học bù lần 1 (Còn 1 lần xếp lại lịch bù cuối cùng).'',
+    N''[Lần bù: 1/1 - KHÓA] Học viên vắng mặt tại buổi học bù đã xếp.'',
     DATEADD(day, -1, GETDATE())
 );
 
 -- Ghi nhận điểm danh vắng mặt tại buổi bù S4
 INSERT INTO attendances (lesson_id, student_id, status, note, marked_at)
-VALUES (@L_ParaMd_S4, @StuNamId, ''ABSENT'', N''Học viên vắng mặt tại buổi học bù lần 1'', DATEADD(day, -1, GETDATE()));
+VALUES (@L_ParaMd_S4, @StuNamId, ''ABSENT'', N''Học viên vắng mặt tại buổi học bù'', DATEADD(day, -1, GETDATE()));
 
--- CASE 8: CA BÙ SCHEDULED LẦN 2/2 DIỄN RA HÔM NAY (LẦN CUỐI CÙNG)
--- Thao tác kiểm thử:
---   - Bé Bảo Nam được xếp học bù lần 2 tại buổi S5 hôm nay.
---   - teacher_huong điểm danh vắng mặt hôm nay sẽ tự động khóa hủy quyền học bù.
+-- CASE 8: CA BÙ SCHEDULED LẦN 1/1 DIỄN RA HÔM NAY
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (
     @StuNamId,
@@ -1213,7 +1211,7 @@ VALUES (
     N''Gia đình có việc gấp cần về quê, xin phép cô Hương nghỉ buổi 4.'',
     ''APPROVED'',
     @TeacherId,
-    N''Đã đồng ý cho học viên học bù lần 2.'',
+    N''Đã đồng ý cho học viên học bù.'',
     DATEADD(day, -2, GETDATE()),
     DATEADD(day, -3, GETDATE())
 );
@@ -1226,12 +1224,11 @@ VALUES (
     @L_Main_S4,
     @L_ParaMd_S5,
     ''SCHEDULED'',
-    N''[Lần bù: 2/2] Xếp lịch học bù lần cuối cùng tại lớp Piano Mỹ Đình.'',
+    N''[Lần bù: 1/1] Xếp lịch học bù tại lớp Piano Mỹ Đình.'',
     DATEADD(day, -1, GETDATE())
 );
 
--- CASE 9: VẮNG MẶT CẢ 2/2 LẦN BÙ -> KHÓA HỦY QUYỀN HỌC BÙ (LOCKED CANCELLED)
--- Nghiệp vụ: Học viên đã vắng mặt cả 2 lần học bù quy định -> Hệ thống tự động khóa vĩnh viễn theo quy chế trung tâm.
+-- CASE 9: VẮNG MẶT BUỔI BÙ -> KHÓA HỦY QUYỀN HỌC BÙ (LOCKED CANCELLED)
 INSERT INTO absence_requests (student_id, lesson_id, requested_by_user_id, reason, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
 VALUES (
     @StuAnId,
@@ -1253,13 +1250,13 @@ VALUES (
     @L_Main_S1,
     @L_ParaMd_S4,
     ''CANCELLED'',
-    N''[Lần bù: 2/2 - KHÓA] Tự động khóa quyền học bù do học viên đã vắng mặt cả 2 lần học bù quy định.'',
+    N''[Lần bù: 1/1 - KHÓA] Tự động khóa quyền học bù do học viên đã vắng mặt tại buổi học bù quy định.'',
     DATEADD(day, -1, GETDATE())
 );
 
 -- Ghi nhận điểm danh vắng mặt tại buổi bù S4 cho bé An
 INSERT INTO attendances (lesson_id, student_id, status, note, marked_at)
-VALUES (@L_ParaMd_S4, @StuAnId, ''ABSENT'', N''Học viên vắng mặt tại buổi học bù lần 2 (Hết lượt)'', DATEADD(day, -1, GETDATE()));
+VALUES (@L_ParaMd_S4, @StuAnId, ''ABSENT'', N''Học viên vắng mặt tại buổi học bù (Hết lượt)'', DATEADD(day, -1, GETDATE()));
 
 -- CASE 10: HOÀN THÀNH HỌC BÙ (COMPLETED)
 -- Nghiệp vụ: Học viên Bảo An đã tham gia học bù tại buổi S3 (-2 ngày) và được cô Hương điểm danh Có mặt.
@@ -1284,7 +1281,7 @@ VALUES (
     @L_Main_S2,
     @L_ParaMd_S3,
     ''COMPLETED'',
-    N''[Lần bù: 1/2] Hoàn thành buổi học bù sau khi giáo viên điểm danh Có mặt.'',
+    N''[Lần bù: 1/1] Hoàn thành buổi học bù sau khi giáo viên điểm danh Có mặt.'',
     DATEADD(day, -2, GETDATE())
 );
 
@@ -1628,6 +1625,36 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
   PRINT N'Da bo sung tai khoan d26_staff_2 de test quyen dieu chinh khoan thu.';
  END;
  SELECT username,full_name,role,status FROM dbo.users WHERE username='d26_staff_2';
+ IF OBJECT_ID(N'dbo.absence_requests',N'U') IS NOT NULL AND COL_LENGTH(N'dbo.absence_requests',N'need_makeup') IS NOT NULL
+ BEGIN
+  EXEC sys.sp_executesql N'
+   IF NOT EXISTS (SELECT 1 FROM dbo.absence_requests WHERE reason LIKE N''%[DEMO-CHI-XIN-NGHI]%'')
+   BEGIN
+    DECLARE @DemoOnlyStuId BIGINT = (SELECT TOP 1 s.id FROM dbo.students s JOIN dbo.users u ON s.parent_id = u.id WHERE u.username = ''d26_parent_new'' ORDER BY s.id);
+    DECLARE @DemoOnlyParentId BIGINT = (SELECT TOP 1 id FROM dbo.users WHERE username = ''d26_parent_new'');
+    DECLARE @DemoOnlyTeacherId BIGINT = (SELECT TOP 1 id FROM dbo.users WHERE username = ''teacher_huong'');
+    DECLARE @DemoOnlyLessonId BIGINT = (
+     SELECT TOP 1 l.id
+     FROM dbo.lessons l
+     JOIN dbo.classes c ON l.class_id = c.id
+     JOIN dbo.enrollments e ON e.class_id = c.id AND e.student_id = @DemoOnlyStuId AND e.status = ''ENROLLED''
+     WHERE c.class_code = ''PIA-MD-2701-01'' AND l.session_number = 8
+     ORDER BY l.id
+    );
+    IF @DemoOnlyStuId IS NOT NULL AND @DemoOnlyParentId IS NOT NULL AND @DemoOnlyLessonId IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM dbo.absence_requests WHERE student_id = @DemoOnlyStuId AND lesson_id = @DemoOnlyLessonId)
+    BEGIN
+     INSERT INTO dbo.absence_requests
+      (student_id, lesson_id, requested_by_user_id, reason, need_makeup, status, approved_by_teacher_id, review_note, reviewed_at, created_at)
+     VALUES
+      (@DemoOnlyStuId, @DemoOnlyLessonId, @DemoOnlyParentId,
+       N''[DEMO-CHI-XIN-NGHI] Gia đình bận lịch ngoại khóa buổi 8, chỉ xin nghỉ phép (không học bù).'',
+       0, ''APPROVED'', @DemoOnlyTeacherId,
+       N''Đã duyệt chỉ xin nghỉ (không tạo ca học bù, giữ nguyên quyền 3 lượt/khóa).'',
+       DATEADD(hour, -1, GETDATE()), DATEADD(hour, -2, GETDATE()));
+    END;
+   END;';
+ END;
  -- Full account directory for this combined dataset; passwords shown are initial only.
  SELECT u.username,u.full_name,u.role,u.status,
   CASE WHEN u.username LIKE 'd26[_]%' OR u.username='teacher_huong'

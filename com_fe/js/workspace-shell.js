@@ -232,7 +232,7 @@ updateNavbarUser();
             color: #ef4444;
         }
         .notif-dropdown-list {
-            max-height: 400px;
+            max-height: min(380px, calc(100vh - 230px));
             overflow-y: auto;
             overscroll-behavior: contain;
             scrollbar-width: thin;
@@ -515,15 +515,6 @@ updateNavbarUser();
         if (type === 'TUITION_UPCOMING' || type === 'TUITION_PLAN_CONFIRMED') {
             return { cls: 'notif-ic-info', icon: 'bi-calendar-check', tag: '' };
         }
-        if (type === 'TUITION_OVERDUE') {
-            return { cls: 'bg-danger-subtle text-danger', icon: 'bi-receipt-cutoff', tag: '<span class="badge bg-danger text-white ms-1" style="font-size:0.62rem;">Quá hạn</span>' };
-        }
-        if (type === 'TUITION_DUE_TODAY') {
-            return { cls: 'bg-warning-subtle text-warning-emphasis', icon: 'bi-wallet2', tag: '<span class="badge bg-warning text-dark ms-1" style="font-size:0.62rem;">Đến hạn</span>' };
-        }
-        if (type === 'TUITION_UPCOMING' || type === 'TUITION_PLAN_CONFIRMED') {
-            return { cls: 'bg-info-subtle text-info-emphasis', icon: 'bi-calendar-check', tag: '' };
-        }
         if (type.includes('INVOICE') || type.includes('DISCOUNT')) {
             return { cls: 'notif-ic-warning', icon: 'bi-receipt-cutoff', tag: '' };
         }
@@ -535,6 +526,18 @@ updateNavbarUser();
         }
         if (type.includes('PLACEMENT')) {
             return { cls: 'notif-ic-primary', icon: 'bi-clipboard2-check-fill', tag: '' };
+        }
+        if (type === 'ABSENCE_APPROVED') {
+            return { cls: 'notif-ic-success', icon: 'bi-check-circle-fill', tag: '<span class="notif-tag notif-tag-success">Đã duyệt</span>' };
+        }
+        if (type === 'MAKEUP_COMPLETED') {
+            return { cls: 'notif-ic-success', icon: 'bi-check2-all', tag: '<span class="notif-tag notif-tag-success">Hoàn thành</span>' };
+        }
+        if (type === 'ABSENCE_REJECTED') {
+            return { cls: 'notif-ic-danger', icon: 'bi-x-circle-fill', tag: '<span class="notif-tag notif-tag-danger">Từ chối</span>' };
+        }
+        if (type === 'ABSENCE_CANCELLED' || type === 'MAKEUP_CANCELLED') {
+            return { cls: 'notif-ic-warning', icon: 'bi-slash-circle-fill', tag: '<span class="notif-tag notif-tag-warning">Đã hủy</span>' };
         }
         if (type.includes('APPROVED') || type.includes('COMPLETED') || type.includes('PRESENT')) {
             return { cls: 'notif-ic-success', icon: 'bi-check-circle-fill', tag: '' };

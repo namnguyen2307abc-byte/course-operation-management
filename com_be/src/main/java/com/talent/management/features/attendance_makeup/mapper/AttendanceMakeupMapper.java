@@ -16,17 +16,29 @@ import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * ============================================================================
+ * MAPPER & HẰNG SỐ QUY ĐỊNH HỌC BÙ (AttendanceMakeupMapper)
+ * ============================================================================
+ * - {@link #MAX_MAKEUP_RETRIES}: 1 (Mỗi buổi nghỉ chỉ xếp lịch học bù 1 lần).
+ * - {@link #MAKEUP_LIMIT_PER_COURSE}: 3 (Mỗi học viên tối đa 3 lượt bù / khóa).
+ * - {@link #isMissedAndLocked}: Nhận diện ca vắng mặt tại buổi bù bị khóa quyền.
+ * - {@link #isNoSlotClosed}: Nhận diện ca đóng do chưa có lớp phù hợp.
+ */
 @Component
 public class AttendanceMakeupMapper {
 
+    /** Số lần xếp lịch bù tối đa cho một buổi nghỉ. */
     public static final int MAX_MAKEUP_RETRIES = 1;
+    /** Số ca bù tối đa của một học viên trong một khóa học. */
+    public static final int MAKEUP_LIMIT_PER_COURSE = 3;
     private static final Pattern RETRY_TAG_PATTERN = Pattern.compile("\\[Lần bù:\\s*(\\d+)/(\\d+)(?:\\s*-\\s*KHÓA)?\\]\\s*");
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /**
-     * Trích xuất số lần đã xếp lịch học bù từ MakeupRegistration (tối đa 2 lần).
+     * Trích xuất số lần đã xếp lịch học bù từ MakeupRegistration.
      */
     public static int extractRetryCount(MakeupRegistration mr) {
         if (mr == null) return 0;
@@ -47,15 +59,34 @@ public class AttendanceMakeupMapper {
     }
 
     /**
-     * Kiểm tra ca học bù đã vượt quá giới hạn số lần bù (2 lần) hay chưa.
+     * Kiểm tra ca học bù bị khóa/mất quyền do học viên vắng mặt ở buổi bù.
      */
-    public static boolean isLimitExceeded(MakeupRegistration mr) {
+    public static boolean isMissedAndLocked(MakeupRegistration mr) {
         if (mr == null) return false;
         if (mr.getNote() != null && mr.getNote().contains("- KHÓA]")) {
             return true;
         }
-        int retry = extractRetryCount(mr);
-        return retry >= MAX_MAKEUP_RETRIES && (mr.getStatus() == MakeupStatus.MISSED || mr.getStatus() == MakeupStatus.CANCELLED);
+        return mr.getStatus() == MakeupStatus.MISSED && extractRetryCount(mr) >= MAX_MAKEUP_RETRIES;
+    }
+
+    /**
+     * Kiểm tra ca học bù bị đóng do chưa có lớp phù hợp.
+     */
+    public static boolean isNoSlotClosed(MakeupRegistration mr) {
+        if (mr == null) return false;
+        if (mr.getStatus() == MakeupStatus.NO_SLOT) {
+            return true;
+        }
+        return mr.getStatus() == MakeupStatus.CANCELLED
+                && mr.getNote() != null
+                && mr.getNote().contains("Chưa có lớp phù hợp");
+    }
+
+    /**
+     * Kiểm tra ca học bù đã hết lượt xếp lịch hay chưa.
+     */
+    public static boolean isLimitExceeded(MakeupRegistration mr) {
+        return isMissedAndLocked(mr);
     }
 
     /**
@@ -67,7 +98,7 @@ public class AttendanceMakeupMapper {
     }
 
     /**
-     * Tạo chuỗi note chuẩn kèm tag [Lần bù: X/2].
+     * Tạo chuỗi note chuẩn kèm tag [Lần bù: X/Y].
      */
     public static String buildRetryNote(int retryCount, boolean locked, String body) {
         String cleanBody = stripRetryTag(body);
@@ -92,9 +123,17 @@ public class AttendanceMakeupMapper {
         }
 
         String makeupDateStr = null;
-        if (mr != null && mr.getTargetLesson() != null && mr.getTargetLesson().getLessonDate() != null) {
-            makeupDateStr = mr.getTargetLesson().getLessonDate().format(DATE_FMT);
+        String makeupTimeSlot = null;
+        if (mr != null && mr.getTargetLesson() != null) {
+            Lesson target = mr.getTargetLesson();
+            if (target.getLessonDate() != null) {
+                makeupDateStr = target.getLessonDate().format(DATE_FMT);
+            }
+            if (target.getStartTime() != null && target.getEndTime() != null) {
+                makeupTimeSlot = target.getStartTime().format(TIME_FMT) + " - " + target.getEndTime().format(TIME_FMT);
+            }
         }
+        User targetTeacher = mr != null ? resolveTeacher(mr.getTargetLesson()) : null;
 
         User lessonTeacher = resolveTeacher(lesson);
 
@@ -114,10 +153,14 @@ public class AttendanceMakeupMapper {
                 .lessonTitle(lesson != null ? lesson.getTitle() : null)
                 .className(lesson != null && lesson.getClassEntity() != null ? lesson.getClassEntity().getClassName() : null)
                 .courseName(lesson != null && lesson.getClassEntity() != null && lesson.getClassEntity().getCourse() != null ? lesson.getClassEntity().getCourse().getName() : null)
-                .roomName(lesson != null && lesson.getRoom() != null ? lesson.getRoom().getRoomName() : null)
+                .level(lesson != null && lesson.getClassEntity() != null && lesson.getClassEntity().getCourse() != null ? lesson.getClassEntity().getCourse().getLevel() : null)
+                .branchName(resolveBranchName(lesson))
+                .roomName(resolveRoomName(lesson))
                 .teacherName(lessonTeacher != null ? lessonTeacher.getFullName() : null)
                 .teacherId(lessonTeacher != null ? lessonTeacher.getId() : null)
                 .reason(ar.getReason())
+                .needMakeup(ar.wantsMakeup())
+                .requestedByName(ar.getRequestedByUser() != null ? ar.getRequestedByUser().getFullName() : null)
                 .status(ar.getStatus())
                 .reviewNote(ar.getReviewNote())
                 .approvedByTeacherName(ar.getApprovedByTeacher() != null ? ar.getApprovedByTeacher().getFullName() : null)
@@ -128,9 +171,13 @@ public class AttendanceMakeupMapper {
                 .makeupRetryCount(mr != null ? extractRetryCount(mr) : 0)
                 .makeupMaxRetries(MAX_MAKEUP_RETRIES)
                 .makeupTargetDate(makeupDateStr)
+                .makeupTargetTimeSlot(makeupTimeSlot)
                 .makeupTargetClassName(mr != null && mr.getTargetLesson() != null && mr.getTargetLesson().getClassEntity() != null
                         ? mr.getTargetLesson().getClassEntity().getClassName() : null)
+                .makeupTargetRoomName(mr != null ? resolveRoomName(mr.getTargetLesson()) : null)
+                .makeupTargetTeacherName(targetTeacher != null ? targetTeacher.getFullName() : null)
                 .makeupNote(mr != null ? mr.getNote() : null)
+                .courseMakeupLimit(MAKEUP_LIMIT_PER_COURSE)
                 .build();
     }
 
@@ -138,6 +185,7 @@ public class AttendanceMakeupMapper {
         AbsenceRequestResponse resp = toAbsenceResponse(ar, mr);
         if (resp != null) {
             resp.setCourseMakeupCount(courseMakeupCount);
+            resp.setCourseMakeupLimit(MAKEUP_LIMIT_PER_COURSE);
             resp.setCourseMakeupLimitReached(courseMakeupLimitReached);
         }
         return resp;
@@ -176,6 +224,12 @@ public class AttendanceMakeupMapper {
                 .studentId(student != null ? student.getId() : null)
                 .studentName(student != null ? student.getFullName() : null)
                 .parentName(student != null && student.getParent() != null ? student.getParent().getFullName() : null)
+                .parentPhone(student != null && student.getParent() != null ? student.getParent().getPhone() : null)
+                .courseName(origLesson != null && origLesson.getClassEntity() != null && origLesson.getClassEntity().getCourse() != null
+                        ? origLesson.getClassEntity().getCourse().getName() : null)
+                .level(origLesson != null && origLesson.getClassEntity() != null && origLesson.getClassEntity().getCourse() != null
+                        ? origLesson.getClassEntity().getCourse().getLevel() : null)
+                .branchName(resolveBranchName(origLesson))
                 .originalLessonId(origLesson != null ? origLesson.getId() : null)
                 .originalSessionNumber(origLesson != null ? origLesson.getSessionNumber() : null)
                 .originalLessonDate(origLesson != null ? origLesson.getLessonDate() : null)
@@ -183,6 +237,7 @@ public class AttendanceMakeupMapper {
                 .originalEndTime(origLesson != null ? origLesson.getEndTime() : null)
                 .originalTimeSlot(origTimeSlot)
                 .originalClassName(origLesson != null && origLesson.getClassEntity() != null ? origLesson.getClassEntity().getClassName() : null)
+                .originalRoomName(resolveRoomName(origLesson))
                 .originalTeacherId(origTeacher != null ? origTeacher.getId() : null)
                 .originalTeacherName(origTeacher != null ? origTeacher.getFullName() : null)
                 .targetLessonId(targetLesson != null ? targetLesson.getId() : null)
@@ -192,14 +247,17 @@ public class AttendanceMakeupMapper {
                 .targetEndTime(targetLesson != null ? targetLesson.getEndTime() : null)
                 .targetTimeSlot(targetTimeSlot)
                 .targetClassName(targetLesson != null && targetLesson.getClassEntity() != null ? targetLesson.getClassEntity().getClassName() : null)
-                .targetRoomName(targetLesson != null && targetLesson.getRoom() != null ? targetLesson.getRoom().getRoomName() : null)
+                .targetBranchName(resolveBranchName(targetLesson))
+                .targetRoomName(resolveRoomName(targetLesson))
                 .targetTeacherId(targetTeacher != null ? targetTeacher.getId() : null)
                 .targetTeacherName(targetTeacher != null ? targetTeacher.getFullName() : null)
                 .status(mr.getStatus())
                 .retryCount(retryCount)
                 .maxRetries(MAX_MAKEUP_RETRIES)
                 .limitExceeded(limitExceeded)
+                .courseMakeupLimit(MAKEUP_LIMIT_PER_COURSE)
                 .note(mr.getNote())
+                .absenceCreatedAt(mr.getAbsenceRequest() != null ? mr.getAbsenceRequest().getCreatedAt() : null)
                 .createdAt(mr.getCreatedAt())
                 .reviewedAt(mr.getAbsenceRequest() != null && mr.getAbsenceRequest().getReviewedAt() != null
                         ? mr.getAbsenceRequest().getReviewedAt()
@@ -213,21 +271,20 @@ public class AttendanceMakeupMapper {
     /**
      * Chuyển đổi Student sang StudentOptionResponse DTO
      */
-    public StudentOptionResponse toStudentOption(Student s, String currentClassName) {
-        return toStudentOption(s, currentClassName, 0, false);
-    }
-
     public StudentOptionResponse toStudentOption(Student s, String currentClassName, int makeupCount, boolean makeupLimitReached) {
         if (s == null) return null;
         return StudentOptionResponse.builder()
                 .id(s.getId())
                 .fullName(s.getFullName())
+                .dateOfBirth(s.getDateOfBirth())
                 .gender(s.getGender())
                 .schoolName(s.getSchoolName())
                 .parentId(s.getParent() != null ? s.getParent().getId() : null)
                 .parentName(s.getParent() != null ? s.getParent().getFullName() : null)
+                .parentPhone(s.getParent() != null ? s.getParent().getPhone() : null)
                 .currentClassName(currentClassName)
                 .makeupCount(makeupCount)
+                .makeupLimit(MAKEUP_LIMIT_PER_COURSE)
                 .makeupLimitReached(makeupLimitReached)
                 .build();
     }
@@ -237,13 +294,6 @@ public class AttendanceMakeupMapper {
      */
     public LessonOptionResponse toLessonOption(Lesson l) {
         return toLessonOption(l, null, true, null);
-    }
-
-    /**
-     * Chuyển đổi Lesson sang LessonOptionResponse DTO kèm thông tin level và số chỗ còn trống.
-     */
-    public LessonOptionResponse toLessonOption(Lesson l, Integer occupiedSeats) {
-        return toLessonOption(l, occupiedSeats, true, null);
     }
 
     public LessonOptionResponse toLessonOption(Lesson l, Integer occupiedSeats, boolean exactSessionMatch, String matchTypeLabel) {
@@ -272,7 +322,8 @@ public class AttendanceMakeupMapper {
                 .className(l.getClassEntity() != null ? l.getClassEntity().getClassName() : null)
                 .courseName(l.getClassEntity() != null && l.getClassEntity().getCourse() != null ? l.getClassEntity().getCourse().getName() : null)
                 .level(l.getClassEntity() != null && l.getClassEntity().getCourse() != null ? l.getClassEntity().getCourse().getLevel() : null)
-                .roomName(l.getRoom() != null ? l.getRoom().getRoomName() : null)
+                .branchName(resolveBranchName(l))
+                .roomName(resolveRoomName(l))
                 .teacherName(lessonTeacher != null ? lessonTeacher.getFullName() : null)
                 .maxStudents(maxStudents)
                 .occupiedSeats(occupiedSeats)
@@ -286,5 +337,18 @@ public class AttendanceMakeupMapper {
         if (lesson == null) return null;
         if (lesson.getTeacher() != null) return lesson.getTeacher();
         return lesson.getClassEntity() != null ? lesson.getClassEntity().getTeacher() : null;
+    }
+
+    /** Phòng của buổi học; buổi chưa gán phòng lấy phòng của lớp. */
+    private String resolveRoomName(Lesson lesson) {
+        if (lesson == null) return null;
+        if (lesson.getRoom() != null) return lesson.getRoom().getRoomName();
+        return lesson.getClassEntity() != null && lesson.getClassEntity().getRoom() != null
+                ? lesson.getClassEntity().getRoom().getRoomName() : null;
+    }
+
+    private String resolveBranchName(Lesson lesson) {
+        return lesson != null && lesson.getClassEntity() != null && lesson.getClassEntity().getBranch() != null
+                ? lesson.getClassEntity().getBranch().getName() : null;
     }
 }

@@ -1,13 +1,16 @@
 /**
  * =============================================================================
- * MAKEUP SCHEDULE MODULE (makeup-schedule.js)
+ * MODULE TAB 3: ĐIỀU PHỐI & QUẢN LÝ LỊCH HỌC BÙ (makeup-schedule.js)
  * =============================================================================
- * Handles:
- * 1. Tab 3: Viewing, filtering, paginating makeup registrations.
- * 2. Stage 3: Scheduling makeup lessons (Smart coordination: exact lesson vs flex).
- * 3. Handling exceptions: markNoSlot, familyDeclines, confirmCancelMakeup.
- * 4. Stage 4: Attendance marking (confirmCompleteMakeup) and retry policy logic.
- * 5. Makeup detail popup (viewMakeupDetail).
+ * Phụ thuộc: makeup-common.js
+ * Mục lục tra cứu nhanh:
+ *   0. Huy hiệu trạng thái ca bù: getMakeupStatusBadgeHtml
+ *   1. Tải dữ liệu, bộ lọc, phân trang & render bảng Tab 3:
+ *      populateMakeupFilterOptions, applyMakeupFilter, loadMakeupRequests, renderMakeupTable
+ *   2. Giai đoạn 3 - Modal xếp lịch bù thông minh: selectScheduleTargetCard, openScheduleModal, executeSchedule
+ *   3. Thao tác kết thúc / hủy / báo chưa có lớp:
+ *      confirmCompleteMakeup, confirmCancelMakeup, familyDeclines, markNoSlot
+ *   4. Popup chi tiết ca học bù: viewMakeupDetail
  */
 
 // Pagination state for Makeup Requests (Tab 3)
@@ -31,13 +34,22 @@ window.addEventListener('DOMContentLoaded', () => {
 /**
  * Returns badge HTML corresponding to makeup registration status and retry count.
  */
-function getMakeupStatusBadgeHtml(status) {
+function getMakeupStatusBadgeHtml(status, note = '') {
+    const rawNote = String(note || '');
     if (status === 'PENDING') return '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Xếp Lớp</span>';
     if (status === 'SCHEDULED') return '<span class="badge-status-modern status-scheduled"><i class="bi bi-calendar2-check"></i>Đã Xếp Lớp</span>';
-    if (status === 'NO_SLOT') return '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy (Chưa có lớp)</span>';
+    if (status === 'NO_SLOT') return '<span class="badge-status-modern status-noslot"><i class="bi bi-exclamation-circle"></i>Chưa Có Lớp</span>';
     if (status === 'MISSED') return '<span class="badge-status-modern status-missed"><i class="bi bi-person-x-fill"></i>Bỏ Lỡ Bù</span>';
     if (status === 'COMPLETED') return '<span class="badge-status-modern status-completed"><i class="bi bi-check2-all"></i>Hoàn Thành</span>';
-    if (status === 'CANCELLED') return '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
+    if (status === 'CANCELLED') {
+        if (rawNote.includes('- KHÓA]')) {
+            return '<span class="badge-status-modern status-missed"><i class="bi bi-lock-fill"></i>Hết Quyền Bù</span>';
+        }
+        if (rawNote.includes('Chưa có lớp phù hợp')) {
+            return '<span class="badge-status-modern status-noslot"><i class="bi bi-exclamation-circle"></i>Hủy (Chưa có lớp)</span>';
+        }
+        return '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
+    }
     return `<span class="badge bg-light text-secondary border">${escapeHtml(status || 'Chưa có')}</span>`;
 }
 
@@ -58,14 +70,28 @@ function sortMakeupList(list) {
     });
 }
 
+function isFutureMakeup(item) {
+    if (!item || !item.targetLessonDate) return false;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (item.targetLessonDate > todayStr) return true;
+    if (item.targetLessonDate === todayStr) {
+        const startStr = String(item.targetStartTime || (item.targetTimeSlot ? item.targetTimeSlot.split('-')[0].trim() : '')).substring(0, 5);
+        const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        if (startStr && startStr > nowStr) return true;
+    }
+    return false;
+}
+
 function populateMakeupFilterOptions() {
     const stuSel = document.getElementById('filterMakeupStudent');
     const clsSel = document.getElementById('filterMakeupClass');
+    const branchSel = document.getElementById('filterMakeupBranch');
     if (stuSel) {
         const prev = stuSel.value;
         const names = Array.from(new Set((currentMakeupList || []).map(m => m.studentName).filter(Boolean)))
             .sort((a, b) => a.localeCompare(b, 'vi'));
-        stuSel.innerHTML = '<option value="">Tất Cả Học Viên</option>'
+        stuSel.innerHTML = '<option value="">Tất cả</option>'
             + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
         if (prev && names.includes(prev)) stuSel.value = prev;
     }
@@ -77,9 +103,21 @@ function populateMakeupFilterOptions() {
             if (m.targetClassName) classSet.add(m.targetClassName);
         });
         const classes = Array.from(classSet).sort((a, b) => a.localeCompare(b, 'vi'));
-        clsSel.innerHTML = '<option value="">Tất Cả Lớp</option>'
+        clsSel.innerHTML = '<option value="">Tất cả</option>'
             + classes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
         if (prev && classes.includes(prev)) clsSel.value = prev;
+    }
+    if (branchSel) {
+        const prev = branchSel.value;
+        const branchSet = new Set();
+        (currentMakeupList || []).forEach(m => {
+            if (m.branchName) branchSet.add(m.branchName);
+            if (m.targetBranchName) branchSet.add(m.targetBranchName);
+        });
+        const branches = Array.from(branchSet).sort((a, b) => a.localeCompare(b, 'vi'));
+        branchSel.innerHTML = '<option value="">Tất cả</option>'
+            + branches.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+        if (prev && branches.includes(prev)) branchSel.value = prev;
     }
 }
 
@@ -88,7 +126,7 @@ function applyMakeupFilter() {
 }
 
 function resetMakeupFilter() {
-    ['filterMakeupStatus', 'filterMakeupStudent', 'filterMakeupClass',
+    ['filterMakeupStatus', 'filterMakeupStudent', 'filterMakeupClass', 'filterMakeupBranch',
      'filterMakeupDirection', 'filterMakeupFromDate', 'filterMakeupToDate', 'searchMakeupInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -98,7 +136,7 @@ function resetMakeupFilter() {
 
 async function loadMakeupRequests() {
     try {
-        const data = await callApi('/api/attendance-makeup/makeup-requests');
+        const data = await callApi('/api/attendance-makeup/makeup-requests', 'GET', null, false, false);
         currentMakeupList = sortMakeupList(data || []);
         populateMakeupFilterOptions();
         renderMakeupTable();
@@ -137,6 +175,7 @@ function renderMakeupTable(resetPage = false) {
     const statusFilter = document.getElementById('filterMakeupStatus')?.value || '';
     const studentFilter = document.getElementById('filterMakeupStudent')?.value || '';
     const classFilter = document.getElementById('filterMakeupClass')?.value || '';
+    const branchFilter = document.getElementById('filterMakeupBranch')?.value || '';
     const dirFilter = document.getElementById('filterMakeupDirection') ? document.getElementById('filterMakeupDirection').value : '';
     const fromDate = document.getElementById('filterMakeupFromDate')?.value || '';
     const toDate = document.getElementById('filterMakeupToDate')?.value || '';
@@ -149,7 +188,10 @@ function renderMakeupTable(resetPage = false) {
     } else if (dirFilter === 'IN' && myId) {
         filtered = filtered.filter(m => Number(m.targetTeacherId) === Number(myId) && Number(m.originalTeacherId) !== Number(myId));
     }
-    if (statusFilter) {
+    if (statusFilter === 'NO_SLOT') {
+        filtered = filtered.filter(m => m.status === 'NO_SLOT'
+            || (m.status === 'CANCELLED' && m.note && m.note.includes('Chưa có lớp phù hợp')));
+    } else if (statusFilter) {
         filtered = filtered.filter(m => m.status === statusFilter);
     }
     if (studentFilter) {
@@ -157,6 +199,9 @@ function renderMakeupTable(resetPage = false) {
     }
     if (classFilter) {
         filtered = filtered.filter(m => m.originalClassName === classFilter || m.targetClassName === classFilter);
+    }
+    if (branchFilter) {
+        filtered = filtered.filter(m => m.branchName === branchFilter || m.targetBranchName === branchFilter);
     }
     if (fromDate) {
         filtered = filtered.filter(m =>
@@ -207,41 +252,42 @@ function renderMakeupTable(resetPage = false) {
     const pagedItems = filtered.slice(startIdx, endIdx);
 
     const isStaffOrAdmin = currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'BRANCH_MANAGER' || currentUser.role === 'STAFF');
+    const isTeacher = currentUser && currentUser.role === 'TEACHER';
+    const isParent = currentUser && currentUser.role === 'PARENT';
 
     tbody.innerHTML = pagedItems.map(item => {
-        let statusBadge = '';
-        if (item.status === 'PENDING') {
-            statusBadge = '<span class="badge-status-modern status-pending"><i class="bi bi-hourglass-split"></i>Chờ Xếp Lịch</span>';
-        } else if (item.status === 'SCHEDULED') {
-            statusBadge = '<span class="badge-status-modern status-scheduled"><i class="bi bi-calendar2-check"></i>Đã Xếp Lịch</span>';
-        } else if (item.status === 'MISSED') {
-            statusBadge = '<span class="badge-status-modern status-missed"><i class="bi bi-person-x-fill"></i>Bỏ Lỡ Bù</span>';
-        } else if (item.status === 'COMPLETED') {
-            statusBadge = '<span class="badge-status-modern status-completed"><i class="bi bi-check2-all"></i>Hoàn Thành</span>';
-        } else if (item.status === 'CANCELLED') {
-            statusBadge = '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy</span>';
-        } else if (item.status === 'NO_SLOT') {
-            statusBadge = '<span class="badge-status-modern status-cancelled"><i class="bi bi-x-circle"></i>Đã Hủy (Chưa có lớp)</span>';
-        }
+        const statusBadge = getMakeupStatusBadgeHtml(item.status, item.note);
 
         const origDateStr = item.originalLessonDate || '';
         const origTimeStr = item.originalTimeSlot || '';
+
+        const isOrigTeacher = isTeacher && myId != null && Number(item.originalTeacherId) === Number(myId);
+        const isTargetTeacher = isTeacher && myId != null && Number(item.targetTeacherId) === Number(myId);
 
         let targetCell = '<span class="text-muted small">Chưa xếp</span>';
         if (item.targetLessonId) {
             const sessionCompareBadge = (item.originalSessionNumber && item.targetSessionNumber && item.originalSessionNumber !== item.targetSessionNumber)
                 ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">Linh hoạt B${item.targetSessionNumber}</span>`
                 : (item.targetSessionNumber ? `<span class="badge bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 0.65rem;">Buổi ${item.targetSessionNumber}</span>` : '');
+            const directionBadge = isTeacher
+                ? (isTargetTeacher && !isOrigTeacher
+                    ? '<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1" style="font-size: 0.65rem;">Bù vào lớp</span>'
+                    : (isOrigTeacher && !isTargetTeacher
+                        ? '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1" style="font-size: 0.65rem;">Chuyển đi</span>'
+                        : (isOrigTeacher && isTargetTeacher
+                            ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 0.65rem;">Cùng GV</span>'
+                            : '')))
+                : '';
             targetCell = `
-                <div class="tbl-cell-title text-truncate" style="max-width: 240px;">
-                    ${escapeHtml(item.targetClassName || 'Lớp bù')}${sessionCompareBadge}
+                <div class="tbl-cell-title">
+                    ${escapeHtml(item.targetClassName || 'Lớp bù')}${sessionCompareBadge}${directionBadge}
                 </div>
                 <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
                     <span class="tbl-date-pill">${item.targetLessonDate || ''}</span>
                     <span>${item.targetTimeSlot || ''}</span>
                 </div>
-                <div class="tbl-cell-sub mt-0.5 text-truncate" style="max-width: 230px;">
-                    ${escapeHtml(item.targetTeacherName || 'Chưa phân công')} &bull; ${escapeHtml(item.targetRoomName || 'Phòng học')}
+                <div class="tbl-cell-sub mt-1">
+                    ${escapeHtml(item.targetTeacherName || 'Chưa phân công')} &bull; ${escapeHtml(item.targetRoomName || 'Phòng học')}${item.targetBranchName ? ` &bull; ${escapeHtml(item.targetBranchName)}` : ''}
                 </div>
             `;
         }
@@ -251,6 +297,9 @@ function renderMakeupTable(resetPage = false) {
                 <i class="bi bi-eye"></i>
             </button>
         `;
+
+        const canReschedule = (item.retryCount || 0) < (item.maxRetries || 1);
+        const canComplete = !isFutureMakeup(item);
 
         if (item.status === 'PENDING') {
             if (isStaffOrAdmin) {
@@ -266,42 +315,63 @@ function renderMakeupTable(resetPage = false) {
                     </button>
                 `;
             }
-        } else if (item.status === 'SCHEDULED') {
-            if (isStaffOrAdmin) {
+        } else if (item.status === 'SCHEDULED' || item.status === 'MISSED') {
+            if ((isStaffOrAdmin || isTargetTeacher) && canComplete) {
                 actionButtons += `
                     <button class="btn-action-pill btn-action-pill-primary" style="background:#16a34a;" title="Điểm danh có mặt" onclick="confirmCompleteMakeup(${item.id})">
                         <i class="bi bi-check2-all"></i>Có mặt
                     </button>
-                    <button class="btn-action-icon btn-action-primary" title="Đổi ca học bù" onclick="openScheduleModal(${item.id})">
-                        <i class="bi bi-arrow-repeat"></i>
-                    </button>
+                `;
+            }
+            if (isStaffOrAdmin) {
+                if (canReschedule) {
+                    actionButtons += `
+                        <button class="btn-action-icon btn-action-primary" title="Đổi ca học bù" onclick="openScheduleModal(${item.id})">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    `;
+                }
+                actionButtons += `
                     <button class="btn-action-icon btn-action-reject" title="Hủy ca bù" onclick="confirmCancelMakeup(${item.id})">
                         <i class="bi bi-x-circle"></i>
                     </button>
                 `;
             }
-        } else if (item.status === 'MISSED') {
-            // Học viên đã được xếp lịch nhưng không đi (Bỏ lỡ bù) thì không cần xếp lại nữa theo quy định trung tâm
         }
 
         const cleanNote = formatCleanNote(item.note);
+        const parentMeta = !isParent && item.parentName
+            ? `<div class="tbl-cell-sub mt-1"><span>PH: ${escapeHtml(item.parentName)}${item.parentPhone ? ` &bull; ${escapeHtml(item.parentPhone)}` : ''}</span></div>`
+            : '';
+        const formattedCourse = typeof formatCourseAndLevel === 'function'
+            ? formatCourseAndLevel(item.courseName, item.level)
+            : (item.courseName || '');
+        const courseMeta = formattedCourse
+            ? `<div class="tbl-cell-sub mt-1"><span>${escapeHtml(formattedCourse)}</span></div>`
+            : '';
+        const quotaBadge = (item.courseMakeupCount != null && typeof renderMakeupCounterBadge === 'function')
+            ? `<div class="mt-1">${renderMakeupCounterBadge(item.courseMakeupCount, item.courseMakeupLimit ?? 3)}</div>`
+            : '';
 
         return `
             <tr>
                 <td class="text-center"><span class="id-badge">#${item.id}</span></td>
                 <td>
                     <div class="tbl-cell-title">${escapeHtml(item.studentName || 'Học viên')}</div>
+                    ${parentMeta}
+                    ${courseMeta}
+                    ${quotaBadge}
                 </td>
                 <td>
-                    <div class="tbl-cell-title text-truncate" style="max-width: 230px;">
+                    <div class="tbl-cell-title">
                         ${escapeHtml(item.originalClassName || 'Lớp học')}
                     </div>
                     <div class="tbl-cell-sub mt-1 d-flex align-items-center flex-wrap gap-1">
                         <span class="tbl-date-pill">${origDateStr}</span>
                         <span>${origTimeStr}</span>
                     </div>
-                    <div class="tbl-cell-sub mt-0.5 text-truncate" style="max-width: 220px;">
-                        ${escapeHtml(item.originalTeacherName || 'Chưa phân công')}
+                    <div class="tbl-cell-sub mt-1">
+                        ${escapeHtml(item.originalTeacherName || 'Chưa phân công')}${item.originalRoomName ? ` &bull; ${escapeHtml(item.originalRoomName)}` : ''}${item.branchName ? ` &bull; ${escapeHtml(item.branchName)}` : ''}
                     </div>
                 </td>
                 <td>${targetCell}</td>
@@ -361,11 +431,12 @@ function selectScheduleTargetCard(lessonId) {
 }
 
 async function openScheduleModal(makeupId) {
+    if (typeof ensureSessionMatchesTab === 'function' && !ensureSessionMatchesTab()) return;
     activeMakeupId = makeupId;
     let item = currentMakeupList.find(m => Number(m.id) === Number(makeupId));
     if (!item) {
         try {
-            item = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}`);
+            item = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}`, 'GET', null, false, false);
         } catch (err) {
             showToast('danger', 'Không tải được ca học bù: ' + err.message);
             return;
@@ -374,7 +445,7 @@ async function openScheduleModal(makeupId) {
     if (!item) return;
 
     const currentRetry = item.retryCount || 0;
-    const maxRetries = item.maxRetries || 2;
+    const maxRetries = item.maxRetries || 1;
     if (item.limitExceeded || currentRetry >= maxRetries) {
         showToast('danger', `Đã hết ${maxRetries}/${maxRetries} lần xếp học bù.`);
         return;
@@ -389,18 +460,28 @@ async function openScheduleModal(makeupId) {
     if (nameEl) nameEl.innerText = item.studentName || '';
     if (origLessonEl) origLessonEl.innerText = `${origSessionText}${item.originalClassName || ''} (${item.originalLessonDate || ''})`;
     const rawCleanNote = formatCleanNote((item.note || '').replace(/^\[Lần bù:\s*\d+\/\d+(?:\s*-\s*KHÓA)?\]\s*/, ''));
-    if (noteEl) noteEl.value = rawCleanNote;
+    if (noteEl) noteEl.value = item.status === 'PENDING' ? '' : rawCleanNote;
+
+    const quotaBadge = document.getElementById('scheduleQuotaBadge');
+    if (quotaBadge) {
+        const mkCount = item.courseMakeupCount ?? 0;
+        const mkLimit = item.courseMakeupLimit ?? 3;
+        quotaBadge.className = mkCount >= mkLimit
+            ? 'badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-semibold'
+            : 'badge rounded-pill px-3 py-1 fw-semibold';
+        if (mkCount < mkLimit) {
+            quotaBadge.style.background = '#eef6ff';
+            quotaBadge.style.color = '#1d4ed8';
+        }
+        quotaBadge.innerHTML = `<i class="bi bi-calendar2-check me-1"></i>Quyền bù khóa: ${mkCount}/${mkLimit}`;
+    }
 
     const retryBadge = document.getElementById('scheduleRetryBadge');
     if (retryBadge) {
-        retryBadge.className = nextAttempt >= maxRetries
-            ? 'badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold'
-            : 'badge rounded-pill px-2.5 py-1 fw-semibold';
-        if (nextAttempt < maxRetries) {
-            retryBadge.style.background = '#e6f0ec';
-            retryBadge.style.color = '#143c34';
-        }
-        retryBadge.innerHTML = `<i class="bi bi-repeat me-1"></i>Lần ${nextAttempt}/${maxRetries}${nextAttempt >= maxRetries ? ' (Cuối)' : ''}`;
+        retryBadge.className = 'badge rounded-pill px-3 py-1 fw-semibold';
+        retryBadge.style.background = '#e6f0ec';
+        retryBadge.style.color = '#143c34';
+        retryBadge.innerHTML = `<i class="bi bi-repeat me-1"></i>Xếp lịch ${nextAttempt}/${maxRetries}`;
     }
 
     const coordBanner = document.getElementById('scheduleSmartCoordinationBanner');
@@ -420,7 +501,7 @@ async function openScheduleModal(makeupId) {
     if (modalScheduleObj) modalScheduleObj.show();
 
     try {
-        const availableLessons = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/available-lessons`);
+        const availableLessons = await callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/available-lessons`, 'GET', null, false, false);
         if (!availableLessons || availableLessons.length === 0) {
             if (select) select.innerHTML = '<option value="">-- Không có lớp phù hợp --</option>';
             if (pickerList) pickerList.innerHTML = '<div class="lesson-empty-box">Hiện chưa có lớp phù hợp sắp tới</div>';
@@ -451,7 +532,7 @@ async function openScheduleModal(makeupId) {
             coordBanner.innerHTML = `
                 <span><i class="bi bi-lightbulb-fill me-1"></i>Đã qua Buổi #${item.originalSessionNumber || ''} — gợi ý ca ghép linh hoạt:</span>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-2.5" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">Chưa có lớp</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="modalScheduleObj.hide(); markNoSlot(${makeupId});">Chưa có lớp</button>
                 </div>
             `;
         }
@@ -479,7 +560,7 @@ async function openScheduleModal(makeupId) {
                         <div class="lesson-pick-day">${escapeHtml(dt.day)}</div>
                     </div>
                     <div class="lesson-pick-info">
-                        <div class="d-flex align-items-center justify-content-between gap-2 mb-0.5">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
                             <div class="lesson-pick-title">${escapeHtml(l.className || 'Lớp học')}</div>
                             ${matchBadge}
                         </div>
@@ -488,6 +569,7 @@ async function openScheduleModal(makeupId) {
                             <span><i class="bi bi-clock me-1"></i>${escapeHtml(timeStr)}</span>
                             ${l.teacherName ? `<span><i class="bi bi-person me-1"></i>${escapeHtml(l.teacherName)}</span>` : ''}
                             ${l.roomName ? `<span><i class="bi bi-door-open me-1"></i>${escapeHtml(l.roomName)}</span>` : ''}
+                            ${l.branchName ? `<span><i class="bi bi-building me-1"></i>${escapeHtml(l.branchName)}</span>` : ''}
                             ${seatBadge}
                         </div>
                     </div>
@@ -517,6 +599,7 @@ async function openScheduleModal(makeupId) {
 }
 
 async function executeSchedule() {
+    if (typeof ensureSessionMatchesTab === 'function' && !ensureSessionMatchesTab()) return;
     if (!activeMakeupId) return;
     const targetLessonId = document.getElementById('scheduleTargetLessonSelect')?.value;
     const note = (document.getElementById('scheduleNoteInput')?.value || '').trim();
@@ -530,7 +613,7 @@ async function executeSchedule() {
         await callApi(`/api/attendance-makeup/makeup-requests/${activeMakeupId}/schedule`, 'PUT', {
             targetLessonId: Number(targetLessonId),
             note: note
-        });
+        }, false, false);
         if (modalScheduleObj) modalScheduleObj.hide();
         showToast('success', 'Đã xếp lớp học bù thành công.');
         await reloadData();
@@ -554,7 +637,7 @@ function confirmCompleteMakeup(makeupId) {
         btnText: '<i class="bi bi-check-lg me-1"></i>Xác Nhận Có Mặt',
         toastType: 'success',
         toastMessage: 'Đã ghi nhận hoàn thành ca học bù.',
-        onConfirm: async () => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/complete`, 'PUT')
+        onConfirm: async () => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/complete`, 'PUT', null, false, false)
     });
 }
 
@@ -570,7 +653,7 @@ function confirmCancelMakeup(makeupId) {
         btnText: '<i class="bi bi-x-circle me-1"></i>Hủy Ca Bù',
         toastType: 'warning',
         toastMessage: 'Đã hủy ca học bù.',
-        onConfirm: async (reason) => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', { reason })
+        onConfirm: async (reason) => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', { reason }, false, false)
     });
 }
 
@@ -586,7 +669,7 @@ function familyDeclines(makeupId) {
         toastMessage: 'Đã hủy yêu cầu học bù.',
         onConfirm: async () => callApi(`/api/attendance-makeup/makeup-requests/${makeupId}/cancel`, 'PATCH', {
             reason: 'Gia đình báo không cần học bù'
-        })
+        }, false, false)
     });
 }
 
@@ -618,7 +701,7 @@ function markNoSlot(makeupId) {
             </div>
             <div class="d-flex align-items-center justify-content-between">
                 <span class="text-secondary small">Mã ca</span>
-                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5 rounded-pill fw-semibold">#${mId}</span>
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 rounded-pill fw-semibold">#${mId}</span>
             </div>
         `;
     }
@@ -633,10 +716,10 @@ function markNoSlot(makeupId) {
         defaultNote: '',
         placeholder: 'Nhập nội dung thông báo gửi phụ huynh...',
         btnClass: 'btn-amber-solid',
-        btnText: '<i class="bi bi-send-fill me-1.5"></i>Gửi Thông Báo',
+        btnText: '<i class="bi bi-send-fill me-2"></i>Gửi Thông Báo',
         toastType: 'success',
         toastMessage: 'Đã gửi thông báo chưa có lớp tới phụ huynh.',
-        onConfirm: async (note) => callApi(`/api/attendance-makeup/makeup-requests/${mId}/no-slot`, 'PATCH', { note })
+        onConfirm: async (note) => callApi(`/api/attendance-makeup/makeup-requests/${mId}/no-slot`, 'PATCH', { note }, false, false)
     });
 }
 
@@ -646,7 +729,7 @@ function markNoSlot(makeupId) {
 
 async function viewMakeupDetail(id) {
     try {
-        const item = await callApi(`/api/attendance-makeup/makeup-requests/${id}`);
+        const item = await callApi(`/api/attendance-makeup/makeup-requests/${id}`, 'GET', null, false, false);
         if (!item) return;
 
         const cleanNote = formatCleanNote(item.note);
@@ -657,39 +740,47 @@ async function viewMakeupDetail(id) {
         if (body) {
             const initials = typeof getInitials === 'function' ? getInitials(item.studentName) : 'HV';
             const fmtDate = typeof formatDateTime === 'function' ? formatDateTime : (val) => val || 'N/A';
+            const formattedCourse = typeof formatCourseAndLevel === 'function'
+                ? formatCourseAndLevel(item.courseName, item.level)
+                : (item.courseName || '');
+            const submitTime = item.absenceCreatedAt || item.createdAt;
+            const reviewTime = item.reviewedAt || item.createdAt;
 
             body.innerHTML = `
                 <!-- 1. THẺ HỌC VIÊN & TRẠNG THÁI CA BÙ -->
                 <div class="detail-info-card mb-3">
                     <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div class="d-flex align-items-center gap-2.5">
+                        <div class="d-flex align-items-center gap-2">
                             <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 42px; height: 42px; font-size: 0.95rem; background: #1e5346; flex-shrink: 0;">
                                 ${escapeHtml(initials)}
                             </div>
                             <div>
                                 <div class="fw-bold text-dark fs-6 lh-sm">${escapeHtml(item.studentName || 'Học viên')}</div>
                                 <div class="small text-secondary mt-1">
-                                    <i class="bi bi-person-heart text-muted me-1"></i>PH: ${escapeHtml(item.parentName || 'N/A')}
+                                    <i class="bi bi-person-heart text-muted me-1"></i>PH: ${escapeHtml(item.parentName || 'N/A')}${item.parentPhone ? ` &bull; ${escapeHtml(item.parentPhone)}` : ''}
                                 </div>
+                                ${formattedCourse ? `<div class="small text-muted mt-1">${escapeHtml(formattedCourse)}</div>` : ''}
+                                ${(item.courseMakeupCount != null && typeof renderMakeupCounterBadge === 'function')
+                                    ? `<div class="mt-1">${renderMakeupCounterBadge(item.courseMakeupCount, item.courseMakeupLimit ?? 3)}</div>` : ''}
                             </div>
                         </div>
-                        ${getMakeupStatusBadgeHtml(item.status, item.retryCount, item.maxRetries)}
+                        ${getMakeupStatusBadgeHtml(item.status, item.note)}
                     </div>
 
-                    <!-- TIẾP NHẬN & PHẢN HỒI -->
-                    <div class="detail-meta-row mt-2.5 pt-2 border-top">
-                        <span><i class="bi bi-send text-primary me-1.5"></i>Tiếp nhận:</span>
-                        <strong>${fmtDate(item.createdAt)}</strong>
+                    <!-- GỬI ĐƠN & DUYỆT ĐƠN -->
+                    <div class="detail-meta-row mt-3 pt-2 border-top">
+                        <span><i class="bi bi-send text-primary me-2"></i>Gửi đơn:</span>
+                        <strong>${fmtDate(submitTime)}</strong>
                     </div>
 
                     <div class="detail-meta-row">
-                        <span><i class="bi bi-check2-circle text-success me-1.5"></i>Phản hồi:</span>
-                        <strong class="text-success">${fmtDate(item.reviewedAt || item.createdAt)}</strong>
+                        <span><i class="bi bi-check2-circle text-success me-2"></i>Duyệt đơn:</span>
+                        <strong class="text-success">${fmtDate(reviewTime)}</strong>
                     </div>
 
                     ${item.reviewerName ? `
                     <div class="detail-meta-row">
-                        <span><i class="bi bi-person-check text-secondary me-1.5"></i>Người duyệt:</span>
+                        <span><i class="bi bi-person-check text-secondary me-2"></i>Người duyệt:</span>
                         <strong>${escapeHtml(item.reviewerName)}</strong>
                     </div>
                     ` : ''}
@@ -702,7 +793,7 @@ async function viewMakeupDetail(id) {
                     </div>
                     <div class="detail-info-card bg-subtle">
                         <div class="fw-bold text-dark fs-6">${escapeHtml(cleanTitle(item.originalClassName || ''))}</div>
-                        <div class="d-flex flex-wrap gap-2 mt-1.5 align-items-center">
+                        <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
                             <span class="detail-meta-badge">
                                 <i class="bi bi-calendar3 text-primary"></i> ${item.originalLessonDate || ''}
                             </span>
@@ -710,11 +801,13 @@ async function viewMakeupDetail(id) {
                                 <i class="bi bi-clock text-secondary"></i> ${item.originalTimeSlot || ''}
                             </span>
                         </div>
-                        <div class="small text-muted mt-2 pt-1.5 border-top d-flex align-items-center gap-1.5">
-                            <i class="bi bi-person-video3 text-success"></i> GV ca gốc: <strong>${escapeHtml(item.originalTeacherName || 'N/A')}</strong>
+                        <div class="small text-muted mt-2 pt-2 border-top d-flex flex-wrap gap-3">
+                            <span><i class="bi bi-person-video3 text-success me-1"></i>GV gốc: <strong>${escapeHtml(item.originalTeacherName || 'N/A')}</strong></span>
+                            ${item.originalRoomName ? `<span><i class="bi bi-geo-alt text-danger me-1"></i>${escapeHtml(item.originalRoomName)}</span>` : ''}
+                            ${item.branchName ? `<span><i class="bi bi-building text-primary me-1"></i>${escapeHtml(item.branchName)}</span>` : ''}
                         </div>
                         ${item.absenceReason ? `
-                        <div class="small text-secondary mt-2 pt-1.5 border-top">
+                        <div class="small text-secondary mt-2 pt-2 border-top">
                             <span class="text-muted"><i class="bi bi-chat-left-dots me-1"></i>Lý do nghỉ:</span> ${escapeHtml(item.absenceReason)}
                         </div>
                         ` : ''}
@@ -729,7 +822,7 @@ async function viewMakeupDetail(id) {
                     ${item.targetLessonId ? `
                         <div class="detail-info-card card-accent-emerald">
                             <div class="d-flex flex-wrap gap-2 align-items-center">
-                                <span class="badge bg-success text-white px-2.5 py-1.5 rounded-pill">
+                                <span class="badge bg-success text-white px-3 py-1 rounded-pill">
                                     <i class="bi bi-check-circle-fill me-1"></i>ĐÃ XẾP LỊCH
                                 </span>
                                 <span class="fw-bold text-success fs-6">
@@ -739,8 +832,9 @@ async function viewMakeupDetail(id) {
                             <div class="fw-semibold text-dark mt-2">
                                 <i class="bi bi-collection me-1 text-primary"></i>${escapeHtml(cleanTitle(item.targetClassName || ''))}
                                 &bull; <i class="bi bi-geo-alt me-1 text-danger"></i>${escapeHtml(cleanTitle(item.targetRoomName || 'Phòng học'))}
+                                ${item.targetBranchName ? ` &bull; ${escapeHtml(item.targetBranchName)}` : ''}
                             </div>
-                            <div class="small text-muted mt-1.5 pt-1.5 border-top border-opacity-25 border-success">
+                            <div class="small text-muted mt-2 pt-2 border-top border-opacity-25 border-success">
                                 <i class="bi bi-person-badge text-success me-1"></i>GV giảng dạy: <strong>${escapeHtml(item.targetTeacherName || 'N/A')}</strong>
                             </div>
                         </div>
@@ -774,6 +868,8 @@ async function viewMakeupDetail(id) {
             const role = currentUser ? currentUser.role : '';
             const isCoordinator = ['STAFF', 'ADMIN', 'BRANCH_MANAGER'].includes(role);
             const isTeacher = role === 'TEACHER';
+            const myId = currentUser ? (currentUser.userId ?? currentUser.id) : null;
+            const isTargetTeacher = isTeacher && myId != null && Number(item.targetTeacherId) === Number(myId);
 
             let footerActions = '';
             if (isCoordinator && item.status === 'PENDING') {
@@ -786,7 +882,7 @@ async function viewMakeupDetail(id) {
                     </button>
                 `;
             }
-            if (isCoordinator && item.status === 'SCHEDULED') {
+            if ((isCoordinator || isTargetTeacher) && (item.status === 'SCHEDULED' || item.status === 'MISSED') && !isFutureMakeup(item)) {
                 footerActions += `
                     <button type="button" class="btn btn-sm btn-success rounded-pill px-3" onclick="modalDetailObj.hide(); confirmCompleteMakeup(${item.id})">
                         <i class="bi bi-check2-all me-1"></i>Có mặt

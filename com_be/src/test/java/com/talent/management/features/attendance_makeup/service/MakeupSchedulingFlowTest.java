@@ -12,6 +12,8 @@ import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import com.talent.management.features.attendance_makeup.policy.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,7 +34,19 @@ class MakeupSchedulingFlowTest {
     @Mock AttendanceMakeupMapper mapper;
     @Mock CurrentUserService currentUser;
     @Mock NotificationService notificationService;
+    @Mock AttendanceRecordRepository records;
     @InjectMocks AbsenceMakeupServiceImpl service;
+
+    @BeforeEach void configureExtractedPolicies() {
+        var validator = new AbsenceMakeupValidator(lessons, enrollments, makeups);
+        var quota = new MakeupQuotaPolicy(absences, makeups);
+        var helper = new AttendanceMakeupNotificationHelper(validator, quota);
+        ReflectionTestUtils.setField(helper, "notificationService", notificationService);
+        ReflectionTestUtils.setField(service, "validator", validator);
+        ReflectionTestUtils.setField(service, "quotaPolicy", quota);
+        ReflectionTestUtils.setField(service, "notificationHelper", helper);
+        lenient().when(enrollments.existsByStudentIdAndClassEntityIdAndStatus(anyLong(), anyLong(), eq(EnrollmentStatus.ENROLLED))).thenReturn(true);
+    }
 
     private MakeupRegistration request() {
         Course course = Course.builder().id(1L).level("1").build();
@@ -54,7 +68,7 @@ class MakeupSchedulingFlowTest {
     @Test void noSlotMessageCancelsRegistrationWithoutTargetLesson() {
         staff();
         var makeup = request();
-        when(makeups.findByIdAndStatusIn(eq(50L), anyList())).thenReturn(Optional.of(makeup));
+        when(makeups.findByIdForUpdate(50L)).thenReturn(Optional.of(makeup));
         when(makeups.save(any())).thenAnswer(inv -> inv.getArgument(0));
         service.markNoSlotAvailable(50L, new MakeupResolveRequest("Trung tâm sẽ liên hệ khi có lớp phù hợp."));
         assertThat(makeup.getStatus()).isEqualTo(MakeupStatus.CANCELLED);
@@ -68,7 +82,7 @@ class MakeupSchedulingFlowTest {
                 .status(LessonStatus.SCHEDULED).classEntity(ClassEntity.builder().id(200L)
                         .course(makeup.getOriginalLesson().getClassEntity().getCourse())
                         .currentStudents(2).maxStudents(8).build()).build();
-        when(makeups.findById(50L)).thenReturn(Optional.of(makeup));
+        when(makeups.findByIdForUpdate(50L)).thenReturn(Optional.of(makeup));
         when(lessons.findById(20L)).thenReturn(Optional.of(target));
         when(makeups.save(any())).thenAnswer(inv -> inv.getArgument(0));
         service.scheduleMakeup(50L, new MakeupScheduleRequest(20L, "Buổi bù đã xếp"));
@@ -89,7 +103,7 @@ class MakeupSchedulingFlowTest {
                 .startTime(LocalTime.of(18, 30)).endTime(LocalTime.of(20, 0))
                 .status(LessonStatus.SCHEDULED)
                 .classEntity(ClassEntity.builder().id(300L).className("Lớp Trùng").build()).build();
-        when(makeups.findById(50L)).thenReturn(Optional.of(makeup));
+        when(makeups.findByIdForUpdate(50L)).thenReturn(Optional.of(makeup));
         when(lessons.findById(20L)).thenReturn(Optional.of(target));
         when(lessons.findLessonsByStudentIdAndDateBetween(1L, date, date)).thenReturn(List.of(conflict));
 
@@ -116,7 +130,6 @@ class MakeupSchedulingFlowTest {
         assertThat(result).extracting("id").containsExactly(3L, 2L, 1L);
     }
     @Test void staffApprovingOnBehalfNotifiesStaffAdminAndFallbackClassTeacher() {
-        ReflectionTestUtils.setField(service, "notificationService", notificationService);
         staff();
         User classTeacher = User.builder().id(88L).role(Role.TEACHER).fullName("Cô Hoa").build();
         User parent = User.builder().id(77L).role(Role.PARENT).fullName("Phụ huynh A").build();
@@ -141,7 +154,6 @@ class MakeupSchedulingFlowTest {
         verify(notificationService).sendNotification(eq(classTeacher), any(), anyString(), contains("thay mặt bạn"), eq("ABSENCE_APPROVED"), eq(5L), anyString());
     }
     @Test void parentCreateAndCancelPendingAbsenceNotifiesTeacherAndManagers() {
-        ReflectionTestUtils.setField(service, "notificationService", notificationService);
         User parent = User.builder().id(10L).role(Role.PARENT).username("parent_lan").build();
         User teacher = User.builder().id(4L).role(Role.TEACHER).fullName("Cô Hường").build();
         Student student = Student.builder().id(1L).fullName("Bé A").parent(parent).build();
@@ -151,7 +163,7 @@ class MakeupSchedulingFlowTest {
         when(currentUser.getCurrentUser()).thenReturn(parent);
         when(students.findById(1L)).thenReturn(Optional.of(student));
         when(lessons.findById(10L)).thenReturn(Optional.of(lesson));
-        when(absences.findByStudentIdAndLessonId(1L, 10L)).thenReturn(Optional.empty());
+        when(absences.existsByStudentIdAndLessonIdAndStatusIn(eq(1L), eq(10L), anyCollection())).thenReturn(false);
         when(absences.save(any())).thenAnswer(inv -> {
             AbsenceRequest ar = inv.getArgument(0);
             ar.setId(88L);
@@ -192,7 +204,7 @@ class MakeupSchedulingFlowTest {
         verify(absences, never()).delete(any());
     }
 
-    @Test void createAbsenceRequest_rejectsWhenStudentAlreadyHadTwoMakeupSessions() {
+    @Test void createAbsenceRequest_rejectsWhenCourseQuotaIsExhausted() {
         User parent = User.builder().id(10L).role(Role.PARENT).username("parent1").build();
         Student student = Student.builder().id(1L).fullName("Nguyễn Bảo Nam").parent(parent).build();
         Course course = Course.builder().id(5L).name("Khóa học Piano Grade 1").build();
@@ -208,13 +220,13 @@ class MakeupSchedulingFlowTest {
         when(currentUser.getCurrentUser()).thenReturn(parent);
         when(students.findById(1L)).thenReturn(Optional.of(student));
         when(lessons.findById(10L)).thenReturn(Optional.of(futureLesson));
-        when(absences.findByStudentIdAndLessonId(1L, 10L)).thenReturn(Optional.empty());
-        when(makeups.countMakeupByStudentAndCourse(eq(1L), eq(5L), anyCollection())).thenReturn(2L);
+        when(absences.existsByStudentIdAndLessonIdAndStatusIn(eq(1L), eq(10L), anyCollection())).thenReturn(false);
+        when(makeups.countQuotaByStudentAndCourse(eq(1L), eq(5L), anyList(), anyString())).thenReturn(3L);
 
         assertThatThrownBy(() -> service.createAbsenceRequest(new AbsenceRequestCreateRequest(1L, 10L, "Bé có việc gia đình")))
                 .isInstanceOf(AttendanceMakeupException.class)
-                .hasMessageContaining("đã từng học bù 2 lần")
-                .hasMessageContaining("tối đa 2 lần học bù");
+                .hasMessageContaining("3")
+                .hasMessageContaining("3");
         verify(absences, never()).save(any());
     }
 
@@ -234,16 +246,14 @@ class MakeupSchedulingFlowTest {
         when(currentUser.getCurrentUser()).thenReturn(parent);
         when(students.findById(1L)).thenReturn(Optional.of(student));
         when(lessons.findById(10L)).thenReturn(Optional.of(futureLesson));
-        when(absences.findByStudentIdAndLessonId(1L, 10L)).thenReturn(Optional.empty());
-        // Completed makeups: 1
-        when(makeups.countMakeupByStudentAndCourse(eq(1L), eq(5L), anyCollection())).thenReturn(1L);
-        when(makeups.countMakeupByStudent(eq(1L), anyCollection()))
-                .thenReturn(1L) // totalCompletedCount
-                .thenReturn(1L); // inProgressCount
+        when(absences.existsByStudentIdAndLessonIdAndStatusIn(eq(1L), eq(10L), anyCollection())).thenReturn(false);
+        // Two used makeups and one pending absence exhaust the course quota.
+        when(makeups.countQuotaByStudentAndCourse(eq(1L), eq(5L), anyList(), anyString())).thenReturn(2L);
+        when(absences.countPendingMakeupByStudentAndCourse(1L, 5L)).thenReturn(1L);
 
         assertThatThrownBy(() -> service.createAbsenceRequest(new AbsenceRequestCreateRequest(1L, 10L, "Bé xin nghỉ tiếp")))
                 .isInstanceOf(AttendanceMakeupException.class)
-                .hasMessageContaining("đang chờ xử lý/xếp lịch");
+                .hasMessageContaining("3");
         verify(absences, never()).save(any());
     }
 }

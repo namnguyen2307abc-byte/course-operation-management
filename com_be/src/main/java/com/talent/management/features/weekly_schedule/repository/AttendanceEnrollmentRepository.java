@@ -61,6 +61,12 @@ public interface AttendanceEnrollmentRepository extends JpaRepository<Enrollment
             @Param("studentId") Long studentId,
             @Param("statuses") Collection<EnrollmentStatus> statuses);
 
+    /** Học viên có đang ghi danh chính thức vào lớp hay không */
+    boolean existsByStudentIdAndClassEntityIdAndStatus(Long studentId, Long classId, EnrollmentStatus status);
+
+    /** Số học viên đang giữ chỗ chờ thanh toán của lớp */
+    long countByClassEntityIdAndStatus(Long classId, EnrollmentStatus status);
+
     /**
      * Danh sách lớp đã đăng ký của học viên kèm thông tin lớp và khóa học
      */

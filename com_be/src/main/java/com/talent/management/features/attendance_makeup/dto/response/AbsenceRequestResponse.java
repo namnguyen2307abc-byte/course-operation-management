@@ -35,12 +35,16 @@ public class AbsenceRequestResponse {
     private String lessonTitle;
     private String className;
     private String courseName;
+    private String level;
+    private String branchName;
     private String roomName;
     private String teacherName;
     private Long teacherId;
 
     // Chi tiết đơn xin nghỉ
     private String reason;
+    private Boolean needMakeup;
+    private String requestedByName;
     private AbsenceStatus status;
     private String reviewNote;
     private String approvedByTeacherName;
@@ -53,10 +57,14 @@ public class AbsenceRequestResponse {
     private Integer makeupRetryCount;
     private Integer makeupMaxRetries;
     private String makeupTargetDate;
+    private String makeupTargetTimeSlot;
     private String makeupTargetClassName;
+    private String makeupTargetRoomName;
+    private String makeupTargetTeacherName;
     private String makeupNote;
 
-    // Thống kê số lần học bù của học viên trong khóa học (tối đa 2 lần)
+    // Số ca bù của học viên trong khóa học (tối đa 3)
     private Integer courseMakeupCount;
+    private Integer courseMakeupLimit;
     private Boolean courseMakeupLimitReached;
 }

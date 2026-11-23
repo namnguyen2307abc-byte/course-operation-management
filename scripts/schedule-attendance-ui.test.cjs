@@ -153,3 +153,23 @@ test('staff sees pending requests first, can approve and has no excused or defer
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
+
+for (const exhausted of [false,true]) test(`parent absence form submits the correct leave mode when course quota is ${exhausted?'exhausted':'available'}`,async()=>{
+ let submitted;
+ const {page,errors}=await open('PARENT','absence-makeup.html',(u,req)=>{
+  if(u.pathname==='/api/attendance-makeup/students')return [{id:1,fullName:'Bé kiểm thử',currentClassName:'Piano'}];
+  if(u.pathname==='/api/attendance-makeup/students/1/lessons')return [{id:10,lessonDate:'2099-12-01',startTime:'08:00',endTime:'09:00',sessionNumber:2,className:'Piano',courseName:'Piano cơ bản',courseMakeupUsed:exhausted?3:0,makeupLimit:3,makeupAvailable:!exhausted}];
+  if(u.pathname==='/api/attendance-makeup/absence-requests'&&req.method()==='POST'){submitted=req.postDataJSON();return {id:99};}
+ });
+ try{
+  await page.locator('#btnCreateNewAbsence').click();
+  await page.locator('[data-lesson-id="10"]').click();
+  assert.equal(await page.locator('#leaveModeRadioMakeup').isDisabled(),exhausted);
+  assert.equal(await page.locator(exhausted?'#leaveModeRadioOnly':'#leaveModeRadioMakeup').isChecked(),true);
+  await page.locator('#createReasonInput').fill('Bé có lịch khám bệnh');
+  await page.locator('#btnSubmitAbsence').click();
+  await page.waitForFunction(()=>!document.querySelector('#sectionAbsence').classList.contains('d-none'));
+  assert.deepEqual(submitted,{studentId:1,lessonId:10,reason:'Bé có lịch khám bệnh',needMakeup:!exhausted});
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
