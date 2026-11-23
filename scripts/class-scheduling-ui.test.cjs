@@ -26,6 +26,7 @@ test('class form filters assignments, calculates end date and displays a schedul
             let payload;
             let classRows = [];
             let failTeacherLoading = false;
+            let extraRooms = false;
             await page.route('**/api/**', async route => {
                 const request = route.request();
                 const url = new URL(request.url());
@@ -50,8 +51,13 @@ test('class form filters assignments, calculates end date and displays a schedul
                 }
                 if (url.pathname.endsWith('/classes/rooms')) {
                     const piano = url.searchParams.get('courseId') === '1';
-                    body = Number(url.searchParams.get('maxStudents')) > 8 ? []
-                        : [{ id: piano ? 21 : 22, roomCode: piano ? 'P1' : 'G1', roomName: piano ? 'Piano room' : 'Guitar room', capacity: 8 }];
+                    const roomId = piano ? 21 : 22;
+                    const candidates = extraRooms
+                        ? [{ id: roomId+200, roomCode:'R16', roomName:'Large room', capacity:16 },
+                           { id: roomId+100, roomCode:'R12', roomName:'Medium room', capacity:12 },
+                           { id: roomId, roomCode:piano?'P1':'G1', roomName:piano?'Piano room':'Guitar room', capacity:8 }]
+                        : [{ id:roomId, roomCode:piano?'P1':'G1', roomName:piano?'Piano room':'Guitar room', capacity:8 }];
+                    body = candidates.filter(room => room.capacity >= Number(url.searchParams.get('maxStudents')));
                 }
                 if (request.method() === 'POST' || request.method() === 'PUT') {
                     payload = request.postDataJSON();
@@ -74,6 +80,28 @@ test('class form filters assignments, calculates end date and displays a schedul
             await page.locator('#teacherId').selectOption('11');
             await page.locator('#branchId').selectOption('1');
             await page.locator('#roomId option[value="21"]').waitFor({ state: 'attached' });
+            await page.locator('#roomId').selectOption('21');
+            extraRooms = true;
+            await page.locator('#maxStudents').fill('6');
+            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.getByRole('button',{name:'Xem thêm 2 phòng phù hợp',exact:true}).waitFor();
+            assert.equal(await page.locator('#roomId option').count(),2);
+            assert.equal(await page.locator('#roomId').inputValue(),'21');
+            await page.locator('#toggleMoreRoomsBtn').click();
+            assert.equal(await page.locator('#roomId option').count(),4);
+            await page.locator('#roomId').selectOption('121');
+            await page.locator('#toggleMoreRoomsBtn').click();
+            assert.equal(await page.locator('#roomId').inputValue(),'121');
+            assert.equal(await page.locator('#roomId option').count(),3);
+            await page.locator('#maxStudents').fill('13');
+            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.locator('#roomId option[value="221"]').waitFor({state:'attached'});
+            assert.equal(await page.locator('#roomId option[value="21"]').count(),0);
+            assert.equal(await page.locator('#roomId').inputValue(),'');
+            extraRooms = false;
+            await page.locator('#maxStudents').fill('6');
+            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.locator('#roomId option[value="21"]').waitFor({state:'attached'});
             await page.locator('#roomId').selectOption('21');
             await page.locator('#courseId').selectOption('2');
             await page.locator('#teacherId option[value="12"]').waitFor({ state: 'attached' });
