@@ -364,7 +364,13 @@ public class CourseEnrollmentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn lớp cho học viên");
         }
 
-        ClassEntity classEntity = getClassOrThrow(assignedClassId);
+        ClassEntity classEntity = classRepository
+                .findByIdForUpdate(assignedClassId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy lớp học"
+                ));
+
         ensureClassCanReceiveRequest(classEntity);
         if (request.getPreferredCourse() != null
                 && !Objects.equals(classEntity.getCourse().getId(), request.getPreferredCourse().getId())) {

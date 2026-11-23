@@ -294,7 +294,7 @@ class CourseEnrollmentServiceTest {
                 .build();
         when(currentUserService.getCurrentUser()).thenReturn(staff);
         when(requestRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(request));
-        when(classRepository.findById(40L)).thenReturn(Optional.of(recommendedClass));
+        when(classRepository.findByIdForUpdate(40L)).thenReturn(Optional.of(recommendedClass));
         when(invoiceRepository.save(any(Invoice.class))).thenReturn(Invoice.builder().id(70L).build());
 
         service.decide(50L, new EnrollmentDecisionRequest(EnrollmentDecision.APPROVE, 40L, "Assigned"));
