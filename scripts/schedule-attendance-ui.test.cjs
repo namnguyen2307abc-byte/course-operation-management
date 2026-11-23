@@ -153,3 +153,44 @@ test('staff sees pending requests first, can approve and has no excused or defer
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
+
+for (const exhausted of [false,true]) test(`parent absence form submits the correct leave mode when course quota is ${exhausted?'exhausted':'available'}`,async()=>{
+ let submitted;
+ const {page,errors}=await open('PARENT','absence-makeup.html',(u,req)=>{
+  if(u.pathname==='/api/attendance-makeup/students')return [{id:1,fullName:'Bé kiểm thử',currentClassName:'Piano'}];
+  if(u.pathname==='/api/attendance-makeup/students/1/lessons')return [{id:10,lessonDate:'2099-12-01',startTime:'08:00',endTime:'09:00',sessionNumber:2,className:'Piano',courseName:'Piano cơ bản',courseMakeupUsed:exhausted?3:0,makeupLimit:3,makeupAvailable:!exhausted}];
+  if(u.pathname==='/api/attendance-makeup/absence-requests'&&req.method()==='POST'){submitted=req.postDataJSON();return {id:99};}
+ });
+ try{
+  await page.locator('#btnCreateNewAbsence').click();
+  await page.locator('[data-lesson-id="10"]').click();
+  assert.equal(await page.locator('#leaveModeRadioMakeup').isDisabled(),exhausted);
+  assert.equal(await page.locator(exhausted?'#leaveModeRadioOnly':'#leaveModeRadioMakeup').isChecked(),true);
+  await page.locator('#createReasonInput').fill('Bé có lịch khám bệnh');
+  await page.locator('#btnSubmitAbsence').click();
+  await page.waitForFunction(()=>!document.querySelector('#sectionAbsence').classList.contains('d-none'));
+  assert.deepEqual(submitted,{studentId:1,lessonId:10,reason:'Bé có lịch khám bệnh',needMakeup:!exhausted});
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('tracking distinguishes cancelled makeup from a locked missed makeup',async()=>{
+ const {page,errors}=await open('PARENT','attendance-tracking.html',u=>{
+  if(u.pathname==='/api/attendance-tracking/students')return [{id:1,fullName:'Bé kiểm thử'}];
+  if(u.pathname.endsWith('/enrolled-classes'))return [{id:1,classId:1,className:'Piano'}];
+  if(u.pathname==='/api/schedule/attendance-tracking')return {studentName:'Bé kiểm thử',className:'Piano',totalSessions:3,lessons:[
+   {sessionNumber:1,status:'ABSENT',makeupStatus:'CANCELLED',makeupInfo:'Đã hủy lịch bù'},
+   {sessionNumber:2,status:'ABSENT',makeupStatus:'CANCELLED',makeupInfo:'Hết quyền bù (Vắng buổi bù)',note:'[Lần bù: 1/1 - KHÓA]'},
+   {sessionNumber:3,status:'ABSENT',makeupStatus:'MISSED',makeupInfo:'Hết quyền bù (Vắng buổi bù)',isMakeup:true}
+  ]};
+ });
+ try{
+  await page.locator('#attendanceTableBody tr').nth(2).waitFor();
+  const rows=page.locator('#attendanceTableBody tr');
+  assert.match(await rows.nth(0).textContent(),/Đã hủy lịch bù/);
+  assert.doesNotMatch(await rows.nth(0).textContent(),/CẤM HỌC BÙ/);
+  assert.match(await rows.nth(1).textContent(),/CẤM HỌC BÙ/);
+  assert.match(await rows.nth(2).textContent(),/Hết quyền bù/);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});

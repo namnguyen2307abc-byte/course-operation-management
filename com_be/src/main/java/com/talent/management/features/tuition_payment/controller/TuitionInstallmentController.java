@@ -109,6 +109,12 @@ public class TuitionInstallmentController {
         return paymentIntentService.simulate(id);
     }
 
+    @PostMapping("/{id}/due-date")
+    public void extendDueDate(
+            @PathVariable Long id, @Valid @RequestBody RequestDueDateChangeRequest input) {
+        planChangeService.extend(id, input);
+    }
+
     @PostMapping("/{id}/plan-change-requests")
     public void change(
             @PathVariable Long id, @Valid @RequestBody RequestDueDateChangeRequest input) {

@@ -2,9 +2,22 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
+const http = require('node:http');
 const { chromium } = require('playwright');
 
 test('class form filters assignments, calculates end date and displays a scheduling rejection', async () => {
+    const root = path.resolve(__dirname, '../com_fe');
+    const server = http.createServer((req, res) => {
+        const file = path.resolve(root, '.' + new URL(req.url, 'http://local').pathname);
+        if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
+        fs.readFile(file, (error, data) => {
+            if (error) { res.writeHead(404); return res.end(); }
+            res.setHeader('Content-Type', {'.html':'text/html', '.js':'text/javascript', '.css':'text/css'}[path.extname(file)] || 'application/octet-stream');
+            res.end(data);
+        });
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = process.env.CLASS_TEST_URL || 'http://127.0.0.1:' + server.address().port;
     const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'chrome' });
     try {
         for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
@@ -26,6 +39,7 @@ test('class form filters assignments, calculates end date and displays a schedul
             let payload;
             let classRows = [];
             let failTeacherLoading = false;
+            let extraRooms = false;
             await page.route('**/api/**', async route => {
                 const request = route.request();
                 const url = new URL(request.url());
@@ -50,8 +64,13 @@ test('class form filters assignments, calculates end date and displays a schedul
                 }
                 if (url.pathname.endsWith('/classes/rooms')) {
                     const piano = url.searchParams.get('courseId') === '1';
-                    body = Number(url.searchParams.get('maxStudents')) > 8 ? []
-                        : [{ id: piano ? 21 : 22, roomCode: piano ? 'P1' : 'G1', roomName: piano ? 'Piano room' : 'Guitar room', capacity: 8 }];
+                    const roomId = piano ? 21 : 22;
+                    const candidates = extraRooms
+                        ? [{ id: roomId+200, roomCode:'R16', roomName:'Large room', capacity:16 },
+                           { id: roomId+100, roomCode:'R12', roomName:'Medium room', capacity:12 },
+                           { id: roomId, roomCode:piano?'P1':'G1', roomName:piano?'Piano room':'Guitar room', capacity:8 }]
+                        : [{ id:roomId, roomCode:piano?'P1':'G1', roomName:piano?'Piano room':'Guitar room', capacity:8 }];
+                    body = candidates.filter(room => room.capacity >= Number(url.searchParams.get('maxStudents')));
                 }
                 if (request.method() === 'POST' || request.method() === 'PUT') {
                     payload = request.postDataJSON();
@@ -63,7 +82,7 @@ test('class form filters assignments, calculates end date and displays a schedul
                         'access-control-allow-methods': 'GET,POST,PUT,OPTIONS' },
                     contentType: 'application/json', body: request.method() === 'OPTIONS' ? '' : JSON.stringify(body) });
             });
-            await page.goto((process.env.CLASS_TEST_URL || 'http://127.0.0.1:5500') + '/pages/class-management.html');
+            await page.goto(origin + '/pages/class-management.html');
             await page.locator('#courseId option[value="1"]').waitFor({ state: 'attached' });
             await page.locator('#newClassBtn').click();
             assert.match(await page.locator('#filterBranch option[value="2"]').textContent(), /Ngừng hoạt động/);
@@ -74,6 +93,30 @@ test('class form filters assignments, calculates end date and displays a schedul
             await page.locator('#teacherId').selectOption('11');
             await page.locator('#branchId').selectOption('1');
             await page.locator('#roomId option[value="21"]').waitFor({ state: 'attached' });
+            await page.locator('#roomId').selectOption('21');
+            extraRooms = true;
+            await page.locator('#maxStudents').fill('6');
+            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.getByRole('button',{name:'Xem thêm 2 phòng phù hợp',exact:true}).waitFor();
+            assert.equal(await page.locator('#roomId option').count(),2);
+            assert.equal(await page.locator('#roomId').inputValue(),'21');
+            await page.locator('#toggleMoreRoomsBtn').click();
+            await page.waitForFunction(() => document.querySelectorAll('#roomId option').length === 4);
+            assert.equal(await page.locator('#roomId option').count(),4);
+            await page.locator('#roomId').selectOption('121');
+            await page.locator('#toggleMoreRoomsBtn').click();
+            await page.waitForFunction(() => document.querySelectorAll('#roomId option').length === 3);
+            assert.equal(await page.locator('#roomId').inputValue(),'121');
+            assert.equal(await page.locator('#roomId option').count(),3);
+            await page.locator('#maxStudents').fill('13');
+            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.locator('#roomId option[value="221"]').waitFor({state:'attached'});
+            assert.equal(await page.locator('#roomId option[value="21"]').count(),0);
+            assert.equal(await page.locator('#roomId').inputValue(),'');
+            extraRooms = false;
+            await page.locator('#maxStudents').fill('6');
+            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.locator('#roomId option[value="21"]').waitFor({state:'attached'});
             await page.locator('#roomId').selectOption('21');
             await page.locator('#courseId').selectOption('2');
             await page.locator('#teacherId option[value="12"]').waitFor({ state: 'attached' });
@@ -133,5 +176,6 @@ test('class form filters assignments, calculates end date and displays a schedul
         }
     } finally {
         await browser.close();
+        await new Promise(resolve => server.close(resolve));
     }
 });

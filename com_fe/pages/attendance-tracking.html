@@ -196,41 +196,18 @@
 <body class="has-workspace-sidebar">
 
     <!-- Navbar & Sidebar Container -->
-    <div id="navbar-container">
-        <!-- workspace-shell:start -->
-        <a class="skip-content" href="#main-content">Đến nội dung chính</a>
-        <header class="workspace-topbar">
-            <button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false">
-                <i class="bi bi-list"></i>
-            </button>
-            <span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span>
-            <span class="workspace-context">Không gian làm việc</span>
-        </header>
-        <aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
-            <a class="sidebar-brand" data-app-path="/index.html" href="/index.html">
-                <span class="brand-mark"><i class="bi bi-stars"></i></span>
-                <span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span>
-            </a>
-            <nav id="workspaceNavigation" class="workspace-navigation"></nav>
-            <div class="sidebar-bottom">
-                <div class="sidebar-profile">
-                    <span class="profile-initial" id="sidebarAvatar">T</span>
-                    <div>
-                        <strong id="sidebarUserName"></strong>
-                        <small id="sidebarUserRole"></small>
-                    </div>
-                </div>
-                <button type="button" class="sidebar-logout" onclick="logout()">
-                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                </button>
-            </div>
-        </aside>
-        <button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
-        <!-- workspace-shell:end -->
-    </div>
-
-
-    <main class="container-fluid px-lg-4 my-4" id="main-content">
+    <div id="navbar-container"><!-- workspace-shell:start -->
+<a class="skip-content" href="#main-content">Đến nội dung chính</a>
+<header class="workspace-topbar"><button type="button" class="menu-toggle" onclick="toggleMobileSidebar()" aria-label="Mở menu điều hướng" aria-controls="appSidebar" aria-expanded="false"><i class="bi bi-list"></i></button><span>Hệ thống quản lý trung tâm đào tạo năng khiếu</span><span class="workspace-context">Không gian làm việc</span></header>
+<aside id="appSidebar" class="app-sidebar" aria-label="Điều hướng chính">
+<a class="sidebar-brand" data-app-path="/index.html" href="/index.html"><span class="brand-mark"><i class="bi bi-stars"></i></span><span><strong>TALENT CENTER</strong><small>Trung tâm đào tạo năng khiếu</small></span></a>
+<nav id="workspaceNavigation" class="workspace-navigation"></nav>
+<div class="sidebar-bottom"><div class="sidebar-profile"><span class="profile-initial" id="sidebarAvatar">T</span><div><strong id="sidebarUserName"></strong><small id="sidebarUserRole"></small></div></div><button type="button" class="sidebar-logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button></div>
+</aside>
+<button type="button" id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1" aria-label="Đóng menu điều hướng" onclick="toggleMobileSidebar(false)" hidden></button>
+<!-- workspace-shell:end --></div>
+<script src="../js/workspace-shell.js"></script>
+<main class="container-fluid px-lg-4 my-4" id="main-content">
         <!-- Toast Thông Báo -->
         <div class="toast-container-custom" id="toastContainer"></div>
 
@@ -266,7 +243,7 @@
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4">
                 <div class="row g-3 align-items-end">
-                    <div class="col-md-5" id="colStudentSelect">
+                    <div class="col-md-5 col-lg-5" id="colStudentSelect">
                         <label class="form-label small fw-bold text-secondary mb-1">
                             <i class="bi bi-person-circle me-1 text-primary"></i>Học Viên / Con:
                         </label>
@@ -275,7 +252,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-5">
+                    <div class="col-md-4 col-lg-5">
                         <label class="form-label small fw-bold text-secondary mb-1">
                             <i class="bi bi-journal-bookmark me-1 text-primary"></i>Khóa Học & Lớp Học Ghi Danh:
                         </label>
@@ -284,8 +261,8 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 text-md-end">
-                        <button class="btn btn-primary w-100 rounded-pill py-2 shadow-sm fw-semibold" onclick="loadAttendanceTracking()">
+                    <div class="col-md-3 col-lg-2 text-md-end">
+                        <button class="btn btn-primary w-100 rounded-pill py-2 shadow-sm fw-semibold text-nowrap" onclick="loadAttendanceTracking()">
                             <i class="bi bi-search me-1"></i> Tra cứu
                         </button>
                     </div>
@@ -296,28 +273,28 @@
         <!-- THÔNG TIN TỔNG QUAN KHÓA HỌC (KPIS) -->
         <div id="kpiContainer" class="row g-3 mb-4 d-none">
             <div class="col-6 col-md-3">
-                <div class="kpi-card border-start border-4" style="border-left-color: #1e5346 !important;">
+                <div class="kpi-card h-100 border-start border-4" style="border-left-color: #1e5346 !important;">
                     <div class="kpi-title"><i class="bi bi-journal-check me-1"></i>Tổng số buổi</div>
                     <div class="kpi-value" style="color: #174638;" id="kpiTotalSessions">--</div>
                     <div class="small text-muted mt-1" id="kpiCourseInfo">Khóa học</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="kpi-card border-start border-success border-4">
+                <div class="kpi-card h-100 border-start border-success border-4">
                     <div class="kpi-title"><i class="bi bi-check-circle me-1"></i>Đã có mặt</div>
                     <div class="kpi-value text-success" id="kpiAttended">--</div>
                     <div class="small text-muted mt-1">Đúng tiến độ</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="kpi-card border-start border-danger border-4">
+                <div class="kpi-card h-100 border-start border-danger border-4">
                     <div class="kpi-title"><i class="bi bi-x-circle me-1"></i>Số buổi vắng</div>
                     <div class="kpi-value text-danger" id="kpiAbsent">--</div>
                     <div class="small text-muted mt-1" id="kpiAbsentRate">Tỷ lệ: 0%</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="kpi-card border-start border-secondary border-4">
+                <div class="kpi-card h-100 border-start border-secondary border-4">
                     <div class="kpi-title"><i class="bi bi-clock-history me-1"></i>Chưa điểm danh</div>
                     <div class="kpi-value text-secondary" id="kpiUnmarked">--</div>
                     <div class="small text-muted mt-1">Sắp diễn ra</div>

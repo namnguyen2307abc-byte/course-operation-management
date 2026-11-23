@@ -23,6 +23,7 @@ public class LessonOptionResponse {
     private Long classId;
     private String className;
     private String courseName;
+    private String branchName;
     private String roomName;
     private String teacherName;
     private String level;
@@ -31,4 +32,9 @@ public class LessonOptionResponse {
     private Integer availableSeats;
     private Boolean exactSessionMatch;
     private String matchTypeLabel;
+
+    // Lượt học bù của học viên trong khóa học của buổi này (chỉ dùng khi chọn buổi xin nghỉ)
+    private Integer courseMakeupUsed;
+    private Integer makeupLimit;
+    private Boolean makeupAvailable;
 }

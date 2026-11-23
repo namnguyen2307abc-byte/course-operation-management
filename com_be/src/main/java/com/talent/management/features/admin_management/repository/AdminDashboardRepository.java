@@ -33,7 +33,9 @@ public class AdminDashboardRepository {
         Map<String, Long> result = new LinkedHashMap<>();
         result.put("absencePending", count("select count(a) from AbsenceRequest a where a.status = 'PENDING'"));
         result.put("makeupPending", count("select count(m) from MakeupRegistration m where m.status = 'PENDING'"));
-        result.put("makeupNoSlot", count("select count(m) from MakeupRegistration m where m.status = 'NO_SLOT'"));
+        result.put("makeupNoSlot", em.createQuery(
+                "select count(m) from MakeupRegistration m where m.status = 'NO_SLOT' or (m.status = 'CANCELLED' and m.note like :pattern)",
+                Long.class).setParameter("pattern", "%Chưa có lớp phù hợp%").getSingleResult());
         return result;
     }
     public List<RevenuePoint> revenue(LocalDate from, LocalDate to) {

@@ -55,7 +55,8 @@ if (!$SkipBuild) {
         $mavenPath = if ($mavenCommand) { $mavenCommand.Source } else { Join-Path $workspacePath 'com_be/mvnw.cmd' }
         $buildPath = Join-Path $runtimePath 'build'
         Write-Host 'Dang build backend bang JDK 17/21 trong thu muc rieng...'
-        & $mavenPath -f (Join-Path $workspacePath 'com_be/pom.xml') "-Dtalent.build.directory=$buildPath" '-DskipTests' package
+        # Remove classes/resources from deleted features before packaging a new runtime.
+        & $mavenPath -f (Join-Path $workspacePath 'com_be/pom.xml') "-Dtalent.build.directory=$buildPath" '-DskipTests' clean package
         if ($LASTEXITCODE -ne 0) { throw 'Build backend that bai. Xem loi Maven phia tren.' }
         Copy-Item -LiteralPath (Join-Path $buildPath 'talent-management-0.0.1-SNAPSHOT.jar') -Destination $jarPath -Force
     } finally { $env:JAVA_HOME = $oldJavaHome }

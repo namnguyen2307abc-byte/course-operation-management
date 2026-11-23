@@ -15,6 +15,9 @@ public interface PaymentIntentService {
 
     void prepareCashPayment(Long invoiceId);
 
+    /** Close verified unpaid payment attempts before changing the tuition schedule. */
+    void closeUnpaidRequests(Long invoiceId);
+
     void prepareCashPayment(Long invoiceId, BigDecimal amount, BigDecimal given);
 
     void cancel(Long id);
@@ -22,4 +25,7 @@ public interface PaymentIntentService {
     void expireUnpaidRequests();
 
     PaymentReceiptResponse simulate(Long id);
+
+    /** Background gateway synchronization only; not exposed as a user API. */
+    void refreshFromBank(Long id);
 }

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -137,63 +137,81 @@
         <div id="sectionAbsence">
             <div class="filter-box mb-4">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-3 col-sm-6">
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
                         <label class="form-label small fw-semibold text-secondary mb-1">
                             <i class="bi bi-funnel me-1 text-success"></i>Trạng thái
                         </label>
                         <select id="filterAbsenceStatus" class="form-select form-control-modern">
-                            <option value="" selected>Tất cả trạng thái</option>
+                            <option value="" selected>Tất cả</option>
                             <option value="PENDING">Chờ duyệt</option>
                             <option value="APPROVED">Đã duyệt</option>
                             <option value="REJECTED">Từ chối</option>
                         </select>
                     </div>
-                    <div class="col-md-3 col-sm-6">
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-ui-checks me-1 text-success"></i>Hình thức
+                        </label>
+                        <select id="filterAbsenceLeaveMode" class="form-select form-control-modern">
+                            <option value="">Tất cả</option>
+                            <option value="MAKEUP">Nghỉ &amp; học bù</option>
+                            <option value="LEAVE_ONLY">Chỉ xin nghỉ</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
                         <label class="form-label small fw-semibold text-secondary mb-1">
                             <i class="bi bi-person me-1 text-success"></i>Học viên
                         </label>
                         <select id="filterAbsenceStudent" class="form-select form-control-modern">
-                            <option value="">Tất cả học viên</option>
+                            <option value="">Tất cả</option>
                         </select>
                     </div>
-                    <div class="col-md-2 col-sm-6">
+                    <div class="col-12 col-sm-6 col-md-6 col-lg">
                         <label class="form-label small fw-semibold text-secondary mb-1">
                             <i class="bi bi-easel me-1 text-success"></i>Lớp học
                         </label>
                         <select id="filterAbsenceClass" class="form-select form-control-modern">
-                            <option value="">Tất cả lớp</option>
+                            <option value="">Tất cả</option>
                         </select>
                     </div>
-                    <div class="col-md-2 col-sm-6">
-                        <label class="form-label small fw-semibold text-secondary mb-1">Từ ngày</label>
-                        <input type="date" id="filterAbsenceFromDate" class="form-control form-control-modern">
-                    </div>
-                    <div class="col-md-2 col-sm-6">
-                        <label class="form-label small fw-semibold text-secondary mb-1">Đến ngày</label>
-                        <input type="date" id="filterAbsenceToDate" class="form-control form-control-modern">
+                    <div class="col-12 col-sm-6 col-md-6 col-lg" id="absenceBranchFilterWrap">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-building me-1 text-success"></i>Cơ sở
+                        </label>
+                        <select id="filterAbsenceBranch" class="form-select form-control-modern">
+                            <option value="">Tất cả</option>
+                        </select>
                     </div>
                 </div>
                 <div class="row g-2 align-items-end mt-2">
-                    <div class="col-md-6">
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Từ ngày</label>
+                        <input type="date" id="filterAbsenceFromDate" class="form-control form-control-modern">
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Đến ngày</label>
+                        <input type="date" id="filterAbsenceToDate" class="form-control form-control-modern">
+                    </div>
+                    <div class="col-12 col-md-4 col-xl-4">
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0 text-muted rounded-start-3"><i class="bi bi-search"></i></span>
                             <input type="text" id="searchAbsenceInput" class="form-control form-control-modern border-start-0 ps-0"
-                                   placeholder="Tìm mã đơn, học viên, lớp, lý do..."
+                                   placeholder="Tìm mã, học viên, lớp..."
                                    onkeydown="if(event.key==='Enter') applyAbsenceFilter()">
                         </div>
                     </div>
-                    <div class="col-md-6 d-flex flex-wrap justify-content-md-end gap-2">
-                        <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold" onclick="applyAbsenceFilter()">
+                    <div class="col-12 col-xl-4 d-flex flex-wrap justify-content-xl-end align-items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold text-nowrap" onclick="applyAbsenceFilter()">
                             <i class="bi bi-funnel-fill me-1"></i>Lọc
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="resetAbsenceFilter()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill text-nowrap" onclick="resetAbsenceFilter()">
                             <i class="bi bi-eraser me-1"></i>Đặt lại
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadAbsenceRequests()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill text-nowrap" onclick="loadAbsenceRequests()">
                             <i class="bi bi-arrow-clockwise me-1"></i>Làm mới
                         </button>
                         <span id="createBtnWrapper">
-                            <button type="button" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm fw-semibold" id="btnCreateNewAbsence" onclick="switchMainTab('CREATE')">
+                            <button type="button" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm fw-semibold text-nowrap" id="btnCreateNewAbsence" onclick="switchMainTab('CREATE')">
                                 <i class="bi bi-plus-circle me-1"></i>Viết đơn mới
                             </button>
                         </span>
@@ -206,20 +224,20 @@
                     <h5 class="fw-bold mb-0 text-dark">
                         <i class="bi bi-journal-text me-2" style="color: #1e5346;"></i>Danh Sách Đơn Xin Nghỉ
                     </h5>
-                    <span class="badge px-3 py-1.5 rounded-pill fw-semibold" style="background: #e3efdf; color: #174638; border: 1px solid #c7dec1;" id="absenceCountBadge">0 đơn</span>
+                    <span class="badge px-3 py-2 rounded-pill fw-semibold" style="background: #e3efdf; color: #174638; border: 1px solid #c7dec1;" id="absenceCountBadge">0 đơn</span>
                 </div>
 
                 <div class="table-responsive">
                     <table class="table table-custom align-middle mb-0">
                         <thead>
                             <tr>
-                                <th style="width: 64px;" class="text-center">Mã</th>
-                                <th style="min-width: 145px;">Học Viên</th>
-                                <th style="min-width: 225px;">Buổi Nghỉ</th>
-                                <th style="min-width: 185px;">Lý Do</th>
-                                <th style="width: 120px;" class="text-center">Trạng Thái</th>
-                                <th style="width: 135px;" class="text-center">Học Bù</th>
-                                <th class="text-end" style="width: 120px;">Thao Tác</th>
+                                <th style="width: 58px;" class="text-center">Mã</th>
+                                <th style="min-width: 150px;">Học Viên</th>
+                                <th style="min-width: 210px;">Buổi Nghỉ</th>
+                                <th style="min-width: 170px;">Lý Do</th>
+                                <th style="width: 118px;" class="text-center">Trạng Thái</th>
+                                <th style="width: 130px;" class="text-center">Học Bù</th>
+                                <th class="text-end" style="min-width: 115px;">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody id="absenceTableBody">
@@ -262,9 +280,8 @@
                                 <h5 class="fw-bold text-dark mb-0">
                                     <i class="bi bi-pencil-square text-success me-2"></i>Gửi Đơn Xin Nghỉ
                                 </h5>
-                                <div class="small text-muted mt-1">Chọn học viên, buổi học và nhập lý do</div>
+                                <div class="small text-muted mt-1">Chọn học viên, buổi học, hình thức nghỉ và lý do</div>
                             </div>
-                            <span class="badge rounded-pill px-3 py-1.5" style="background: #e6f0ec; color: #143c34;">Gửi trực tiếp</span>
                         </div>
 
                         <form id="absenceForm" onsubmit="event.preventDefault(); submitAbsenceRequest();">
@@ -279,7 +296,9 @@
                                 <select id="createStudentSelect" class="form-select form-control-modern d-none" onchange="onStudentSelectChanged()">
                                     <option value="">-- Chọn học viên --</option>
                                 </select>
-                                <div id="studentMakeupWarningBox" class="d-none mt-2"></div>
+                                <div class="form-text small text-danger mt-1 d-none" id="createStudentError">
+                                    Vui lòng chọn học viên xin nghỉ.
+                                </div>
                             </div>
 
                             <!-- Bước 2: Chọn buổi học -->
@@ -293,18 +312,47 @@
                                 <div id="lessonPickerList" class="lesson-pick-list">
                                     <div class="lesson-empty-box">Chọn học viên ở bước 1 để hiển thị lịch học</div>
                                 </div>
-                                <select id="createLessonSelect" class="form-select form-control-modern d-none" disabled>
+                                <select id="createLessonSelect" class="form-select form-control-modern d-none" disabled onchange="selectLessonCard(this.value)">
                                     <option value="">-- Chọn buổi học --</option>
                                 </select>
+                                <div class="form-text small text-danger mt-1 d-none" id="createLessonError">
+                                    Vui lòng chọn buổi học cần xin nghỉ.
+                                </div>
                             </div>
 
-                            <!-- Bước 3: Lý do -->
+                            <!-- Bước 3: Hình thức nghỉ -->
                             <div class="mb-4">
                                 <div class="form-step-header">
                                     <span class="form-step-title">
-                                        <span class="form-step-num">3</span>Lý do xin nghỉ <span class="text-danger">*</span>
+                                        <span class="form-step-num">3</span>Hình thức nghỉ <span class="text-danger">*</span>
                                     </span>
-                                    <span class="small text-muted" id="reasonCharCount">0 / 300</span>
+                                </div>
+                                <div class="leave-mode-grid" id="leaveModeGrid">
+                                    <label class="leave-mode-card active" id="leaveModeCardMakeup" onclick="selectLeaveMode(true)">
+                                        <input type="radio" name="leaveNeedMakeup" id="leaveModeRadioMakeup" value="true" checked>
+                                        <div>
+                                            <div class="fw-bold text-dark small">Nghỉ &amp; đăng ký học bù</div>
+                                            <div class="small text-muted mt-1" id="leaveModeMakeupHint">Chọn buổi học để xem lượt bù của khóa</div>
+                                        </div>
+                                    </label>
+                                    <label class="leave-mode-card" id="leaveModeCardOnly" onclick="selectLeaveMode(false)">
+                                        <input type="radio" name="leaveNeedMakeup" id="leaveModeRadioOnly" value="false">
+                                        <div>
+                                            <div class="fw-bold text-dark small">Chỉ xin nghỉ (không học bù)</div>
+                                            <div class="small text-muted mt-1">Báo giáo viên nắm lịch, không xếp ca bù</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div id="studentMakeupWarningBox" class="d-none mt-2"></div>
+                            </div>
+
+                            <!-- Bước 4: Lý do -->
+                            <div class="mb-4">
+                                <div class="form-step-header">
+                                    <span class="form-step-title">
+                                        <span class="form-step-num">4</span>Lý do xin nghỉ <span class="text-danger">*</span>
+                                    </span>
+                                    <span class="small text-muted" id="reasonCharCount">0 / 1000</span>
                                 </div>
                                 <div class="reason-chips-row">
                                     <button type="button" class="reason-chip" onclick="selectReasonChip(this, 'Bé bị ốm / sốt, xin phép nghỉ dưỡng sức')">Bị ốm / Sốt</button>
@@ -312,8 +360,11 @@
                                     <button type="button" class="reason-chip" onclick="selectReasonChip(this, 'Trùng lịch thi / hoạt động ở trường')">Trùng lịch trường</button>
                                     <button type="button" class="reason-chip" onclick="selectReasonChip(this, '')">Lý do khác</button>
                                 </div>
-                                <textarea id="createReasonInput" class="form-control form-control-modern" rows="3" maxlength="300"
-                                          placeholder="Nhập lý do ngắn gọn..." oninput="updateReasonCharCount()" required></textarea>
+                                <textarea id="createReasonInput" class="form-control form-control-modern" rows="3" maxlength="1000"
+                                          placeholder="Nhập lý do ngắn gọn..." oninput="onReasonInputChanged()"></textarea>
+                                <div class="form-text small text-danger mt-1 d-none" id="createReasonError">
+                                    Vui lòng nhập lý do xin nghỉ học.
+                                </div>
                             </div>
 
                             <div class="d-flex gap-2 justify-content-end pt-2 border-top">
@@ -327,59 +378,48 @@
                         </form>
                     </div>
 
-                    <!-- Phần Lưu Ý Quan Trọng Xuống Dưới Form -->
+                    <!-- Quy định học vụ -->
                     <div class="side-flow-card">
                         <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                             <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-shield-check text-warning"></i>Lưu Ý Quan Trọng
+                                <i class="bi bi-shield-check text-warning"></i>Quy Định Xin Nghỉ &amp; Học Bù
                             </h6>
-                            <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Quy định học vụ</span>
                         </div>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <div class="d-flex align-items-center gap-2.5 p-3 rounded-3 bg-light border h-100">
+                                <div class="d-flex align-items-center gap-3 p-3 rounded-3 bg-light border h-100">
                                     <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
                                         <i class="bi bi-clock-fill fs-5"></i>
                                     </div>
                                     <div class="small text-secondary">
-                                        Gửi đơn trước giờ học tối thiểu <strong>12 giờ</strong>.
+                                        Gửi đơn trước giờ bắt đầu buổi học.
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="d-flex align-items-center gap-2.5 p-3 rounded-3 bg-light border h-100">
+                                <div class="d-flex align-items-center gap-3 p-3 rounded-3 bg-light border h-100">
                                     <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
                                         <i class="bi bi-arrow-repeat fs-5"></i>
                                     </div>
                                     <div class="small text-secondary">
-                                        Mỗi buổi nghỉ có phép được xếp bù tối đa <strong>02 lần</strong>.
+                                        Tối đa <strong>03 lượt học bù</strong> mỗi khóa (mỗi buổi nghỉ xếp lịch <strong>1 lần</strong>).
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="d-flex align-items-center gap-2.5 p-3 rounded-3 bg-light border h-100">
+                                <div class="d-flex align-items-center gap-3 p-3 rounded-3 bg-light border h-100">
                                     <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
-                                        <i class="bi bi-calendar-check-fill fs-5"></i>
+                                        <i class="bi bi-calendar-x-fill fs-5"></i>
                                     </div>
                                     <div class="small text-secondary">
-                                        Nên hoàn thành ca học bù trong vòng <strong>30 ngày</strong>.
+                                        Có thể chọn <strong>Chỉ xin nghỉ</strong> không cần học bù.
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Dải Hỗ Trợ Nhanh Gọn Gàng -->
-                        <div class="d-flex flex-wrap align-items-center justify-content-between pt-3 mt-3 border-top small text-muted">
-                            <span class="fw-semibold text-dark"><i class="bi bi-headset text-success me-1.5"></i>Hỗ trợ học vụ:</span>
-                            <div class="d-flex flex-wrap gap-4 text-secondary">
-                                <span><i class="bi bi-telephone text-success me-1"></i>Hotline: <strong>0243.888.999</strong></span>
-                                <span><i class="bi bi-envelope text-success me-1"></i>support@talentcenter.edu.vn</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
 
         <!-- =================================================================== -->
@@ -388,37 +428,45 @@
         <div id="sectionMakeup" class="d-none">
             <div class="filter-box mb-4">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-3 col-sm-6">
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
                         <label class="form-label small fw-semibold text-secondary mb-1">
                             <i class="bi bi-funnel me-1 text-success"></i>Trạng thái
                         </label>
                         <select id="filterMakeupStatus" class="form-select form-control-modern">
                             <option value="" selected>Tất cả</option>
                             <option value="PENDING">Chờ xếp lớp</option>
-                            <option value="NO_SLOT">Chưa có lớp</option>
                             <option value="SCHEDULED">Đã xếp lớp</option>
-                            <option value="MISSED">Vắng bù</option>
                             <option value="COMPLETED">Hoàn thành</option>
+                            <option value="NO_SLOT">Chưa có lớp</option>
+                            <option value="MISSED">Bỏ lỡ bù</option>
                             <option value="CANCELLED">Đã hủy</option>
                         </select>
                     </div>
-                    <div class="col-md-2 col-sm-6">
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
                         <label class="form-label small fw-semibold text-secondary mb-1">
                             <i class="bi bi-person me-1 text-success"></i>Học viên
                         </label>
                         <select id="filterMakeupStudent" class="form-select form-control-modern">
-                            <option value="">Tất cả học viên</option>
+                            <option value="">Tất cả</option>
                         </select>
                     </div>
-                    <div class="col-md-2 col-sm-6">
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
                         <label class="form-label small fw-semibold text-secondary mb-1">
                             <i class="bi bi-easel me-1 text-success"></i>Lớp học
                         </label>
                         <select id="filterMakeupClass" class="form-select form-control-modern">
-                            <option value="">Tất cả lớp</option>
+                            <option value="">Tất cả</option>
                         </select>
                     </div>
-                    <div class="col-md-2 col-sm-6 d-none" id="makeupDirWrapper">
+                    <div class="col-12 col-sm-6 col-md-6 col-lg" id="makeupBranchFilterWrap">
+                        <label class="form-label small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-building me-1 text-success"></i>Cơ sở
+                        </label>
+                        <select id="filterMakeupBranch" class="form-select form-control-modern">
+                            <option value="">Tất cả</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-6 col-lg d-none" id="makeupDirWrapper">
                         <label class="form-label small fw-semibold text-secondary mb-1">
                             <i class="bi bi-arrow-left-right me-1 text-success"></i>Hướng bù
                         </label>
@@ -428,36 +476,32 @@
                             <option value="IN">Bù vào lớp</option>
                         </select>
                     </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <label class="form-label small fw-semibold text-secondary mb-1">Từ ngày</label>
-                                <input type="date" id="filterMakeupFromDate" class="form-control form-control-modern">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small fw-semibold text-secondary mb-1">Đến ngày</label>
-                                <input type="date" id="filterMakeupToDate" class="form-control form-control-modern">
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 <div class="row g-2 align-items-end mt-2">
-                    <div class="col-md-6">
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Từ ngày</label>
+                        <input type="date" id="filterMakeupFromDate" class="form-control form-control-modern">
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <label class="form-label small fw-semibold text-secondary mb-1">Đến ngày</label>
+                        <input type="date" id="filterMakeupToDate" class="form-control form-control-modern">
+                    </div>
+                    <div class="col-12 col-md-4 col-xl-4">
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0 text-muted rounded-start-3"><i class="bi bi-search"></i></span>
                             <input type="text" id="searchMakeupInput" class="form-control form-control-modern border-start-0 ps-0"
-                                   placeholder="Tìm mã ca, học viên, lớp..."
+                                   placeholder="Tìm mã, học viên, lớp..."
                                    onkeydown="if(event.key==='Enter') applyMakeupFilter()">
                         </div>
                     </div>
-                    <div class="col-md-6 d-flex flex-wrap justify-content-md-end gap-2">
-                        <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold" onclick="applyMakeupFilter()">
+                    <div class="col-12 col-xl-4 d-flex flex-wrap justify-content-xl-end align-items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-semibold text-nowrap" onclick="applyMakeupFilter()">
                             <i class="bi bi-funnel-fill me-1"></i>Lọc
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="resetMakeupFilter()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill text-nowrap" onclick="resetMakeupFilter()">
                             <i class="bi bi-eraser me-1"></i>Đặt lại
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="loadMakeupRequests()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill text-nowrap" onclick="loadMakeupRequests()">
                             <i class="bi bi-arrow-clockwise me-1"></i>Làm mới
                         </button>
                     </div>
@@ -469,20 +513,20 @@
                     <h5 class="fw-bold mb-0 text-dark">
                         <i class="bi bi-calendar2-week me-2" style="color: #1e5346;"></i>Danh Sách Lịch Học Bù
                     </h5>
-                    <span class="badge px-3 py-1.5 rounded-pill fw-semibold" style="background: #e3efdf; color: #174638; border: 1px solid #c7dec1;" id="makeupCountBadge">0 ca bù</span>
+                    <span class="badge px-3 py-2 rounded-pill fw-semibold" style="background: #e3efdf; color: #174638; border: 1px solid #c7dec1;" id="makeupCountBadge">0 ca bù</span>
                 </div>
 
                 <div class="table-responsive">
                     <table class="table table-custom align-middle mb-0">
                         <thead>
                             <tr>
-                                <th style="width: 64px;" class="text-center">Mã</th>
-                                <th style="min-width: 145px;">Học Viên</th>
-                                <th style="min-width: 195px;">Buổi Gốc</th>
-                                <th style="min-width: 215px;">Lịch Học Bù</th>
-                                <th style="width: 130px;" class="text-center">Trạng Thái</th>
-                                <th style="min-width: 155px;">Ghi Chú</th>
-                                <th class="text-end" style="width: 135px;">Thao Tác</th>
+                                <th style="width: 56px;" class="text-center">Mã</th>
+                                <th style="min-width: 140px;">Học Viên</th>
+                                <th style="min-width: 160px;">Buổi Gốc</th>
+                                <th style="min-width: 165px;">Lịch Học Bù</th>
+                                <th style="width: 115px;" class="text-center">Trạng Thái</th>
+                                <th style="min-width: 120px;">Ghi Chú</th>
+                                <th class="text-end" style="min-width: 110px;">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody id="makeupTableBody">
@@ -529,35 +573,39 @@
                             <span class="small text-secondary">Học viên</span>
                             <div class="text-end">
                                 <strong id="approveStudentName" class="text-dark d-block">...</strong>
-                                <span id="approveMakeupCountBadge" class="badge bg-light text-secondary border rounded-pill px-2 py-0.5 mt-1" style="font-size:0.72rem;">Đã học bù: 0/2 lần</span>
+                                <span id="approveMakeupCountBadge" class="badge bg-light text-secondary border rounded-pill px-2 py-1 mt-1" style="font-size:0.72rem;">Lượt bù khóa: 0/3</span>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center justify-content-between" id="approveClassRow" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom d-none" id="approveClassRow">
                             <span class="small text-secondary">Lớp học</span>
                             <span id="approveClassName" class="text-dark small fw-semibold">...</span>
                         </div>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="small text-secondary">Hình thức</span>
+                            <span id="approveLeaveModeBadge" class="badge bg-light text-dark border rounded-pill px-2 py-1 small">Nghỉ &amp; học bù</span>
+                        </div>
                     </div>
                     <div id="approveMakeupWarning" class="alert alert-warning py-2 px-3 small rounded-3 border-warning-subtle mb-3 d-none">
-                        <i class="bi bi-exclamation-triangle-fill text-warning me-1.5"></i>
-                        Học viên này đã sử dụng <strong>2/2 lần học bù</strong> trong kỳ/khóa học.
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                        Học viên đã sử dụng <strong><span id="approveMakeupLimitText">3/3</span> lượt học bù</strong> trong khóa học này.
                     </div>
                     <div>
-                        <label class="form-label small fw-semibold text-secondary mb-1.5">Ghi chú (tùy chọn)</label>
-                        <textarea id="approveNoteInput" class="form-control form-control-modern" rows="3"
+                        <label class="form-label small fw-semibold text-secondary mb-2">Ghi chú (tùy chọn)</label>
+                        <textarea id="approveNoteInput" class="form-control form-control-modern" rows="3" maxlength="500"
                                   placeholder="Nhập ghi chú..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
                     <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="executeApprove()">
-                        <i class="bi bi-check2-circle me-1.5"></i>Duyệt Đơn
+                        <i class="bi bi-check2-circle me-2"></i>Duyệt Đơn
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal 3: Từ Chối Đơn Nghỉ -->
+    <!-- Modal 2: Từ Chối Đơn Nghỉ -->
     <div class="modal fade modal-modern" id="modalReject" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -573,18 +621,18 @@
                             <span class="small text-secondary">Học viên</span>
                             <strong id="rejectStudentName" class="text-dark">...</strong>
                         </div>
-                        <div class="d-flex align-items-center justify-content-between" id="rejectClassRow" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between d-none" id="rejectClassRow">
                             <span class="small text-secondary">Lớp học</span>
                             <span id="rejectClassName" class="text-dark small fw-semibold">...</span>
                         </div>
                     </div>
                     <div>
-                        <label class="form-label small fw-semibold text-secondary mb-1.5">
+                        <label class="form-label small fw-semibold text-secondary mb-2">
                             Lý do từ chối <span class="text-danger">*</span>
                         </label>
-                        <textarea id="rejectNoteInput" class="form-control form-control-modern" rows="3"
-                                  placeholder="Nhập lý do từ chối..." required></textarea>
-                        <div class="form-text small text-danger mt-1.5" id="rejectNoteError" style="display: none;">
+                        <textarea id="rejectNoteInput" class="form-control form-control-modern" rows="3" maxlength="500"
+                                  placeholder="Nhập lý do từ chối..."></textarea>
+                        <div class="form-text small text-danger mt-2" id="rejectNoteError" style="display: none;">
                             Vui lòng nhập lý do từ chối.
                         </div>
                     </div>
@@ -592,24 +640,24 @@
                 <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
                     <button type="button" class="btn btn-rose-solid rounded-pill px-4 fw-semibold shadow-sm" onclick="executeReject()">
-                        <i class="bi bi-x-circle me-1.5"></i>Từ Chối
+                        <i class="bi bi-x-circle me-2"></i>Từ Chối
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal 4: Xếp Lịch Học Bù -->
+    <!-- Modal 3: Xếp Lịch Học Bù -->
     <div class="modal fade modal-modern" id="modalSchedule" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header modal-header-emerald">
-                    <h6 class="modal-title fw-bold mb-0">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header modal-header-emerald px-4 py-3">
+                    <h6 class="modal-title fw-bold mb-0 text-white">
                         <i class="bi bi-calendar2-check me-2"></i>Xếp Lớp Học Bù
                     </h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="detail-info-card mb-3">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small">
                             <div>
@@ -620,7 +668,10 @@
                                 <span class="text-secondary">Buổi nghỉ:</span>
                                 <span id="scheduleOrigLesson" class="fw-semibold text-dark ms-1">...</span>
                             </div>
-                            <span id="scheduleRetryBadge" class="badge rounded-pill px-2.5 py-1 fw-semibold" style="background: #e6f0ec; color: #143c34;">Lần 1/2</span>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span id="scheduleQuotaBadge" class="badge rounded-pill px-3 py-1 fw-semibold" style="background: #eef6ff; color: #1d4ed8;">Quyền bù khóa: 0/3</span>
+                                <span id="scheduleRetryBadge" class="badge rounded-pill px-3 py-1 fw-semibold" style="background: #e6f0ec; color: #143c34;">Xếp lịch 1/1</span>
+                            </div>
                         </div>
                     </div>
 
@@ -643,11 +694,11 @@
 
                     <div>
                         <label class="form-label small fw-semibold text-secondary mb-1">Ghi chú (tùy chọn)</label>
-                        <textarea id="scheduleNoteInput" class="form-control form-control-modern" rows="2"
+                        <textarea id="scheduleNoteInput" class="form-control form-control-modern" rows="2" maxlength="400"
                                   placeholder="Ghi chú gửi phụ huynh và giáo viên..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
                     <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" onclick="executeSchedule()">
                         <i class="bi bi-check2-circle me-1"></i>Xác Nhận Xếp Lớp
@@ -657,27 +708,27 @@
         </div>
     </div>
 
-    <!-- Modal 5: Chi Tiết Yêu Cầu -->
+    <!-- Modal 4: Chi Tiết Yêu Cầu -->
     <div class="modal fade modal-modern" id="modalDetail" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header modal-header-emerald">
-                    <h6 class="modal-title fw-bold mb-0" id="modalDetailTitle">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header modal-header-emerald px-4 py-3">
+                    <h6 class="modal-title fw-bold mb-0 text-white" id="modalDetailTitle">
                         <i class="bi bi-file-text me-2"></i>Chi Tiết Đơn
                     </h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="detailModalBody">
+                <div class="modal-body p-4" id="detailModalBody">
                     <!-- Render qua JS -->
                 </div>
-                <div class="modal-footer justify-content-between flex-wrap gap-2" id="detailModalFooter">
+                <div class="modal-footer px-4 py-3 justify-content-between flex-wrap gap-2" id="detailModalFooter">
                     <button type="button" class="btn btn-secondary rounded-pill px-4 ms-auto" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal 6: Xác Nhận / Ghi Chú Thao Tác -->
+    <!-- Modal 5: Xác Nhận / Ghi Chú Thao Tác -->
     <div class="modal fade modal-modern" id="modalResolveNote" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -688,10 +739,10 @@
                 <div class="modal-body p-4">
                     <div class="detail-info-card mb-3" id="resolveModalSummary">...</div>
                     <div id="resolveNoteGroup">
-                        <label class="form-label small fw-semibold text-secondary mb-1.5" id="resolveNoteLabel">Ghi chú</label>
-                        <textarea id="resolveNoteInput" class="form-control form-control-modern" rows="4"
+                        <label class="form-label small fw-semibold text-secondary mb-2" id="resolveNoteLabel">Ghi chú</label>
+                        <textarea id="resolveNoteInput" class="form-control form-control-modern" rows="4" maxlength="400"
                                   placeholder="Nhập nội dung..."></textarea>
-                        <div class="form-text small text-danger mt-1.5" id="resolveNoteError" style="display: none;">
+                        <div class="form-text small text-danger mt-2" id="resolveNoteError" style="display: none;">
                             <i class="bi bi-exclamation-circle-fill me-1"></i>Vui lòng nhập nội dung thông báo.
                         </div>
                     </div>
@@ -713,8 +764,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../js/api.js"></script>
 
-    <!-- Absence & Makeup Feature Scripts -->
+    <!-- Absence & Makeup Feature Scripts (theo thứ tự phụ thuộc) -->
+    <script src="../js/absence-makeup/makeup-common.js"></script>
     <script src="../js/absence-makeup/absence-requests.js"></script>
+    <script src="../js/absence-makeup/absence-create-form.js"></script>
     <script src="../js/absence-makeup/makeup-schedule.js"></script>
 </body>
 </html>

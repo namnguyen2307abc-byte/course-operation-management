@@ -224,6 +224,7 @@ CREATE TABLE absence_requests (
     lesson_id BIGINT NOT NULL FOREIGN KEY REFERENCES lessons(id),
     requested_by_user_id BIGINT NOT NULL FOREIGN KEY REFERENCES users(id),
     reason NVARCHAR(1000) NOT NULL,
+    need_makeup BIT NOT NULL DEFAULT 1,
     status VARCHAR(30) DEFAULT 'PENDING',
     approved_by_teacher_id BIGINT FOREIGN KEY REFERENCES users(id),
     review_note NVARCHAR(500),

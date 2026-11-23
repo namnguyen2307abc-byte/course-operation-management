@@ -1,5 +1,7 @@
 # Dữ liệu demo tổng hợp
 
+Khóa **Piano nền tảng (`PIA-CB-12`)** được đặt học phí **30.000đ** để test thanh toán. Thay đổi áp dụng khi nạp mới hoặc chạy lại file chung, chỉ cập nhật giá khóa học; hóa đơn/lịch thu đã tồn tại giữ nguyên. Tạo đăng ký/hóa đơn mới để dùng giá này. Các kịch bản test tay nằm trong [TEST_TAY_THANH_TOAN_30K.md](TEST_TAY_THANH_TOAN_30K.md).
+
 File duy nhất để nạp: `database/seed_demo_tong_hop.sql`.
 
 Gồm `du_lieu_theo_word.sql`, `test_attendence_makeup.sql`, `test_d26_absence_makeup.sql`, `-- Seed data for reviewing Weekly S.sql` và dữ liệu nền mà các file này cần. Phần D26 đã chuyển tên cột/giá trị về đúng schema hiện tại. Các file nguồn được giữ lại để tham khảo; không chạy tiếp từng file sau khi đã nạp bản gộp.
@@ -82,3 +84,10 @@ Lần reset này chỉ nạp bộ tổng hợp trên; dữ liệu demo HD/DD và
 - Đăng ký không qua test: Không giảm / phần trăm nguyên 1–30 / số tiền nguyên từ 1.000đ đến tối đa 30% học phí gốc. Có giảm phải có lý do.
 - Tối đa 3 kỳ, mỗi kỳ ít nhất 1.000đ; kỳ đầu ít nhất 30% học phí sau giảm (làm tròn lên đến đồng). Tổng kỳ bằng học phí sau giảm. Hạn đóng tăng dần, từ hôm nay và không sau ngày kết thúc lớp.
 - Chốt lịch không tạo giao dịch thu tiền. Giao dịch/biên lai 0đ bị từ chối; thanh toán tiền mặt/PayOS tiếp tục dùng luồng xác nhận riêng.
+
+
+## Chuyển khoản VietQR Pro (23/11/2026)
+
+Đã gỡ chức năng xử lý sai lệch chuyển khoản của Admin và các ca phân bổ thiếu/thừa/sai nội dung. Chỉ ghi nhận giao dịch gateway xác thực khớp mã yêu cầu và số tiền kỳ. Migration `20261121_bank_transfer_reconciliation.sql` vẫn được giữ trong file chung để bảo toàn schema và lịch sử cũ, không bật lại chức năng đã gỡ. Không cần reset database.
+
+Chi tiết luồng hiện tại trong `docs/THANH_TOAN_CHUYEN_KHOAN_SAI_LECH.md`; tên tệp cũ được giữ để liên kết tham khảo không bị hỏng.

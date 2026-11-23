@@ -23,6 +23,10 @@ public class MakeupRegistrationResponse {
     private Long studentId;
     private String studentName;
     private String parentName;
+    private String parentPhone;
+    private String courseName;
+    private String level;
+    private String branchName;
 
     // Buổi học gốc đã nghỉ
     private Long originalLessonId;
@@ -32,6 +36,7 @@ public class MakeupRegistrationResponse {
     private LocalTime originalEndTime;
     private String originalTimeSlot;
     private String originalClassName;
+    private String originalRoomName;
     private Long originalTeacherId;
     private String originalTeacherName;
 
@@ -43,6 +48,7 @@ public class MakeupRegistrationResponse {
     private LocalTime targetEndTime;
     private String targetTimeSlot;
     private String targetClassName;
+    private String targetBranchName;
     private String targetRoomName;
     private Long targetTeacherId;
     private String targetTeacherName;
@@ -52,7 +58,10 @@ public class MakeupRegistrationResponse {
     private Integer retryCount;
     private Integer maxRetries;
     private Boolean limitExceeded;
+    private Integer courseMakeupCount;
+    private Integer courseMakeupLimit;
     private String note;
+    private LocalDateTime absenceCreatedAt;
     private LocalDateTime createdAt;
     private LocalDateTime reviewedAt;
     private String reviewerName;

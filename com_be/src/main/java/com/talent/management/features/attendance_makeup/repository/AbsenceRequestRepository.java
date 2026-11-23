@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,16 +27,6 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
      * Lọc yêu cầu nghỉ theo trạng thái
      */
     List<AbsenceRequest> findByStatusOrderByCreatedAtDesc(AbsenceStatus status);
-
-    /**
-     * Tìm yêu cầu nghỉ theo học viên
-     */
-    List<AbsenceRequest> findByStudentIdOrderByCreatedAtDesc(Long studentId);
-
-    /**
-     * Lọc theo học viên và trạng thái
-     */
-    List<AbsenceRequest> findByStudentIdAndStatusOrderByCreatedAtDesc(Long studentId, AbsenceStatus status);
 
     /**
      * Lấy các yêu cầu nghỉ của học viên thuộc danh sách trạng thái
@@ -65,9 +56,22 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
     List<AbsenceRequest> findByTeacherIdAndStatusOrderByCreatedAtDesc(@Param("teacherId") Long teacherId, @Param("status") AbsenceStatus status);
 
     /**
-     * Kiểm tra xem học viên đã có yêu cầu nghỉ cho buổi học này chưa
+     * Học viên đã có đơn xin nghỉ còn hiệu lực cho buổi học này chưa (đơn bị từ chối không tính)
      */
-    Optional<AbsenceRequest> findByStudentIdAndLessonId(Long studentId, Long lessonId);
+    boolean existsByStudentIdAndLessonIdAndStatusIn(Long studentId, Long lessonId, Collection<AbsenceStatus> statuses);
+
+    /** Đơn chờ duyệt có đăng ký học bù, tính vào lượt bù của khóa học */
+    @Query("SELECT COUNT(ar) FROM AbsenceRequest ar " +
+           "WHERE ar.student.id = :studentId AND ar.status = com.talent.management.shared.enums.AbsenceStatus.PENDING " +
+           "AND (ar.needMakeup IS NULL OR ar.needMakeup = true) " +
+           "AND ar.lesson.classEntity.course.id = :courseId")
+    long countPendingMakeupByStudentAndCourse(@Param("studentId") Long studentId, @Param("courseId") Long courseId);
+
+    @Query("SELECT COUNT(ar) FROM AbsenceRequest ar " +
+           "WHERE ar.student.id = :studentId AND ar.status = com.talent.management.shared.enums.AbsenceStatus.PENDING " +
+           "AND (ar.needMakeup IS NULL OR ar.needMakeup = true) " +
+           "AND ar.lesson.classEntity.id = :classId")
+    long countPendingMakeupByStudentAndClass(@Param("studentId") Long studentId, @Param("classId") Long classId);
 
     /**
      * Lấy tất cả yêu cầu nghỉ học của một buổi học

@@ -4,8 +4,8 @@
 -- 1. Chưa cảnh báo (Xanh lá - Chuyên cần tốt <= 10%)
 -- 2. Cảnh báo vàng (Vàng - Cảnh báo chuyên cần 10% - 20%)
 -- 3. Cảnh báo đỏ (Đỏ - Báo động đỏ nguy cơ cấm thi >= 20%)
--- 4. Nghỉ 1 buổi học bù bị MISSED (Strike 1 - [Lần bù: 1/2])
--- 5. Nghỉ 2 buổi học bù bị CẤM HỌC BÙ (Strike 2 - CANCELLED [Lần bù: 2/2 - KHÓA])
+-- 4. Nghỉ 1 buổi học bù bị khóa (Vắng buổi bù - [Lần bù: 1/1 - KHÓA])
+-- 5. Vắng buổi học bù duy nhất bị CẤM HỌC BÙ (Khóa quyền bù - CANCELLED [Lần bù: 1/1 - KHÓA])
 -- 6. Khắc phục triệt để lỗi font chữ tiếng Việt (sử dụng NVARCHAR và prefix N'')
 -- ==============================================================================
 
@@ -30,7 +30,7 @@ SELECT TOP 10 id, 2, 'PRESENT', '2026-11-23 08:00:00', N'Học tập tích cực
 FROM dbo.lessons WHERE class_id = 2 AND id != 200 AND id != 201 AND id != 202 AND id != 203
 ORDER BY session_number ASC;
 
--- Ghi nhận 1 buổi vắng (Lesson 200 ngày 22/11/2026)
+-- Ghi nhận 1 buổi vắng (Lesson 200 ngày 22/11/1026)
 IF EXISTS (SELECT 1 FROM dbo.lessons WHERE id = 200)
 BEGIN
     INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
@@ -68,22 +68,22 @@ FROM dbo.lessons WHERE class_id = 3 AND id NOT IN (SELECT lesson_id FROM dbo.att
 ORDER BY session_number DESC;
 
 -- ------------------------------------------------------------------------------
--- Trường hợp 4 & 5: Quy tắc Two-Strike học bù cho Bé Nguyễn Bảo Nam (student_id = 1)
--- Strike 1: Nghỉ 1 buổi bù -> MISSED ([Lần bù: 1/2])
--- Strike 2: Nghỉ 2 buổi bù -> CANCELLED ([Lần bù: 2/2 - KHÓA]) -> CẤM HỌC BÙ!
+-- Trường hợp 4 & 5: Quy tắc một lần xếp lịch học bù cho Bé Nguyễn Bảo Nam (student_id = 1)
+-- Vắng buổi bù: Vắng buổi bù duy nhất -> CANCELLED ([Lần bù: 1/1 - KHÓA])
+-- Khóa quyền bù: Vắng buổi bù duy nhất -> CANCELLED ([Lần bù: 1/1 - KHÓA]) -> CẤM HỌC BÙ!
 -- ------------------------------------------------------------------------------
 
--- Strike 1: Ca học bù #16 chuyển sang MISSED (Còn 1 lần xếp lại)
+-- Vắng buổi bù: Ca học bù #16 chuyển sang CANCELLED (Không được xếp lại)
 UPDATE dbo.makeup_registrations
-SET status = 'MISSED',
-    note = N'[Lần bù: 1/2] Bỏ lỡ / Vắng mặt tại buổi học bù ngày 2026-11-23 (Còn tối đa 1 lần xếp lại) - Lý do: Bận việc gia đình'
+SET status = 'CANCELLED',
+    note = N'[Lần bù: 1/1 - KHÓA] Bỏ lỡ / Vắng mặt tại buổi học bù ngày 2026-11-23 (Không được xếp lại) - Lý do: Bận việc gia đình'
 WHERE id = 16;
 
--- Strike 2: Ca học bù #10 cập nhật thành CANCELLED / KHÓA (Cấm học bù do đã nghỉ 2 buổi)
+-- Khóa quyền bù: Ca học bù #10 cập nhật thành CANCELLED / KHÓA (Cấm học bù do đã vắng buổi bù duy nhất)
 UPDATE dbo.makeup_registrations
 SET status = 'CANCELLED',
     target_lesson_id = 200,
-    note = N'[Lần bù: 2/2 - KHÓA] Hủy quyền học bù do học viên đã vắng mặt tại ca học bù lần 2 (ngày 2026-11-22) - Đã hết 2 lần bù cho phép (CẤM HỌC BÙ)'
+    note = N'[Lần bù: 1/1 - KHÓA] Hủy quyền học bù do học viên đã vắng mặt tại ca học bù duy nhất (ngày 2026-11-22) - Đã hết 1 lần bù cho phép (CẤM HỌC BÙ)'
 WHERE id = 10;
 
 -- 4. Chèn danh sách thông báo tiếng Việt chuẩn 100% không lỗi font cho Phụ Huynh Lê Thị Lan (recipient_user_id = 10):
@@ -101,16 +101,16 @@ VALUES
  N'Bé Nguyễn Trọng Anh (Lớp Guitar Đệm Hát Sáng T7-CN) đã vắng 3/24 buổi (12.5%). Học viên chỉ còn 1/4 buổi phép trước khi chạm ngưỡng cấm thi 20%.',
  'ATTENDANCE_WARNING', 3, '/pages/attendance-tracking.html', 0, DATEADD(MINUTE, -25, SYSDATETIME())),
 
--- Thông báo 3: Nghỉ 1 buổi học bù bị MISSED (Strike 1)
+-- Thông báo 3: Nghỉ 1 buổi học bù bị khóa (Vắng buổi bù)
 (10, 4,
- N'Cảnh báo bỏ lỡ học bù (Lần 1/2): Nguyễn Bảo Nam (Bé Bin)',
- N'Bé Nguyễn Bảo Nam (Bé Bin) đã vắng mặt tại buổi học bù ngày 2026-11-23. Theo quy định, bé chỉ còn tối đa 1 lần xếp lịch học bù cuối cùng.',
- 'MAKEUP_MISSED', 16, '/pages/absence-makeup.html', 0, DATEADD(MINUTE, -40, SYSDATETIME())),
+ N'Cảnh báo bỏ lỡ học bù (Lần 1/1): Nguyễn Bảo Nam (Bé Bin)',
+ N'Bé Nguyễn Bảo Nam (Bé Bin) đã vắng mặt tại buổi học bù ngày 2026-11-23. Theo quy định, mỗi buổi nghỉ chỉ được xếp bù 1 lần, nên quyền xếp lại đã bị khóa (tối đa 3 lượt bù/khóa).',
+ 'MAKEUP_LIMIT_EXCEEDED', 16, '/pages/absence-makeup.html', 0, DATEADD(MINUTE, -40, SYSDATETIME())),
 
--- Thông báo 4: Nghỉ 2 buổi học bù bị CẤM HỌC BÙ (Strike 2)
+-- Thông báo 4: Vắng buổi học bù duy nhất bị CẤM HỌC BÙ (Khóa quyền bù)
 (10, 4,
- N'Kết thúc quyền học bù (Quá 2 lần - CẤM HỌC BÙ): Nguyễn Bảo Nam (Bé Bin)',
- N'Bé Nguyễn Bảo Nam (Bé Bin) đã vắng mặt tại ca học bù lần 2. Theo quy định, mỗi buổi nghỉ chỉ xếp bù tối đa 2 lần. Do học viên đã vắng mặt cả 2 buổi nên hệ thống đã chính thức khóa quyền học bù cho buổi nghỉ này.',
+ N'Kết thúc quyền học bù (Đã dùng lần bù duy nhất - CẤM HỌC BÙ): Nguyễn Bảo Nam (Bé Bin)',
+ N'Bé Nguyễn Bảo Nam (Bé Bin) đã vắng mặt tại ca học bù duy nhất. Theo quy định, mỗi buổi nghỉ chỉ xếp bù tối đa 1 lần. Do học viên đã vắng mặt buổi bù duy nhất nên hệ thống đã chính thức khóa quyền học bù cho buổi nghỉ này.',
  'MAKEUP_LIMIT_EXCEEDED', 10, '/pages/absence-makeup.html', 0, DATEADD(MINUTE, -55, SYSDATETIME())),
 
 -- Thông báo 5: Cập nhật điểm danh bình thường (Chuyên cần tốt)
