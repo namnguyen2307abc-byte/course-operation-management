@@ -370,7 +370,7 @@ IF EXISTS (SELECT 1 FROM dbo.makeup_registrations WHERE id = 14)
 BEGIN
     UPDATE dbo.makeup_registrations
     SET status = 'COMPLETED',
-        note = N'[Lần bù: 1/2] Đã hoàn thành học bù và được giáo viên điểm danh Có mặt.'
+        note = N'[Lần bù: 1/1] Đã hoàn thành học bù và được giáo viên điểm danh Có mặt.'
     WHERE id = 14;
 END;
 
