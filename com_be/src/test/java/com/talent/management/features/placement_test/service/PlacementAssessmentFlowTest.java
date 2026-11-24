@@ -51,6 +51,12 @@ class PlacementAssessmentFlowTest {
     @Mock PlacementScheduleCriteriaScoreRepository criteriaScoreRepository;
     @InjectMocks PlacementTestServiceImpl service;
 
+    @org.junit.jupiter.api.BeforeEach
+    void injectCriteriaRepositories() {
+        ReflectionTestUtils.setField(service, "criteriaRepository", criteriaRepository);
+        ReflectionTestUtils.setField(service, "criteriaScoreRepository", criteriaScoreRepository);
+    }
+
     @Test
     void assessmentRejectsACourseFromAnotherProgramInTheSameSubjectGroup() {
         Program piano = Program.builder().id(1L).placementSubject("DAN").build();
@@ -197,6 +203,67 @@ class PlacementAssessmentFlowTest {
         assertThatThrownBy(() -> service.cancelSchedule(9L, "Đổi lịch", "teacher"))
                 .isInstanceOf(BusinessException.class).hasMessageContaining("không có quyền hủy");
         assertThat(schedule.getStatus()).isEqualTo(PlacementScheduleStatus.SCHEDULED);
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    private PlacementAssessmentRequest criteriaRequest(List<PlacementCriteriaScoreItemRequest> items) {
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(
+                PlacementSchedule.builder().id(9L).subject("DAN").testDate(LocalDateTime.now()).build()));
+        return PlacementAssessmentRequest.builder().score(0)
+                .recommendedLevel(PlacementLevel.INTERMEDIATE).criteriaScores(items).build();
+    }
+
+    @Test
+    void assessmentRejectsUnknownCriteriaBeforeSaving() {
+        var request = criteriaRequest(List.of(PlacementCriteriaScoreItemRequest.builder().criteriaId(99L).score(8.0).build()));
+        assertThatThrownBy(() -> service.saveAssessment(9L, request, null))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("không tồn tại");
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void assessmentRejectsCriteriaFromAnotherSubject() {
+        when(criteriaRepository.findById(1L)).thenReturn(Optional.of(
+                PlacementCriteria.builder().id(1L).subject("MUA").criteriaName("Độ dẻo").build()));
+        var request = criteriaRequest(List.of(PlacementCriteriaScoreItemRequest.builder().criteriaId(1L).score(8.0).build()));
+        assertThatThrownBy(() -> service.saveAssessment(9L, request, null))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("không thuộc bộ môn");
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void assessmentRejectsDuplicateCriteriaBeforeCalculatingAverage() {
+        when(criteriaRepository.findById(1L)).thenReturn(Optional.of(
+                PlacementCriteria.builder().id(1L).subject("DAN").criteriaName("Cảm âm").build()));
+        var item = PlacementCriteriaScoreItemRequest.builder().criteriaId(1L).score(8.0).build();
+        var request = criteriaRequest(List.of(item, item));
+        assertThatThrownBy(() -> service.saveAssessment(9L, request, null))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("trùng tiêu chí");
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void assessmentRejectsInactiveCriteriaNotPreviouslyUsedBySchedule() {
+        when(criteriaRepository.findById(1L)).thenReturn(Optional.of(
+                PlacementCriteria.builder().id(1L).subject("DAN").criteriaName("Cảm âm").active(false).build()));
+        var request = criteriaRequest(List.of(PlacementCriteriaScoreItemRequest.builder().criteriaId(1L).score(8.0).build()));
+        assertThatThrownBy(() -> service.saveAssessment(9L, request, null))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("ngưng áp dụng");
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void assessmentRejectsMissingAndNonFiniteCriteriaScores() {
+        var items = new java.util.ArrayList<PlacementCriteriaScoreItemRequest>();
+        items.add(null);
+        items.add(PlacementCriteriaScoreItemRequest.builder().build());
+        items.add(PlacementCriteriaScoreItemRequest.builder().score(Double.NaN).build());
+        items.add(PlacementCriteriaScoreItemRequest.builder().score(Double.POSITIVE_INFINITY).build());
+        for (var item : items) {
+            var request = criteriaRequest(java.util.Collections.singletonList(item));
+            assertThatThrownBy(() -> service.saveAssessment(9L, request, null))
+                    .isInstanceOf(BusinessException.class);
+        }
         verify(scheduleRepository, never()).save(any());
     }
 

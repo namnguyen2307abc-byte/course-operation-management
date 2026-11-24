@@ -369,12 +369,35 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         if (scoreItems != null && !scoreItems.isEmpty()) {
             double sum = 0.0;
             int validCount = 0;
+            Set<Long> submittedCriteria = new java.util.HashSet<>();
+            String assessmentSubject = normalizeSubjectCode(schedule.getSubject() != null
+                    ? schedule.getSubject() : scheduleMapper.inferSubject(schedule.getTitle()));
             for (PlacementCriteriaScoreItemRequest item : scoreItems) {
                 if (item == null || item.getScore() == null) {
-                    continue;
+                    throw new BusinessException("Vui lòng nhập đầy đủ điểm cho từng tiêu chí đánh giá!");
                 }
-                if (item.getScore() < 0.0 || item.getScore() > 10.0) {
+                if (!Double.isFinite(item.getScore()) || item.getScore() < 0.0 || item.getScore() > 10.0) {
                     throw new BusinessException("Điểm từng tiêu chí phải nằm trong khoảng từ 0 đến 10!");
+                }
+                if (item.getCriteriaId() != null && criteriaRepository != null) {
+                    if (!submittedCriteria.add(item.getCriteriaId())) {
+                        throw new BusinessException("Không được gửi trùng tiêu chí đánh giá: " + item.getCriteriaId());
+                    }
+                    PlacementCriteria criterion = criteriaRepository.findById(item.getCriteriaId())
+                            .orElseThrow(() -> new BusinessException("Tiêu chí đánh giá không tồn tại: " + item.getCriteriaId()));
+                    if (assessmentSubject != null && !assessmentSubject.isBlank()
+                            && !assessmentSubject.equalsIgnoreCase(normalizeSubjectCode(criterion.getSubject()))) {
+                        throw new BusinessException("Tiêu chí " + criterion.getCriteriaName() + " không thuộc bộ môn của ca kiểm tra!");
+                    }
+                    if (Boolean.FALSE.equals(criterion.getActive())) {
+                        boolean previouslyUsed = criteriaScoreRepository != null
+                                && criteriaScoreRepository.findByScheduleIdOrderByDisplayOrderAscIdAsc(scheduleId).stream()
+                                        .anyMatch(row -> row.getCriteria() != null
+                                                && item.getCriteriaId().equals(row.getCriteria().getId()));
+                        if (!previouslyUsed) {
+                            throw new BusinessException("Tiêu chí " + criterion.getCriteriaName() + " đã ngưng áp dụng. Vui lòng tải lại danh sách tiêu chí!");
+                        }
+                    }
                 }
                 sum += item.getScore();
                 validCount++;
