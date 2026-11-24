@@ -17,8 +17,5 @@ const installmentApi = (() => {
   simulate: id=>call(staff+'/payment-intents/'+id+'/simulate','POST'),
   notices: ()=>call(parent+'/notifications'),
   readNotice: id=>call(parent+'/notifications/'+id+'/read','PATCH'),
-  reversals: ()=>call(staff+'/reversals'),
-  reversal: (id,reason)=>call(staff+'/payments/'+id+'/reversal','POST',{reason}),
-  reviewReversal: (id,approve,note)=>call(staff+'/reversals/'+id+'/review','POST',{approve,note}),
  };
 })();

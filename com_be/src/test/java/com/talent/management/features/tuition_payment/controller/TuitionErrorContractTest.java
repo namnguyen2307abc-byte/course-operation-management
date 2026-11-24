@@ -25,6 +25,23 @@ import java.net.http.HttpTimeoutException;
 import java.util.Map;
 
 class TuitionErrorContractTest {
+    @Test
+    void retiredCorrectionEndpointsReturnGoneWithoutChangingData() throws Exception {
+        var controller = new TuitionInstallmentController(null, null, null, null, null, null, null,
+                new com.talent.management.features.tuition_payment.service.impl.TuitionReversalServiceImpl());
+        var retired = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new TuitionExceptionHandler()).build();
+        for (var request : java.util.List.of(
+                get("/api/tuition-payment/reversals"),
+                post("/api/tuition-payment/payments/1/reversal").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Thu nhầm\"}"),
+                post("/api/tuition-payment/reversals/1/review").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"approve\":true,\"note\":\"Đã kiểm tra\"}"))) {
+            retired.perform(request).andExpect(status().isGone())
+                    .andExpect(jsonPath("$.code").value("TUITION_CASH_CORRECTION_REMOVED"));
+        }
+    }
+
     private final MockMvc mvc =
             MockMvcBuilders.standaloneSetup(new FailureController())
                     .setControllerAdvice(new TuitionExceptionHandler())
