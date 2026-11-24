@@ -1086,9 +1086,23 @@ function renderEvaluateCriteriaSliders(normSubject, criteriaList, item, baseScor
 
     const cfg = SUBJECT_STYLE_META[normSubject] || SUBJECT_STYLE_META['DAN'];
     const savedScores = Array.isArray(item?.criteriaScores) ? item.criteriaScores : [];
-    const listToRender = (criteriaList && criteriaList.length > 0)
-        ? criteriaList
-        : savedScores.map((s, idx) => ({ id: s.criteriaId || (idx + 1), criteriaName: s.criteriaName || `Tiêu chí ${idx + 1}` }));
+    const isCompletedWithSnapshots = item?.status === 'COMPLETED' && savedScores.length > 0;
+
+    // Nếu bài thi đã COMPLETED và đã có snapshot lịch sử các tiêu chí lúc chấm,
+    // chỉ hiển thị đúng bộ tiêu chí đã chấm của bài thi đó (không tự gắn tiêu chí mới thêm sau này).
+    const listToRender = isCompletedWithSnapshots
+        ? savedScores.map((s, idx) => ({
+            id: s.criteriaId || (idx + 1),
+            criteriaName: s.criteriaName || `Tiêu chí ${idx + 1}`,
+            savedScore: s.score
+        }))
+        : ((criteriaList && criteriaList.length > 0)
+            ? criteriaList
+            : savedScores.map((s, idx) => ({
+                id: s.criteriaId || (idx + 1),
+                criteriaName: s.criteriaName || `Tiêu chí ${idx + 1}`,
+                savedScore: s.score
+            })));
 
     if (!listToRender.length) {
         evalContainer.innerHTML = `
@@ -1108,10 +1122,12 @@ function renderEvaluateCriteriaSliders(normSubject, criteriaList, item, baseScor
         <div class="row g-3 mb-4">
             ${listToRender.map((c, idx) => {
                 const style = getCriteriaStyle(idx);
-                const critKey = c.id != null ? `crit_${c.id}` : `crit_idx_${idx}`;
-                const matchedSaved = savedScores.find(s =>
-                    (s.criteriaId != null && c.id != null && Number(s.criteriaId) === Number(c.id))
-                    || (s.criteriaName && s.criteriaName === c.criteriaName));
+                const critKey = c.id != null ? `crit_${c.id}_${idx}` : `crit_idx_${idx}`;
+                const matchedSaved = c.savedScore != null
+                    ? { score: c.savedScore }
+                    : savedScores.find(s =>
+                        (s.criteriaId != null && c.id != null && Number(s.criteriaId) === Number(c.id))
+                        || (s.criteriaName && s.criteriaName === c.criteriaName));
                 const sliderVal = matchedSaved && matchedSaved.score != null ? Number(matchedSaved.score) : baseScore10;
                 const safeLabel = escapeCourseOption(c.criteriaName || `Tiêu chí ${idx + 1}`);
                 return `
@@ -1413,20 +1429,19 @@ function openDetailModal(id) {
 
     const detailCriteriaContainer = document.getElementById("detailCriteriaContainer");
     if (detailCriteriaContainer) {
-        const savedScores = Array.isArray(item.criteriaScores) && item.criteriaScores.length > 0
-            ? item.criteriaScores
-            : (placementCriteriaBySubject[normSubject] || []).map(c => ({
-                criteriaName: c.criteriaName,
-                score: baseScore / 10
-            }));
-        renderDetailCriteriaProgress(detailCriteriaContainer, cfg, savedScores, baseScore);
-        if (!savedScores.length) {
-            loadPlacementCriteria(normSubject).then(loaded => {
-                if (Array.isArray(loaded) && loaded.length > 0) {
-                    const fallbackRows = loaded.map(c => ({ criteriaName: c.criteriaName, score: baseScore / 10 }));
-                    renderDetailCriteriaProgress(detailCriteriaContainer, cfg, fallbackRows, baseScore);
-                }
-            });
+        if (item.status !== 'COMPLETED') {
+            detailCriteriaContainer.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>Chi tiết điểm tiêu chí [${cfg.subjectName}]</h6>
+                    <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
+                </div>
+                <div class="alert alert-light border text-muted small py-2 px-3 mb-4">
+                    <i class="bi bi-clock-history me-1"></i>Ca kiểm tra này chưa hoàn thành chấm điểm nên chưa có kết quả chi tiết từng tiêu chí.
+                </div>
+            `;
+        } else {
+            const savedScores = Array.isArray(item.criteriaScores) ? item.criteriaScores : [];
+            renderDetailCriteriaProgress(detailCriteriaContainer, cfg, savedScores, baseScore);
         }
     }
 
