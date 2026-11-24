@@ -1,10 +1,13 @@
 package com.talent.management.features.placement_test.dto.request;
 
 import com.talent.management.features.placement_test.entity.PlacementLevel;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -32,4 +35,7 @@ public class PlacementAssessmentRequest {
     private String imageUrl;
 
     private String recordUrl;
+
+    @Valid
+    private List<PlacementCriteriaScoreItemRequest> criteriaScores;
 }

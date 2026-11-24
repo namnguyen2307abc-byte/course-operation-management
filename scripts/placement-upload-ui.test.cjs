@@ -315,3 +315,45 @@ test('saving is blocked during upload and closing prevents a late upload from ch
   assert.deepEqual(errors,[]);
  }finally{release();await page.close();}
 });
+
+test('teacher assessment renders database criteria and submits their IDs and normalized score',async()=>{
+ let submitted;
+ const criteria=[{id:101,subject:'DAN',criteriaName:'Nghe giai điệu mới',displayOrder:1,active:true},{id:102,subject:'DAN',criteriaName:'Phối hợp hai tay',displayOrder:2,active:true}];
+ const {page,errors}=await evaluate((u,req)=>{
+  if(u.pathname==='/api/placement-tests/criteria')return criteria;
+  if(u.pathname==='/api/placement-tests/7/assess'){submitted=req.postDataJSON();return {...assessment,...submitted,status:'COMPLETED'};}
+ });
+ try{
+  assert.equal(await page.locator('.eval-criteria-slider').count(),2);
+  assert.match(await page.locator('#evalCriteriaContainer').textContent(),/Nghe giai điệu mới/);
+  assert.equal(await page.locator('#btnManageCriteria').isVisible(),false);
+  await page.locator('#score_crit_101').fill('8');
+  await page.locator('#score_crit_102').fill('9');
+  const saved=page.waitForRequest(r=>r.url().includes('/api/placement-tests/7/assess')&&r.method()==='POST');
+  await page.locator('#evaluatePlacementTestForm button[type=submit]').click();await saved;
+  assert.equal(submitted.score,85);
+  assert.deepEqual(submitted.criteriaScores.map(c=>({id:c.criteriaId,score:c.score})),[{id:101,score:8},{id:102,score:9}]);
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('admin can create a database criterion through the configuration modal',async()=>{
+ let created;
+ const criteria=[{id:101,subject:'DAN',criteriaName:'Cảm âm',displayOrder:1,active:true,usedInAssessments:true}];
+ const {page,errors}=await open('ADMIN','placement-test.html',(u,req)=>{
+  if(u.pathname==='/api/placement-tests/criteria'){
+   if(req.method()==='POST'){created=req.postDataJSON();const added={id:102,...created,usedInAssessments:false};criteria.push(added);return added;}
+   return criteria;
+  }
+ });
+ try{
+  await page.locator('#btnManageCriteria').click();
+  await page.locator('#criteriaConfigTableBody tr').filter({hasText:'Cảm âm'}).waitFor();
+  await page.locator('#criteriaNameInput').fill('Tiết tấu mới');
+  await page.locator('#criteriaOrderInput').fill('2');
+  await page.locator('#btnSaveCriteria').click();
+  await page.locator('#criteriaConfigTableBody tr').filter({hasText:'Tiết tấu mới'}).waitFor();
+  assert.deepEqual(created,{subject:'DAN',criteriaName:'Tiết tấu mới',displayOrder:2,active:true});
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});

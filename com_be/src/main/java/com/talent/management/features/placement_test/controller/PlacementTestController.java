@@ -3,6 +3,8 @@ package com.talent.management.features.placement_test.controller;
 import com.talent.management.features.placement_test.dto.request.CancelPlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.CreatePlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
+import com.talent.management.features.placement_test.dto.request.SavePlacementCriteriaRequest;
+import com.talent.management.features.placement_test.dto.response.PlacementCriteriaResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.service.PlacementTestService;
@@ -40,6 +42,39 @@ public class PlacementTestController {
             @RequestParam("file") MultipartFile file) {
         String fileUrl = fileStorageService.storeFile(file, "placement-tests");
         return ResponseEntity.ok(Map.of("fileUrl", fileUrl));
+    }
+
+    @GetMapping("/criteria")
+    @Operation(summary = "Lấy danh sách tiêu chí đánh giá năng khiếu theo bộ môn từ Database")
+    public ResponseEntity<List<PlacementCriteriaResponse>> getCriteria(
+            @RequestParam(required = false) String subject,
+            @RequestParam(required = false, defaultValue = "false") boolean includeInactive) {
+        return ResponseEntity.ok(placementTestService.getCriteria(subject, includeInactive));
+    }
+
+    @PostMapping("/criteria")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin thêm mới tiêu chí đánh giá đầu vào cho bộ môn")
+    public ResponseEntity<PlacementCriteriaResponse> createCriteria(
+            @Valid @RequestBody SavePlacementCriteriaRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(placementTestService.createCriteria(request));
+    }
+
+    @PutMapping("/criteria/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin chỉnh sửa tiêu chí đánh giá đầu vào")
+    public ResponseEntity<PlacementCriteriaResponse> updateCriteria(
+            @PathVariable Long id,
+            @Valid @RequestBody SavePlacementCriteriaRequest request) {
+        return ResponseEntity.ok(placementTestService.updateCriteria(id, request));
+    }
+
+    @DeleteMapping("/criteria/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin xóa hoặc ngưng áp dụng tiêu chí đánh giá (bảo toàn lịch sử các bài đã chấm)")
+    public ResponseEntity<Void> deleteCriteria(@PathVariable Long id) {
+        placementTestService.deleteCriteria(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping

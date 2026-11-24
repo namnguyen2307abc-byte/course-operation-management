@@ -152,9 +152,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    loadPlacementCriteria();
     loadPlacementTests();
     loadBranchesForScheduling();
     setupEventListeners();
+    configureAdminCriteriaButton();
 });
 
 function getTodayDateString() {
@@ -294,47 +296,85 @@ function getSubjectDisplayName(code) {
     return code || "Năng khiếu";
 }
 
-const SUBJECT_EVALUATION_CONFIG = {
+const SUBJECT_STYLE_META = {
     'DAN': {
         subjectName: 'Bộ Môn Đàn',
         badgeClass: 'bg-primary-subtle text-primary border border-primary-subtle',
         headerIcon: 'bi-music-note-beamed text-primary',
-        headerTitle: 'Chấm điểm 4 tiêu chí Bộ Môn Đàn',
-        notePlaceholder: 'Nhận xét chi tiết về cảm âm, nhịp phách, kỹ thuật phím đàn, thị tấu và gợi ý lớp học phù hợp...',
-        criteria: [
-            { id: 'crit_1', label: '1. Cảm âm & Nhạc cảm (Pitch)', icon: 'bi-ear text-primary', badgeClass: 'bg-primary text-white' },
-            { id: 'crit_2', label: '2. Nhịp phách & Tiết tấu (Rhythm)', icon: 'bi-metronome text-warning', badgeClass: 'bg-warning text-dark' },
-            { id: 'crit_3', label: '3. Kỹ thuật ngón & Tư thế tay (Technique)', icon: 'bi-hand-index-thumb text-success', badgeClass: 'bg-success text-white' },
-            { id: 'crit_4', label: '4. Đọc bản nhạc & Thị tấu (Sight Reading)', icon: 'bi-book text-info', badgeClass: 'bg-info text-dark' }
-        ]
+        notePlaceholder: 'Nhận xét chi tiết về cảm âm, nhịp phách, kỹ thuật phím đàn, thị tấu và gợi ý lớp học phù hợp...'
     },
     'MUA': {
         subjectName: 'Bộ Môn Múa',
         badgeClass: 'bg-danger-subtle text-danger border border-danger-subtle',
         headerIcon: 'bi-heart-pulse-fill text-danger',
-        headerTitle: 'Chấm điểm 4 tiêu chí Bộ Môn Múa',
-        notePlaceholder: 'Nhận xét chi tiết về độ dẻo dai cơ thể, khả năng cảm thụ âm nhạc, phom dáng và gợi ý lớp múa phù hợp...',
-        criteria: [
-            { id: 'crit_1', label: '1. Độ dẻo & Uyển chuyển (Flexibility)', icon: 'bi-universal-access text-danger', badgeClass: 'bg-danger text-white' },
-            { id: 'crit_2', label: '2. Cảm thụ âm nhạc & Nhịp điệu (Musicality)', icon: 'bi-soundwave text-warning', badgeClass: 'bg-warning text-dark' },
-            { id: 'crit_3', label: '3. Phom dáng & Kỹ thuật động tác (Posture)', icon: 'bi-person-standing text-success', badgeClass: 'bg-success text-white' },
-            { id: 'crit_4', label: '4. Thần thái & Biểu cảm biểu diễn (Stage Presence)', icon: 'bi-stars text-info', badgeClass: 'bg-info text-dark' }
-        ]
+        notePlaceholder: 'Nhận xét chi tiết về độ dẻo dai cơ thể, khả năng cảm thụ âm nhạc, phom dáng và gợi ý lớp múa phù hợp...'
     },
     'VO': {
         subjectName: 'Bộ Môn Võ Thuật',
         badgeClass: 'bg-warning-subtle text-warning-emphasis border border-warning-subtle',
         headerIcon: 'bi-shield-fill-check text-warning',
-        headerTitle: 'Chấm điểm 4 tiêu chí Bộ Môn Võ Thuật',
-        notePlaceholder: 'Nhận xét chi tiết về thể lực, phản xạ, tấn pháp đòn thế, tinh thần kỷ luật võ đạo và gợi ý cấp đai xếp lớp...',
-        criteria: [
-            { id: 'crit_1', label: '1. Thể lực & Sức bền (Stamina & Strength)', icon: 'bi-lightning-charge-fill text-danger', badgeClass: 'bg-danger text-white' },
-            { id: 'crit_2', label: '2. Tốc độ & Phản xạ tự vệ (Reflexes & Speed)', icon: 'bi-speedometer2 text-warning', badgeClass: 'bg-warning text-dark' },
-            { id: 'crit_3', label: '3. Tấn pháp & Kỹ thuật đòn (Stances & Technique)', icon: 'bi-shield-check text-primary', badgeClass: 'bg-primary text-white' },
-            { id: 'crit_4', label: '4. Tác phong & Kỷ luật võ đạo (Martial Discipline)', icon: 'bi-award-fill text-success', badgeClass: 'bg-success text-white' }
-        ]
+        notePlaceholder: 'Nhận xét chi tiết về thể lực, phản xạ, tấn pháp đòn thế, tinh thần kỷ luật võ đạo và gợi ý cấp đai xếp lớp...'
     }
 };
+
+const CRITERIA_BADGE_PALETTE = [
+    { icon: 'bi-check2-circle text-primary', badgeClass: 'bg-primary text-white' },
+    { icon: 'bi-star-fill text-warning', badgeClass: 'bg-warning text-dark' },
+    { icon: 'bi-award-fill text-success', badgeClass: 'bg-success text-white' },
+    { icon: 'bi-lightning-charge-fill text-info', badgeClass: 'bg-info text-dark' }
+];
+
+let placementCriteriaBySubject = { DAN: [], MUA: [], VO: [] };
+let adminCriteriaList = [];
+
+function isAdmin() {
+    let currentUser = null;
+    if (typeof getCurrentUser === 'function') {
+        currentUser = getCurrentUser();
+    }
+    if (!currentUser || !currentUser.role) return false;
+    const roleUpper = String(currentUser.role).toUpperCase().replace("ROLE_", "");
+    return roleUpper === "ADMIN";
+}
+
+function configureAdminCriteriaButton() {
+    const btn = document.getElementById("btnManageCriteria");
+    if (btn) {
+        btn.classList.toggle("d-none", !isAdmin());
+    }
+}
+
+async function loadPlacementCriteria(subject = null) {
+    if (typeof callApi !== 'function') return [];
+    try {
+        const endpoint = subject
+            ? `/api/placement-tests/criteria?subject=${encodeURIComponent(normalizeSubject(subject))}`
+            : '/api/placement-tests/criteria';
+        const result = await callApi(endpoint, 'GET', null, false, false);
+        if (Array.isArray(result)) {
+            if (subject) {
+                const norm = normalizeSubject(subject);
+                placementCriteriaBySubject[norm] = result;
+            } else {
+                const grouped = { DAN: [], MUA: [], VO: [] };
+                for (const item of result) {
+                    const s = normalizeSubject(item.subject || 'DAN');
+                    if (!grouped[s]) grouped[s] = [];
+                    grouped[s].push(item);
+                }
+                placementCriteriaBySubject = grouped;
+            }
+            return result;
+        }
+    } catch (err) {
+        console.warn("Không tải được tiêu chí đánh giá từ máy chủ:", err);
+    }
+    return [];
+}
+
+function getCriteriaStyle(index) {
+    return CRITERIA_BADGE_PALETTE[index % CRITERIA_BADGE_PALETTE.length];
+}
 
 function getSubjectBadge(subject) {
     const s = normalizeSubject(subject);
@@ -996,7 +1036,7 @@ async function openEvaluateModal(id) {
     document.getElementById("evalCandidateName").innerText = item.studentName || "Học viên";
 
     const normSubject = normalizeSubject(item.subject || inferSubject(item.title));
-    const cfg = SUBJECT_EVALUATION_CONFIG[normSubject] || SUBJECT_EVALUATION_CONFIG['DAN'];
+    const cfg = SUBJECT_STYLE_META[normSubject] || SUBJECT_STYLE_META['DAN'];
     const subjectName = cfg.subjectName;
     const teacherDisplayName = currentUser ? (currentUser.subject ? `GV ${getSubjectDisplayName(currentUser.subject)}` : 'GV') : '';
     const examinerInfo = currentUser ? `${currentUser.fullName || currentUser.username} (${teacherDisplayName})` : (item.evaluatedByName || 'Chưa phân công');
@@ -1004,31 +1044,11 @@ async function openEvaluateModal(id) {
 
     const baseScore10 = item.score != null ? (item.score / 10) : 7.5;
 
-    // Render dynamic subject-specific criteria sliders
-    const evalContainer = document.getElementById("evalCriteriaContainer");
-    if (evalContainer) {
-        evalContainer.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>${cfg.headerTitle} (Thang điểm 0 - 10)</h6>
-                <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
-            </div>
-            <div class="row g-3 mb-4">
-                ${cfg.criteria.map(c => `
-                    <div class="col-md-6">
-                        <div class="score-slider-card">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="fw-semibold text-dark small"><i class="bi ${c.icon} me-1"></i>${c.label}</label>
-                                <span class="badge ${c.badgeClass} px-2" id="val_${c.id}">${baseScore10.toFixed(1)}</span>
-                            </div>
-                            <input type="range" class="form-range eval-criteria-slider" id="score_${c.id}" min="0" max="10" step="0.5" value="${baseScore10}" oninput="document.getElementById('val_${c.id}').innerText = parseFloat(this.value).toFixed(1); calculateAverageScore();">
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+    let activeCriteria = placementCriteriaBySubject[normSubject] || [];
+    if (!activeCriteria.length) {
+        activeCriteria = await loadPlacementCriteria(normSubject);
     }
-
-    calculateAverageScore();
+    renderEvaluateCriteriaSliders(normSubject, activeCriteria, item, baseScore10);
 
     document.getElementById("evalLevelSelect").value = item.recommendedLevel || "BEGINNER";
     const courseSelect = document.getElementById("evalCourseSelect");
@@ -1058,6 +1078,62 @@ async function openEvaluateModal(id) {
 
     const modal = new bootstrap.Modal(document.getElementById('evaluateModal'));
     modal.show();
+}
+
+function renderEvaluateCriteriaSliders(normSubject, criteriaList, item, baseScore10) {
+    const evalContainer = document.getElementById("evalCriteriaContainer");
+    if (!evalContainer) return;
+
+    const cfg = SUBJECT_STYLE_META[normSubject] || SUBJECT_STYLE_META['DAN'];
+    const savedScores = Array.isArray(item?.criteriaScores) ? item.criteriaScores : [];
+    const listToRender = (criteriaList && criteriaList.length > 0)
+        ? criteriaList
+        : savedScores.map((s, idx) => ({ id: s.criteriaId || (idx + 1), criteriaName: s.criteriaName || `Tiêu chí ${idx + 1}` }));
+
+    if (!listToRender.length) {
+        evalContainer.innerHTML = `
+            <div class="alert alert-warning py-2 px-3 small mb-3">
+                <i class="bi bi-info-circle me-1"></i>Chưa có tiêu chí đánh giá nào được cấu hình trong cơ sở dữ liệu cho ${cfg.subjectName}.
+            </div>
+        `;
+        calculateAverageScore();
+        return;
+    }
+
+    evalContainer.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>Chấm điểm ${listToRender.length} tiêu chí ${cfg.subjectName} (Thang điểm 0 - 10)</h6>
+            <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
+        </div>
+        <div class="row g-3 mb-4">
+            ${listToRender.map((c, idx) => {
+                const style = getCriteriaStyle(idx);
+                const critKey = c.id != null ? `crit_${c.id}` : `crit_idx_${idx}`;
+                const matchedSaved = savedScores.find(s =>
+                    (s.criteriaId != null && c.id != null && Number(s.criteriaId) === Number(c.id))
+                    || (s.criteriaName && s.criteriaName === c.criteriaName));
+                const sliderVal = matchedSaved && matchedSaved.score != null ? Number(matchedSaved.score) : baseScore10;
+                const safeLabel = escapeCourseOption(c.criteriaName || `Tiêu chí ${idx + 1}`);
+                return `
+                    <div class="col-md-6">
+                        <div class="score-slider-card">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="fw-semibold text-dark small"><i class="bi ${style.icon} me-1"></i>${safeLabel}</label>
+                                <span class="badge ${style.badgeClass} px-2" id="val_${critKey}">${sliderVal.toFixed(1)}</span>
+                            </div>
+                            <input type="range" class="form-range eval-criteria-slider"
+                                id="score_${critKey}"
+                                data-criteria-id="${c.id != null ? c.id : ''}"
+                                data-criteria-name="${safeLabel}"
+                                min="0" max="10" step="0.5" value="${sliderVal}"
+                                oninput="document.getElementById('val_${critKey}').innerText = parseFloat(this.value).toFixed(1); calculateAverageScore();">
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+    calculateAverageScore();
 }
 
 async function handleSaveEvaluation(e) {
@@ -1096,9 +1172,16 @@ async function handleSaveEvaluation(e) {
     const sliders = document.querySelectorAll(".eval-criteria-slider");
     let total = 0;
     let count = 0;
+    const criteriaScores = [];
     sliders.forEach(s => {
-        total += parseFloat(s.value || 0);
+        const val = parseFloat(s.value || 0);
+        total += val;
         count++;
+        criteriaScores.push({
+            criteriaId: s.dataset.criteriaId ? Number(s.dataset.criteriaId) : null,
+            criteriaName: s.dataset.criteriaName || '',
+            score: val
+        });
     });
     const avg10 = count > 0 ? (total / count) : 0;
     const score100 = Math.round(avg10 * 10);
@@ -1125,7 +1208,8 @@ async function handleSaveEvaluation(e) {
         audioUrl: isAudio ? mediaUrl : null,
         videoUrl: isVideo ? mediaUrl : null,
         imageUrl: isImage ? mediaUrl : null,
-        recordUrl: mediaUrl || null
+        recordUrl: mediaUrl || null,
+        criteriaScores: criteriaScores
     };
 
     let apiSavedResponse = null;
@@ -1325,29 +1409,25 @@ function openDetailModal(id) {
 
     const baseScore = item.score != null ? item.score : 0;
     const normSubject = normalizeSubject(item.subject || inferSubject(item.title));
-    const cfg = SUBJECT_EVALUATION_CONFIG[normSubject] || SUBJECT_EVALUATION_CONFIG['DAN'];
+    const cfg = SUBJECT_STYLE_META[normSubject] || SUBJECT_STYLE_META['DAN'];
 
     const detailCriteriaContainer = document.getElementById("detailCriteriaContainer");
     if (detailCriteriaContainer) {
-        detailCriteriaContainer.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>Điểm số 4 tiêu chí [${cfg.subjectName}]</h6>
-                <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
-            </div>
-            <div class="row g-3 mb-4">
-                ${cfg.criteria.map(c => `
-                    <div class="col-md-6">
-                        <small class="fw-semibold text-muted d-flex justify-content-between">
-                            <span><i class="bi ${c.icon} me-1"></i>${c.label}</span>
-                            <strong class="text-dark">${(baseScore / 10).toFixed(1)}/10</strong>
-                        </small>
-                        <div class="progress mt-1" style="height: 8px;">
-                            <div class="progress-bar ${c.badgeClass.split(' ')[0]}" role="progressbar" style="width: ${baseScore}%"></div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        const savedScores = Array.isArray(item.criteriaScores) && item.criteriaScores.length > 0
+            ? item.criteriaScores
+            : (placementCriteriaBySubject[normSubject] || []).map(c => ({
+                criteriaName: c.criteriaName,
+                score: baseScore / 10
+            }));
+        renderDetailCriteriaProgress(detailCriteriaContainer, cfg, savedScores, baseScore);
+        if (!savedScores.length) {
+            loadPlacementCriteria(normSubject).then(loaded => {
+                if (Array.isArray(loaded) && loaded.length > 0) {
+                    const fallbackRows = loaded.map(c => ({ criteriaName: c.criteriaName, score: baseScore / 10 }));
+                    renderDetailCriteriaProgress(detailCriteriaContainer, cfg, fallbackRows, baseScore);
+                }
+            });
+        }
     }
 
     const mediaContainer = document.getElementById("detailMediaAttachment");
@@ -1519,3 +1599,213 @@ function showNotification(msg, type = "info") {
     const bsToast = new bootstrap.Toast(lastToast, { delay: 5000 });
     bsToast.show();
 }
+
+function renderDetailCriteriaProgress(container, cfg, rows, baseScore) {
+    if (!container) return;
+    if (!rows || !rows.length) {
+        container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>Điểm tiêu chí [${cfg.subjectName}]</h6>
+                <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
+            </div>
+            <div class="text-muted small mb-3">Đang tải danh sách tiêu chí đánh giá...</div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="fw-bold text-dark mb-0"><i class="bi ${cfg.headerIcon} me-2"></i>Điểm số ${rows.length} tiêu chí [${cfg.subjectName}]</h6>
+            <span class="badge ${cfg.badgeClass} rounded-pill px-3 py-1 fw-bold">${cfg.subjectName}</span>
+        </div>
+        <div class="row g-3 mb-4">
+            ${rows.map((c, idx) => {
+                const style = getCriteriaStyle(idx);
+                const s10 = c.score != null ? Number(c.score) : (baseScore / 10);
+                const percent = Math.min(Math.max(Math.round(s10 * 10), 0), 100);
+                const safeLabel = escapeCourseOption(c.criteriaName || `Tiêu chí ${idx + 1}`);
+                return `
+                    <div class="col-md-6">
+                        <small class="fw-semibold text-muted d-flex justify-content-between">
+                            <span><i class="bi ${style.icon} me-1"></i>${safeLabel}</span>
+                            <strong class="text-dark">${s10.toFixed(1)}/10</strong>
+                        </small>
+                        <div class="progress mt-1" style="height: 8px;">
+                            <div class="progress-bar ${style.badgeClass.split(' ')[0]}" role="progressbar" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+// ─── ADMIN CRITERIA CONFIGURATION MODAL ──────────────────────────────────────
+
+async function openCriteriaConfigModal() {
+    if (!isAdmin()) {
+        showNotification("Chỉ Quản trị viên (ADMIN) mới có quyền cấu hình tiêu chí đánh giá đầu vào!", "danger");
+        return;
+    }
+    resetCriteriaConfigForm();
+    const modalEl = document.getElementById("criteriaConfigModal");
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+    await loadCriteriaForAdminModal();
+}
+
+async function loadCriteriaForAdminModal() {
+    const subjectSelect = document.getElementById("criteriaSubjectSelect");
+    const subject = subjectSelect ? subjectSelect.value : "DAN";
+    const tbody = document.getElementById("criteriaConfigTableBody");
+    const badge = document.getElementById("criteriaCountBadge");
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-muted small">Đang tải danh sách tiêu chí...</td></tr>`;
+    }
+    try {
+        const list = await callApi(`/api/placement-tests/criteria?subject=${encodeURIComponent(subject)}&includeInactive=true`, 'GET', null, false, false);
+        adminCriteriaList = Array.isArray(list) ? list : [];
+        const activeList = adminCriteriaList.filter(c => c.active !== false);
+        placementCriteriaBySubject[normalizeSubject(subject)] = activeList;
+        if (badge) {
+            badge.textContent = `${activeList.length} tiêu chí đang áp dụng / ${adminCriteriaList.length} tổng số`;
+        }
+        renderCriteriaConfigTable(adminCriteriaList);
+        const editId = document.getElementById("criteriaEditId")?.value;
+        if (!editId) {
+            const orderInput = document.getElementById("criteriaOrderInput");
+            if (orderInput) orderInput.value = String(adminCriteriaList.length + 1);
+        }
+    } catch (err) {
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-danger small">Không tải được tiêu chí: ${escapeCourseOption(err.message || 'Vui lòng thử lại')}</td></tr>`;
+        }
+    }
+}
+
+function renderCriteriaConfigTable(list) {
+    const tbody = document.getElementById("criteriaConfigTableBody");
+    if (!tbody) return;
+    if (!list || !list.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-3 text-muted small">Chưa có tiêu chí nào cho bộ môn này.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map(c => {
+        const isActive = c.active !== false;
+        const statusHtml = isActive
+            ? `<span class="badge bg-success-subtle text-success border border-success-subtle">Đang áp dụng</span>`
+            : `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Ngưng áp dụng (Lưu lịch sử)</span>`;
+        return `
+            <tr class="${isActive ? '' : 'table-light text-muted'}">
+                <td class="fw-semibold text-center">${c.displayOrder ?? 1}</td>
+                <td>${escapeCourseOption(c.criteriaName)}</td>
+                <td>${statusHtml}</td>
+                <td class="text-end text-nowrap">
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="startEditCriteria(${c.id})" title="Chỉnh sửa tiêu chí">
+                        <i class="bi bi-pencil"></i> Sửa
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="handleDeleteCriteriaConfig(${c.id})" title="${c.usedInAssessments ? 'Ngưng áp dụng (giữ lịch sử các bài đã chấm)' : 'Xóa tiêu chí'}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function startEditCriteria(id) {
+    const found = adminCriteriaList.find(c => Number(c.id) === Number(id));
+    if (!found) return;
+    document.getElementById("criteriaEditId").value = String(found.id);
+    document.getElementById("criteriaNameInput").value = found.criteriaName || "";
+    document.getElementById("criteriaOrderInput").value = String(found.displayOrder ?? 1);
+    document.getElementById("criteriaActiveInput").checked = found.active !== false;
+    const titleEl = document.getElementById("criteriaFormTitle");
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="bi bi-pencil-square text-warning me-1"></i>Đang sửa tiêu chí #${found.id}`;
+    }
+    const cancelBtn = document.getElementById("btnCancelCriteriaEdit");
+    if (cancelBtn) cancelBtn.classList.remove("d-none");
+    document.getElementById("criteriaNameInput").focus();
+}
+
+function resetCriteriaConfigForm() {
+    const editIdEl = document.getElementById("criteriaEditId");
+    const nameEl = document.getElementById("criteriaNameInput");
+    const orderEl = document.getElementById("criteriaOrderInput");
+    const activeEl = document.getElementById("criteriaActiveInput");
+    const titleEl = document.getElementById("criteriaFormTitle");
+    const cancelBtn = document.getElementById("btnCancelCriteriaEdit");
+
+    if (editIdEl) editIdEl.value = "";
+    if (nameEl) nameEl.value = "";
+    if (orderEl) orderEl.value = String((adminCriteriaList?.length || 0) + 1);
+    if (activeEl) activeEl.checked = true;
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="bi bi-plus-circle text-primary me-1"></i>Thêm tiêu chí đánh giá mới`;
+    }
+    if (cancelBtn) cancelBtn.classList.add("d-none");
+}
+
+async function handleSaveCriteriaConfig(e) {
+    e.preventDefault();
+    if (!isAdmin()) {
+        showNotification("Chỉ ADMIN mới có quyền thêm hoặc sửa tiêu chí đánh giá!", "danger");
+        return;
+    }
+
+    const editId = document.getElementById("criteriaEditId").value.trim();
+    const subject = document.getElementById("criteriaSubjectSelect").value || "DAN";
+    const criteriaName = document.getElementById("criteriaNameInput").value.trim();
+    const displayOrder = parseInt(document.getElementById("criteriaOrderInput").value, 10) || 1;
+    const active = document.getElementById("criteriaActiveInput").checked;
+
+    if (!criteriaName) {
+        showNotification("Vui lòng nhập tên tiêu chí đánh giá!", "warning");
+        return;
+    }
+
+    const btn = document.getElementById("btnSaveCriteria");
+    if (btn) btn.disabled = true;
+    try {
+        const payload = { subject, criteriaName, displayOrder, active };
+        if (editId) {
+            await callApi(`/api/placement-tests/criteria/${encodeURIComponent(editId)}`, 'PUT', payload, false, false);
+            showNotification("Đã cập nhật tiêu chí đánh giá thành công!", "success");
+        } else {
+            await callApi('/api/placement-tests/criteria', 'POST', payload, false, false);
+            showNotification("Đã thêm tiêu chí đánh giá mới thành công!", "success");
+        }
+        resetCriteriaConfigForm();
+        await loadCriteriaForAdminModal();
+    } catch (err) {
+        showNotification(`Không thể lưu tiêu chí: ${err.message || 'Vui lòng thử lại'}`, "danger");
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function handleDeleteCriteriaConfig(id) {
+    if (!isAdmin()) {
+        showNotification("Chỉ ADMIN mới có quyền xóa tiêu chí đánh giá!", "danger");
+        return;
+    }
+    const found = adminCriteriaList.find(c => Number(c.id) === Number(id));
+    if (!found) return;
+
+    try {
+        await callApi(`/api/placement-tests/criteria/${encodeURIComponent(id)}`, 'DELETE', null, false, false);
+        const msg = found.usedInAssessments
+            ? `Tiêu chí "${found.criteriaName}" đã từng dùng chấm thi nên được chuyển sang Ngưng áp dụng để bảo toàn lịch sử điểm cũ.`
+            : `Đã xóa tiêu chí "${found.criteriaName}" thành công!`;
+        showNotification(msg, "success");
+        resetCriteriaConfigForm();
+        await loadCriteriaForAdminModal();
+    } catch (err) {
+        showNotification(`Không thể xóa tiêu chí: ${err.message || 'Vui lòng thử lại'}`, "danger");
+    }
+}
+
