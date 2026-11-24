@@ -21,7 +21,7 @@
 --    - Case B: Ca học bù chờ xếp lịch (PENDING)
 --    - Case C: Ca học bù đã xếp lịch (SCHEDULED) - Bé Bảo Nam ghép vào ca Thứ Bảy 28/11
 --    - Case D: Ca học bù đã hoàn thành (COMPLETED)
---    - Case E: Vắng mặt buổi học bù -> Two-Strike Rule KHÓA QUYỀN BÙ (CANCELLED)
+--    - Case E: Vắng mặt buổi học bù -> Quy tắc 1 lần xếp bù/buổi nghỉ KHÓA QUYỀN BÙ (CANCELLED)
 -- 5. CHUÔNG THÔNG BÁO (NOTIFICATIONS)
 --    - Chuẩn font tiếng Việt NVARCHAR 100%, đầy đủ các loại thông báo nghiệp vụ
 -- ==============================================================================
@@ -289,7 +289,7 @@ IF EXISTS (SELECT 1 FROM dbo.makeup_registrations WHERE id = 14)
 BEGIN
     UPDATE dbo.makeup_registrations
     SET status = 'COMPLETED',
-        note = N'[Lần bù: 1/2] Đã hoàn thành học bù và được giáo viên điểm danh Có mặt.'
+        note = N'[Lần bù: 1/1] Đã hoàn thành học bù và được giáo viên điểm danh Có mặt.'
     WHERE id = 14;
 END;
 
@@ -346,7 +346,7 @@ VALUES
 -- 5. Thông báo khóa quyền học bù (Two-strike) gửi Phụ huynh Lan (id=10)
 (10, 4,
  N'Khóa quyền học bù (Vắng buổi bù duy nhất): Nguyễn Bảo Nam',
- N'Bé Nguyễn Bảo Nam đã vắng mặt tại ca học bù ngày 20/11. Theo quy định Two-Strike, mỗi buổi nghỉ chỉ xếp bù tối đa 1 lần, hệ thống đã chính thức khóa quyền học bù cho buổi nghỉ này.',
+ N'Bé Nguyễn Bảo Nam đã vắng mặt tại ca học bù ngày 20/11. Theo quy định khóa sau lần vắng bù đầu, mỗi buổi nghỉ chỉ xếp bù tối đa 1 lần, hệ thống đã chính thức khóa quyền học bù cho buổi nghỉ này.',
  'MAKEUP_LIMIT_EXCEEDED', 1, '/pages/absence-makeup.html', 0, DATEADD(MINUTE, -60, SYSDATETIME())),
 
 -- 6. Thông báo đơn xin nghỉ học mới gửi Giáo viên Vũ Thu Hương (recipient_user_id = 4)
@@ -368,6 +368,6 @@ PRINT N'ĐÃ CẬP NHẬT HOÀN TẤT DỮ LIỆU TEST TOÀN DIỆN CHO TẤT C�
 PRINT N'1. Thời khóa biểu tuần: Đầy đủ ca quá khứ (đã/chưa điểm danh), hôm nay, tương lai.';
 PRINT N'2. Điểm danh: Đầy đủ 4 trạng thái, Time-Lock, Roster Guard, Admin Override.';
 PRINT N'3. Chuyên cần 3 cấp: Xanh lá (Mai Chi), Vàng (Trọng Anh), Đỏ cấm thi (Hải Yến).';
-PRINT N'4. Học bù: Đơn chờ duyệt, Ca chờ xếp, Ca đã xếp, Ca hoàn thành, Ca Two-Strike khóa.';
+PRINT N'4. Học bù: Đơn chờ duyệt, Ca chờ xếp, Ca đã xếp, Ca hoàn thành, Ca khóa sau lần vắng bù đầu khóa.';
 PRINT N'5. Thông báo chuông: Đầy đủ các thông báo tương ứng cho Phụ huynh, GV, Admin.';
 PRINT N'=============================================================================';

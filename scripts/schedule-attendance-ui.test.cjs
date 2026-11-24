@@ -38,7 +38,7 @@ async function open(role,file,intercept,width=1440){
  await page.goto(origin+'/pages/'+file);
  return {page,errors};
 }
-test('weekly slots, compact cards and create-class room lookup survive integration',async()=>{
+test('weekly slots remain available without the removed class creation form',async()=>{
  const {page,errors}=await open('ADMIN','weekly-schedule.html',u=>{
   if(u.pathname==='/api/schedule/weekly')return {startDate:'2026-11-09',endDate:'2026-11-15',currentDate:'2026-11-11',weekNumber:46,year:2026,currentUserRole:'ADMIN',lessons:[]};
   if(u.pathname==='/api/course-enrollment/courses')return [{id:1,name:'Piano',totalSessions:10}];
@@ -48,9 +48,8 @@ test('weekly slots, compact cards and create-class room lookup survive integrati
  try{
   await page.locator('#timetableBody .slot-cell-header').last().waitFor();
   assert.equal(await page.locator('#timetableBody .slot-cell-header').count(),4);
-  await page.locator('#btnOpenCreateClassModal').click();
-  await page.locator('#newRoomSelect option[value="1"]').waitFor({state:'attached'});
-  assert.match(await page.locator('#newRoomSelect').textContent(),/Phòng Piano/);
+  assert.equal(await page.locator('#btnOpenCreateClassModal').count(),0);
+  assert.equal(await page.locator('#newRoomSelect').count(),0);
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });

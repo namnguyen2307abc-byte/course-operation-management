@@ -1,10 +1,10 @@
-﻿<#
+<#
 .SYNOPSIS
     Tự động nạp bộ dữ liệu test toàn diện cho các tính năng của phân hệ:
     - Thời khóa biểu tuần (Weekly Schedule)
     - Điểm danh buổi học (Lesson Attendance, Time-Lock, Roster Guard, Admin Override)
     - Chuyên cần 3 cấp độ (Normal, Warning, Critical)
-    - Học bù & Quy tắc Two-Strike (Pending, Scheduled, Completed, Cancelled/Locked)
+    - Học bù & Quy tắc khóa sau lần vắng bù đầu (Pending, Scheduled, Completed, Cancelled/Locked)
     - Chuông thông báo (Bell Notifications tiếng Việt chuẩn)
 
 .EXAMPLE
