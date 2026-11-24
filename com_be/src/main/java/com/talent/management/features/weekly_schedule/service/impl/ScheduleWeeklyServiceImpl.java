@@ -3,7 +3,6 @@ package com.talent.management.features.weekly_schedule.service.impl;
 import com.talent.management.features.attendance_tracking.dto.request.BatchAttendanceSaveRequest;
 import com.talent.management.features.attendance_tracking.dto.response.*;
 import com.talent.management.features.attendance_tracking.service.AttendanceTrackingService;
-import com.talent.management.features.weekly_schedule.dto.request.CreateClassWithLessonsRequest;
 import com.talent.management.features.weekly_schedule.dto.response.*;
 import com.talent.management.features.attendance_makeup.exception.AttendanceMakeupException;
 import com.talent.management.features.attendance_makeup.repository.MakeupRegistrationRepository;
@@ -11,9 +10,6 @@ import com.talent.management.features.weekly_schedule.repository.*;
 import com.talent.management.features.weekly_schedule.service.ScheduleWeeklyService;
 import com.talent.management.features.auth.repository.StudentRepository;
 import com.talent.management.features.auth.repository.UserRepository;
-import com.talent.management.features.branch_facility_enrollment.repository.BranchRepository;
-import com.talent.management.features.course_enrollment.repository.CourseRepository;
-import com.talent.management.features.class_management.service.ClassSchedulingService;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
 import com.talent.management.shared.service.CurrentUserService;
@@ -23,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -46,11 +41,8 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
     private final MakeupRegistrationRepository makeupRegistrationRepository;
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
-    private final CourseRepository courseRepository;
-    private final BranchRepository branchRepository;
     private final CurrentUserService currentUserService;
     private final AttendanceTrackingService attendanceTrackingService;
-    private final ClassSchedulingService schedulingService;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_VN_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -448,103 +440,7 @@ public class ScheduleWeeklyServiceImpl implements ScheduleWeeklyService {
     }
 
     // =========================================================================
-    // 2. TẠO LỚP HỌC MỚI VÀ TỰ ĐỘNG SINH CÁC BUỔI HỌC VÀO THỜI KHÓA BIỂU
-    // =========================================================================
-
-    @Override
-    @Transactional
-    public Long createClassWithLessons(CreateClassWithLessonsRequest request) {
-        User currentUser = currentUserService.getCurrentUser();
-        Role userRole = currentUser.getRole();
-
-        if (userRole != Role.ADMIN && userRole != Role.STAFF && userRole != Role.BRANCH_MANAGER) {
-            throw new AttendanceMakeupException(
-                    "Chỉ Quản trị viên hoặc Nhân viên Giáo vụ mới có quyền tạo lớp học mới!");
-        }
-
-        if (request == null) {
-            throw new AttendanceMakeupException("Dữ liệu tạo lớp học không hợp lệ.");
-        }
-        if (request.getClassCode() == null || request.getClassCode().trim().isEmpty()) {
-            throw new AttendanceMakeupException("Mã lớp không được để trống.");
-        }
-        if (request.getClassCode().trim().length() > 50) {
-            throw new AttendanceMakeupException("Mã lớp không được vượt quá 50 ký tự.");
-        }
-        if (request.getClassName() == null || request.getClassName().trim().isEmpty()) {
-            throw new AttendanceMakeupException("Tên lớp không được để trống.");
-        }
-        if (request.getClassName().trim().length() > 150) {
-            throw new AttendanceMakeupException("Tên lớp không được vượt quá 150 ký tự.");
-        }
-        if (request.getStartDate() == null) {
-            throw new AttendanceMakeupException("Ngày bắt đầu khai giảng không được để trống.");
-        }
-        if (request.getStartTime() == null || request.getEndTime() == null
-                || !request.getEndTime().isAfter(request.getStartTime())) {
-            throw new AttendanceMakeupException("Giờ kết thúc phải sau giờ bắt đầu.");
-        }
-        if (Duration.between(request.getStartTime(), request.getEndTime()).toMinutes() < 30) {
-            throw new AttendanceMakeupException("Thời lượng một buổi học phải tối thiểu từ 30 phút trở lên.");
-        }
-        if (request.getDaysOfWeek() == null || request.getDaysOfWeek().isEmpty()
-                || request.getDaysOfWeek().stream().anyMatch(d -> d == null || d < 1 || d > 7)) {
-            throw new AttendanceMakeupException("Vui lòng chọn ít nhất một thứ hợp lệ trong tuần (Thứ 2 đến Chủ nhật).");
-        }
-        if (request.getTotalSessions() == null || request.getTotalSessions() < 1 || request.getTotalSessions() > 60) {
-            throw new AttendanceMakeupException("Tổng số buổi học phải nằm trong khoảng từ 1 đến 60 buổi.");
-        }
-        if (request.getMaxStudents() == null || request.getMaxStudents() < 1 || request.getMaxStudents() > 100) {
-            throw new AttendanceMakeupException("Sĩ số tối đa của lớp phải nằm trong khoảng từ 1 đến 100 học viên.");
-        }
-        if (attendanceClassRepository.existsByClassCode(request.getClassCode().trim())) {
-            throw new AttendanceMakeupException(
-                    "Mã lớp học '" + request.getClassCode().trim() + "' đã tồn tại trong hệ thống!");
-        }
-
-        Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new AttendanceMakeupException(
-                        "Không tìm thấy khóa học với ID: " + request.getCourseId()));
-
-        Branch branch = branchRepository.findById(request.getBranchId())
-                .orElseThrow(
-                        () -> new AttendanceMakeupException("Không tìm thấy cơ sở với ID: " + request.getBranchId()));
-
-        User teacher = schedulingService.getTeacher(request.getTeacherId());
-        Room room = schedulingService.getRoom(request.getRoomId());
-        schedulingService.validateAssignments(course, branch, teacher, room, request.getMaxStudents());
-
-        // 1. Lưu ClassEntity
-        ClassEntity classEntity = ClassEntity.builder()
-                .course(course)
-                .branch(branch)
-                .room(room)
-                .teacher(teacher)
-                .classCode(request.getClassCode().trim())
-                .className(request.getClassName().trim())
-                .classType(request.getMaxStudents() <= 1 ? ClassType.ONE_ON_ONE : ClassType.GROUP)
-                .maxStudents(request.getMaxStudents())
-                .currentStudents(0)
-                .startDate(request.getStartDate())
-                .scheduleDescription(schedulingService.describeSchedule(request.getDaysOfWeek(), request.getStartTime(), request.getEndTime()))
-                .status(ClassStatus.OPEN)
-                .build();
-
-        List<Lesson> lessons = schedulingService.generateLessons(classEntity, request.getDaysOfWeek(),
-                request.getStartTime(), request.getEndTime(), request.getTotalSessions(), null);
-        schedulingService.validateReadiness(ClassStatus.OPEN, !lessons.isEmpty(), teacher, room);
-        schedulingService.validateLessonConflicts(lessons);
-        ClassEntity savedClass = attendanceClassRepository.save(classEntity);
-        attendanceLessonRepository.saveAll(lessons);
-
-        log.info("Tạo thành công lớp [{}] (#{}) với {} buổi học tự động sinh bởi [{}]",
-                savedClass.getClassName(), savedClass.getId(), lessons.size(), currentUser.getUsername());
-
-        return savedClass.getId();
-    }
-
-    // =========================================================================
-    // 3. HELPER DATA CHO BỘ LỌC
+    // 2. HELPER DATA CHO BỘ LỌC
     // =========================================================================
 
     @Override

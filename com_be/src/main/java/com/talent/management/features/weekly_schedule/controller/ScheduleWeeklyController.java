@@ -1,14 +1,11 @@
 package com.talent.management.features.weekly_schedule.controller;
 
-import com.talent.management.features.weekly_schedule.dto.request.CreateClassWithLessonsRequest;
 import com.talent.management.features.weekly_schedule.dto.response.WeeklyScheduleResponse;
 import com.talent.management.features.weekly_schedule.service.ScheduleWeeklyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/schedule")
 @RequiredArgsConstructor
-@Tag(name = "Thời Khóa Biểu Tuần (Weekly Schedule)", description = "Quản lý thời khóa biểu tuần, ma trận ca học và tự động sinh lịch học")
+@Tag(name = "Thời Khóa Biểu Tuần (Weekly Schedule)", description = "Quản lý thời khóa biểu tuần và ma trận ca học theo vai trò")
 public class ScheduleWeeklyController {
 
     private final ScheduleWeeklyService scheduleWeeklyService;
@@ -33,18 +30,6 @@ public class ScheduleWeeklyController {
             @RequestParam(required = false) Long branchId) {
         WeeklyScheduleResponse response = scheduleWeeklyService.getWeeklySchedule(date, studentId, teacherId, branchId);
         return ResponseEntity.ok(response);
-    }
-
-    @Operation(summary = "Tạo lớp học mới và tự động sinh danh sách buổi học (lessons)")
-    @PostMapping("/classes")
-    public ResponseEntity<Map<String, Object>> createClassWithLessons(
-            @Valid @RequestBody CreateClassWithLessonsRequest request) {
-        Long classId = scheduleWeeklyService.createClassWithLessons(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "success", true,
-                "message", "Tạo lớp học và sinh thời khóa biểu tự động thành công",
-                "classId", classId
-        ));
     }
 
     @Operation(summary = "Lấy danh sách giáo viên để lọc trên thời khóa biểu")
