@@ -454,7 +454,7 @@
                             <div class="col-12 col-md-6">
                                 <label for="fieldTuitionFee" class="form-label-cm">Học Phí (VNĐ) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="fieldTuitionFee"
-                                       placeholder="Vd: 3500000" min="1" step="1" required>
+                                       placeholder="Vd: 3500000" min="1" max="9999999999" step="1" required>
                                 <div class="invalid-feedback" id="tuitionFeeFeedback">Học phí phải lớn hơn 0.</div>
                                 <div class="form-text" id="tuitionFeePreview"></div>
                             </div>
@@ -991,8 +991,23 @@
                         const msg = 'Học phí phải lớn hơn 0.';
                         feeFeedback.textContent = msg;
                         feeInput.setCustomValidity(msg);
+                    } else if (numFee > 9999999999 || feeInput.validity.rangeOverflow) {
+                        const msg = 'Học phí không được vượt quá 9.999.999.999 VNĐ.';
+                        feeFeedback.textContent = msg;
+                        feeInput.setCustomValidity(msg);
                     }
                 }
+            }
+
+            const codeInput = document.getElementById('fieldCode');
+            if (codeInput) {
+                codeInput.setCustomValidity(codeInput.value.length > 0 && codeInput.value.trim() === ''
+                    ? 'Mã khóa học không được chỉ chứa khoảng trắng.' : '');
+            }
+            const nameInput = document.getElementById('fieldName');
+            if (nameInput) {
+                nameInput.setCustomValidity(nameInput.value.length > 0 && nameInput.value.trim() === ''
+                    ? 'Tên khóa học không được chỉ chứa khoảng trắng.' : '');
             }
         }
 

@@ -178,6 +178,11 @@ public class CourseManagementServiceImpl implements CourseManagementService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Học phí phải lớn hơn 0");
         }
+        // 4. Kiểm tra giới hạn tối đa theo cột DECIMAL(12,2) trong DB
+        if (tuitionFee.compareTo(BigDecimal.valueOf(9_999_999_999L)) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Học phí không được vượt quá 9.999.999.999 VNĐ");
+        }
         return tuitionFee;
     }
 

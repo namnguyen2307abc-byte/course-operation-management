@@ -1459,6 +1459,11 @@ async function handleCreatePlacementTest(e) {
     e.preventDefault();
 
     const studentName = document.getElementById("createStudentName").value.trim();
+    if (!studentName) {
+        showNotification('Vui lòng nhập họ và tên học viên (không được để trống hoặc chỉ nhập khoảng trắng).', 'danger');
+        document.getElementById("createStudentName").focus();
+        return;
+    }
     const programId = Number(document.getElementById("createProgram").value);
     if (!programId) {
         showNotification('Vui lòng chọn môn kiểm tra có trong danh mục.', 'danger');
@@ -1478,6 +1483,11 @@ async function handleCreatePlacementTest(e) {
         return;
     }
     const title = document.getElementById("createTitle").value.trim();
+    if (!title) {
+        showNotification('Vui lòng nhập tiêu đề ca thi (không được để trống hoặc chỉ nhập khoảng trắng).', 'danger');
+        document.getElementById("createTitle").focus();
+        return;
+    }
     const testDateVal = document.getElementById("createTestDate").value;
     const testTimeVal = document.getElementById("createTestTime").value;
     const note = document.getElementById("createNote").value.trim();
