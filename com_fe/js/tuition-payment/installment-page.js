@@ -2,7 +2,6 @@
  if(!checkAuth()) return;
  const role=getCurrentUser().role;
  const parent=document.body.dataset.tuitionView==='parent';
- const manager=['ADMIN','BRANCH_MANAGER'].includes(role);
  if(parent ? role!=='PARENT' : !['STAFF','ADMIN','BRANCH_MANAGER'].includes(role)) {
   window.location.replace(appPath('/index.html')); return;
  }
@@ -18,49 +17,12 @@
   PENDING:'Chờ duyệt',APPROVED:'Đã duyệt',REJECTED:'Từ chối',CREATING:'Đang tạo QR',UNCERTAIN:'Cần kiểm tra với PayOS',
   FAILED:'Chưa tạo được mã QR',RECONCILE:'Cần kiểm tra ngân hàng',UPCOMING:'Sắp đến hạn',DUE_TODAY:'Đến hạn hôm nay',OVERDUE:'Đã quá hạn'};
  function badge(text,tone='neutral') {return node('span',text,'ledger-badge tone-'+tone);}
- function sectionHeading(el,title,description,count) {
-  const head=node('div',null,'ledger-section-heading');
-  head.append(node('h2',title),badge(count+' hồ sơ'));
-  el.replaceChildren(head,node('p',description,'ledger-help'));
- }
  let invoices=[];
  let action;
  let busy=false;
  let loadId=0;
  let qrTimer;
  let activeQr=null,closingQr=false;
- function selectTab(tab,updateUrl=true) {
-  if(!manager||!$('tuition-tabs'))return;
-  const adjustments=tab===true;
-  $('tuition-panel').hidden=adjustments;$('reversals').hidden=!adjustments;
-  for(const [id,selected] of [['tuition-tab',!adjustments],['corrections-tab',adjustments]]) {
-   $(id).classList.toggle('active',selected);$(id).setAttribute('aria-selected',String(selected));$(id).tabIndex=selected?0:-1;
-  }
-  if(updateUrl){const url=new URL(location.href);if(adjustments){url.searchParams.set('tab','adjustments');url.searchParams.delete('invoiceId');url.searchParams.delete('invoiceCode');}else url.searchParams.delete('tab');history.replaceState(null,'',url);}
-
- }
- if(manager && $('tuition-tabs')) {
-  $('tuition-tabs').hidden=false;
-  tuitionAdjustments.init({api,review:(item,approve)=>{
-   open(approve?'Duyệt điều chỉnh khoản thu':'Từ chối đề nghị điều chỉnh',async data=>{
-    await api.reviewReversal(item.id,approve,data.get('note'));
-    return {message:approve?'Đã duyệt điều chỉnh và cập nhật tiền đã thu.':'Đã từ chối đề nghị; khoản thu không thay đổi.'};
-   });
-   $('action-content').append(node('p',item.student+' · '+item.code+' · '+money(item.amount),'payment-context'),node('p','Lý do đề nghị: '+item.reason,'ledger-help'));
-   field('Ghi chú xác minh và quyết định','note',{multiline:true,maxLength:500});
-  }});
-  const tabs=[['tuition-tab',false],['corrections-tab',true]];
-  for(const [index,[id,adjustments]] of tabs.entries()) {
-   $(id).addEventListener('click',()=>selectTab(adjustments));
-   $(id).addEventListener('keydown',event=>{
-    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
-    const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:tabs.length-1))%tabs.length;
-    selectTab(tabs[next][1]);$(tabs[next][0]).focus();
-   });
-  }
-  const requestedTab=new URLSearchParams(location.search).get('tab');
-  selectTab(!initialInvoiceId&&requestedTab==='adjustments',false);
- }
  function node(tag,text,cls) {
   const n=document.createElement(tag);
   if(text!=null)n.textContent=text;
@@ -483,13 +445,6 @@
     info.append(node('strong',r.code),node('small',date(r.at)+' · '+(r.method==='CASH_AT_DESK'?'Tiền mặt':'Chuyển khoản PayOS')));
     if(Number(r.cashRoundingAmount)>0)info.append(node('small','Thực thu '+money(Number(r.amount)-Number(r.cashRoundingAmount))+' · Hỗ trợ làm tròn '+money(r.cashRoundingAmount)));
     row.append(info,node('strong',money(r.amount)),badge(r.reversed?'Đã đảo':'Thành công',r.reversed?'danger':'success'),button('Xem biên lai',()=>previewReceipt(invoice,r)));
-    const actorId=getCurrentUser().userId??getCurrentUser().id;
-    const canCorrect=role==='ADMIN'||(actorId!=null&&r.cashierId!=null&&String(actorId)===String(r.cashierId));
-    if(!parent && canCorrect && !r.reversed && r.method==='CASH_AT_DESK')row.append(button('Điều chỉnh thu nhầm',()=>{
-     open('Đề nghị điều chỉnh khoản thu nhầm',async data=>{await api.reversal(r.id,data.get('reason'));return {message:'Đã gửi đề nghị điều chỉnh; chờ quản lý khác kiểm tra và duyệt.'};});
-     $('action-content').append(node('p','Phiếu '+r.code+' · '+money(r.amount),'payment-context'),node('p','Đề nghị này chỉ điều chỉnh bản ghi tiền mặt nhập sai, không chuyển tiền cho phụ huynh. Khi quản lý khác người đề nghị duyệt, khoản thu này bị loại khỏi số đã đóng và công nợ tăng tương ứng. Biên lai gốc vẫn được giữ.','ledger-help'));
-     field('Lý do và kết quả kiểm tra','reason',{multiline:true,maxLength:500});
-    }));
     return row;
    }));
    el.append(history);
@@ -536,9 +491,6 @@
   });
   if(typeof updateTuitionNoticeIndicator==='function')updateTuitionNoticeIndicator();
  }
- async function renderInternal() {
-  if(manager)await tuitionAdjustments.load();
- }
  async function load() {
   const id=++loadId;$('refresh').disabled=true;
   try {
@@ -546,7 +498,7 @@
    invoices=data;
    if(initialInvoiceId){pagination.select('hóa đơn',invoices.findIndex(i=>String(i.id)===initialInvoiceId));initialInvoiceId=null;}
    render();
-   if(parent)await renderNotices();else {await renderInternal();}
+   if(parent)await renderNotices();
   } finally {if(id===loadId)$('refresh').disabled=false;}
  }
  $('keyword').addEventListener('input',()=>{pagination.reset('hóa đơn');render();});
