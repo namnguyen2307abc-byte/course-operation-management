@@ -169,6 +169,10 @@ WHERE s.status = ''COMPLETED''
       WHERE sc.schedule_id = s.id
   );';
 
+ -- Course session pricing: preserve legacy total fees and invoices.
+ IF COL_LENGTH(N'dbo.courses',N'tuition_per_session') IS NULL
+  ALTER TABLE dbo.courses ADD tuition_per_session DECIMAL(12,2) NULL;
+
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
  IF NOT EXISTS(SELECT 1 FROM dbo.combined_demo_installations WHERE seed_key='COMBINED_DEMO_V1')
