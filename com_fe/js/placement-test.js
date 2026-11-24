@@ -105,11 +105,18 @@ let placementCancelling = false;
 let uploadedFileUrl = "";
 let attachmentUploadVersion = 0;
 let attachmentUploading = false;
+let evaluationBlockedByMissingCriteria = false;
+
+function updateEvaluationSubmitButtonState() {
+    const save = document.querySelector("#evaluatePlacementTestForm button[type=submit]");
+    if (save) {
+        save.disabled = Boolean(attachmentUploading || evaluationBlockedByMissingCriteria);
+    }
+}
 
 function setAttachmentUploading(busy) {
     attachmentUploading = busy;
-    const save = document.querySelector("#evaluatePlacementTestForm button[type=submit]");
-    if (save) save.disabled = busy;
+    updateEvaluationSubmitButtonState();
 }
 
 function escapeCourseOption(value) {
@@ -159,6 +166,15 @@ document.addEventListener("DOMContentLoaded", () => {
     configureAdminCriteriaButton();
 });
 
+const WORKING_HOURS_START = "08:00";
+const WORKING_HOURS_END = "17:30";
+
+function isWithinWorkingHours(timeStr) {
+    if (!timeStr) return false;
+    const hm = String(timeStr).slice(0, 5);
+    return hm >= WORKING_HOURS_START && hm <= WORKING_HOURS_END;
+}
+
 function getTodayDateString() {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -167,19 +183,34 @@ function getTodayDateString() {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+function getDateString(dateObj) {
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
 function initDateRestrictions() {
     const testDateInput = document.getElementById("createTestDate");
     const testTimeInput = document.getElementById("createTestTime");
     if (!testDateInput) return;
 
+    const now = new Date();
     const todayStr = getTodayDateString();
+    const laterDate = new Date(now.getTime() + 15 * 60000);
+    const laterTimeStr = `${String(laterDate.getHours()).padStart(2, '0')}:${String(laterDate.getMinutes()).padStart(2, '0')}`;
+    const todayWorkingHoursEnded = getDateString(laterDate) > todayStr || laterTimeStr > WORKING_HOURS_END;
+
+    const minAllowedDateStr = todayWorkingHoursEnded
+        ? getDateString(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))
+        : todayStr;
 
     // Set strict min date
-    testDateInput.min = todayStr;
-    testDateInput.setAttribute("min", todayStr);
+    testDateInput.min = minAllowedDateStr;
+    testDateInput.setAttribute("min", minAllowedDateStr);
 
-    if (!testDateInput.value || testDateInput.value < todayStr) {
-        testDateInput.value = todayStr;
+    if (!testDateInput.value || testDateInput.value < minAllowedDateStr) {
+        testDateInput.value = minAllowedDateStr;
     }
 
     updateTimeMinRestriction();
@@ -217,24 +248,51 @@ function updateTimeMinRestriction() {
     const now = new Date();
     const todayStr = getTodayDateString();
 
+    testTimeInput.max = WORKING_HOURS_END;
+    testTimeInput.setAttribute("max", WORKING_HOURS_END);
+
     if (testDateInput.value === todayStr) {
+        const laterDate = new Date(now.getTime() + 15 * 60000);
+        const laterTimeStr = `${String(laterDate.getHours()).padStart(2, '0')}:${String(laterDate.getMinutes()).padStart(2, '0')}`;
+
+        if (getDateString(laterDate) > todayStr || laterTimeStr > WORKING_HOURS_END) {
+            const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+            const tomorrowStr = getDateString(tomorrow);
+            testDateInput.min = tomorrowStr;
+            testDateInput.setAttribute("min", tomorrowStr);
+            testDateInput.value = tomorrowStr;
+            testTimeInput.min = WORKING_HOURS_START;
+            testTimeInput.setAttribute("min", WORKING_HOURS_START);
+            if (!isWithinWorkingHours(testTimeInput.value)) {
+                testTimeInput.value = "09:30";
+            }
+            return;
+        }
+
         const currentHours = String(now.getHours()).padStart(2, '0');
         const currentMinutes = String(now.getMinutes()).padStart(2, '0');
         const currentTimeStr = `${currentHours}:${currentMinutes}`;
+        const minTime = currentTimeStr > WORKING_HOURS_START ? currentTimeStr : WORKING_HOURS_START;
 
-        testTimeInput.min = currentTimeStr;
-        testTimeInput.setAttribute("min", currentTimeStr);
+        testTimeInput.min = minTime;
+        testTimeInput.setAttribute("min", minTime);
 
-        // If currently chosen time is in the past, adjust it to 15 mins later
-        if (!testTimeInput.value || testTimeInput.value < currentTimeStr) {
-            const laterDate = new Date(now.getTime() + 15 * 60000);
-            testTimeInput.value = `${String(laterDate.getHours()).padStart(2, '0')}:${String(laterDate.getMinutes()).padStart(2, '0')}`;
+        if (!testTimeInput.value || testTimeInput.value < minTime) {
+            testTimeInput.value = laterTimeStr >= WORKING_HOURS_START ? laterTimeStr : WORKING_HOURS_START;
+        } else if (testTimeInput.value > WORKING_HOURS_END) {
+            testTimeInput.value = WORKING_HOURS_END;
         }
     } else if (testDateInput.value < todayStr) {
         testDateInput.value = todayStr;
         updateTimeMinRestriction();
     } else {
-        testTimeInput.removeAttribute("min");
+        testTimeInput.min = WORKING_HOURS_START;
+        testTimeInput.setAttribute("min", WORKING_HOURS_START);
+        if (!testTimeInput.value || testTimeInput.value < WORKING_HOURS_START) {
+            testTimeInput.value = "09:30";
+        } else if (testTimeInput.value > WORKING_HOURS_END) {
+            testTimeInput.value = WORKING_HOURS_END;
+        }
     }
 }
 
@@ -247,7 +305,16 @@ function validateRealtimeDateTime() {
     const testTimeVal = testTimeInput.value;
     if (!testDateVal || !testTimeVal) return;
 
-    const selectedDateTime = new Date(`${testDateVal}T${testTimeVal}:00`);
+    if (!isWithinWorkingHours(testTimeVal)) {
+        showNotification(`Giờ hẹn test chỉ được phép đặt trong giờ hành chính làm việc (${WORKING_HOURS_START} - ${WORKING_HOURS_END})!`, "warning");
+        if (testTimeVal.slice(0, 5) < WORKING_HOURS_START) {
+            testTimeInput.value = WORKING_HOURS_START;
+        } else if (testTimeVal.slice(0, 5) > WORKING_HOURS_END) {
+            testTimeInput.value = WORKING_HOURS_END;
+        }
+    }
+
+    const selectedDateTime = new Date(`${testDateVal}T${testTimeInput.value}:00`);
     const now = new Date();
 
     if (selectedDateTime <= now) {
@@ -684,6 +751,11 @@ function setupEventListeners() {
         branchSelect.addEventListener("change", onBranchChange);
     }
 
+    const programSelect = document.getElementById("createProgram");
+    if (programSelect) {
+        programSelect.addEventListener("change", () => renderRoomOptionsForBranch(currentBranchRooms));
+    }
+
     const evalForm = document.getElementById("evaluatePlacementTestForm");
     if (evalForm) {
         evalForm.addEventListener("submit", handleSaveEvaluation);
@@ -700,6 +772,7 @@ function setupEventListeners() {
     if (evalModalEl) {
         evalModalEl.addEventListener('hidden.bs.modal', () => {
             attachmentUploadVersion++;
+            evaluationBlockedByMissingCriteria = false;
             setAttachmentUploading(false);
             uploadedFileUrl = "";
             currentEditingId = null;
@@ -800,6 +873,9 @@ function onEnrollmentRequestChange() {
     document.getElementById('createProgramHint').textContent = programId
         ? (programSelect.value ? 'Môn đã đăng ký trong đơn.' : `${selected.requestedProgramName} chưa có trong danh sách hỗ trợ. Hãy kiểm tra cấu hình hoặc thử mở lại form.`)
         : (selected ? 'Đơn cũ chưa có môn. Hãy xác nhận với phụ huynh trước khi chọn.' : '');
+    if (currentBranchRooms.length > 0) {
+        renderRoomOptionsForBranch(currentBranchRooms);
+    }
 }
 
 async function loadProgramsForScheduling() {
@@ -844,8 +920,108 @@ async function loadEnrollmentRequestsForScheduling() {
 }
 
 let branchesForScheduling = [];
+let currentBranchRooms = [];
 let schedulingBranchLoad = 0;
 let schedulingRoomLoad = 0;
+
+function getSelectedProgramNameForScheduling() {
+    const programSelect = document.getElementById('createProgram');
+    if (programSelect && programSelect.value) {
+        const opt = programSelect.options[programSelect.selectedIndex];
+        if (opt && opt.text) return opt.text.trim();
+    }
+    const requestId = Number(document.getElementById('createEnrollmentRequest')?.value);
+    if (requestId) {
+        const selectedReq = enrollmentRequestsForScheduling.find(r => r.id === requestId);
+        if (selectedReq?.requestedProgramName) return selectedReq.requestedProgramName.trim();
+    }
+    return '';
+}
+
+function getProgramRoomCategory(programText) {
+    const p = String(programText || '').toLowerCase().trim();
+    if (!p) return null;
+    if (p.includes('guitar')) return 'GUITAR';
+    if (p.includes('piano') || p.includes('organ')) return 'PIANO';
+    if (p.includes('múa') || p.includes('mua') || p.includes('dance') || p.includes('ballet')) return 'MUA';
+    if (p.includes('võ') || p.includes('vo') || p.includes('martial') || p.includes('taekwondo')) return 'VO';
+    if (p.includes('đàn') || p.includes('dan')) return 'DAN';
+    return null;
+}
+
+function doesRoomMatchCategory(room, category) {
+    if (!category || !room) return true;
+    const rType = String(room.roomType || '').toUpperCase();
+    const rText = `${room.roomName || ''} ${room.roomCode || ''}`.toLowerCase();
+
+    if (category === 'GUITAR') {
+        return rType === 'GUITAR_ROOM' || rText.includes('guitar') || (rText.includes('đàn') && !rText.includes('piano'));
+    }
+    if (category === 'PIANO') {
+        return rType === 'PIANO_INDIVIDUAL' || rType === 'PIANO_GROUP' || rText.includes('piano') || (rText.includes('đàn') && !rText.includes('guitar'));
+    }
+    if (category === 'DAN') {
+        return rType === 'GUITAR_ROOM' || rType === 'PIANO_INDIVIDUAL' || rType === 'PIANO_GROUP'
+            || rText.includes('piano') || rText.includes('guitar') || rText.includes('đàn');
+    }
+    if (category === 'MUA') {
+        return rType === 'DANCE_ROOM' || rText.includes('múa') || rText.includes('mua') || rText.includes('ballet') || rText.includes('dance');
+    }
+    if (category === 'VO') {
+        return rText.includes('võ') || rText.includes('vo') || rText.includes('thể lực')
+            || (rType === 'THEORY_ROOM' && !rText.includes('piano') && !rText.includes('guitar') && !rText.includes('múa'));
+    }
+    return true;
+}
+
+function isSubjectSpecificRoom(room) {
+    const rType = String(room?.roomType || '').toUpperCase();
+    if (['PIANO_INDIVIDUAL', 'PIANO_GROUP', 'GUITAR_ROOM', 'DANCE_ROOM', 'THEORY_ROOM'].includes(rType)) {
+        return true;
+    }
+    const rText = `${room?.roomName || ''} ${room?.roomCode || ''}`.toLowerCase();
+    return rText.includes('piano') || rText.includes('guitar') || rText.includes('đàn')
+        || rText.includes('múa') || rText.includes('ballet') || rText.includes('võ');
+}
+
+function renderRoomOptionsForBranch(roomList) {
+    const roomSelect = document.getElementById('createRoomName');
+    if (!roomSelect) return;
+
+    if (!Array.isArray(roomList) || roomList.length === 0) {
+        roomSelect.replaceChildren(new Option('-- Cơ sở này chưa có phòng học --', ''));
+        roomSelect.disabled = true;
+        return;
+    }
+
+    const availableRooms = roomList.filter(r => !r.status || r.status === 'AVAILABLE');
+    const baseList = availableRooms.length > 0 ? availableRooms : roomList;
+    const programName = getSelectedProgramNameForScheduling();
+    const category = getProgramRoomCategory(programName);
+
+    let displayList = baseList;
+    if (category) {
+        const matched = baseList.filter(r => doesRoomMatchCategory(r, category));
+        if (matched.length > 0) {
+            displayList = matched;
+        } else if (baseList.some(isSubjectSpecificRoom)) {
+            roomSelect.replaceChildren(new Option(`-- Cơ sở này chưa có phòng học môn ${programName} --`, ''));
+            roomSelect.disabled = true;
+            return;
+        }
+    }
+
+    roomSelect.replaceChildren(new Option('-- Chọn phòng học --', ''));
+    for (const r of displayList) {
+        const roomNameText = r.roomName || r.roomCode || 'Phòng học';
+        const hasCode = r.roomCode && !roomNameText.includes(r.roomCode);
+        const label = hasCode ? `${roomNameText} (${r.roomCode})` : roomNameText;
+        const statusNote = (r.status && r.status !== 'AVAILABLE') ? ` [${r.status}]` : '';
+        roomSelect.add(new Option(label + statusNote, label));
+    }
+    roomSelect.selectedIndex = 1;
+    roomSelect.disabled = false;
+}
 
 async function loadBranchesForScheduling(force = false) {
     const branchSelect = document.getElementById('createBranch');
@@ -917,25 +1093,11 @@ async function onBranchChange() {
     try {
         const rooms = await callApi(`/api/branches/${encodeURIComponent(branchId)}/rooms`);
         if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
-        const roomList = Array.isArray(rooms) ? rooms : [];
-        if (roomList.length > 0) {
-            const availableRooms = roomList.filter(r => !r.status || r.status === 'AVAILABLE');
-            const displayList = availableRooms.length > 0 ? availableRooms : roomList;
-            roomSelect.replaceChildren(new Option('-- Chọn phòng học --', ''));
-            for (const r of displayList) {
-                const roomNameText = r.roomName || r.roomCode || 'Phòng học';
-                const hasCode = r.roomCode && !roomNameText.includes(r.roomCode);
-                const label = hasCode ? `${roomNameText} (${r.roomCode})` : roomNameText;
-                const statusNote = (r.status && r.status !== 'AVAILABLE') ? ` [${r.status}]` : '';
-                roomSelect.add(new Option(label + statusNote, label));
-            }
-            roomSelect.selectedIndex = 1;
-            roomSelect.disabled = false;
-        } else {
-            roomSelect.options[0].text = '-- Cơ sở này chưa có phòng học --';
-        }
+        currentBranchRooms = Array.isArray(rooms) ? rooms : [];
+        renderRoomOptionsForBranch(currentBranchRooms);
     } catch (error) {
         if (load !== schedulingRoomLoad || branchSelect.value !== branchId) return;
+        currentBranchRooms = [];
         console.warn('Lỗi tải danh sách phòng học:', error);
         roomSelect.options[0].text = 'Chưa tải được phòng học';
     }
@@ -1044,10 +1206,15 @@ async function openEvaluateModal(id) {
 
     const baseScore10 = item.score != null ? (item.score / 10) : 7.5;
 
-    let activeCriteria = placementCriteriaBySubject[normSubject] || [];
-    if (!activeCriteria.length) {
-        activeCriteria = await loadPlacementCriteria(normSubject);
+    // Luôn tải mới danh sách tiêu chí của bộ môn để phát hiện ngay nếu Admin vừa xóa hết tiêu chí
+    const activeCriteria = await loadPlacementCriteria(normSubject);
+    const savedScores = Array.isArray(item?.criteriaScores) ? item.criteriaScores : [];
+    const isCompletedWithSnapshots = item?.status === 'COMPLETED' && savedScores.length > 0;
+
+    if ((!activeCriteria || activeCriteria.length === 0) && !isCompletedWithSnapshots) {
+        showNotification(`Không thể chấm điểm: ${subjectName} hiện đã bị xóa hết tiêu chí đánh giá! Vui lòng liên hệ Quản trị viên (ADMIN) thêm tiêu chí trước khi chấm.`, 'danger');
     }
+
     renderEvaluateCriteriaSliders(normSubject, activeCriteria, item, baseScore10);
 
     document.getElementById("evalLevelSelect").value = item.recommendedLevel || "BEGINNER";
@@ -1105,14 +1272,19 @@ function renderEvaluateCriteriaSliders(normSubject, criteriaList, item, baseScor
             })));
 
     if (!listToRender.length) {
+        evaluationBlockedByMissingCriteria = true;
+        updateEvaluationSubmitButtonState();
         evalContainer.innerHTML = `
-            <div class="alert alert-warning py-2 px-3 small mb-3">
-                <i class="bi bi-info-circle me-1"></i>Chưa có tiêu chí đánh giá nào được cấu hình trong cơ sở dữ liệu cho ${cfg.subjectName}.
+            <div class="alert alert-danger py-3 px-3 small mb-3 border-danger">
+                <i class="bi bi-exclamation-octagon-fill me-2"></i><strong>Không thể chấm và lưu điểm:</strong> Chưa có tiêu chí đánh giá nào đang áp dụng cho <strong>${cfg.subjectName}</strong> (Quản trị viên đã xóa hoặc ngưng áp dụng toàn bộ tiêu chí). Vui lòng liên hệ ADMIN thêm tiêu chí đánh giá trước khi chấm bài!
             </div>
         `;
         calculateAverageScore();
         return;
     }
+
+    evaluationBlockedByMissingCriteria = false;
+    updateEvaluationSubmitButtonState();
 
     evalContainer.innerHTML = `
         <div class="d-flex align-items-center justify-content-between mb-3">
@@ -1186,6 +1358,10 @@ async function handleSaveEvaluation(e) {
     const evaluatorName = currentUser ? `${currentUser.fullName || currentUser.username} (${teacherDisplayName})` : 'Giáo Viên Chuyên Môn';
 
     const sliders = document.querySelectorAll(".eval-criteria-slider");
+    if (!sliders.length || evaluationBlockedByMissingCriteria) {
+        showNotification("Không thể lưu kết quả test đầu vào vì bộ môn này hiện không có tiêu chí đánh giá nào đang áp dụng! Vui lòng liên hệ ADMIN thêm tiêu chí.", "danger");
+        return;
+    }
     let total = 0;
     let count = 0;
     const criteriaScores = [];
@@ -1313,6 +1489,12 @@ async function handleCreatePlacementTest(e) {
         showNotification("Ngày hẹn test không được chọn trong quá khứ! Vui lòng chọn từ ngày hôm nay trở đi.", "danger");
         document.getElementById("createTestDate").focus();
         initDateRestrictions();
+        return;
+    }
+
+    if (!isWithinWorkingHours(testTimeVal)) {
+        showNotification(`Giờ hẹn test phải nằm trong khung giờ hành chính làm việc (${WORKING_HOURS_START} - ${WORKING_HOURS_END})!`, "danger");
+        document.getElementById("createTestTime").focus();
         return;
     }
 
@@ -1671,6 +1853,15 @@ async function openCriteriaConfigModal() {
     await loadCriteriaForAdminModal();
 }
 
+function getNextAvailableCriteriaOrder(list) {
+    if (!Array.isArray(list) || list.length === 0) return 1;
+    const maxOrder = list.reduce((max, item) => {
+        const val = Number(item?.displayOrder);
+        return Number.isFinite(val) && val > max ? val : max;
+    }, 0);
+    return maxOrder + 1;
+}
+
 async function loadCriteriaForAdminModal() {
     const subjectSelect = document.getElementById("criteriaSubjectSelect");
     const subject = subjectSelect ? subjectSelect.value : "DAN";
@@ -1691,7 +1882,7 @@ async function loadCriteriaForAdminModal() {
         const editId = document.getElementById("criteriaEditId")?.value;
         if (!editId) {
             const orderInput = document.getElementById("criteriaOrderInput");
-            if (orderInput) orderInput.value = String(adminCriteriaList.length + 1);
+            if (orderInput) orderInput.value = String(getNextAvailableCriteriaOrder(adminCriteriaList));
         }
     } catch (err) {
         if (tbody) {
@@ -1757,7 +1948,10 @@ function resetCriteriaConfigForm() {
 
     if (editIdEl) editIdEl.value = "";
     if (nameEl) nameEl.value = "";
-    if (orderEl) orderEl.value = String((adminCriteriaList?.length || 0) + 1);
+    if (orderEl) {
+        orderEl.value = String(getNextAvailableCriteriaOrder(adminCriteriaList));
+        orderEl.classList.remove("is-invalid");
+    }
     if (activeEl) activeEl.checked = true;
     if (titleEl) {
         titleEl.innerHTML = `<i class="bi bi-plus-circle text-primary me-1"></i>Thêm tiêu chí đánh giá mới`;
@@ -1775,13 +1969,37 @@ async function handleSaveCriteriaConfig(e) {
     const editId = document.getElementById("criteriaEditId").value.trim();
     const subject = document.getElementById("criteriaSubjectSelect").value || "DAN";
     const criteriaName = document.getElementById("criteriaNameInput").value.trim();
-    const displayOrder = parseInt(document.getElementById("criteriaOrderInput").value, 10) || 1;
+    const orderInput = document.getElementById("criteriaOrderInput");
+    const rawOrder = orderInput ? orderInput.value.trim() : "";
+    const displayOrder = Number(rawOrder);
     const active = document.getElementById("criteriaActiveInput").checked;
 
     if (!criteriaName) {
         showNotification("Vui lòng nhập tên tiêu chí đánh giá!", "warning");
         return;
     }
+
+    if (!rawOrder || !Number.isInteger(displayOrder) || displayOrder < 1) {
+        if (orderInput) {
+            orderInput.classList.add("is-invalid");
+            orderInput.focus();
+        }
+        showNotification("Thứ tự (ID) tiêu chí phải là số nguyên dương lớn hơn hoặc bằng 1!", "danger");
+        return;
+    }
+
+    const duplicatedOrderCriterion = (adminCriteriaList || []).find(c =>
+        Number(c.displayOrder) === displayOrder && (!editId || Number(c.id) !== Number(editId))
+    );
+    if (duplicatedOrderCriterion) {
+        if (orderInput) {
+            orderInput.classList.add("is-invalid");
+            orderInput.focus();
+        }
+        showNotification(`Thứ tự (ID) số ${displayOrder} đã tồn tại cho tiêu chí "${duplicatedOrderCriterion.criteriaName}"! Vui lòng nhập số thứ tự khác.`, "danger");
+        return;
+    }
+    if (orderInput) orderInput.classList.remove("is-invalid");
 
     const btn = document.getElementById("btnSaveCriteria");
     if (btn) btn.disabled = true;

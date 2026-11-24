@@ -38,6 +38,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,6 +52,9 @@ import java.util.stream.Collectors;
 public class PlacementTestServiceImpl implements PlacementTestService {
 
     private static final Set<String> PLACEMENT_SUBJECTS = Set.of("DAN", "MUA", "VO");
+    private static final LocalTime WORKING_HOURS_START = LocalTime.of(8, 0);
+    private static final LocalTime WORKING_HOURS_END = LocalTime.of(17, 30);
+    private volatile boolean criteriaCatalogInitialized = false;
     private final PlacementScheduleRepository scheduleRepository;
     private final PlacementTestRepository placementTestRepository;
     private final StudentRepository studentRepository;
@@ -109,9 +113,19 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             throw new BusinessException("Tên tiêu chí đánh giá không được để trống!");
         }
 
-        int order = request.getDisplayOrder() != null && request.getDisplayOrder() >= 1
-                ? request.getDisplayOrder()
-                : (int) criteriaRepository.countBySubjectIgnoreCase(normSubject) + 1;
+        int order;
+        if (request.getDisplayOrder() != null) {
+            if (request.getDisplayOrder() < 1) {
+                throw new BusinessException("Thứ tự (ID) tiêu chí đánh giá phải là số nguyên lớn hơn hoặc bằng 1!");
+            }
+            order = request.getDisplayOrder();
+        } else {
+            order = getNextAvailableCriteriaDisplayOrder(normSubject);
+        }
+
+        if (criteriaRepository.existsBySubjectIgnoreCaseAndDisplayOrder(normSubject, order)) {
+            throw new BusinessException("Thứ tự (ID) tiêu chí số " + order + " đã tồn tại trong bộ môn này! Vui lòng nhập số thứ tự khác.");
+        }
 
         PlacementCriteria entity = PlacementCriteria.builder()
                 .subject(normSubject)
@@ -140,8 +154,15 @@ public class PlacementTestServiceImpl implements PlacementTestService {
 
         entity.setSubject(normSubject);
         entity.setCriteriaName(trimmedName);
-        if (request.getDisplayOrder() != null && request.getDisplayOrder() >= 1) {
-            entity.setDisplayOrder(request.getDisplayOrder());
+        if (request.getDisplayOrder() != null) {
+            if (request.getDisplayOrder() < 1) {
+                throw new BusinessException("Thứ tự (ID) tiêu chí đánh giá phải là số nguyên lớn hơn hoặc bằng 1!");
+            }
+            int newOrder = request.getDisplayOrder();
+            if (criteriaRepository.existsBySubjectIgnoreCaseAndDisplayOrderAndIdNot(normSubject, newOrder, id)) {
+                throw new BusinessException("Thứ tự (ID) tiêu chí số " + newOrder + " đã tồn tại trong bộ môn này! Vui lòng nhập số thứ tự khác.");
+            }
+            entity.setDisplayOrder(newOrder);
         }
         if (request.getActive() != null) {
             entity.setActive(request.getActive());
@@ -159,6 +180,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         PlacementCriteria entity = criteriaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tiêu chí đánh giá với ID: " + id));
 
+        criteriaCatalogInitialized = true;
         boolean used = criteriaScoreRepository != null && criteriaScoreRepository.existsByCriteriaId(id);
         if (used) {
             // Soft delete: giữ nguyên bản ghi trong DB để bảo toàn lịch sử các bài đã chấm
@@ -170,7 +192,11 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     }
 
     private void ensureDefaultCriteriaSeeded() {
-        if (criteriaRepository == null || criteriaRepository.count() > 0) {
+        if (criteriaRepository == null || criteriaCatalogInitialized) {
+            return;
+        }
+        if (criteriaRepository.count() > 0) {
+            criteriaCatalogInitialized = true;
             return;
         }
         List<PlacementCriteria> defaults = List.of(
@@ -188,6 +214,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
                 PlacementCriteria.builder().subject("VO").criteriaName("4. Tác phong & Kỷ luật võ đạo (Martial Discipline)").displayOrder(4).active(true).build()
         );
         criteriaRepository.saveAll(defaults);
+        criteriaCatalogInitialized = true;
         backfillCompletedSchedulesWithoutSnapshots();
     }
 
@@ -269,6 +296,17 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             throw new BusinessException("Bộ môn tiêu chí không hợp lệ (chỉ hỗ trợ DAN, MUA, VO)");
         }
         return norm;
+    }
+
+    private int getNextAvailableCriteriaDisplayOrder(String subject) {
+        if (criteriaRepository == null) {
+            return 1;
+        }
+        return criteriaRepository.findBySubjectIgnoreCaseOrderByDisplayOrderAscIdAsc(subject).stream()
+                .map(PlacementCriteria::getDisplayOrder)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
     }
 
     private PlacementCriteriaResponse toCriteriaResponse(PlacementCriteria entity) {
@@ -426,14 +464,24 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             }
         }
 
+        String assessmentSubject = normalizeSubjectCode(schedule.getSubject() != null
+                ? schedule.getSubject() : (scheduleMapper != null ? scheduleMapper.inferSubject(schedule.getTitle()) : "DAN"));
         Integer finalScore = request.getScore();
         List<PlacementCriteriaScoreItemRequest> scoreItems = request.getCriteriaScores();
+        if (criteriaRepository != null && scoreItems != null && scoreItems.isEmpty()) {
+            List<PlacementCriteria> activeSubjectCriteria = criteriaRepository
+                    .findBySubjectIgnoreCaseAndActiveTrueOrderByDisplayOrderAscIdAsc(assessmentSubject);
+            boolean hasHistoricalSnapshots = criteriaScoreRepository != null && scheduleId != null
+                    && !criteriaScoreRepository.findByScheduleIdOrderByDisplayOrderAscIdAsc(scheduleId).isEmpty();
+            if ((activeSubjectCriteria == null || activeSubjectCriteria.isEmpty()) && !hasHistoricalSnapshots) {
+                throw new BusinessException("Bộ môn này hiện chưa có tiêu chí đánh giá nào đang áp dụng! Vui lòng liên hệ Quản trị viên (ADMIN) để cấu hình tiêu chí trước khi chấm và lưu điểm.");
+            }
+            throw new BusinessException("Vui lòng chấm điểm các tiêu chí đánh giá trước khi lưu kết quả!");
+        }
         if (scoreItems != null && !scoreItems.isEmpty()) {
             double sum = 0.0;
             int validCount = 0;
             Set<Long> submittedCriteria = new java.util.HashSet<>();
-            String assessmentSubject = normalizeSubjectCode(schedule.getSubject() != null
-                    ? schedule.getSubject() : scheduleMapper.inferSubject(schedule.getTitle()));
             for (PlacementCriteriaScoreItemRequest item : scoreItems) {
                 if (item == null || item.getScore() == null) {
                     throw new BusinessException("Vui lòng nhập đầy đủ điểm cho từng tiêu chí đánh giá!");
@@ -591,6 +639,10 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         }
         if (request.getTestDate().isBefore(LocalDateTime.now())) {
             throw new BusinessException("Thời gian hẹn test không được ở trong quá khứ tính từ thời điểm hiện tại! Vui lòng chọn thời gian từ hiện tại trở đi.");
+        }
+        LocalTime appointmentTime = request.getTestDate().toLocalTime();
+        if (appointmentTime.isBefore(WORKING_HOURS_START) || appointmentTime.isAfter(WORKING_HOURS_END)) {
+            throw new BusinessException("Giờ hẹn test phải nằm trong khung giờ hành chính làm việc (08:00 - 17:30)!");
         }
 
         EnrollmentRequest enrollmentRequest = null;

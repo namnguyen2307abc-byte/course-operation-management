@@ -15,6 +15,7 @@ import com.talent.management.features.placement_test.service.impl.PlacementTestS
 import com.talent.management.shared.entity.Student;
 import com.talent.management.shared.entity.Program;
 import com.talent.management.shared.entity.User;
+import com.talent.management.shared.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -48,7 +49,7 @@ class PlacementScheduleLinkTest {
                 .studentName("User entered name")
                 .title("Placement")
                 .roomName("Room 1")
-                .testDate(LocalDateTime.now().plusDays(1))
+                .testDate(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0).withNano(0))
                 .build();
     }
 
@@ -132,6 +133,29 @@ class PlacementScheduleLinkTest {
         when(programRepository.findById(42L)).thenReturn(Optional.of(Program.builder().id(42L).name("Cờ vua").build()));
         assertThatThrownBy(() -> service.createSchedule(input, "staff"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("chưa hỗ trợ");
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void scheduleRejectsAppointmentOutsideWorkingHours() {
+        var earlyMorning = input();
+        earlyMorning.setTestDate(LocalDateTime.now().plusDays(1).withHour(3).withMinute(0));
+        assertThatThrownBy(() -> service.createSchedule(earlyMorning, "staff"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("08:00 - 17:30");
+
+        var midnight = input();
+        midnight.setTestDate(LocalDateTime.now().plusDays(1).withHour(0).withMinute(0));
+        assertThatThrownBy(() -> service.createSchedule(midnight, "staff"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("08:00 - 17:30");
+
+        var lateNight = input();
+        lateNight.setTestDate(LocalDateTime.now().plusDays(1).withHour(20).withMinute(30));
+        assertThatThrownBy(() -> service.createSchedule(lateNight, "staff"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("08:00 - 17:30");
+
         verify(scheduleRepository, never()).save(any());
     }
 }

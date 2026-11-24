@@ -249,7 +249,7 @@
                     <div class="modal-body p-4">
                         <div class="alert alert-primary bg-primary-subtle border-primary-subtle text-primary-emphasis py-2 px-3 small rounded-3 mb-3 d-flex align-items-center">
                             <i class="bi bi-info-circle-fill me-2 fs-6"></i>
-                            <div><strong>Lưu ý:</strong> Thời gian hẹn test phải từ thời điểm hiện tại trở đi (không được chọn thời gian trong quá khứ).</div>
+                            <div><strong>Lưu ý:</strong> Thời gian hẹn test phải từ thời điểm hiện tại trở đi và nằm trong khung giờ hành chính làm việc (<strong>08:00 - 17:30</strong>).</div>
                         </div>
                         <div class="row g-3">
                             <div class="col-md-12 d-none" id="createEnrollmentRequestField">
@@ -299,7 +299,8 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Giờ hẹn <span class="text-danger">*</span></label>
-                                <input type="time" id="createTestTime" class="form-control" value="09:30" required>
+                                <input type="time" id="createTestTime" class="form-control" min="08:00" max="17:30" value="09:30" required>
+                                <div class="form-text text-muted small"><i class="bi bi-building-check me-1"></i>Chỉ nhận đặt lịch trong giờ hành chính (08:00 - 17:30).</div>
                             </div>
 
                             <div class="col-md-12">
