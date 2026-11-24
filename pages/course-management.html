@@ -368,7 +368,6 @@
                                 <th style="min-width:200px;">Tên Khóa Học</th>
                                 <th style="min-width:120px;">Bộ Môn</th>
                                 <th style="min-width:100px;">Trình Độ</th>
-                                <th style="min-width:100px;">Số tuần</th>
                                 <th style="min-width:120px;">Học Phí</th>
                                 <th style="min-width:100px;">Lớp học</th>
                                 <th style="min-width:110px;">Học viên</th>
@@ -377,7 +376,7 @@
                         </thead>
                         <tbody id="courseTableBody">
                             <tr>
-                                <td colspan="10">
+                                <td colspan="9">
                                     <div class="cm-empty">
                                         <span class="spinner-border spinner-border-sm text-primary me-2"></span>
                                         Đang tải danh sách khóa học...
@@ -444,26 +443,19 @@
                                        placeholder="Vd: Piano Cổ Điển Cơ Bản" maxlength="150" required>
                                 <div class="invalid-feedback">Tên khóa học không được để trống.</div>
                             </div>
-                            <!-- Số tuần -->
-                            <div class="col-6 col-md-4">
-                                <label for="fieldDurationWeeks" class="form-label-cm">Thời lượng (tuần)</label>
-                                <input type="number" class="form-control" id="fieldDurationWeeks"
-                                       placeholder="Vd: 16" min="1" max="200">
-                                <div class="invalid-feedback">Số tuần phải lớn hơn 0.</div>
-                            </div>
                             <!-- Số buổi -->
-                            <div class="col-6 col-md-4">
+                            <div class="col-12 col-md-6">
                                 <label for="fieldTotalSessions" class="form-label-cm">Tổng số buổi</label>
                                 <input type="number" class="form-control" id="fieldTotalSessions"
-                                       placeholder="Vd: 48" min="1" max="1000">
-                                <div class="invalid-feedback">Số buổi phải lớn hơn 0.</div>
+                                       placeholder="Vd: 48" min="1" max="1000" step="1">
+                                <div class="invalid-feedback" id="totalSessionsFeedback">Tổng số buổi học phải lớn hơn 0.</div>
                             </div>
                             <!-- Học phí -->
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-6">
                                 <label for="fieldTuitionFee" class="form-label-cm">Học Phí (VNĐ) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="fieldTuitionFee"
-                                       placeholder="Vd: 3500000" min="1" required>
-                                <div class="invalid-feedback">Học phí phải là số dương.</div>
+                                       placeholder="Vd: 3500000" min="1" step="1" required>
+                                <div class="invalid-feedback" id="tuitionFeeFeedback">Học phí phải lớn hơn 0.</div>
                                 <div class="form-text" id="tuitionFeePreview"></div>
                             </div>
                             <!-- Mô tả -->
@@ -596,9 +588,11 @@
                 setTimeout(() => openEditModal(viewingCourse), 350);
             });
 
-            // Live preview for tuition fee
+            // Live preview & numeric validation for total sessions and tuition fee
+            document.getElementById('fieldTotalSessions').addEventListener('input', validateCourseNumericFields);
             document.getElementById('fieldTuitionFee').addEventListener('input', () => {
-                const val = parseInt(document.getElementById('fieldTuitionFee').value) || 0;
+                validateCourseNumericFields();
+                const val = parseFloat(document.getElementById('fieldTuitionFee').value) || 0;
                 document.getElementById('tuitionFeePreview').textContent = val > 0
                     ? '≈ ' + formatCurrency(val)
                     : '';
@@ -729,7 +723,7 @@
 
             if (!courses.length) {
                 body.innerHTML = `
-                    <tr><td colspan="10">
+                    <tr><td colspan="9">
                         <div class="cm-empty">
                             <i class="bi bi-inbox"></i>
                             <div class="fw-semibold">Không có khóa học nào</div>
@@ -758,9 +752,6 @@
                         ${c.level
                             ? `<span class="badge-level ${getLevelBadgeClass(c.level)}">${escapeHtml(getLevelLabel(c.level))}</span>`
                             : `<span class="text-muted small">—</span>`}
-                    </td>
-                    <td class="text-center">
-                        ${c.durationWeeks != null ? `<span class="fw-semibold">${c.durationWeeks}</span> <span class="text-muted small">tuần</span>` : '<span class="text-muted">—</span>'}
                     </td>
                     <td>
                         <span class="fw-semibold text-success">${formatCurrency(c.tuitionFee)}</span>
@@ -833,10 +824,10 @@
             document.getElementById('fieldCode').value           = course.code || '';
             document.getElementById('fieldName').value           = course.name || '';
             document.getElementById('fieldLevel').value          = normalizeLevel(course.level);
-            document.getElementById('fieldDurationWeeks').value  = course.durationWeeks || '';
             document.getElementById('fieldTotalSessions').value  = course.totalSessions || '';
             document.getElementById('fieldTuitionFee').value     = course.tuitionFee || '';
             document.getElementById('fieldDescription').value    = course.description || '';
+            validateCourseNumericFields();
 
             // Update live previews
             document.getElementById('tuitionFeePreview').textContent = course.tuitionFee
@@ -882,25 +873,19 @@
                                 <div class="fw-bold text-success fs-5">${formatCurrency(course.tuitionFee)}</div>
                             </div>
                             <div class="row g-2 mt-1">
-                                <div class="col-6">
-                                    <div class="text-center p-2 bg-white rounded-2 border">
-                                        <div class="fw-bold text-primary" style="font-size:1.3rem;">${course.durationWeeks || '—'}</div>
-                                        <div class="text-muted small">Tuần học</div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center p-2 bg-white rounded-2 border">
                                         <div class="fw-bold text-primary" style="font-size:1.3rem;">${course.totalSessions || '—'}</div>
                                         <div class="text-muted small">Buổi học</div>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center p-2 bg-white rounded-2 border">
                                         <div class="fw-bold" style="font-size:1.3rem;color:var(--cm-primary);">${course.totalClasses || 0}</div>
                                         <div class="text-muted small">Lớp học</div>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center p-2 bg-white rounded-2 border">
                                         <div class="fw-bold" style="font-size:1.3rem;color:var(--cm-secondary);">${course.totalEnrollments || 0}</div>
                                         <div class="text-muted small">Học viên</div>
@@ -948,8 +933,72 @@
         }
 
         // ─── Form Submit ──────────────────────────────────────────────────────────
+        function validateCourseNumericFields() {
+            const sessionsInput = document.getElementById('fieldTotalSessions');
+            const sessionsFeedback = document.getElementById('totalSessionsFeedback');
+            if (sessionsInput && sessionsFeedback) {
+                const rawSessions = sessionsInput.value.trim();
+                sessionsInput.setCustomValidity('');
+                if (sessionsInput.validity.badInput) {
+                    const msg = 'Tổng số buổi học không hợp lệ (không được nhập chữ hoặc ký tự đặc biệt).';
+                    sessionsFeedback.textContent = msg;
+                    sessionsInput.setCustomValidity(msg);
+                } else if (rawSessions !== '') {
+                    const num = Number(rawSessions);
+                    if (num < 0) {
+                        const msg = 'Tổng số buổi học không được là số âm.';
+                        sessionsFeedback.textContent = msg;
+                        sessionsInput.setCustomValidity(msg);
+                    } else if (sessionsInput.validity.stepMismatch || rawSessions.includes('.') || rawSessions.includes(',') || !Number.isInteger(num)) {
+                        const msg = 'Tổng số buổi học phải là số nguyên, không được nhập số thập phân.';
+                        sessionsFeedback.textContent = msg;
+                        sessionsInput.setCustomValidity(msg);
+                    } else if (num === 0 || sessionsInput.validity.rangeUnderflow) {
+                        const msg = 'Tổng số buổi học phải lớn hơn 0.';
+                        sessionsFeedback.textContent = msg;
+                        sessionsInput.setCustomValidity(msg);
+                    } else if (num > 1000 || sessionsInput.validity.rangeOverflow) {
+                        const msg = 'Tổng số buổi học không được vượt quá 1000 buổi.';
+                        sessionsFeedback.textContent = msg;
+                        sessionsInput.setCustomValidity(msg);
+                    }
+                }
+            }
+
+            const feeInput = document.getElementById('fieldTuitionFee');
+            const feeFeedback = document.getElementById('tuitionFeeFeedback');
+            if (feeInput && feeFeedback) {
+                const rawFee = feeInput.value.trim();
+                feeInput.setCustomValidity('');
+                if (feeInput.validity.badInput) {
+                    const msg = 'Học phí không hợp lệ (không được nhập chữ hoặc ký tự đặc biệt).';
+                    feeFeedback.textContent = msg;
+                    feeInput.setCustomValidity(msg);
+                } else if (feeInput.validity.valueMissing || rawFee === '') {
+                    const msg = 'Học phí không được để trống.';
+                    feeFeedback.textContent = msg;
+                } else {
+                    const numFee = Number(rawFee);
+                    if (numFee < 0) {
+                        const msg = 'Học phí không được là số âm.';
+                        feeFeedback.textContent = msg;
+                        feeInput.setCustomValidity(msg);
+                    } else if (feeInput.validity.stepMismatch || rawFee.includes('.') || rawFee.includes(',') || !Number.isInteger(numFee)) {
+                        const msg = 'Học phí phải là số nguyên (VNĐ), không được nhập số thập phân.';
+                        feeFeedback.textContent = msg;
+                        feeInput.setCustomValidity(msg);
+                    } else if (numFee === 0 || feeInput.validity.rangeUnderflow) {
+                        const msg = 'Học phí phải lớn hơn 0.';
+                        feeFeedback.textContent = msg;
+                        feeInput.setCustomValidity(msg);
+                    }
+                }
+            }
+        }
+
         async function submitCourseForm() {
             const form = document.getElementById('courseForm');
+            validateCourseNumericFields();
             form.classList.add('was-validated');
             if (!form.checkValidity()) return;
 
@@ -957,14 +1006,16 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
 
+            const rawSessions = document.getElementById('fieldTotalSessions').value.trim();
+            const rawTuition = document.getElementById('fieldTuitionFee').value.trim();
+
             const payload = {
-                programId:      parseInt(document.getElementById('fieldProgram').value) || null,
+                programId:      parseInt(document.getElementById('fieldProgram').value, 10) || null,
                 code:           document.getElementById('fieldCode').value.trim(),
                 name:           document.getElementById('fieldName').value.trim(),
                 level:          document.getElementById('fieldLevel').value || null,
-                durationWeeks:  parseInt(document.getElementById('fieldDurationWeeks').value) || null,
-                totalSessions:  parseInt(document.getElementById('fieldTotalSessions').value) || null,
-                tuitionFee:     parseFloat(document.getElementById('fieldTuitionFee').value) || null,
+                totalSessions:  rawSessions !== '' ? Number(rawSessions) : null,
+                tuitionFee:     rawTuition !== '' ? Number(rawTuition) : null,
                 description:    document.getElementById('fieldDescription').value.trim() || null
             };
 
@@ -992,6 +1043,8 @@
             const form = document.getElementById('courseForm');
             form.reset();
             form.classList.remove('was-validated');
+            document.getElementById('fieldTotalSessions')?.setCustomValidity('');
+            document.getElementById('fieldTuitionFee')?.setCustomValidity('');
             document.getElementById('tuitionFeePreview').textContent = '';
             document.getElementById('descCharCount').textContent = '0';
             editingId = null;
