@@ -1,0 +1,92 @@
+<mxfile host="app.diagrams.net" modified="2026-11-24T23:50:00.000Z" agent="Antigravity" version="21.0.0" type="device">
+  <diagram id="WeeklyScheduleUseCase" name="Weekly Schedule Use Case Diagram">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- SYSTEM BOUNDARY -->
+        <mxCell id="sys_boundary" value="&lt;b style=&quot;font-size: 16px;&quot;&gt;Weekly Schedule&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#87CEEB;strokeColor=#000000;verticalAlign=top;fontColor=#000000;fontSize=16;spacingTop=15;" vertex="1" parent="1">
+          <mxGeometry x="320" y="60" width="700" height="600" as="geometry" />
+        </mxCell>
+
+        <!-- ACTORS -->
+        <mxCell id="actor_parent" value="Parent" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="90" y="110" width="45" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_teacher" value="Teacher" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="90" y="270" width="45" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_staff" value="Staff" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="50" y="470" width="45" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_admin" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="50" y="590" width="45" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="actor_operator" value="Academic&#xa;Operator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="190" y="530" width="45" height="85" as="geometry" />
+        </mxCell>
+
+        <!-- GENERALIZATION ARROWS -->
+        <mxCell id="gen_staff" style="edgeStyle=none;html=1;endArrow=block;endFill=0;strokeWidth=1;" edge="1" parent="1" source="actor_staff" target="actor_operator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gen_admin" style="edgeStyle=none;html=1;endArrow=block;endFill=0;strokeWidth=1;" edge="1" parent="1" source="actor_admin" target="actor_operator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- MAIN USE CASE -->
+        <mxCell id="uc_ws_01" value="&lt;b&gt;UC-WS-01: View weekly&lt;br&gt;schedule matrix&lt;/b&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#64B5F6;strokeColor=#1E88E5;fontColor=#000000;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="380" y="240" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- EXTENSION USE CASES -->
+        <mxCell id="uc_filter" value="Filter by child / branch /&lt;br&gt;room / teacher / keyword" style="ellipse;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1E88E5;fontColor=#000000;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="110" width="240" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_matrix" value="View class attendance&lt;br&gt;matrix (all sessions)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1E88E5;fontColor=#000000;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="230" width="240" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_open_sheet" value="Open lesson attendance&lt;br&gt;sheet (Time-Lock active)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1E88E5;fontColor=#000000;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="350" width="240" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="uc_expand" value="Navigate weeks &amp;&lt;br&gt;expand multi-class cells" style="ellipse;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1E88E5;fontColor=#000000;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="470" width="240" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- ACTOR TO MAIN UC ASSOCIATIONS -->
+        <mxCell id="assoc_parent" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;" edge="1" parent="1" source="actor_parent" target="uc_ws_01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc_teacher" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;" edge="1" parent="1" source="actor_teacher" target="uc_ws_01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc_operator" style="edgeStyle=none;html=1;endArrow=none;strokeWidth=1.5;" edge="1" parent="1" source="actor_operator" target="uc_ws_01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EXTEND EDGES -->
+        <mxCell id="ext_filter" value="&amp;lt;&amp;lt;Extend&amp;gt;&amp;gt;" style="edgeStyle=none;html=1;endArrow=open;endSize=8;dashed=1;strokeWidth=1;" edge="1" parent="1" source="uc_filter" target="uc_ws_01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_matrix" value="&amp;lt;&amp;lt;Extend&amp;gt;&amp;gt;" style="edgeStyle=none;html=1;endArrow=open;endSize=8;dashed=1;strokeWidth=1;" edge="1" parent="1" source="uc_matrix" target="uc_ws_01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_sheet" value="&amp;lt;&amp;lt;Extend&amp;gt;&amp;gt;" style="edgeStyle=none;html=1;endArrow=open;endSize=8;dashed=1;strokeWidth=1;" edge="1" parent="1" source="uc_open_sheet" target="uc_ws_01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_expand" value="&amp;lt;&amp;lt;Extend&amp;gt;&amp;gt;" style="edgeStyle=none;html=1;endArrow=open;endSize=8;dashed=1;strokeWidth=1;" edge="1" parent="1" source="uc_expand" target="uc_ws_01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

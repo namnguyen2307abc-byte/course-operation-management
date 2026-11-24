@@ -169,11 +169,30 @@ BEGIN
     VALUES (2, 2, 4, 4, '2026-11-23', '08:00:00', '09:30:00', N'Buổi 4: Nhận diện nốt & Luyện ngón căn bản', N'Ca quá khứ - Đã hoàn thành điểm danh', 'COMPLETED');
 END;
 
--- Ca Thứ Tư 25/11/2026 (08:30 - 10:00) -> Test Time-Lock
+-- Ca Thứ Tư 25/11/2026 (08:30 - 10:00) -> Buổi học hôm nay có 1 Miss và 2 Lock
 IF NOT EXISTS (SELECT 1 FROM dbo.lessons WHERE class_id = 2 AND lesson_date = '2026-11-25')
 BEGIN
     INSERT INTO dbo.lessons (class_id, room_id, teacher_id, session_number, lesson_date, start_time, end_time, title, lesson_note, status)
-    VALUES (2, 2, 4, 7, '2026-11-25', '08:30:00', '10:00:00', N'Buổi 7: Cảm thụ tiết tấu qua bài đồng dao', N'Ca tương lai - Kiểm tra Time-Lock (nút điểm danh bị khóa)', 'SCHEDULED');
+    VALUES (2, 2, 4, 7, '2026-11-25', '08:30:00', '10:00:00', N'Buổi 7: Cảm thụ tiết tấu qua bài đồng dao', N'Ca học hôm nay 25/11 - Đã điểm danh (Có 1 Miss và 2 Lock)', 'COMPLETED');
+END
+ELSE
+BEGIN
+    UPDATE dbo.lessons
+    SET status = 'COMPLETED', title = N'Buổi 7: Cảm thụ tiết tấu qua bài đồng dao', lesson_note = N'Ca học hôm nay 25/11 - Đã điểm danh (Có 1 Miss và 2 Lock)'
+    WHERE class_id = 2 AND lesson_date = '2026-11-25';
+END;
+
+-- Ca Thứ Tư 25/11/2026 (14:00 - 15:30) Lớp CL-PIA-DEMO01 -> Ca học hôm nay để GV thực hành điểm danh live
+IF NOT EXISTS (SELECT 1 FROM dbo.lessons WHERE class_id = 22 AND lesson_date = '2026-11-25')
+BEGIN
+    INSERT INTO dbo.lessons (class_id, room_id, teacher_id, session_number, lesson_date, start_time, end_time, title, lesson_note, status)
+    VALUES (22, 1, 4, 3, '2026-11-25', '00:00:00', '23:59:00', N'Buổi 3: Luyện ngón Hanon & Tiết tấu vui nhộn', N'Ca học hôm nay 25/11 - Giáo viên có thể bấm trực tiếp Điểm danh', 'SCHEDULED');
+END
+ELSE
+BEGIN
+    UPDATE dbo.lessons
+    SET status = 'SCHEDULED', start_time = '00:00:00', end_time = '23:59:00', title = N'Buổi 3: Luyện ngón Hanon & Tiết tấu vui nhộn', lesson_note = N'Ca học hôm nay 25/11 - Giáo viên có thể bấm trực tiếp Điểm danh'
+    WHERE class_id = 22 AND lesson_date = '2026-11-25';
 END;
 
 -- Ca Thứ Bảy 28/11/2026 (10:00 - 11:30) -> Ghép học bù
@@ -334,6 +353,33 @@ WHERE NOT EXISTS (SELECT 1 FROM dbo.attendances WHERE lesson_id = 177 AND studen
 
 
 -- ------------------------------------------------------------------------------
+-- ĐIỂM DANH CHI TIẾT BUỔI HÔM NAY 25/11/2026 (Buổi 7 Lớp 2: CL-PIA-PRE-G01)
+-- Bao gồm cả 1 MISS (Bỏ lỡ bù lần 1) và 2 LOCK (Vắng bù lần 2 -> Khóa bù)
+-- ------------------------------------------------------------------------------
+DECLARE @LessonToday208 BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 2 AND lesson_date = '2026-11-25');
+
+IF @LessonToday208 IS NOT NULL
+BEGIN
+    DELETE FROM dbo.attendances WHERE lesson_id = @LessonToday208;
+
+    -- 1. Các học viên chính khóa có mặt
+    INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+    VALUES
+    (@LessonToday208, 2, 'PRESENT', '2026-11-25 09:30:00', N'Có mặt đầy đủ, tiếp thu bài tốt'),
+    (@LessonToday208, 6, 'PRESENT', '2026-11-25 09:30:00', N'Có mặt đúng giờ'),
+    (@LessonToday208, 11, 'PRESENT', '2026-11-25 09:30:00', N'Có mặt đầy đủ');
+
+    -- 2. Học viên 1 MISS: ĐỖ MINH KHANG (student_id = 9) - Vắng mặt buổi bù lần 1
+    INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+    VALUES (@LessonToday208, 9, 'ABSENT', '2026-11-25 09:30:00', N'Bỏ lỡ buổi học bù ngày 25/11 (Vắng lần 1 - 1 MISS, còn 1 lần xếp lại)');
+
+    -- 3. Học viên 2 LOCK: PHẠM GIA HUY (student_id = 8) - Vắng mặt buổi bù lần 2 -> Khóa quyền học bù
+    INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+    VALUES (@LessonToday208, 8, 'ABSENT', '2026-11-25 09:30:00', N'Vắng mặt lần 2 tại ca học bù ngày 25/11 (2 LOCK - Đã KHÓA quyền học bù)');
+END;
+
+
+-- ------------------------------------------------------------------------------
 -- BƯỚC 5: HỌC BÙ & QUY TẮC KHÓA SAU LẦN VẮNG BÙ ĐẦU (ABSENCE MAKEUP)
 -- ------------------------------------------------------------------------------
 DECLARE @LessonThursdayClass1 BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 1 AND lesson_date = '2026-11-26');
@@ -374,12 +420,44 @@ BEGIN
     WHERE id = 14;
 END;
 
--- TRƯỜNG HỢP 5: VẮNG MẶT BUỔI BÙ -> KHÓA QUYỀN HỌC BÙ (CANCELLED)
+-- TRƯỜNG HỢP 5: VẮNG MẶT BUỔI BÙ LẦN 1 -> 1 MISS (BỎ LỠ BÙ - CHƯA KHÓA) - BUỔI 25/11/2026
+DECLARE @LessonPrevClass2 BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 2 AND lesson_date = '2026-11-23' AND start_time = '08:00:00');
+IF @LessonPrevClass2 IS NULL SET @LessonPrevClass2 = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 2 AND lesson_date = '2026-11-23');
+
+DELETE FROM dbo.makeup_registrations WHERE student_id = 9;
+DELETE FROM dbo.absence_requests WHERE student_id = 9 AND lesson_id = @LessonPrevClass2;
+
+INSERT INTO dbo.absence_requests (student_id, lesson_id, requested_by_user_id, approved_by_teacher_id, reason, status, review_note, need_makeup, reviewed_at, created_at)
+VALUES (9, @LessonPrevClass2, 10, 4, N'Bé Bon bị cảm lạnh sổ mũi, xin phép cô Hương cho bé nghỉ buổi 23/11 và đăng ký học bù sang ngày 25/11', 'APPROVED', N'Cô Hương đã duyệt đơn học bù', 1, '2026-11-23 09:00:00', '2026-11-23 07:30:00');
+
+DECLARE @ArKhangId BIGINT = SCOPE_IDENTITY();
+
+INSERT INTO dbo.makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
+VALUES (@ArKhangId, 9, @LessonPrevClass2, @LessonToday208, 'MISSED', N'[Lần bù: 1/2] Bỏ lỡ buổi học bù ngày 25/11/2026 (Lần 1 - Chưa khóa, còn 1 lần xếp lại)', '2026-11-23 09:15:00');
+
+
+-- TRƯỜNG HỢP 6: VẮNG MẶT BUỔI BÙ LẦN 2 -> 2 LOCK (KHÓA QUYỀN HỌC BÙ) - BUỔI 25/11/2026
+DECLARE @LessonPrev2Class2 BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 2 AND lesson_date = '2026-11-22');
+IF @LessonPrev2Class2 IS NULL SET @LessonPrev2Class2 = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 2 AND session_number = 3);
+
+DELETE FROM dbo.makeup_registrations WHERE student_id = 8;
+DELETE FROM dbo.absence_requests WHERE student_id = 8 AND lesson_id = @LessonPrev2Class2;
+
+INSERT INTO dbo.absence_requests (student_id, lesson_id, requested_by_user_id, approved_by_teacher_id, reason, status, review_note, need_makeup, reviewed_at, created_at)
+VALUES (8, @LessonPrev2Class2, 10, 4, N'Bé Tom có lịch thi cờ vua cấp trường, xin phép cô Hương nghỉ buổi 22/11 và đăng ký học bù', 'APPROVED', N'Cô Hương đã duyệt đơn học bù', 1, '2026-11-22 09:00:00', '2026-11-22 07:30:00');
+
+DECLARE @ArHuyId BIGINT = SCOPE_IDENTITY();
+
+INSERT INTO dbo.makeup_registrations (absence_request_id, student_id, original_lesson_id, target_lesson_id, status, note, created_at)
+VALUES (@ArHuyId, 8, @LessonPrev2Class2, @LessonToday208, 'CANCELLED', N'[Lần bù: 2/2 - KHÓA] Học viên vắng mặt tại buổi học bù ngày 25/11/2026 (Lần 2) — Hệ thống KHÓA quyền học bù (CẤM HỌC BÙ LẠI)', '2026-11-22 09:15:00');
+
+
+-- CẬP NHẬT CẢ BÉ BẢO NAM (student_id = 1) ĐỂ KHI XEM MẶC ĐỊNH CŨNG CÓ ĐỦ TEST CASE 1 MISS & 2 LOCK
 IF EXISTS (SELECT 1 FROM dbo.makeup_registrations WHERE id = 10)
 BEGIN
     UPDATE dbo.makeup_registrations
-    SET status = 'CANCELLED',
-        note = N'[Lần bù: 1/1 - KHÓA] Học viên đã vắng mặt tại ca học bù duy nhất — Hệ thống khóa quyền học bù (CẤM HỌC BÙ LẠI)'
+    SET status = 'MISSED',
+        note = N'[Lần bù: 1/2] Bỏ lỡ buổi học bù ngày 25/11/2026 (Lần 1 - Chưa khóa quyền, còn 1 lần xếp lại)'
     WHERE id = 10;
 END;
 
@@ -387,7 +465,7 @@ IF EXISTS (SELECT 1 FROM dbo.makeup_registrations WHERE id = 16)
 BEGIN
     UPDATE dbo.makeup_registrations
     SET status = 'CANCELLED',
-        note = N'[Lần bù: 1/1 - KHÓA] Bỏ lỡ / Vắng mặt tại buổi học bù ngày 2026-11-23 (Không được xếp lại) — Khóa quyền học bù'
+        note = N'[Lần bù: 2/2 - KHÓA] Vắng mặt lần 2 tại buổi học bù ngày 25/11/2026 — Hệ thống KHÓA quyền học bù (CẤM HỌC BÙ LẠI)'
     WHERE id = 16;
 END;
 
