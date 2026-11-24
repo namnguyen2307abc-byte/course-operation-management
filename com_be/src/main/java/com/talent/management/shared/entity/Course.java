@@ -38,6 +38,10 @@ public class Course {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal tuitionFee;
 
+    // Nullable for legacy courses; their existing total tuition remains unchanged.
+    @Column(name = "tuition_per_session", precision = 12, scale = 2)
+    private BigDecimal tuitionPerSession;
+
     @Column(length = 1000)
     private String description;
 }
