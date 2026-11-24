@@ -31,8 +31,11 @@ public class UpdateCourseRequest {
 
     private BigDecimal totalSessions;
 
-    @NotNull(message = "Học phí không được để trống")
+    // Kept for old JSON clients. Total tuition is always calculated by the server.
     private BigDecimal tuitionFee;
+
+    @NotNull(message = "Đơn giá mỗi buổi không được để trống")
+    private BigDecimal tuitionPerSession;
 
     @Size(max = 1000, message = "Mô tả không vượt quá 1000 ký tự")
     private String description;

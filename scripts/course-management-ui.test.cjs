@@ -17,8 +17,9 @@ before(async()=>{
  browser=await chromium.launch({channel:'chrome',headless:true});
 });
 after(async()=>{await browser?.close();if(server)await new Promise(r=>server.close(r));});
-for(const role of ['ADMIN','STAFF'])test(`${role} validates course numbers separately and submits without durationWeeks`,async()=>{
- const page=await browser.newPage();const errors=[];let submitted;
+for(const role of ['ADMIN','STAFF','BRANCH_MANAGER'])test(`${role} selects standard sessions and submits unit pricing without durationWeeks`,async()=>{
+ const page=await browser.newPage({viewport:{width:role==='STAFF'?390:1440,height:1000}});const errors=[];let submitted,updated;
+ const courses=[{id:1,programId:1,programCode:'PIANO',programName:'Piano',code:'PIA-OLD',name:'Piano căn bản',level:'BEGINNER',totalSessions:20,tuitionFee:3900000,tuitionPerSession:null,totalClasses:1,totalEnrollments:1}];
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/**',async route=>{
   const name=route.request().url().endsWith('.css')?'bootstrap.min.css':'bootstrap.bundle.min.js';
@@ -33,29 +34,70 @@ for(const role of ['ADMIN','STAFF'])test(`${role} validates course numbers separ
   const req=route.request(),u=new URL(req.url());let data=[];
   if(u.pathname.endsWith('/programs'))data=[{id:1,code:'PIANO',name:'Piano'}];
   if(u.pathname.endsWith('/levels'))data=['BEGINNER','INTERMEDIATE','ADVANCED'];
+  if(u.pathname==='/api/course-management/courses'&&req.method()==='GET')data=courses;
   if(u.pathname==='/api/notifications')data={unreadCount:0,notifications:[]};
   if(u.pathname==='/api/course-management/courses'&&req.method()==='POST'){submitted=req.postDataJSON();data={id:1,...submitted};}
+  if(u.pathname==='/api/course-management/courses/1'&&req.method()==='PUT'){updated=req.postDataJSON();data={id:1,...updated};}
   await route.fulfill({json:data});
  });
  try{
   await page.goto(origin+'/pages/course-management.html');
-  await page.locator('#btnOpenCreateModal').click();
+  await page.locator(role==='STAFF'?'#btnOpenCreateModalMobile':'#btnOpenCreateModal').click();
   await page.locator('#fieldProgram').selectOption('1');await page.locator('#fieldLevel').selectOption('BEGINNER');
   await page.locator('#fieldCode').fill('PIA-TEST');await page.locator('#fieldName').fill('Piano thử nghiệm');
   assert.equal(await page.locator('#fieldDurationWeeks').count(),0);
-  await page.locator('#fieldTotalSessions').fill('12');await page.locator('#fieldTuitionFee').fill('30000');
+  assert.deepEqual(await page.locator('#fieldTotalSessions option').evaluateAll(items=>items.map(i=>i.value)),['','12','24','36','48','60']);
+  assert.equal(await page.locator('#fieldTuitionFee').evaluate(el=>el.readOnly),true);
+  await page.locator('#fieldTotalSessions').selectOption('12');await page.locator('#fieldTuitionPerSession').fill('200000');
+  for(const count of [12,24,36,48,60]){
+   await page.locator('#fieldTotalSessions').selectOption(String(count));
+   assert.equal(await page.locator('#fieldTuitionFee').inputValue(),String(count*200000));
+  }
+  await page.locator('#fieldTotalSessions').selectOption('12');
+  assert.equal(await page.locator('#fieldTuitionPerSession').getAttribute('min'),'50000');
+  assert.equal(await page.locator('#fieldTuitionPerSession').getAttribute('max'),'1000000');
+  for(const price of [50000,1000000]){
+   await page.locator('#fieldTuitionPerSession').fill(String(price));
+   assert.equal(await page.locator('#fieldTuitionPerSession').evaluate(el=>el.checkValidity()),true);
+   assert.equal(await page.locator('#fieldTuitionFee').inputValue(),String(price*12));
+  }
   for(const [field,value,expected] of [
-   ['fieldTotalSessions','-1',/số âm/],['fieldTotalSessions','1.5',/thập phân/],['fieldTotalSessions','0',/lớn hơn 0/],['fieldTotalSessions','1001',/1000/],
-   ['fieldTuitionFee','-1',/số âm/],['fieldTuitionFee','1.5',/thập phân/],['fieldTuitionFee','0',/lớn hơn 0/]
+   ['fieldTuitionPerSession','-1',/số âm/],['fieldTuitionPerSession','1.5',/thập phân/],['fieldTuitionPerSession','0',/lớn hơn 0/],
+   ['fieldTuitionPerSession','1',/50.000 đến 1.000.000/],['fieldTuitionPerSession','49999',/50.000 đến 1.000.000/],
+   ['fieldTuitionPerSession','1000001',/50.000 đến 1.000.000/]
   ]){
    await page.locator('#'+field).fill(value);await page.locator('#btnSubmitCourse').click();
    assert.match(await page.locator('#'+field).evaluate(el=>el.validationMessage),expected);
    assert.equal(submitted,undefined);
-   await page.locator('#'+field).fill(field==='fieldTotalSessions'?'12':'30000');
+   await page.locator('#'+field).fill('200000');
   }
   const saved=page.waitForRequest(r=>r.url().endsWith('/api/course-management/courses')&&r.method()==='POST');
   await page.locator('#btnSubmitCourse').click();await saved;
-  assert.equal(submitted.totalSessions,12);assert.equal(submitted.tuitionFee,30000);
+  assert.equal(submitted.totalSessions,12);assert.equal(submitted.tuitionPerSession,200000);
+  assert.equal(Object.hasOwn(submitted,'tuitionFee'),false);
   assert.equal(Object.hasOwn(submitted,'durationWeeks'),false);assert.deepEqual(errors,[]);
+  await page.locator('#courseFormModal').waitFor({state:'hidden'});
+  await page.locator('button[title="Chỉnh sửa"]').first().click();
+  assert.equal(await page.locator('#fieldTotalSessions').inputValue(),'');
+  assert.equal(await page.locator('#fieldTuitionPerSession').inputValue(),'');
+  assert.match(await page.locator('#coursePricingHint').textContent(),/Khóa học cũ: 20 buổi/);
+  await page.locator('#btnSubmitCourse').click();assert.equal(updated,undefined);
+  await page.locator('#fieldTotalSessions').selectOption('24');
+  await page.locator('#fieldTuitionPerSession').fill('200000');
+  assert.equal(await page.locator('#fieldTuitionFee').inputValue(),'4800000');
+  if(process.env.CLASS_SCREENSHOT_DIR){
+   await fs.mkdir(process.env.CLASS_SCREENSHOT_DIR,{recursive:true});
+   await page.screenshot({path:path.join(process.env.CLASS_SCREENSHOT_DIR,`course-pricing-${role}.png`),fullPage:true});
+  }
+  const changed=page.waitForRequest(r=>r.url().endsWith('/api/course-management/courses/1')&&r.method()==='PUT');
+  await page.locator('#btnSubmitCourse').click();await changed;
+  assert.equal(updated.totalSessions,24);assert.equal(updated.tuitionPerSession,200000);
+  assert.deepEqual(errors,[]);
+ }catch(error){
+  if(process.env.CLASS_SCREENSHOT_DIR){
+   await fs.mkdir(process.env.CLASS_SCREENSHOT_DIR,{recursive:true});
+   await page.screenshot({path:path.join(process.env.CLASS_SCREENSHOT_DIR,`course-pricing-failed-${role}.png`),fullPage:true});
+  }
+  throw error;
  }finally{await page.close();}
 });

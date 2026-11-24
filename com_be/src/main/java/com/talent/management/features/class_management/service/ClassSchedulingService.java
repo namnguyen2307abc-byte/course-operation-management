@@ -6,6 +6,7 @@ import com.talent.management.features.branch_facility_enrollment.service.Facilit
 import com.talent.management.features.class_management.repository.ManagedClassLessonRepository;
 import com.talent.management.shared.entity.*;
 import com.talent.management.shared.enums.*;
+import com.talent.management.shared.policy.CourseSessionPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -109,10 +110,10 @@ public class ClassSchedulingService {
                 throw error(HttpStatus.BAD_REQUEST, "Thứ trong tuần phải từ 1 đến 7");
             }
         }
-        Integer courseSessions = classEntity.getCourse().getTotalSessions();
-        int totalSessions = requestedSessions != null ? requestedSessions : courseSessions != null ? courseSessions : 12;
-        if (totalSessions < 1 || totalSessions > 60) {
-            throw error(HttpStatus.BAD_REQUEST, "Tổng số buổi phải từ 1 đến 60");
+        int totalSessions = CourseSessionPolicy.requireStandardSessions(classEntity.getCourse().getTotalSessions());
+        if (requestedSessions != null && requestedSessions != totalSessions) {
+            throw error(HttpStatus.BAD_REQUEST,
+                    "Số buổi của lớp phải bằng số buổi của khóa học đã chọn: " + totalSessions + " buổi");
         }
         Set<Integer> days = new HashSet<>(daysOfWeek);
         LocalDate date = classEntity.getStartDate();

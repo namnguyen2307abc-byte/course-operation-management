@@ -47,8 +47,9 @@ test('class form filters assignments, calculates end date and displays a schedul
                 let status = 200;
                 if (url.pathname === '/api/class-management/classes/page') body = { items: classRows, page: 0, size: 10, totalElements: classRows.length, totalPages: classRows.length ? 1 : 0 };
                 if (url.pathname === '/api/course-enrollment/courses') body = [
-                    { id: 1, code: 'PIANO', name: 'Piano', totalSessions: 4 },
-                    { id: 2, code: 'GUITAR', name: 'Guitar', totalSessions: 4 }
+                    { id: 1, code: 'PIANO', name: 'Piano', totalSessions: 12 },
+                    { id: 2, code: 'GUITAR', name: 'Guitar', totalSessions: 24 },
+                    { id: 3, code: 'OLD', name: 'Legacy course', totalSessions: 20 }
                 ];
                 if (url.pathname === '/api/branches') body = [
                     { id: 1, code: 'B1', name: 'Campus', active: true },
@@ -85,9 +86,19 @@ test('class form filters assignments, calculates end date and displays a schedul
             await page.goto(origin + '/pages/class-management.html');
             await page.locator('#courseId option[value="1"]').waitFor({ state: 'attached' });
             await page.locator('#newClassBtn').click();
+            await page.locator('#courseId').selectOption('3');
+            await page.locator('#branchId').selectOption('1');
+            await page.locator('#classCode').fill('LEGACY');
+            await page.locator('#className').fill('Legacy class');
+            await page.locator('#saveBtn').click();
+            await page.locator('#formError').filter({hasText:'cập nhật khóa học'}).waitFor();
+            assert.equal(payload, undefined);
+            await page.locator('#branchId').selectOption('');
             assert.match(await page.locator('#filterBranch option[value="2"]').textContent(), /Ngừng hoạt động/);
             assert.equal(await page.locator('#branchId option[value="2"]').count(), 0);
             await page.locator('#courseId').selectOption('1');
+            assert.equal(await page.locator('#totalSessions').inputValue(), '12');
+            assert.equal(await page.locator('#totalSessions').evaluate(el => el.readOnly), true);
             await page.locator('#teacherId option[value="11"]').waitFor({ state: 'attached' });
             assert.equal(await page.locator('#teacherId option').count(), 2);
             await page.locator('#teacherId').selectOption('11');
@@ -96,7 +107,7 @@ test('class form filters assignments, calculates end date and displays a schedul
             await page.locator('#roomId').selectOption('21');
             extraRooms = true;
             await page.locator('#maxStudents').fill('6');
-            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.locator('#maxStudents').press('Tab');
             await page.getByRole('button',{name:'Xem thêm 2 phòng phù hợp',exact:true}).waitFor();
             assert.equal(await page.locator('#roomId option').count(),2);
             assert.equal(await page.locator('#roomId').inputValue(),'21');
@@ -109,16 +120,17 @@ test('class form filters assignments, calculates end date and displays a schedul
             assert.equal(await page.locator('#roomId').inputValue(),'121');
             assert.equal(await page.locator('#roomId option').count(),3);
             await page.locator('#maxStudents').fill('13');
-            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.locator('#maxStudents').press('Tab');
             await page.locator('#roomId option[value="221"]').waitFor({state:'attached'});
             assert.equal(await page.locator('#roomId option[value="21"]').count(),0);
             assert.equal(await page.locator('#roomId').inputValue(),'');
             extraRooms = false;
             await page.locator('#maxStudents').fill('6');
-            await page.locator('#maxStudents').dispatchEvent('change');
+            await page.locator('#maxStudents').press('Tab');
             await page.locator('#roomId option[value="21"]').waitFor({state:'attached'});
             await page.locator('#roomId').selectOption('21');
             await page.locator('#courseId').selectOption('2');
+            assert.equal(await page.locator('#totalSessions').inputValue(), '24');
             await page.locator('#teacherId option[value="12"]').waitFor({ state: 'attached' });
             await page.locator('#roomId option[value="22"]').waitFor({ state: 'attached' });
             assert.equal(await page.locator('#teacherId').inputValue(), '');
@@ -127,7 +139,9 @@ test('class form filters assignments, calculates end date and displays a schedul
             await page.locator('#roomId').selectOption('22');
             await page.locator('#startDate').fill('2027-01-01');
             await page.locator('#startDate').dispatchEvent('change');
-            assert.equal(await page.locator('#endDate').inputValue(), '2027-01-08');
+            // A changed DOM value must not override the selected course in the request.
+            await page.locator('#totalSessions').evaluate(el => {el.value = '1';});
+            assert.equal(await page.locator('#endDate').inputValue(), '2027-02-24');
             assert.equal(await page.locator('#endDate').evaluate(element => element.readOnly), true);
             await page.locator('#classCode').fill('UI-TEST');
             await page.locator('#className').fill('Class scheduling test');
@@ -136,7 +150,8 @@ test('class form filters assignments, calculates end date and displays a schedul
             await page.locator('#formError').filter({ hasText: '30 phút' }).waitFor();
             assert.equal(payload.teacherId, 12);
             assert.equal(payload.roomId, 22);
-            assert.equal(payload.endDate, '2027-01-08');
+            assert.equal(payload.endDate, '2027-02-24');
+            assert.equal(payload.totalSessions, 24);
             assert.deepEqual(errors, []);
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
             if (process.env.CLASS_SCREENSHOT_DIR) {

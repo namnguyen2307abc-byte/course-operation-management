@@ -129,6 +129,7 @@ CREATE TABLE courses (
     duration_weeks INT,
     total_sessions INT,
     tuition_fee DECIMAL(12,2) NOT NULL,
+    tuition_per_session DECIMAL(12,2) NULL,
     description NVARCHAR(1000)
 );
 GO

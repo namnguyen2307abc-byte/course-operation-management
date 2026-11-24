@@ -15,6 +15,7 @@ public record CourseDetailResponse(
         BigDecimal tuitionFee,
         String description,
         Long totalClasses,
-        Long totalEnrollments
+        Long totalEnrollments,
+        BigDecimal tuitionPerSession
 ) {
 }
