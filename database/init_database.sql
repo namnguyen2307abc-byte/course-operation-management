@@ -27,6 +27,8 @@ DROP TABLE IF EXISTS lessons;
 DROP TABLE IF EXISTS test_attachments;
 DROP TABLE IF EXISTS learning_roadmaps;
 DROP TABLE IF EXISTS placement_tests;
+DROP TABLE IF EXISTS placement_schedule_criteria_scores;
+DROP TABLE IF EXISTS placement_criteria;
 DROP TABLE IF EXISTS placement_schedules;
 DROP TABLE IF EXISTS enrollment_requests;
 DROP TABLE IF EXISTS enrollments;
@@ -359,6 +361,61 @@ CREATE TABLE payments (
 GO
 
 -- ============================================================================
+-- Placement criteria schema and default rubric.
+IF OBJECT_ID(N'dbo.placement_criteria', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.placement_criteria (
+        id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        subject VARCHAR(30) NOT NULL,
+        criteria_name NVARCHAR(150) NOT NULL,
+        display_order INT NOT NULL DEFAULT 1,
+        is_active BIT NOT NULL DEFAULT 1,
+        created_at DATETIME2 NOT NULL DEFAULT SYSDATETIME()
+    );
+END;
+
+IF OBJECT_ID(N'dbo.placement_schedule_criteria_scores', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.placement_schedule_criteria_scores (
+        id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        schedule_id BIGINT NOT NULL,
+        criteria_id BIGINT NULL,
+        criteria_name_snapshot NVARCHAR(150) NOT NULL,
+        score_10 FLOAT NOT NULL,
+        display_order INT NOT NULL DEFAULT 1,
+        CONSTRAINT FK_placement_schedule_criteria_scores_schedule FOREIGN KEY (schedule_id) REFERENCES dbo.placement_schedules(id),
+        CONSTRAINT FK_placement_schedule_criteria_scores_criteria FOREIGN KEY (criteria_id) REFERENCES dbo.placement_criteria(id)
+    );
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.placement_criteria WHERE subject = 'DAN')
+BEGIN
+    INSERT INTO dbo.placement_criteria (subject, criteria_name, display_order, is_active, created_at) VALUES
+    ('DAN', N'1. Cảm âm & Nhạc cảm (Pitch)', 1, 1, SYSDATETIME()),
+    ('DAN', N'2. Nhịp phách & Tiết tấu (Rhythm)', 2, 1, SYSDATETIME()),
+    ('DAN', N'3. Kỹ thuật ngón & Tư thế tay (Technique)', 3, 1, SYSDATETIME()),
+    ('DAN', N'4. Đọc bản nhạc & Thị tấu (Sight Reading)', 4, 1, SYSDATETIME());
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.placement_criteria WHERE subject = 'MUA')
+BEGIN
+    INSERT INTO dbo.placement_criteria (subject, criteria_name, display_order, is_active, created_at) VALUES
+    ('MUA', N'1. Độ dẻo & Uyển chuyển (Flexibility)', 1, 1, SYSDATETIME()),
+    ('MUA', N'2. Cảm thụ âm nhạc & Nhịp điệu (Musicality)', 2, 1, SYSDATETIME()),
+    ('MUA', N'3. Phom dáng & Kỹ thuật động tác (Posture)', 3, 1, SYSDATETIME()),
+    ('MUA', N'4. Thần thái & Biểu cảm biểu diễn (Stage Presence)', 4, 1, SYSDATETIME());
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.placement_criteria WHERE subject = 'VO')
+BEGIN
+    INSERT INTO dbo.placement_criteria (subject, criteria_name, display_order, is_active, created_at) VALUES
+    ('VO', N'1. Thể lực & Sức bền (Stamina & Strength)', 1, 1, SYSDATETIME()),
+    ('VO', N'2. Tốc độ & Phản xạ tự vệ (Reflexes & Speed)', 2, 1, SYSDATETIME()),
+    ('VO', N'3. Tấn pháp & Kỹ thuật đòn (Stances & Technique)', 3, 1, SYSDATETIME()),
+    ('VO', N'4. Tác phong & Kỷ luật võ đạo (Martial Discipline)', 4, 1, SYSDATETIME());
+END;
+GO
+
 -- 3. SEED DATA CHI TIẾT PHỤC VỤ TEST TỪ A-Z CẢ 2 NHÁNH
 -- ============================================================================
 

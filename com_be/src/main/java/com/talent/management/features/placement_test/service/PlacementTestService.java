@@ -2,6 +2,8 @@ package com.talent.management.features.placement_test.service;
 
 import com.talent.management.features.placement_test.dto.request.CreatePlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
+import com.talent.management.features.placement_test.dto.request.SavePlacementCriteriaRequest;
+import com.talent.management.features.placement_test.dto.response.PlacementCriteriaResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementProgramResponse;
@@ -34,4 +36,12 @@ public interface PlacementTestService {
     List<PlacementProgramResponse> getPlacementPrograms();
 
     Program requirePlacementProgram(Long programId);
+
+    List<PlacementCriteriaResponse> getCriteria(String subject, boolean includeInactive);
+
+    PlacementCriteriaResponse createCriteria(SavePlacementCriteriaRequest request);
+
+    PlacementCriteriaResponse updateCriteria(Long id, SavePlacementCriteriaRequest request);
+
+    void deleteCriteria(Long id);
 }

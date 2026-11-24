@@ -7,12 +7,20 @@ import com.talent.management.shared.enums.EnrollmentRequestStatus;
 import com.talent.management.features.course_enrollment.repository.EnrollmentRequestRepository;
 import com.talent.management.features.placement_test.dto.request.CreatePlacementScheduleRequest;
 import com.talent.management.features.placement_test.dto.request.PlacementAssessmentRequest;
+import com.talent.management.features.placement_test.dto.request.PlacementCriteriaScoreItemRequest;
+import com.talent.management.features.placement_test.dto.request.SavePlacementCriteriaRequest;
+import com.talent.management.features.placement_test.dto.response.PlacementCriteriaResponse;
+import com.talent.management.features.placement_test.dto.response.PlacementScheduleCriteriaScoreResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementScheduleResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementRecommendationResponse;
 import com.talent.management.features.placement_test.dto.response.PlacementProgramResponse;
+import com.talent.management.features.placement_test.entity.PlacementCriteria;
 import com.talent.management.features.placement_test.entity.PlacementSchedule;
+import com.talent.management.features.placement_test.entity.PlacementScheduleCriteriaScore;
 import com.talent.management.features.placement_test.entity.PlacementScheduleStatus;
 import com.talent.management.features.placement_test.mapper.PlacementScheduleMapper;
+import com.talent.management.features.placement_test.repository.PlacementCriteriaRepository;
+import com.talent.management.features.placement_test.repository.PlacementScheduleCriteriaScoreRepository;
 import com.talent.management.features.placement_test.repository.PlacementScheduleRepository;
 import com.talent.management.features.placement_test.repository.PlacementTestRepository;
 import com.talent.management.features.placement_test.service.PlacementTestService;
@@ -23,13 +31,17 @@ import com.talent.management.shared.entity.PlacementTest;
 import com.talent.management.shared.entity.Program;
 import com.talent.management.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,11 +57,170 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     private final UserRepository userRepository;
     private final PlacementScheduleMapper scheduleMapper;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @Autowired(required = false)
     private com.talent.management.features.notification.service.NotificationService notificationService;
     private final EnrollmentRequestRepository enrollmentRequestRepository;
     private final CourseRepository courseRepository;
     private final ProgramRepository programRepository;
+
+    @Autowired(required = false)
+    private PlacementCriteriaRepository criteriaRepository;
+
+    @Autowired(required = false)
+    private PlacementScheduleCriteriaScoreRepository criteriaScoreRepository;
+
+    @Override
+    @Transactional
+    public List<PlacementCriteriaResponse> getCriteria(String subject, boolean includeInactive) {
+        if (criteriaRepository == null) {
+            return List.of();
+        }
+        ensureDefaultCriteriaSeeded();
+
+        List<PlacementCriteria> list;
+        if (subject != null && !subject.isBlank()) {
+            String norm = normalizeSubjectCode(subject);
+            list = includeInactive
+                    ? criteriaRepository.findBySubjectIgnoreCaseOrderByDisplayOrderAscIdAsc(norm)
+                    : criteriaRepository.findBySubjectIgnoreCaseAndActiveTrueOrderByDisplayOrderAscIdAsc(norm);
+        } else {
+            list = includeInactive
+                    ? criteriaRepository.findAllByOrderBySubjectAscDisplayOrderAscIdAsc()
+                    : criteriaRepository.findByActiveTrueOrderBySubjectAscDisplayOrderAscIdAsc();
+        }
+        return list.stream()
+                .map(this::toCriteriaResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public PlacementCriteriaResponse createCriteria(SavePlacementCriteriaRequest request) {
+        if (criteriaRepository == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Kho lưu trữ tiêu chí chưa sẵn sàng");
+        }
+        ensureDefaultCriteriaSeeded();
+
+        String normSubject = normalizeAndValidateSubject(request.getSubject());
+        String trimmedName = request.getCriteriaName() == null ? "" : request.getCriteriaName().trim();
+        if (trimmedName.isEmpty()) {
+            throw new BusinessException("Tên tiêu chí đánh giá không được để trống!");
+        }
+
+        int order = request.getDisplayOrder() != null && request.getDisplayOrder() >= 1
+                ? request.getDisplayOrder()
+                : (int) criteriaRepository.countBySubjectIgnoreCase(normSubject) + 1;
+
+        PlacementCriteria entity = PlacementCriteria.builder()
+                .subject(normSubject)
+                .criteriaName(trimmedName)
+                .displayOrder(order)
+                .active(request.getActive() == null || request.getActive())
+                .build();
+        PlacementCriteria saved = criteriaRepository.save(entity);
+        return toCriteriaResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public PlacementCriteriaResponse updateCriteria(Long id, SavePlacementCriteriaRequest request) {
+        if (criteriaRepository == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Kho lưu trữ tiêu chí chưa sẵn sàng");
+        }
+        PlacementCriteria entity = criteriaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tiêu chí đánh giá với ID: " + id));
+
+        String normSubject = normalizeAndValidateSubject(request.getSubject());
+        String trimmedName = request.getCriteriaName() == null ? "" : request.getCriteriaName().trim();
+        if (trimmedName.isEmpty()) {
+            throw new BusinessException("Tên tiêu chí đánh giá không được để trống!");
+        }
+
+        entity.setSubject(normSubject);
+        entity.setCriteriaName(trimmedName);
+        if (request.getDisplayOrder() != null && request.getDisplayOrder() >= 1) {
+            entity.setDisplayOrder(request.getDisplayOrder());
+        }
+        if (request.getActive() != null) {
+            entity.setActive(request.getActive());
+        }
+        PlacementCriteria saved = criteriaRepository.save(entity);
+        return toCriteriaResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCriteria(Long id) {
+        if (criteriaRepository == null) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Kho lưu trữ tiêu chí chưa sẵn sàng");
+        }
+        PlacementCriteria entity = criteriaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tiêu chí đánh giá với ID: " + id));
+
+        boolean used = criteriaScoreRepository != null && criteriaScoreRepository.existsByCriteriaId(id);
+        if (used) {
+            // Soft delete: giữ nguyên bản ghi trong DB để bảo toàn lịch sử các bài đã chấm
+            entity.setActive(false);
+            criteriaRepository.save(entity);
+        } else {
+            criteriaRepository.delete(entity);
+        }
+    }
+
+    private void ensureDefaultCriteriaSeeded() {
+        if (criteriaRepository == null || criteriaRepository.count() > 0) {
+            return;
+        }
+        List<PlacementCriteria> defaults = List.of(
+                PlacementCriteria.builder().subject("DAN").criteriaName("1. Cảm âm & Nhạc cảm (Pitch)").displayOrder(1).active(true).build(),
+                PlacementCriteria.builder().subject("DAN").criteriaName("2. Nhịp phách & Tiết tấu (Rhythm)").displayOrder(2).active(true).build(),
+                PlacementCriteria.builder().subject("DAN").criteriaName("3. Kỹ thuật ngón & Tư thế tay (Technique)").displayOrder(3).active(true).build(),
+                PlacementCriteria.builder().subject("DAN").criteriaName("4. Đọc bản nhạc & Thị tấu (Sight Reading)").displayOrder(4).active(true).build(),
+                PlacementCriteria.builder().subject("MUA").criteriaName("1. Độ dẻo & Uyển chuyển (Flexibility)").displayOrder(1).active(true).build(),
+                PlacementCriteria.builder().subject("MUA").criteriaName("2. Cảm thụ âm nhạc & Nhịp điệu (Musicality)").displayOrder(2).active(true).build(),
+                PlacementCriteria.builder().subject("MUA").criteriaName("3. Phom dáng & Kỹ thuật động tác (Posture)").displayOrder(3).active(true).build(),
+                PlacementCriteria.builder().subject("MUA").criteriaName("4. Thần thái & Biểu cảm biểu diễn (Stage Presence)").displayOrder(4).active(true).build(),
+                PlacementCriteria.builder().subject("VO").criteriaName("1. Thể lực & Sức bền (Stamina & Strength)").displayOrder(1).active(true).build(),
+                PlacementCriteria.builder().subject("VO").criteriaName("2. Tốc độ & Phản xạ tự vệ (Reflexes & Speed)").displayOrder(2).active(true).build(),
+                PlacementCriteria.builder().subject("VO").criteriaName("3. Tấn pháp & Kỹ thuật đòn (Stances & Technique)").displayOrder(3).active(true).build(),
+                PlacementCriteria.builder().subject("VO").criteriaName("4. Tác phong & Kỷ luật võ đạo (Martial Discipline)").displayOrder(4).active(true).build()
+        );
+        criteriaRepository.saveAll(defaults);
+    }
+
+    private String normalizeSubjectCode(String subject) {
+        if (scheduleMapper != null) {
+            String mapped = scheduleMapper.normalizeSubject(subject);
+            if (mapped != null) {
+                return mapped;
+            }
+        }
+        if (subject == null || subject.isBlank()) {
+            return "DAN";
+        }
+        return subject.trim().toUpperCase();
+    }
+
+    private String normalizeAndValidateSubject(String subject) {
+        String norm = normalizeSubjectCode(subject);
+        if (!PLACEMENT_SUBJECTS.contains(norm)) {
+            throw new BusinessException("Bộ môn tiêu chí không hợp lệ (chỉ hỗ trợ DAN, MUA, VO)");
+        }
+        return norm;
+    }
+
+    private PlacementCriteriaResponse toCriteriaResponse(PlacementCriteria entity) {
+        boolean used = criteriaScoreRepository != null && entity.getId() != null
+                && criteriaScoreRepository.existsByCriteriaId(entity.getId());
+        return PlacementCriteriaResponse.builder()
+                .id(entity.getId())
+                .subject(entity.getSubject())
+                .criteriaName(entity.getCriteriaName())
+                .displayOrder(entity.getDisplayOrder())
+                .active(entity.getActive())
+                .usedInAssessments(used)
+                .build();
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -83,22 +254,25 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     @Override
     @Transactional(readOnly = true)
     public List<PlacementScheduleResponse> getAllSchedules(String currentUsername) {
+        List<PlacementScheduleResponse> responses;
         if (currentUsername != null && !currentUsername.isBlank()) {
             var userOpt = userRepository.findByUsername(currentUsername);
             if (userOpt.isPresent() && userOpt.get().getRole() == com.talent.management.shared.enums.Role.TEACHER) {
                 String teacherSubject = userOpt.get().getSubject();
                 if (teacherSubject != null && !teacherSubject.isBlank()) {
-                    return scheduleRepository.findBySubjectIgnoreCaseOrderByTestDateDesc(teacherSubject.trim())
+                    responses = scheduleRepository.findBySubjectIgnoreCaseOrderByTestDateDesc(teacherSubject.trim())
                             .stream()
                             .map(scheduleMapper::toResponse)
                             .collect(Collectors.toList());
+                    return enrichWithCriteriaScores(responses);
                 }
             }
         }
-        return scheduleRepository.findAllByOrderByTestDateDesc()
+        responses = scheduleRepository.findAllByOrderByTestDateDesc()
                 .stream()
                 .map(scheduleMapper::toResponse)
                 .collect(Collectors.toList());
+        return enrichWithCriteriaScores(responses);
     }
 
     @Override
@@ -120,18 +294,20 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             if (userOpt.isPresent() && userOpt.get().getRole() == com.talent.management.shared.enums.Role.TEACHER) {
                 String teacherSubject = userOpt.get().getSubject();
                 if (teacherSubject != null && !teacherSubject.isBlank()) {
-                    return scheduleRepository.findBySubjectIgnoreCaseAndParentEmailOrderByTestDateAsc(teacherSubject.trim(), normalizedEmail)
+                    List<PlacementScheduleResponse> responses = scheduleRepository.findBySubjectIgnoreCaseAndParentEmailOrderByTestDateAsc(teacherSubject.trim(), normalizedEmail)
                             .stream()
                             .map(scheduleMapper::toResponse)
                             .collect(Collectors.toList());
+                    return enrichWithCriteriaScores(responses);
                 }
             }
         }
 
-        return scheduleRepository.findByParentEmailOrderByTestDateAsc(normalizedEmail)
+        List<PlacementScheduleResponse> responses = scheduleRepository.findByParentEmailOrderByTestDateAsc(normalizedEmail)
                 .stream()
                 .map(scheduleMapper::toResponse)
                 .collect(Collectors.toList());
+        return enrichWithCriteriaScores(responses);
     }
 
     @Override
@@ -139,7 +315,11 @@ public class PlacementTestServiceImpl implements PlacementTestService {
     public PlacementScheduleResponse getScheduleById(Long id) {
         PlacementSchedule schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Lịch thi xếp lớp không tồn tại với ID: " + id));
-        return scheduleMapper.toResponse(schedule);
+        PlacementScheduleResponse response = scheduleMapper.toResponse(schedule);
+        if (response != null) {
+            enrichWithCriteriaScores(List.of(response));
+        }
+        return response;
     }
 
     @Override
@@ -184,7 +364,50 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             }
         }
 
-        schedule.setScore(request.getScore());
+        Integer finalScore = request.getScore();
+        List<PlacementCriteriaScoreItemRequest> scoreItems = request.getCriteriaScores();
+        if (scoreItems != null && !scoreItems.isEmpty()) {
+            double sum = 0.0;
+            int validCount = 0;
+            Set<Long> submittedCriteria = new java.util.HashSet<>();
+            String assessmentSubject = normalizeSubjectCode(schedule.getSubject() != null
+                    ? schedule.getSubject() : scheduleMapper.inferSubject(schedule.getTitle()));
+            for (PlacementCriteriaScoreItemRequest item : scoreItems) {
+                if (item == null || item.getScore() == null) {
+                    throw new BusinessException("Vui lòng nhập đầy đủ điểm cho từng tiêu chí đánh giá!");
+                }
+                if (!Double.isFinite(item.getScore()) || item.getScore() < 0.0 || item.getScore() > 10.0) {
+                    throw new BusinessException("Điểm từng tiêu chí phải nằm trong khoảng từ 0 đến 10!");
+                }
+                if (item.getCriteriaId() != null && criteriaRepository != null) {
+                    if (!submittedCriteria.add(item.getCriteriaId())) {
+                        throw new BusinessException("Không được gửi trùng tiêu chí đánh giá: " + item.getCriteriaId());
+                    }
+                    PlacementCriteria criterion = criteriaRepository.findById(item.getCriteriaId())
+                            .orElseThrow(() -> new BusinessException("Tiêu chí đánh giá không tồn tại: " + item.getCriteriaId()));
+                    if (assessmentSubject != null && !assessmentSubject.isBlank()
+                            && !assessmentSubject.equalsIgnoreCase(normalizeSubjectCode(criterion.getSubject()))) {
+                        throw new BusinessException("Tiêu chí " + criterion.getCriteriaName() + " không thuộc bộ môn của ca kiểm tra!");
+                    }
+                    if (Boolean.FALSE.equals(criterion.getActive())) {
+                        boolean previouslyUsed = criteriaScoreRepository != null
+                                && criteriaScoreRepository.findByScheduleIdOrderByDisplayOrderAscIdAsc(scheduleId).stream()
+                                        .anyMatch(row -> row.getCriteria() != null
+                                                && item.getCriteriaId().equals(row.getCriteria().getId()));
+                        if (!previouslyUsed) {
+                            throw new BusinessException("Tiêu chí " + criterion.getCriteriaName() + " đã ngưng áp dụng. Vui lòng tải lại danh sách tiêu chí!");
+                        }
+                    }
+                }
+                sum += item.getScore();
+                validCount++;
+            }
+            if (validCount > 0) {
+                finalScore = (int) Math.round((sum / validCount) * 10.0);
+            }
+        }
+
+        schedule.setScore(finalScore);
         schedule.setRecommendedLevel(request.getRecommendedLevel());
         schedule.setRecommendedCourse(recommendedCourse);
         schedule.setTeacherNote(request.getTeacherNote());
@@ -196,12 +419,14 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         schedule.setStatus(PlacementScheduleStatus.COMPLETED);
 
         PlacementSchedule saved = scheduleRepository.save(schedule);
+        saveScheduleCriteriaScores(saved, scoreItems);
+
         if (enrollmentRequest != null && enrollmentRequest.getStatus() == EnrollmentRequestStatus.WAITING_PLACEMENT) {
             enrollmentRequest.setPreferredCourse(recommendedCourse);
             enrollmentRequest.setStatus(EnrollmentRequestStatus.READY_FOR_ASSIGNMENT);
             enrollmentRequestRepository.save(enrollmentRequest);
         }
-        if (notificationService != null) {
+        if (notificationService != null && saved != null) {
             String recCourseName = recommendedCourse != null ? recommendedCourse.getName() : "Theo đề xuất giáo viên";
             if (saved.getParent() != null) {
                 notificationService.sendNotification(
@@ -216,7 +441,84 @@ public class PlacementTestServiceImpl implements PlacementTestService {
                     "Học viên " + saved.getStudentName() + " đạt " + saved.getScore() + " điểm (Đề xuất: " + recCourseName + "), sẵn sàng xếp lớp.",
                     "PLACEMENT_COMPLETED", saved.getId(), "/pages/course-enrollment.html");
         }
-        return scheduleMapper.toResponse(saved);
+        PlacementScheduleResponse response = scheduleMapper.toResponse(saved);
+        if (response != null) {
+            enrichWithCriteriaScores(List.of(response));
+        }
+        return response;
+    }
+
+    private void saveScheduleCriteriaScores(PlacementSchedule savedSchedule, List<PlacementCriteriaScoreItemRequest> scoreItems) {
+        if (criteriaScoreRepository == null || savedSchedule == null || savedSchedule.getId() == null
+                || scoreItems == null || scoreItems.isEmpty()) {
+            return;
+        }
+        criteriaScoreRepository.deleteByScheduleId(savedSchedule.getId());
+        List<PlacementScheduleCriteriaScore> toSave = new ArrayList<>();
+        int index = 1;
+        for (PlacementCriteriaScoreItemRequest item : scoreItems) {
+            if (item == null || item.getScore() == null) {
+                continue;
+            }
+            PlacementCriteria foundCriteria = null;
+            if (item.getCriteriaId() != null && criteriaRepository != null) {
+                foundCriteria = criteriaRepository.findById(item.getCriteriaId()).orElse(null);
+            }
+            String snapshotName = foundCriteria != null
+                    ? foundCriteria.getCriteriaName()
+                    : (item.getCriteriaName() != null && !item.getCriteriaName().isBlank()
+                            ? item.getCriteriaName().trim()
+                            : "Tiêu chí " + index);
+            int order = foundCriteria != null && foundCriteria.getDisplayOrder() != null
+                    ? foundCriteria.getDisplayOrder()
+                    : index;
+            toSave.add(PlacementScheduleCriteriaScore.builder()
+                    .schedule(savedSchedule)
+                    .criteria(foundCriteria)
+                    .criteriaNameSnapshot(snapshotName)
+                    .score(item.getScore())
+                    .displayOrder(order)
+                    .build());
+            index++;
+        }
+        if (!toSave.isEmpty()) {
+            criteriaScoreRepository.saveAll(toSave);
+        }
+    }
+
+    private List<PlacementScheduleResponse> enrichWithCriteriaScores(List<PlacementScheduleResponse> responses) {
+        if (criteriaScoreRepository == null || responses == null || responses.isEmpty()) {
+            return responses;
+        }
+        List<Long> ids = responses.stream()
+                .filter(Objects::nonNull)
+                .map(PlacementScheduleResponse::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ids.isEmpty()) {
+            return responses;
+        }
+        Map<Long, List<PlacementScheduleCriteriaScoreResponse>> byScheduleId = criteriaScoreRepository
+                .findByScheduleIdInOrderByScheduleIdAscDisplayOrderAscIdAsc(ids)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        row -> row.getSchedule().getId(),
+                        Collectors.mapping(
+                                row -> PlacementScheduleCriteriaScoreResponse.builder()
+                                        .criteriaId(row.getCriteria() != null ? row.getCriteria().getId() : null)
+                                        .criteriaName(row.getCriteriaNameSnapshot())
+                                        .score(row.getScore())
+                                        .displayOrder(row.getDisplayOrder())
+                                        .build(),
+                                Collectors.toList()
+                        )
+                ));
+        for (PlacementScheduleResponse resp : responses) {
+            if (resp != null && resp.getId() != null) {
+                resp.setCriteriaScores(byScheduleId.getOrDefault(resp.getId(), Collections.emptyList()));
+            }
+        }
+        return responses;
     }
 
     @Override
@@ -267,7 +569,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             userRepository.findByUsername(parentUsername).ifPresent(schedule::setParent);
         }
         PlacementSchedule saved = scheduleRepository.save(schedule);
-        if (notificationService != null) {
+        if (notificationService != null && saved != null) {
             if (saved.getParent() != null) {
                 notificationService.sendNotification(
                         saved.getParent(), null,
@@ -321,14 +623,13 @@ public class PlacementTestServiceImpl implements PlacementTestService {
         schedule.setStatus(PlacementScheduleStatus.CANCELLED);
         schedule.setCancelReason(trimmedReason);
         schedule.setCancelledAt(LocalDateTime.now());
-        // Nếu gắn với EnrollmentRequest đang chờ Placement Test, cho phép tách liên kết để xếp lịch mới hoặc hủy đơn
         EnrollmentRequest enrollmentRequest = schedule.getEnrollmentRequest();
         if (enrollmentRequest != null && enrollmentRequest.getStatus() == EnrollmentRequestStatus.WAITING_PLACEMENT) {
             schedule.setEnrollmentRequest(null);
         }
 
         PlacementSchedule saved = scheduleRepository.save(schedule);
-        if (notificationService != null && saved.getParent() != null) {
+        if (notificationService != null && saved != null && saved.getParent() != null) {
             notificationService.sendNotification(
                     saved.getParent(), null,
                     "Lịch kiểm tra đầu vào (Placement Test) đã hủy",
