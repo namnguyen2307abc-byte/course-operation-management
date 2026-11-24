@@ -327,8 +327,8 @@ test('teacher assessment renders database criteria and submits their IDs and nor
   assert.equal(await page.locator('.eval-criteria-slider').count(),2);
   assert.match(await page.locator('#evalCriteriaContainer').textContent(),/Nghe giai điệu mới/);
   assert.equal(await page.locator('#btnManageCriteria').isVisible(),false);
-  await page.locator('#score_crit_101').fill('8');
-  await page.locator('#score_crit_102').fill('9');
+  await page.locator('[data-criteria-id="101"]').fill('8');
+  await page.locator('[data-criteria-id="102"]').fill('9');
   const saved=page.waitForRequest(r=>r.url().includes('/api/placement-tests/7/assess')&&r.method()==='POST');
   await page.locator('#evaluatePlacementTestForm button[type=submit]').click();await saved;
   assert.equal(submitted.score,85);
@@ -355,5 +355,39 @@ test('admin can create a database criterion through the configuration modal',asy
   await page.locator('#criteriaConfigTableBody tr').filter({hasText:'Tiết tấu mới'}).waitFor();
   assert.deepEqual(created,{subject:'DAN',criteriaName:'Tiết tấu mới',displayOrder:2,active:true});
   assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('completed assessment keeps historical criteria when the current catalog changes',async()=>{
+ const completed={...assessment,status:'COMPLETED',score:85,criteriaScores:[
+  {criteriaId:101,criteriaName:'Tiêu chí lịch sử A',score:8},{criteriaId:102,criteriaName:'Tiêu chí lịch sử B',score:9}
+ ]};
+ const {page,errors}=await open('TEACHER','placement-test.html',u=>{
+  if(u.pathname==='/api/placement-tests')return [completed];
+  if(u.pathname==='/api/placement-tests/criteria')return [{id:101,criteriaName:'Tên mới của A',active:true},{id:103,criteriaName:'Tiêu chí thêm sau',active:true}];
+ });
+ try{
+  await page.waitForFunction(()=>placementTestsData.some(x=>x.id===7));
+  await page.evaluate(()=>openEvaluateModal(7));await page.locator('#evaluateModal.show').waitFor();
+  assert.equal(await page.locator('.eval-criteria-slider').count(),2);
+  const text=await page.locator('#evalCriteriaContainer').textContent();
+  assert.match(text,/Tiêu chí lịch sử A/);assert.match(text,/Tiêu chí lịch sử B/);
+  assert.doesNotMatch(text,/Tên mới của A|Tiêu chí thêm sau/);
+  assert.equal(await page.locator('[data-criteria-id="101"]').inputValue(),'8');
+  assert.equal(await page.locator('[data-criteria-id="102"]').inputValue(),'9');
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
+test('ungraded assessment details do not invent per-criterion scores',async()=>{
+ const {page,errors}=await open('TEACHER','placement-test.html',u=>{
+  if(u.pathname==='/api/placement-tests')return [assessment];
+  if(u.pathname==='/api/placement-tests/criteria')return [{id:101,criteriaName:'Tiêu chí chưa được chấm',active:true}];
+ });
+ try{
+  await page.waitForFunction(()=>placementTestsData.some(x=>x.id===7));await page.evaluate(()=>openDetailModal(7));
+  await page.locator('#detailCriteriaContainer').waitFor();
+  assert.match(await page.locator('#detailCriteriaContainer').textContent(),/chưa hoàn thành chấm điểm/);
+  assert.equal(await page.locator('#detailCriteriaContainer .progress-bar').count(),0);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });

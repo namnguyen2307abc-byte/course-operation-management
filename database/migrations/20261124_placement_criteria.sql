@@ -61,6 +61,7 @@ END;
     SELECT id, subject, criteria_name, display_order,
            ROW_NUMBER() OVER (PARTITION BY subject ORDER BY display_order ASC, id ASC) AS rn
     FROM dbo.placement_criteria
+    WHERE is_active = 1
 )
 INSERT INTO dbo.placement_schedule_criteria_scores (schedule_id, criteria_id, criteria_name_snapshot, score_10, display_order)
 SELECT

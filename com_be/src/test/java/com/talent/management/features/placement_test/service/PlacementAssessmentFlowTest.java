@@ -8,6 +8,7 @@ import com.talent.management.features.placement_test.dto.request.PlacementAssess
 import com.talent.management.features.placement_test.dto.request.PlacementCriteriaScoreItemRequest;
 import com.talent.management.features.placement_test.dto.request.SavePlacementCriteriaRequest;
 import com.talent.management.features.placement_test.entity.PlacementCriteria;
+import com.talent.management.features.placement_test.entity.PlacementScheduleCriteriaScore;
 import com.talent.management.features.placement_test.entity.PlacementLevel;
 import com.talent.management.features.placement_test.entity.PlacementSchedule;
 import com.talent.management.features.placement_test.entity.PlacementScheduleStatus;
@@ -204,6 +205,49 @@ class PlacementAssessmentFlowTest {
                 .isInstanceOf(BusinessException.class).hasMessageContaining("không có quyền hủy");
         assertThat(schedule.getStatus()).isEqualTo(PlacementScheduleStatus.SCHEDULED);
         verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void criteriaBackfillOnlyInitializesCompletedSchedulesWithoutSnapshots() {
+        var missing = PlacementSchedule.builder().id(9L).subject("DAN").score(80)
+                .status(PlacementScheduleStatus.COMPLETED).build();
+        var existing = PlacementSchedule.builder().id(10L).subject("DAN").score(90)
+                .status(PlacementScheduleStatus.COMPLETED).build();
+        var pending = PlacementSchedule.builder().id(11L).subject("DAN")
+                .status(PlacementScheduleStatus.SCHEDULED).build();
+        var criterion = PlacementCriteria.builder().id(1L).subject("DAN")
+                .criteriaName("Cảm âm").displayOrder(1).active(true).build();
+        when(criteriaRepository.count()).thenReturn(1L);
+        when(scheduleRepository.findAllByOrderByTestDateDesc()).thenReturn(List.of(missing, existing, pending));
+        when(criteriaScoreRepository.findByScheduleIdInOrderByScheduleIdAscDisplayOrderAscIdAsc(anyCollection()))
+                .thenReturn(List.of(PlacementScheduleCriteriaScore.builder().schedule(existing)
+                        .criteriaNameSnapshot("Tiêu chí cũ").score(9.0).build()));
+        when(criteriaRepository.findByActiveTrueOrderBySubjectAscDisplayOrderAscIdAsc()).thenReturn(List.of(criterion));
+
+        service.getCriteria("DAN", false);
+
+        verify(criteriaScoreRepository).saveAll(argThat(rows -> {
+            var list = (List<PlacementScheduleCriteriaScore>) rows;
+            return list.size() == 1 && list.get(0).getSchedule().getId().equals(9L)
+                    && list.get(0).getScore() == 8.0
+                    && list.get(0).getCriteriaNameSnapshot().equals("Cảm âm");
+        }));
+    }
+
+    @Test
+    void criteriaBackfillNeverReplacesExistingHistoricalSnapshots() {
+        var schedule = PlacementSchedule.builder().id(9L).subject("DAN").score(80)
+                .status(PlacementScheduleStatus.COMPLETED).build();
+        when(criteriaRepository.count()).thenReturn(1L);
+        when(scheduleRepository.findAllByOrderByTestDateDesc()).thenReturn(List.of(schedule));
+        when(criteriaScoreRepository.findByScheduleIdInOrderByScheduleIdAscDisplayOrderAscIdAsc(anyCollection()))
+                .thenReturn(List.of(PlacementScheduleCriteriaScore.builder().schedule(schedule)
+                        .criteriaNameSnapshot("Tên đã lưu khi chấm").score(7.0).build()));
+
+        service.getCriteria("DAN", false);
+
+        verify(criteriaScoreRepository, never()).saveAll(any());
+        verify(criteriaScoreRepository, never()).deleteByScheduleId(anyLong());
     }
 
     private PlacementAssessmentRequest criteriaRequest(List<PlacementCriteriaScoreItemRequest> items) {
