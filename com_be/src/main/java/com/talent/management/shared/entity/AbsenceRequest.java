@@ -34,6 +34,15 @@ public class AbsenceRequest {
     @Column(nullable = false, length = 1000)
     private String reason;
 
+    /** true: nghỉ kèm học bù (mặc định) · false: chỉ xin nghỉ, không tạo ca bù */
+    @Column(name = "need_makeup")
+    @Builder.Default
+    private Boolean needMakeup = Boolean.TRUE;
+
+    public boolean wantsMakeup() {
+        return !Boolean.FALSE.equals(needMakeup);
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default

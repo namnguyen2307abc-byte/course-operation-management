@@ -36,8 +36,8 @@ const Admin = (() => {
             return true;
         } catch (error) { message(error.message); return false; }
     }
-    function link(file, text, count) {
-        return `<a class="admin-queue" href="${escape(appPath('/pages/' + file + '.html'))}"><span>${escape(text)}</span><strong>${escape(count)}</strong><i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>`;
+    function link(file, text, count, query = '') {
+        return `<a class="admin-queue" href="${escape(appPath('/pages/' + file + '.html' + (query ? '?' + query : '')))}"><span>${escape(text)}</span><strong>${escape(count)}</strong><i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>`;
     }
     return { $, roles, actions, statuses, escape, money, date, query, request, message, options, pagination, ready, link };
 })();

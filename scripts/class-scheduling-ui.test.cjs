@@ -2,9 +2,22 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
+const http = require('node:http');
 const { chromium } = require('playwright');
 
 test('class form filters assignments, calculates end date and displays a scheduling rejection', async () => {
+    const root = path.resolve(__dirname, '../com_fe');
+    const server = http.createServer((req, res) => {
+        const file = path.resolve(root, '.' + new URL(req.url, 'http://local').pathname);
+        if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
+        fs.readFile(file, (error, data) => {
+            if (error) { res.writeHead(404); return res.end(); }
+            res.setHeader('Content-Type', {'.html':'text/html', '.js':'text/javascript', '.css':'text/css'}[path.extname(file)] || 'application/octet-stream');
+            res.end(data);
+        });
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = process.env.CLASS_TEST_URL || 'http://127.0.0.1:' + server.address().port;
     const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || 'chrome' });
     try {
         for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
@@ -69,7 +82,7 @@ test('class form filters assignments, calculates end date and displays a schedul
                         'access-control-allow-methods': 'GET,POST,PUT,OPTIONS' },
                     contentType: 'application/json', body: request.method() === 'OPTIONS' ? '' : JSON.stringify(body) });
             });
-            await page.goto((process.env.CLASS_TEST_URL || 'http://127.0.0.1:5500') + '/pages/class-management.html');
+            await page.goto(origin + '/pages/class-management.html');
             await page.locator('#courseId option[value="1"]').waitFor({ state: 'attached' });
             await page.locator('#newClassBtn').click();
             assert.match(await page.locator('#filterBranch option[value="2"]').textContent(), /Ngừng hoạt động/);
@@ -88,9 +101,11 @@ test('class form filters assignments, calculates end date and displays a schedul
             assert.equal(await page.locator('#roomId option').count(),2);
             assert.equal(await page.locator('#roomId').inputValue(),'21');
             await page.locator('#toggleMoreRoomsBtn').click();
+            await page.waitForFunction(() => document.querySelectorAll('#roomId option').length === 4);
             assert.equal(await page.locator('#roomId option').count(),4);
             await page.locator('#roomId').selectOption('121');
             await page.locator('#toggleMoreRoomsBtn').click();
+            await page.waitForFunction(() => document.querySelectorAll('#roomId option').length === 3);
             assert.equal(await page.locator('#roomId').inputValue(),'121');
             assert.equal(await page.locator('#roomId option').count(),3);
             await page.locator('#maxStudents').fill('13');
@@ -161,5 +176,6 @@ test('class form filters assignments, calculates end date and displays a schedul
         }
     } finally {
         await browser.close();
+        await new Promise(resolve => server.close(resolve));
     }
 });

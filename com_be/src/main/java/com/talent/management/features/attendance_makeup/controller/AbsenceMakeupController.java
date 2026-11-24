@@ -23,13 +23,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Controller RESTful APIs cho Phân hệ Nghỉ học & Học bù — Luồng Mới (4 giai đoạn).
- *
+ * ============================================================================
+ * CONTROLLER REST API — PHÂN HỆ NGHỈ HỌC & HỌC BÙ (4 GIAI ĐOẠN)
+ * ============================================================================
+ * Đường dẫn gốc: /api/attendance-makeup
  * Phân quyền theo vai trò thực tế:
- *  PARENT  → Tạo đơn, xem đơn con mình
- *  TEACHER → Xét duyệt đơn (/review), điểm danh
- *  STAFF   → Xếp/hủy lịch bù (/schedule, /cancel), điểm danh
- *  ADMIN   → Toàn quyền
+ *  - PARENT                         -> Tạo đơn (/absence-requests), hủy đơn chờ, xem đơn/lịch của con
+ *  - TEACHER                        -> Xét duyệt đơn (/absence-requests/{id}/review), điểm danh hoàn thành (/complete)
+ *  - STAFF / BRANCH_MANAGER / ADMIN -> Duyệt đơn, xếp/hủy/báo chưa có lớp (/makeup-requests/{id}/schedule|cancel|no-slot), hoàn thành
+ *
+ * Tra nhanh theo tầng xử lý:
+ *  - Service điều phối      -> {@code AbsenceMakeupServiceImpl}
+ *  - Quy tắc 3 lượt/khóa    -> {@code MakeupQuotaPolicy}
+ *  - Validate & Trùng lịch  -> {@code AbsenceMakeupValidator}
+ *  - Gửi thông báo chuông   -> {@code AttendanceMakeupNotificationHelper}
  */
 @RestController
 @RequestMapping("/api/attendance-makeup")
@@ -44,7 +51,7 @@ public class AbsenceMakeupController {
     // GIAI ĐOẠN 1: PHỤ HUYNH GỬI ĐƠN XIN NGHỈ
     // =========================================================================
 
-    @Operation(summary = "Giai đoạn 1: Tạo yêu cầu nghỉ học (PARENT / TEACHER / STAFF / ADMIN)")
+    @Operation(summary = "Giai đoạn 1: Tạo yêu cầu nghỉ học (PARENT / TEACHER / STAFF / BRANCH_MANAGER / ADMIN)")
     @PostMapping("/absence-requests")
     public ResponseEntity<AbsenceRequestResponse> createAbsenceRequest(
             @Valid @RequestBody AbsenceRequestCreateRequest request) {
@@ -89,10 +96,10 @@ public class AbsenceMakeupController {
      *
      * Body: { "decision": "APPROVED" | "REJECTED", "reviewNote": "..." }
      *
-     * Phân quyền: TEACHER phụ trách lớp/buổi, STAFF, ADMIN (can thiệp khi khẩn cấp)
+     * Phân quyền: TEACHER phụ trách lớp/buổi, STAFF, BRANCH_MANAGER, ADMIN
      */
-    @Operation(summary = "Giai đoạn 2: Xét duyệt đơn nghỉ (TEACHER / STAFF / ADMIN) — " +
-               "APPROVED: đồng ý (tạo ca bù) | REJECTED: từ chối")
+    @Operation(summary = "Giai đoạn 2: Xét duyệt đơn nghỉ (TEACHER / STAFF / BRANCH_MANAGER / ADMIN) — " +
+               "APPROVED: đồng ý (tạo ca bù nếu needMakeup=true) | REJECTED: từ chối")
     @PatchMapping("/absence-requests/{id}/review")
     public ResponseEntity<AbsenceRequestResponse> reviewAbsenceRequest(
             @PathVariable Long id,
@@ -118,7 +125,7 @@ public class AbsenceMakeupController {
         return ResponseEntity.ok(absenceMakeupService.getMakeupRegistrationById(id));
     }
 
-    @Operation(summary = "Giai đoạn 3: Nhân viên/Admin xếp lịch học bù (STAFF / ADMIN) → SCHEDULED")
+    @Operation(summary = "Giai đoạn 3: Điều phối viên xếp lịch học bù (STAFF / BRANCH_MANAGER / ADMIN) → SCHEDULED")
     @PutMapping("/makeup-requests/{id}/schedule")
     public ResponseEntity<MakeupRegistrationResponse> scheduleMakeup(
             @PathVariable Long id,
@@ -126,19 +133,19 @@ public class AbsenceMakeupController {
         return ResponseEntity.ok(absenceMakeupService.scheduleMakeup(id, request));
     }
 
-    @Operation(summary = "Giai đoạn 3: Nhân viên/Admin hủy ca học bù (STAFF / ADMIN) → CANCELLED")
+    @Operation(summary = "Giai đoạn 3: Điều phối viên hủy ca học bù (STAFF / BRANCH_MANAGER / ADMIN) → CANCELLED")
     @PatchMapping("/makeup-requests/{id}/cancel")
     public ResponseEntity<MakeupRegistrationResponse> cancelMakeup(
             @PathVariable Long id,
-            @RequestBody(required = false) MakeupCancelRequest request) {
+            @Valid @RequestBody(required = false) MakeupCancelRequest request) {
         return ResponseEntity.ok(absenceMakeupService.cancelMakeup(id, request));
     }
 
-    @Operation(summary = "Giai đoạn 3: Không có lớp bù phù hợp — báo phụ huynh (STAFF / ADMIN) → NO_SLOT")
+    @Operation(summary = "Giai đoạn 3: Không có lớp bù phù hợp — đóng ca bù và báo phụ huynh (STAFF / BRANCH_MANAGER / ADMIN) → CANCELLED")
     @PatchMapping("/makeup-requests/{id}/no-slot")
     public ResponseEntity<MakeupRegistrationResponse> markNoSlotAvailable(
             @PathVariable Long id,
-            @RequestBody MakeupResolveRequest request) {
+            @Valid @RequestBody MakeupResolveRequest request) {
         return ResponseEntity.ok(absenceMakeupService.markNoSlotAvailable(id, request));
     }
 
@@ -146,7 +153,7 @@ public class AbsenceMakeupController {
     // GIAI ĐOẠN 4: HOÀN THÀNH HỌC BÙ THỦ CÔNG
     // =========================================================================
 
-    @Operation(summary = "Giai đoạn 4: Hoàn thành ca học bù thủ công qua ID (TEACHER / STAFF / ADMIN)")
+    @Operation(summary = "Giai đoạn 4: Hoàn thành ca học bù thủ công (TEACHER lớp bù / STAFF / BRANCH_MANAGER / ADMIN)")
     @PutMapping("/makeup-requests/{id}/complete")
     public ResponseEntity<MakeupRegistrationResponse> completeMakeup(@PathVariable Long id) {
         return ResponseEntity.ok(absenceMakeupService.completeMakeup(id));

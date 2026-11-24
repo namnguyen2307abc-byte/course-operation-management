@@ -287,13 +287,13 @@ function renderAttendanceTrackingView(data) {
         alertBanner.style.color = '#166534';
         iconClass = 'bi-shield-check text-success fs-4';
         barColor = '#10b981';
-        levelBadgeHtml = `<span class="badge bg-success text-white rounded-pill px-2.5 py-1 me-2">CHUYÊN CẦN AN TOÀN (≤ 10%)</span>`;
+        levelBadgeHtml = `<span class="badge bg-success text-white rounded-pill px-2 py-1 me-2">CHUYÊN CẦN AN TOÀN (≤ 10%)</span>`;
     }
 
     // Thanh tiến độ hạn mức vắng so với ngưỡng cấm thi 20%
     const quotaPercent = Math.min(100, Math.round((absentRate / 20.0) * 100));
     const missedMakeupNote = (data.makeupMissedCount && data.makeupMissedCount > 0)
-        ? `<div class="mt-1 small text-danger fw-bold"><i class="bi bi-person-x-fill me-1"></i>Cảnh báo học bù: Học viên đã bỏ lỡ ${data.makeupMissedCount} buổi học bù (MISSED)!</div>`
+        ? `<div class="mt-1 small text-danger fw-bold"><i class="bi bi-person-x-fill me-1"></i>Cảnh báo học bù: Học viên đã bỏ lỡ ${data.makeupMissedCount} buổi học bù.</div>`
         : '';
 
     alertBanner.innerHTML = `
@@ -369,7 +369,14 @@ function renderAttendanceTablePage() {
         let noteHtml = '';
         if (item.makeupStatus === 'MISSED') {
             noteHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
-                <i class="bi bi-person-x-fill me-1"></i>Bỏ lỡ học bù (MISSED)
+                <i class="bi bi-person-x-fill me-1"></i>${escapeHtml(item.makeupInfo || 'Bỏ lỡ học bù')}
+            </span>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
+            }
+        } else if (item.makeupStatus === 'CANCELLED' && (String(item.note || '').includes('- KHÓA]') || /hết quyền/i.test(item.makeupInfo || ''))) {
+            noteHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
+                <i class="bi bi-slash-circle-fill me-1"></i>Hết quyền học bù (CẤM HỌC BÙ)
             </span>`;
             if (item.note && item.note !== '-') {
                 noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
@@ -384,6 +391,13 @@ function renderAttendanceTablePage() {
         } else if (item.makeupStatus === 'SCHEDULED') {
             noteHtml = `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 small fw-semibold">
                 <i class="bi bi-calendar2-check me-1"></i>${escapeHtml(item.makeupInfo || 'Đã xếp lịch học bù')}
+            </span>`;
+            if (item.note && item.note !== '-') {
+                noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;
+            }
+        } else if (item.makeupStatus === 'NO_SLOT' || item.makeupStatus === 'CANCELLED') {
+            noteHtml = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 small">
+                <i class="bi bi-x-circle me-1"></i>${escapeHtml(item.makeupInfo || 'Đã hủy lịch bù')}
             </span>`;
             if (item.note && item.note !== '-') {
                 noteHtml += `<div class="small text-secondary mt-1">${escapeHtml(item.note)}</div>`;

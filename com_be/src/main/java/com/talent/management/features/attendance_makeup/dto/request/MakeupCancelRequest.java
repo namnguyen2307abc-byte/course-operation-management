@@ -1,5 +1,6 @@
 package com.talent.management.features.attendance_makeup.dto.request;
 
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +16,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class MakeupCancelRequest {
 
-    /** Lý do hủy ca học bù (tùy chọn nhưng khuyến nghị nhập) */
+    /** Lý do hủy ca học bù (tùy chọn) */
+    @Size(max = 400, message = "Lý do tối đa 400 ký tự")
     private String reason;
 }
