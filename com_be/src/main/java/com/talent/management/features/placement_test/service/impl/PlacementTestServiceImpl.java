@@ -76,6 +76,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             return List.of();
         }
         ensureDefaultCriteriaSeeded();
+        backfillCompletedSchedulesWithoutSnapshots();
 
         List<PlacementCriteria> list;
         if (subject != null && !subject.isBlank()) {
@@ -100,6 +101,7 @@ public class PlacementTestServiceImpl implements PlacementTestService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Kho lưu trữ tiêu chí chưa sẵn sàng");
         }
         ensureDefaultCriteriaSeeded();
+        backfillCompletedSchedulesWithoutSnapshots();
 
         String normSubject = normalizeAndValidateSubject(request.getSubject());
         String trimmedName = request.getCriteriaName() == null ? "" : request.getCriteriaName().trim();
@@ -186,6 +188,66 @@ public class PlacementTestServiceImpl implements PlacementTestService {
                 PlacementCriteria.builder().subject("VO").criteriaName("4. Tác phong & Kỷ luật võ đạo (Martial Discipline)").displayOrder(4).active(true).build()
         );
         criteriaRepository.saveAll(defaults);
+        backfillCompletedSchedulesWithoutSnapshots();
+    }
+
+    private void backfillCompletedSchedulesWithoutSnapshots() {
+        if (criteriaRepository == null || criteriaScoreRepository == null || scheduleRepository == null) {
+            return;
+        }
+        List<PlacementSchedule> allSchedules = scheduleRepository.findAllByOrderByTestDateDesc();
+        if (allSchedules == null || allSchedules.isEmpty()) {
+            return;
+        }
+        List<PlacementSchedule> completedSchedules = allSchedules.stream()
+                .filter(s -> s != null && s.getId() != null && s.getStatus() == PlacementScheduleStatus.COMPLETED)
+                .toList();
+        if (completedSchedules.isEmpty()) {
+            return;
+        }
+        List<Long> completedIds = completedSchedules.stream().map(PlacementSchedule::getId).toList();
+        Set<Long> schedulesWithScores = criteriaScoreRepository
+                .findByScheduleIdInOrderByScheduleIdAscDisplayOrderAscIdAsc(completedIds)
+                .stream()
+                .map(row -> row.getSchedule().getId())
+                .collect(Collectors.toSet());
+
+        List<PlacementSchedule> missing = completedSchedules.stream()
+                .filter(s -> !schedulesWithScores.contains(s.getId()))
+                .toList();
+        if (missing.isEmpty()) {
+            return;
+        }
+
+        List<PlacementCriteria> activeCriteria = criteriaRepository.findByActiveTrueOrderBySubjectAscDisplayOrderAscIdAsc();
+        if (activeCriteria == null || activeCriteria.isEmpty()) {
+            return;
+        }
+        Map<String, List<PlacementCriteria>> bySubject = activeCriteria.stream()
+                .collect(Collectors.groupingBy(c -> normalizeSubjectCode(c.getSubject())));
+
+        List<PlacementScheduleCriteriaScore> backfilled = new ArrayList<>();
+        for (PlacementSchedule schedule : missing) {
+            String subj = normalizeSubjectCode(schedule.getSubject() != null
+                    ? schedule.getSubject()
+                    : (scheduleMapper != null ? scheduleMapper.inferSubject(schedule.getTitle()) : "DAN"));
+            List<PlacementCriteria> subjectCriteria = bySubject.getOrDefault(subj, List.of()).stream()
+                    .limit(4)
+                    .toList();
+            double score10 = schedule.getScore() != null ? Math.round((schedule.getScore() / 10.0) * 10.0) / 10.0 : 0.0;
+            for (PlacementCriteria c : subjectCriteria) {
+                backfilled.add(PlacementScheduleCriteriaScore.builder()
+                        .schedule(schedule)
+                        .criteria(c)
+                        .criteriaNameSnapshot(c.getCriteriaName())
+                        .score(score10)
+                        .displayOrder(c.getDisplayOrder() != null ? c.getDisplayOrder() : 1)
+                        .build());
+            }
+        }
+        if (!backfilled.isEmpty()) {
+            criteriaScoreRepository.saveAll(backfilled);
+        }
     }
 
     private String normalizeSubjectCode(String subject) {
