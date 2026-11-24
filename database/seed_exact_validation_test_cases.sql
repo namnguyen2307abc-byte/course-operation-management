@@ -30,7 +30,7 @@ SELECT TOP 10 id, 2, 'PRESENT', '2026-11-23 08:00:00', N'Học tập tích cực
 FROM dbo.lessons WHERE class_id = 2 AND id != 200 AND id != 201 AND id != 202 AND id != 203
 ORDER BY session_number ASC;
 
--- Ghi nhận 1 buổi vắng (Lesson 200 ngày 22/11/1026)
+-- Ghi nhận 1 buổi vắng (Lesson 200 ngày 22/11/2026)
 IF EXISTS (SELECT 1 FROM dbo.lessons WHERE id = 200)
 BEGIN
     INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
