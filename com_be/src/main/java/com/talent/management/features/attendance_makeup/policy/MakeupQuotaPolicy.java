@@ -2,9 +2,9 @@ package com.talent.management.features.attendance_makeup.policy;
 
 import com.talent.management.features.attendance_makeup.exception.AttendanceMakeupException;
 import com.talent.management.features.attendance_makeup.mapper.AttendanceMakeupMapper;
-import com.talent.management.features.attendance_makeup.repository.AbsenceRequestRepository;
 import com.talent.management.features.attendance_makeup.repository.MakeupRegistrationRepository;
 import com.talent.management.shared.entity.Lesson;
+import com.talent.management.shared.entity.MakeupRegistration;
 import com.talent.management.shared.entity.Student;
 import com.talent.management.shared.enums.MakeupStatus;
 import lombok.RequiredArgsConstructor;
@@ -14,35 +14,29 @@ import java.util.List;
 
 /**
  * ============================================================================
- * CHÍNH SÁCH HẠN MỨC HỌC BÙ (QUOTA POLICY: TỐI ĐA 3 LƯỢT / 1 KHÓA HỌC)
+ * CHÍNH SÁCH HẠN MỨC HỌC BÙ (TỐI ĐA 3 BUỔI ĐƯỢC XẾP HỌC BÙ / 1 KHÓA HỌC)
  * ============================================================================
- * Đóng gói tập trung toàn bộ quy tắc tính và kiểm tra giới hạn quyền học bù:
- *   1. Hằng số giới hạn khóa: MAKEUP_LIMIT = 3 lượt/khóa học.
- *   2. Trạng thái tính lượt đã dùng: SCHEDULED, COMPLETED, MISSED + ca CANCELLED có tag "- KHÓA]" (vắng buổi bù).
- *   3. Trạng thái giữ chỗ/đang chờ: bổ sung thêm PENDING + đơn xin nghỉ PENDING có đăng ký bù (needMakeup = true).
- *   4. Hai điểm chốt chặn:
- *        - {@link #assertCanCreateMakeupAbsence}: chặn khi gửi đơn xin nghỉ kèm học bù.
- *        - {@link #assertCanApproveMakeup}: chặn lần 2 lúc giáo viên/nhân sự duyệt tạo ca bù.
+ * Quy tắc tính 1 lần học bù:
+ *   - Chỉ tính khi học viên ĐÃ ĐƯỢC ĐỔI SANG LỚP KHÁC (SCHEDULED):
+ *       * Đã tham gia và điểm danh Có mặt (COMPLETED)
+ *       * Hoặc đã đổi sang lớp khác nhưng không đi / chưa điểm danh (SCHEDULED / MISSED / CANCELLED tag "- KHÓA]")
+ *   - KHÔNG tính khi mới gửi đơn xin nghỉ (PENDING), mới duyệt chờ xếp lớp (MakeupStatus.PENDING),
+ *     hay ca đã hủy trước khi xếp/chưa có lớp phù hợp.
  */
 @Component
 @RequiredArgsConstructor
 public class MakeupQuotaPolicy {
 
-    /** Số lượt học bù tối đa của một học viên trong một khóa học. */
+    /** Số buổi học bù tối đa của một học viên trong một khóa học. */
     public static final int MAKEUP_LIMIT = AttendanceMakeupMapper.MAKEUP_LIMIT_PER_COURSE;
 
-    /** Ca bù đã xếp lịch: đã được xếp dù tham gia hay vắng buổi bù đều tính 1 lượt bù. */
+    /** Chỉ các ca đã được xếp đổi sang lớp khác mới tính vào hạn mức 3 buổi/khóa. */
     public static final List<MakeupStatus> COUNTED_MAKEUP_STATUSES =
             List.of(MakeupStatus.SCHEDULED, MakeupStatus.COMPLETED, MakeupStatus.MISSED);
-
-    /** Lượt bù đang dùng hoặc đang giữ chỗ: ca đã xếp + ca chờ xếp lịch (PENDING). */
-    public static final List<MakeupStatus> QUOTA_MAKEUP_STATUSES =
-            List.of(MakeupStatus.SCHEDULED, MakeupStatus.COMPLETED, MakeupStatus.MISSED, MakeupStatus.PENDING);
 
     /** Tag ghi chú nhận diện ca bù bị khóa do học viên vắng mặt ở buổi bù (vẫn tính vào hạn mức 3/3). */
     public static final String LOCK_NOTE_PATTERN = "%- KHÓA]%";
 
-    private final AbsenceRequestRepository absenceRequestRepository;
     private final MakeupRegistrationRepository makeupRegistrationRepository;
 
     public Long courseIdOf(Lesson lesson) {
@@ -61,7 +55,7 @@ public class MakeupQuotaPolicy {
                 + (cId != null ? "C_" + cId : (clsId != null ? "L_" + clsId : "none"));
     }
 
-    /** Đếm số ca bù của học viên trong khóa học (hoặc lớp), bao gồm cả ca bị khóa do vắng buổi bù. */
+    /** Đếm số buổi đã được xếp học bù của học viên trong khóa học (hoặc lớp). */
     public int countMakeups(Student student, Lesson lesson, List<MakeupStatus> statuses) {
         if (student == null) return 0;
         Long courseId = courseIdOf(lesson);
@@ -74,59 +68,51 @@ public class MakeupQuotaPolicy {
         return (int) count;
     }
 
-    /** Đếm tổng ca bù giữ/đã dùng trên toàn hồ sơ học viên (dùng hiển thị danh sách học viên). */
+    /** Đếm tổng số buổi đã được xếp học bù trên toàn hồ sơ học viên. */
     public int countTotalMakeupsForStudent(Long studentId) {
         if (studentId == null) return 0;
-        return (int) makeupRegistrationRepository.countQuotaByStudent(studentId, QUOTA_MAKEUP_STATUSES, LOCK_NOTE_PATTERN);
-    }
-
-    /** Đếm đơn xin nghỉ đang chờ duyệt (PENDING) có đăng ký học bù trong cùng khóa/lớp. */
-    public int countPendingMakeupAbsences(Student student, Lesson lesson) {
-        if (student == null) return 0;
-        Long courseId = courseIdOf(lesson);
-        Long classId = classIdOf(lesson);
-        if (courseId != null) {
-            return (int) absenceRequestRepository.countPendingMakeupByStudentAndCourse(student.getId(), courseId);
-        }
-        return classId != null
-                ? (int) absenceRequestRepository.countPendingMakeupByStudentAndClass(student.getId(), classId)
-                : 0;
+        return (int) makeupRegistrationRepository.countQuotaByStudent(studentId, COUNTED_MAKEUP_STATUSES, LOCK_NOTE_PATTERN);
     }
 
     /**
-     * Số lượt bù khóa đang sử dụng/giữ thống nhất cho mọi màn (Tab 1, Tab 2, Tab 3, Thông báo):
-     * ca đã xếp/học/khóa + ca PENDING + đơn xin nghỉ PENDING có đăng ký bù.
+     * Số buổi học bù đã được xếp/sử dụng trong khóa học:
+     * chỉ tính các ca đã đổi sang lớp khác (SCHEDULED, COMPLETED, MISSED, CANCELLED - KHÓA]).
      */
     public int resolveUsedCourseQuota(Student student, Lesson lesson) {
-        return countMakeups(student, lesson, QUOTA_MAKEUP_STATUSES) + countPendingMakeupAbsences(student, lesson);
+        return countMakeups(student, lesson, COUNTED_MAKEUP_STATUSES);
     }
 
     /** Kiểm tra chặn khi tạo mới đơn xin nghỉ kèm đăng ký học bù. */
     public void assertCanCreateMakeupAbsence(Student student, Lesson lesson) {
-        int counted = countMakeups(student, lesson, COUNTED_MAKEUP_STATUSES);
+        int counted = resolveUsedCourseQuota(student, lesson);
         if (counted >= MAKEUP_LIMIT) {
             throw new AttendanceMakeupException(
-                    "Học viên " + student.getFullName() + " đã từng học bù " + counted + " lần" + courseScopeText(lesson)
-                            + " (đạt giới hạn tối đa " + MAKEUP_LIMIT + " lần học bù trong 1 khóa học). "
-                            + "Chọn \"Chỉ xin nghỉ\" nếu không cần học bù.");
-        }
-        int used = resolveUsedCourseQuota(student, lesson);
-        if (used >= MAKEUP_LIMIT) {
-            throw new AttendanceMakeupException(
-                    "Học viên " + student.getFullName() + " hiện đã có " + counted + " ca học bù đã xếp lịch và "
-                            + (used - counted) + " ca/đơn đang chờ xử lý/xếp lịch" + courseScopeText(lesson)
-                            + " (tối đa " + MAKEUP_LIMIT + " lần học bù trong 1 khóa học). "
-                            + "Chọn \"Chỉ xin nghỉ\" nếu không cần học bù.");
+                    "Học viên " + student.getFullName() + " đã dùng đủ " + counted + "/" + MAKEUP_LIMIT
+                            + " buổi học bù" + courseScopeText(lesson) + ". Chọn \"Chỉ xin nghỉ\" nếu không cần học bù.");
         }
     }
 
     /** Kiểm tra chặn khi duyệt đơn xin nghỉ (khi chưa có ca bù gắn sẵn). */
     public void assertCanApproveMakeup(Student student, Lesson lesson) {
-        int quotaCount = countMakeups(student, lesson, QUOTA_MAKEUP_STATUSES);
-        if (quotaCount >= MAKEUP_LIMIT) {
+        int counted = resolveUsedCourseQuota(student, lesson);
+        if (counted >= MAKEUP_LIMIT) {
             throw new AttendanceMakeupException(
-                    "Học viên đã sử dụng đủ " + MAKEUP_LIMIT + "/" + MAKEUP_LIMIT
-                            + " lượt học bù trong khóa học, không thể duyệt tạo thêm ca học bù.");
+                    "Học viên đã dùng đủ " + MAKEUP_LIMIT + "/" + MAKEUP_LIMIT
+                            + " buổi học bù trong khóa học, không thể duyệt tạo thêm ca học bù.");
+        }
+    }
+
+    /** Kiểm tra chặn khi xếp lịch đổi sang lớp học bù (thời điểm bắt đầu tính 1 lượt bù). */
+    public void assertCanScheduleMakeup(MakeupRegistration mr) {
+        if (mr == null || mr.getStudent() == null || mr.getOriginalLesson() == null) return;
+        boolean alreadyCounted = COUNTED_MAKEUP_STATUSES.contains(mr.getStatus())
+                || AttendanceMakeupMapper.isMissedAndLocked(mr);
+        if (alreadyCounted) return;
+        int counted = resolveUsedCourseQuota(mr.getStudent(), mr.getOriginalLesson());
+        if (counted >= MAKEUP_LIMIT) {
+            throw new AttendanceMakeupException(
+                    "Học viên " + mr.getStudent().getFullName() + " đã dùng đủ " + MAKEUP_LIMIT + "/" + MAKEUP_LIMIT
+                            + " buổi học bù trong khóa học, không thể xếp thêm sang lớp khác!");
         }
     }
 

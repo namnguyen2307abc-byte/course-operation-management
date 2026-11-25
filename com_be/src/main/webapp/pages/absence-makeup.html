@@ -280,7 +280,6 @@
                                 <h5 class="fw-bold text-dark mb-0">
                                     <i class="bi bi-pencil-square text-success me-2"></i>Gửi Đơn Xin Nghỉ
                                 </h5>
-                                <div class="small text-muted mt-1">Chọn học viên, buổi học, hình thức nghỉ và lý do</div>
                             </div>
                         </div>
 
@@ -331,15 +330,14 @@
                                     <label class="leave-mode-card active" id="leaveModeCardMakeup" onclick="selectLeaveMode(true)">
                                         <input type="radio" name="leaveNeedMakeup" id="leaveModeRadioMakeup" value="true" checked>
                                         <div>
-                                            <div class="fw-bold text-dark small">Nghỉ &amp; đăng ký học bù</div>
-                                            <div class="small text-muted mt-1" id="leaveModeMakeupHint">Chọn buổi học để xem lượt bù của khóa</div>
+                                            <div class="fw-bold text-dark small">Nghỉ &amp; học bù</div>
+                                            <div class="small text-muted mt-1 d-none" id="leaveModeMakeupHint"></div>
                                         </div>
                                     </label>
                                     <label class="leave-mode-card" id="leaveModeCardOnly" onclick="selectLeaveMode(false)">
                                         <input type="radio" name="leaveNeedMakeup" id="leaveModeRadioOnly" value="false">
                                         <div>
-                                            <div class="fw-bold text-dark small">Chỉ xin nghỉ (không học bù)</div>
-                                            <div class="small text-muted mt-1">Báo giáo viên nắm lịch, không xếp ca bù</div>
+                                            <div class="fw-bold text-dark small">Chỉ xin nghỉ</div>
                                         </div>
                                     </label>
                                 </div>
@@ -392,7 +390,7 @@
                                         <i class="bi bi-clock-fill fs-5"></i>
                                     </div>
                                     <div class="small text-secondary">
-                                        Gửi đơn trước giờ bắt đầu buổi học.
+                                        Gửi đơn trước giờ bắt đầu buổi học tối thiểu 2 tiếng.
                                     </div>
                                 </div>
                             </div>

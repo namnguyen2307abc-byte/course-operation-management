@@ -120,14 +120,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         }
 
         LocalDateTime now = LocalDateTime.now(AbsenceMakeupValidator.CENTER_ZONE);
-        boolean isPast = validator.hasStarted(lesson, now)
-                || lesson.getStatus() == LessonStatus.COMPLETED
-                || lesson.getStatus() == LessonStatus.CANCELLED;
-        if (isPast) {
-            throw new AttendanceMakeupException(
-                    "Chỉ có thể xin nghỉ cho buổi học chưa diễn ra. Buổi học ngày " + lesson.getLessonDate()
-                            + " đã diễn ra hoặc đã kết thúc, không thể gửi đơn xin nghỉ.");
-        }
+        validator.validateAbsenceSubmissionTiming(lesson, now);
 
         ClassEntity lessonClass = lesson.getClassEntity();
         if (lessonClass == null || !attendanceEnrollmentRepository.existsByStudentIdAndClassEntityIdAndStatus(
@@ -142,6 +135,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
 
         boolean needMakeup = !Boolean.FALSE.equals(request.getNeedMakeup());
         if (needMakeup) {
+            lockStudentQuotaScope(student);
             quotaPolicy.assertCanCreateMakeupAbsence(student, lesson);
         }
 
@@ -160,8 +154,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 saved.getId(), student.getFullName(), currentUser.getUsername());
 
         notificationHelper.notifyAbsenceCreated(saved, student, lesson, currentUser, needMakeup);
-        int mkCount = quotaPolicy.resolveUsedCourseQuota(student, lesson);
-        return attendanceMakeupMapper.toAbsenceResponse(saved, null, mkCount, mkCount >= MakeupQuotaPolicy.MAKEUP_LIMIT);
+        return toAbsenceWithQuota(saved, null, null);
     }
 
     @Override
@@ -170,8 +163,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         validator.requireValidId(id, "đơn xin nghỉ");
         User currentUser = currentUserService.getCurrentUser();
         validator.validateParticipantRole(currentUser);
-        AbsenceRequest ar = absenceRequestRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
+        AbsenceRequest ar = findAbsenceForUpdate(id);
 
         validator.validateStudentAccess(currentUser, ar.getStudent());
 
@@ -232,20 +224,9 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 .collect(Collectors.toMap(mr -> mr.getAbsenceRequest().getId(), Function.identity(), (m1, m2) -> m1));
 
         Map<String, Integer> studentCourseCache = new HashMap<>();
-        return filtered.stream().map(ar -> {
-            Student s = ar.getStudent();
-            Lesson l = ar.getLesson();
-            int mkCount = studentCourseCache.computeIfAbsent(
-                    quotaPolicy.courseQuotaCacheKey(s, l),
-                    k -> quotaPolicy.resolveUsedCourseQuota(s, l));
-            AbsenceRequestResponse resp = attendanceMakeupMapper.toAbsenceResponse(ar, makeupMap.get(ar.getId()));
-            if (resp != null) {
-                resp.setCourseMakeupCount(mkCount);
-                resp.setCourseMakeupLimit(MakeupQuotaPolicy.MAKEUP_LIMIT);
-                resp.setCourseMakeupLimitReached(mkCount >= MakeupQuotaPolicy.MAKEUP_LIMIT);
-            }
-            return resp;
-        }).toList();
+        return filtered.stream()
+                .map(ar -> toAbsenceWithQuota(ar, makeupMap.get(ar.getId()), studentCourseCache))
+                .toList();
     }
 
     @Override
@@ -262,8 +243,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         }
 
         MakeupRegistration mr = makeupRegistrationRepository.findByAbsenceRequestId(ar.getId()).orElse(null);
-        int mkCount = quotaPolicy.resolveUsedCourseQuota(ar.getStudent(), ar.getLesson());
-        return attendanceMakeupMapper.toAbsenceResponse(ar, mr, mkCount, mkCount >= MakeupQuotaPolicy.MAKEUP_LIMIT);
+        return toAbsenceWithQuota(ar, mr, null);
     }
 
     // =========================================================================
@@ -281,8 +261,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             throw new AttendanceMakeupException("Vui lòng chọn quyết định xét duyệt (APPROVED / REJECTED)");
         }
 
-        AbsenceRequest ar = absenceRequestRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
+        AbsenceRequest ar = findAbsenceForUpdate(id);
 
         if (currentUser.getRole() == Role.TEACHER && !validator.isTeacherOfLesson(currentUser, ar.getLesson())) {
             throw new AttendanceMakeupException("Chỉ giáo viên phụ trách môn và buổi học hôm đó mới có quyền xét duyệt đơn xin nghỉ này!");
@@ -304,6 +283,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             }
             existingMakeup = makeupRegistrationRepository.findByAbsenceRequestId(ar.getId());
             if (existingMakeup.isEmpty()) {
+                lockStudentQuotaScope(ar.getStudent());
                 quotaPolicy.assertCanApproveMakeup(ar.getStudent(), ar.getLesson());
             }
         }
@@ -338,8 +318,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         }
 
         notificationHelper.notifyAbsenceReviewed(saved, mr, currentUser, decision, needMakeup);
-        int mkCount = quotaPolicy.resolveUsedCourseQuota(saved.getStudent(), saved.getLesson());
-        return attendanceMakeupMapper.toAbsenceResponse(saved, mr, mkCount, mkCount >= MakeupQuotaPolicy.MAKEUP_LIMIT);
+        return toAbsenceWithQuota(saved, mr, null);
     }
 
     private AbsenceStatus mapDecisionToStatus(ReviewDecision decision) {
@@ -395,11 +374,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
 
         validator.validateStudentAccess(currentUser, mr.getStudent());
-        if (currentUser.getRole() == Role.TEACHER
-                && !validator.isTeacherOfLesson(currentUser, mr.getOriginalLesson())
-                && !validator.isTeacherOfLesson(currentUser, mr.getTargetLesson())) {
-            throw new AttendanceMakeupException("Chỉ giáo viên phụ trách lớp gốc hoặc lớp bù mới có quyền xem ca học bù này!");
-        }
+        assertTeacherCanViewMakeup(currentUser, mr,
+                "Chỉ giáo viên phụ trách lớp gốc hoặc lớp bù mới có quyền xem ca học bù này!");
 
         return toMakeupWithQuota(mr, null);
     }
@@ -415,8 +391,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             throw new AttendanceMakeupException("Vui lòng chọn buổi học bù");
         }
 
-        MakeupRegistration mr = makeupRegistrationRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
+        MakeupRegistration mr = findMakeupForUpdate(id);
 
         if (mr.getStatus() == MakeupStatus.COMPLETED) {
             throw new AttendanceMakeupException("Ca học bù đã hoàn thành, không thể xếp lại lịch!");
@@ -424,6 +399,9 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         if (mr.getStatus() == MakeupStatus.CANCELLED) {
             throw new AttendanceMakeupException("Ca học bù đã bị hủy, không thể xếp lịch!");
         }
+
+        lockStudentQuotaScope(mr.getStudent());
+        quotaPolicy.assertCanScheduleMakeup(mr);
 
         int currentRetry = AttendanceMakeupMapper.extractRetryCount(mr);
         if (AttendanceMakeupMapper.isLimitExceeded(mr) || currentRetry >= AttendanceMakeupMapper.MAX_MAKEUP_RETRIES) {
@@ -471,12 +449,16 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         User currentUser = currentUserService.getCurrentUser();
         validator.validateStaffOrAdmin(currentUser);
 
-        MakeupRegistration mr = makeupRegistrationRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
-        if (!List.of(MakeupStatus.PENDING, MakeupStatus.SCHEDULED, MakeupStatus.MISSED, MakeupStatus.NO_SLOT).contains(mr.getStatus())) {
+        MakeupRegistration mr = findMakeupForUpdate(id);
+        if (!List.of(MakeupStatus.PENDING, MakeupStatus.SCHEDULED, MakeupStatus.NO_SLOT).contains(mr.getStatus())) {
             throw new AttendanceMakeupException(
                     "Không thể hủy ca học bù #" + id + " ở trạng thái " + mr.getStatus()
-                            + " (Chỉ hủy được ca PENDING, SCHEDULED, MISSED hoặc NO_SLOT)");
+                            + " (Chỉ hủy được ca chưa diễn ra ở trạng thái PENDING, NO_SLOT hoặc SCHEDULED)");
+        }
+        if (mr.getStatus() == MakeupStatus.SCHEDULED && mr.getTargetLesson() != null
+                && validator.hasStarted(mr.getTargetLesson(), LocalDateTime.now(AbsenceMakeupValidator.CENTER_ZONE))) {
+            throw new AttendanceMakeupException(
+                    "Không thể hủy ca học bù đã đến giờ hoặc đã diễn ra (ca này đã được tính 1 buổi học bù).");
         }
 
         mr.setStatus(MakeupStatus.CANCELLED);
@@ -500,10 +482,9 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         User currentUser = currentUserService.getCurrentUser();
         validator.validateStaffOrAdmin(currentUser);
 
-        MakeupRegistration mr = makeupRegistrationRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
-        if (!List.of(MakeupStatus.PENDING, MakeupStatus.NO_SLOT, MakeupStatus.MISSED).contains(mr.getStatus())) {
-            throw new AttendanceMakeupException("Chỉ báo 'chưa có lớp phù hợp' cho ca bù đang chờ xếp lịch hoặc bỏ lỡ (ID: " + id + ")");
+        MakeupRegistration mr = findMakeupForUpdate(id);
+        if (!List.of(MakeupStatus.PENDING, MakeupStatus.NO_SLOT).contains(mr.getStatus())) {
+            throw new AttendanceMakeupException("Chỉ báo 'chưa có lớp phù hợp' cho ca bù đang chờ xếp lịch (ID: " + id + ")");
         }
 
         String message = validator.requireResolveNote(request,
@@ -532,8 +513,7 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
         User currentUser = currentUserService.getCurrentUser();
         validator.validateMarkPermission(currentUser);
 
-        MakeupRegistration mr = makeupRegistrationRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
+        MakeupRegistration mr = findMakeupForUpdate(id);
 
         if (currentUser.getRole() == Role.TEACHER && !validator.isTeacherOfLesson(currentUser, mr.getTargetLesson())) {
             throw new AttendanceMakeupException("Chỉ giáo viên phụ trách buổi học bù mới có quyền xác nhận hoàn thành ca học bù này!");
@@ -620,26 +600,19 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 .collect(Collectors.toSet());
 
         Map<String, Integer> usedCache = new HashMap<>();
-        Map<String, Integer> countedCache = new HashMap<>();
         return attendanceLessonRepository.findLessonsByStudentId(studentId)
                 .stream()
-                .filter(l -> !validator.hasStarted(l, now)
-                        && l.getStatus() != LessonStatus.COMPLETED
-                        && l.getStatus() != LessonStatus.CANCELLED
+                .filter(l -> validator.canSubmitAbsence(l, now)
                         && !alreadyRequestedLessonIds.contains(l.getId())
                         && (currentUser.getRole() != Role.TEACHER || validator.isTeacherOfLesson(currentUser, l)))
                 .map(l -> {
                     LessonOptionResponse dto = attendanceMakeupMapper.toLessonOption(l);
                     if (dto != null) {
-                        Long cId = quotaPolicy.courseIdOf(l);
-                        Long clsId = quotaPolicy.classIdOf(l);
-                        String scopeKey = cId != null ? ("C_" + cId) : ("L_" + clsId);
+                        String scopeKey = quotaPolicy.courseQuotaCacheKey(student, l);
                         int used = usedCache.computeIfAbsent(scopeKey, k -> quotaPolicy.resolveUsedCourseQuota(student, l));
-                        int counted = countedCache.computeIfAbsent(scopeKey,
-                                k -> quotaPolicy.countMakeups(student, l, MakeupQuotaPolicy.COUNTED_MAKEUP_STATUSES));
                         dto.setCourseMakeupUsed(used);
                         dto.setMakeupLimit(MakeupQuotaPolicy.MAKEUP_LIMIT);
-                        dto.setMakeupAvailable(used < MakeupQuotaPolicy.MAKEUP_LIMIT && counted < MakeupQuotaPolicy.MAKEUP_LIMIT);
+                        dto.setMakeupAvailable(used < MakeupQuotaPolicy.MAKEUP_LIMIT);
                     }
                     return dto;
                 })
@@ -655,11 +628,8 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + makeupId));
 
         validator.validateStudentAccess(currentUser, mr.getStudent());
-        if (currentUser.getRole() == Role.TEACHER
-                && !validator.isTeacherOfLesson(currentUser, mr.getOriginalLesson())
-                && !validator.isTeacherOfLesson(currentUser, mr.getTargetLesson())) {
-            throw new AttendanceMakeupException("Chỉ giáo viên phụ trách lớp gốc hoặc lớp bù mới có quyền xem ca bù gợi ý!");
-        }
+        assertTeacherCanViewMakeup(currentUser, mr,
+                "Chỉ giáo viên phụ trách lớp gốc hoặc lớp bù mới có quyền xem ca bù gợi ý!");
 
         Lesson original = mr.getOriginalLesson();
         if (original == null || original.getClassEntity() == null
@@ -693,25 +663,20 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
 
         LinkedHashMap<Long, Lesson> combinedMap = new LinkedHashMap<>();
         Set<Long> exactLessonIds = new HashSet<>();
+        Long studentId = mr.getStudent().getId();
 
         for (Lesson l : exactCandidates) {
-            if (validator.isLessonUsableForMakeup(l, enrolledClassIds, nowDt, original)
-                    && validator.findStudentTimeConflict(mr.getStudent().getId(), l, original, mr.getId()) == null) {
+            if (canUseMakeupCandidate(l, studentId, enrolledClassIds, nowDt, original, mr.getId())) {
                 combinedMap.put(l.getId(), l);
                 exactLessonIds.add(l.getId());
             }
         }
-        int flexAdded = 0;
         for (Lesson l : flexibleCandidates) {
-            if (flexAdded >= 10) break;
             if (!combinedMap.containsKey(l.getId())
-                    && validator.isLessonUsableForMakeup(l, enrolledClassIds, nowDt, original)
-                    && validator.findStudentTimeConflict(mr.getStudent().getId(), l, original, mr.getId()) == null) {
+                    && canUseMakeupCandidate(l, studentId, enrolledClassIds, nowDt, original, mr.getId())) {
                 combinedMap.put(l.getId(), l);
-                flexAdded++;
             }
         }
-
         if (combinedMap.isEmpty()) {
             return List.of();
         }
@@ -723,8 +688,12 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
                 .collect(Collectors.groupingBy(m -> m.getTargetLesson().getId(), Collectors.counting()));
         Map<Long, Long> pendingSeatCache = new HashMap<>();
 
+        int flexResultCount = 0;
         List<LessonOptionResponse> result = new ArrayList<>();
         for (Lesson l : combinedMap.values()) {
+            boolean isExact = exactLessonIds.contains(l.getId());
+            if (!isExact && flexResultCount >= 10) continue;
+
             Long clsId = l.getClassEntity().getId();
             int base = l.getClassEntity().getCurrentStudents() != null ? l.getClassEntity().getCurrentStudents() : 0;
             long pendingSeats = pendingSeatCache.computeIfAbsent(clsId,
@@ -733,13 +702,60 @@ public class AbsenceMakeupServiceImpl implements AbsenceMakeupService {
             Integer max = l.getClassEntity().getMaxStudents();
             if (max != null && occupied >= max) continue;
 
-            boolean isExact = exactLessonIds.contains(l.getId());
             String matchLabel = isExact
                     ? "Đúng bài (#Buổi " + l.getSessionNumber() + ")"
                     : "Ghép bù linh hoạt (#Buổi " + l.getSessionNumber() + " - Khác bài gốc #" + original.getSessionNumber() + ")";
             result.add(attendanceMakeupMapper.toLessonOption(l, occupied, isExact, matchLabel));
+            if (!isExact) flexResultCount++;
         }
         return result;
+    }
+
+    private void lockStudentQuotaScope(Student student) {
+        if (student != null && student.getId() != null) {
+            studentRepository.findByIdForUpdate(student.getId());
+        }
+    }
+
+    private AbsenceRequest findAbsenceForUpdate(Long id) {
+        return absenceRequestRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy đơn xin nghỉ với ID: " + id));
+    }
+
+    private MakeupRegistration findMakeupForUpdate(Long id) {
+        return makeupRegistrationRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new AttendanceMakeupException("Không tìm thấy ca học bù với ID: " + id));
+    }
+
+    private void assertTeacherCanViewMakeup(User currentUser, MakeupRegistration mr, String errorMessage) {
+        if (currentUser.getRole() == Role.TEACHER
+                && !validator.isTeacherOfLesson(currentUser, mr.getOriginalLesson())
+                && !validator.isTeacherOfLesson(currentUser, mr.getTargetLesson())) {
+            throw new AttendanceMakeupException(errorMessage);
+        }
+    }
+
+    private boolean canUseMakeupCandidate(
+            Lesson candidate, Long studentId, Set<Long> enrolledClassIds,
+            LocalDateTime nowDt, Lesson original, Long excludeMakeupId) {
+        return validator.isLessonUsableForMakeup(candidate, enrolledClassIds, nowDt, original)
+                && validator.findStudentTimeConflict(studentId, candidate, original, excludeMakeupId) == null;
+    }
+
+    private AbsenceRequestResponse toAbsenceWithQuota(
+            AbsenceRequest ar, MakeupRegistration mr, Map<String, Integer> quotaCache) {
+        AbsenceRequestResponse resp = attendanceMakeupMapper.toAbsenceResponse(ar, mr);
+        if (resp != null && ar != null) {
+            Student s = ar.getStudent();
+            Lesson orig = ar.getLesson();
+            int mkCount = quotaCache != null
+                    ? quotaCache.computeIfAbsent(quotaPolicy.courseQuotaCacheKey(s, orig), k -> quotaPolicy.resolveUsedCourseQuota(s, orig))
+                    : quotaPolicy.resolveUsedCourseQuota(s, orig);
+            resp.setCourseMakeupCount(mkCount);
+            resp.setCourseMakeupLimit(MakeupQuotaPolicy.MAKEUP_LIMIT);
+            resp.setCourseMakeupLimitReached(mkCount >= MakeupQuotaPolicy.MAKEUP_LIMIT);
+        }
+        return resp;
     }
 
     private MakeupRegistrationResponse toMakeupWithQuota(MakeupRegistration mr, Map<String, Integer> quotaCache) {

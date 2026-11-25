@@ -44,9 +44,9 @@ public class AttendanceMakeupNotificationHelper {
         String className = lesson.getClassEntity() != null ? lesson.getClassEntity().getClassName() : "";
         String dateStr = formatLessonDateVn(lesson);
         String absenceUrl = "/pages/absence-makeup.html?tab=ABSENCE&absenceId=" + saved.getId();
-        int quotaUsed = needMakeup ? Math.max(1, quotaPolicy.resolveUsedCourseQuota(student, lesson)) : 0;
+        int quotaUsed = needMakeup ? quotaPolicy.resolveUsedCourseQuota(student, lesson) : 0;
         String makeupText = needMakeup
-                ? String.format(" (Nghỉ kèm học bù — Quyền bù khóa: %d/%d)", quotaUsed, MakeupQuotaPolicy.MAKEUP_LIMIT)
+                ? String.format(" (Nghỉ kèm học bù — Đã xếp bù khóa: %d/%d)", quotaUsed, MakeupQuotaPolicy.MAKEUP_LIMIT)
                 : " (Chỉ xin nghỉ, không học bù)";
         String actorText = validator.actorRoleLabel(currentUser);
 
@@ -103,20 +103,19 @@ public class AttendanceMakeupNotificationHelper {
 
         if (decision == ReviewDecision.APPROVED) {
             if (needMakeup) {
-                int quotaUsed = Math.max(mr != null ? 1 : 0,
-                        quotaPolicy.countMakeups(saved.getStudent(), saved.getLesson(), MakeupQuotaPolicy.QUOTA_MAKEUP_STATUSES));
+                int quotaUsed = quotaPolicy.resolveUsedCourseQuota(saved.getStudent(), saved.getLesson());
                 if (parentUser != null) {
                     notificationService.sendNotification(
                             parentUser, currentUser,
                             "Đơn xin nghỉ đã được phê duyệt: " + studentName,
-                            String.format("Đơn xin nghỉ buổi ngày %s của bé %s đã được duyệt (Quyền bù khóa: %d/%d). Bộ phận học vụ sẽ tìm ca phù hợp để xếp lịch học bù.",
+                            String.format("Đơn xin nghỉ buổi ngày %s của bé %s đã được duyệt (Đã xếp bù khóa: %d/%d). Bộ phận học vụ sẽ tìm ca phù hợp để xếp lịch học bù.",
                                     dateStr, studentName, quotaUsed, MakeupQuotaPolicy.MAKEUP_LIMIT),
                             "ABSENCE_APPROVED", saved.getId(), absenceUrl);
                 }
                 notificationService.sendToRoles(
                         List.of(Role.STAFF, Role.ADMIN, Role.BRANCH_MANAGER), currentUser,
                         "Cần xếp lịch học bù mới: " + studentName,
-                        String.format("Đơn nghỉ #%d của học viên %s (lớp %s, ngày %s) đã được duyệt (Quyền bù khóa: %d/%d), vui lòng tìm ca phù hợp để xếp học bù.",
+                        String.format("Đơn nghỉ #%d của học viên %s (lớp %s, ngày %s) đã được duyệt (Đã xếp bù khóa: %d/%d), vui lòng tìm ca phù hợp để xếp học bù.",
                                 saved.getId(), studentName, className, dateStr, quotaUsed, MakeupQuotaPolicy.MAKEUP_LIMIT),
                         "MAKEUP_PENDING", makeupId, makeupUrl);
             } else if (parentUser != null) {

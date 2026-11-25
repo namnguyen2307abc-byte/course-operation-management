@@ -60,19 +60,6 @@ public interface AbsenceRequestRepository extends JpaRepository<AbsenceRequest, 
      */
     boolean existsByStudentIdAndLessonIdAndStatusIn(Long studentId, Long lessonId, Collection<AbsenceStatus> statuses);
 
-    /** Đơn chờ duyệt có đăng ký học bù, tính vào lượt bù của khóa học */
-    @Query("SELECT COUNT(ar) FROM AbsenceRequest ar " +
-           "WHERE ar.student.id = :studentId AND ar.status = com.talent.management.shared.enums.AbsenceStatus.PENDING " +
-           "AND (ar.needMakeup IS NULL OR ar.needMakeup = true) " +
-           "AND ar.lesson.classEntity.course.id = :courseId")
-    long countPendingMakeupByStudentAndCourse(@Param("studentId") Long studentId, @Param("courseId") Long courseId);
-
-    @Query("SELECT COUNT(ar) FROM AbsenceRequest ar " +
-           "WHERE ar.student.id = :studentId AND ar.status = com.talent.management.shared.enums.AbsenceStatus.PENDING " +
-           "AND (ar.needMakeup IS NULL OR ar.needMakeup = true) " +
-           "AND ar.lesson.classEntity.id = :classId")
-    long countPendingMakeupByStudentAndClass(@Param("studentId") Long studentId, @Param("classId") Long classId);
-
     /**
      * Lấy tất cả yêu cầu nghỉ học của một buổi học
      */
