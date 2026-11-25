@@ -9,6 +9,7 @@ import com.talent.management.features.course_management.repository.ProgramReposi
 import com.talent.management.features.course_management.service.CourseManagementService;
 import com.talent.management.shared.entity.Course;
 import com.talent.management.shared.entity.Program;
+import com.talent.management.shared.policy.CourseSessionPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,8 @@ public class CourseManagementServiceImpl implements CourseManagementService {
     @Transactional
     public CourseDetailResponse createCourse(CreateCourseRequest request) {
         Integer validatedTotalSessions = validateTotalSessions(request.getTotalSessions());
-        BigDecimal validatedTuitionFee = validateTuitionFee(request.getTuitionFee());
+        BigDecimal unitPrice = validateUnitPrice(request.getTuitionPerSession());
+        BigDecimal validatedTuitionFee = calculateTuition(unitPrice, validatedTotalSessions);
 
         // Validate code uniqueness
         String trimmedCode = request.getCode().trim();
@@ -73,6 +75,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
                 .durationWeeks(request.getDurationWeeks())
                 .totalSessions(validatedTotalSessions)
                 .tuitionFee(validatedTuitionFee)
+                .tuitionPerSession(unitPrice)
                 .description(request.getDescription() != null ? request.getDescription().trim() : null)
                 .build();
 
@@ -84,7 +87,8 @@ public class CourseManagementServiceImpl implements CourseManagementService {
     @Transactional
     public CourseDetailResponse updateCourse(Long id, UpdateCourseRequest request) {
         Integer validatedTotalSessions = validateTotalSessions(request.getTotalSessions());
-        BigDecimal validatedTuitionFee = validateTuitionFee(request.getTuitionFee());
+        BigDecimal unitPrice = validateUnitPrice(request.getTuitionPerSession());
+        BigDecimal validatedTuitionFee = calculateTuition(unitPrice, validatedTotalSessions);
 
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -108,6 +112,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
         course.setDurationWeeks(request.getDurationWeeks());
         course.setTotalSessions(validatedTotalSessions);
         course.setTuitionFee(validatedTuitionFee);
+        course.setTuitionPerSession(unitPrice);
         course.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
 
         Course saved = courseRepository.save(course);
@@ -133,7 +138,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
     private Integer validateTotalSessions(BigDecimal totalSessions) {
         if (totalSessions == null) {
-            return null;
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tổng số buổi học không được để trống");
         }
         // 1. Tách riêng ngoại lệ số âm
         if (totalSessions.compareTo(BigDecimal.ZERO) < 0) {
@@ -151,39 +156,50 @@ public class CourseManagementServiceImpl implements CourseManagementService {
                     "Tổng số buổi học phải lớn hơn 0");
         }
         // 4. Kiểm tra vượt quá giới hạn tối đa
-        if (totalSessions.compareTo(BigDecimal.valueOf(1000)) > 0) {
+        if (totalSessions.compareTo(BigDecimal.valueOf(60)) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Tổng số buổi học không được vượt quá 1000 buổi");
+                    "Tổng số buổi học không được vượt quá 60 buổi");
         }
-        return totalSessions.intValueExact();
+        return CourseSessionPolicy.requireStandardSessions(totalSessions.intValueExact());
     }
 
-    private BigDecimal validateTuitionFee(BigDecimal tuitionFee) {
-        if (tuitionFee == null) {
+    private BigDecimal validateUnitPrice(BigDecimal unitPrice) {
+        if (unitPrice == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Học phí không được để trống");
+                    "Đơn giá mỗi buổi không được để trống");
         }
         // 1. Tách riêng ngoại lệ số âm
-        if (tuitionFee.compareTo(BigDecimal.ZERO) < 0) {
+        if (unitPrice.compareTo(BigDecimal.ZERO) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Học phí không được là số âm");
+                    "Đơn giá mỗi buổi không được là số âm");
         }
         // 2. Tách riêng ngoại lệ số thập phân
-        if (tuitionFee.stripTrailingZeros().scale() > 0) {
+        if (unitPrice.stripTrailingZeros().scale() > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Học phí phải là số nguyên, không được nhập số thập phân");
+                    "Đơn giá mỗi buổi phải là số nguyên VNĐ, không được nhập số thập phân");
         }
         // 3. Tách riêng ngoại lệ bằng 0
-        if (tuitionFee.compareTo(BigDecimal.ZERO) == 0) {
+        if (unitPrice.compareTo(BigDecimal.ZERO) == 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Học phí phải lớn hơn 0");
+                    "Đơn giá mỗi buổi phải lớn hơn 0");
         }
-        // 4. Kiểm tra giới hạn tối đa theo cột DECIMAL(12,2) trong DB
-        if (tuitionFee.compareTo(BigDecimal.valueOf(9_999_999_999L)) > 0) {
+        if (unitPrice.compareTo(BigDecimal.valueOf(50000)) < 0
+                || unitPrice.compareTo(BigDecimal.valueOf(1000000)) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Học phí không được vượt quá 9.999.999.999 VNĐ");
+                    "Đơn giá mỗi buổi phải từ 50.000 đến 1.000.000 đồng");
         }
-        return tuitionFee;
+        return unitPrice;
+    }
+
+    private BigDecimal calculateTuition(BigDecimal unitPrice, int sessions) {
+        BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(sessions));
+        // Collection requires at least 1,000 VND; keep the result within the existing money columns.
+        if (total.compareTo(BigDecimal.valueOf(1000)) < 0
+                || total.compareTo(new BigDecimal("9999999999")) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Tổng học phí phải từ 1.000 đến 9.999.999.999 đồng. Vui lòng kiểm tra đơn giá mỗi buổi.");
+        }
+        return total;
     }
 
     private CourseDetailResponse toCourseDetailResponse(Course course) {
@@ -203,7 +219,8 @@ public class CourseManagementServiceImpl implements CourseManagementService {
                 course.getTuitionFee(),
                 course.getDescription(),
                 totalClasses != null ? totalClasses : 0L,
-                totalEnrollments != null ? totalEnrollments : 0L
+                totalEnrollments != null ? totalEnrollments : 0L,
+                course.getTuitionPerSession()
         );
     }
 }

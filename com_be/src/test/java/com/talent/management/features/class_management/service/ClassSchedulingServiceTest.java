@@ -209,7 +209,8 @@ class ClassSchedulingServiceTest {
     }
 
     @Test
-    void generatesRequestedSessionsAndChecksTheCalculatedEndDate() {
+    void generatesCourseSessionsAndChecksTheCalculatedEndDate() {
+        course.setTotalSessions(60);
         ClassEntity target = ClassEntity.builder().course(course).startDate(date).build();
         List<Lesson> lessons = service.generateLessons(target, List.of(date.getDayOfWeek().getValue()),
                 LocalTime.of(9, 0), LocalTime.of(10, 0), 60, null);
@@ -218,6 +219,7 @@ class ClassSchedulingServiceTest {
         assertThatThrownBy(() -> service.generateLessons(target, List.of(date.getDayOfWeek().getValue()),
                 LocalTime.of(9, 0), LocalTime.of(10, 0), 60, date.plusWeeks(2)))
                 .hasMessageContaining("Ngày kết thúc");
+        course.setTotalSessions(24);
         assertThat(service.generateLessons(target, List.of(date.getDayOfWeek().getValue()),
                 LocalTime.of(9, 0), LocalTime.of(10, 0), null, null)).hasSize(24);
     }
@@ -225,12 +227,28 @@ class ClassSchedulingServiceTest {
     @Test
     void cannotGenerateLessonsInThePastOrChangePastAndCompletedAssignments() {
         ClassEntity target = ClassEntity.builder().course(course).startDate(date.minusYears(1)).build();
-        assertThatThrownBy(() -> service.generateLessons(target, List.of(1), LocalTime.of(9, 0), LocalTime.of(10, 0), 1, null))
+        assertThatThrownBy(() -> service.generateLessons(target, List.of(1), LocalTime.of(9, 0), LocalTime.of(10, 0), null, null))
                 .hasMessageContaining("quá khứ");
         assertThat(service.canReassign(lesson(1, date.minusYears(1), 9, 0, 10, 0))).isFalse();
         Lesson completed = lesson(1, date, 9, 0, 10, 0);
         completed.setStatus(LessonStatus.COMPLETED);
         assertThat(service.canReassign(completed)).isFalse();
         assertThat(service.canReassign(lesson(1, date, 9, 0, 10, 0))).isTrue();
+    }
+
+    @Test
+    void rejectsClientSessionOverrideAndNonstandardLegacyCourse() {
+        ClassEntity target = ClassEntity.builder().course(course).startDate(date).build();
+        assertThatThrownBy(() -> service.generateLessons(target, List.of(1),
+                LocalTime.of(9, 0), LocalTime.of(10, 0), 12, null))
+                .hasMessageContaining("phải bằng số buổi của khóa học");
+        course.setTotalSessions(20);
+        assertThatThrownBy(() -> service.generateLessons(target, List.of(1),
+                LocalTime.of(9, 0), LocalTime.of(10, 0), null, null))
+                .hasMessageContaining("cập nhật khóa học");
+        course.setTotalSessions(null);
+        assertThatThrownBy(() -> service.generateLessons(target, List.of(1),
+                LocalTime.of(9, 0), LocalTime.of(10, 0), null, null))
+                .hasMessageContaining("cập nhật khóa học");
     }
 }

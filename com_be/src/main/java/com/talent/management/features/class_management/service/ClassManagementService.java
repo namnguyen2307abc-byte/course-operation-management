@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import com.talent.management.shared.entity.Branch;
 import com.talent.management.shared.entity.ClassEntity;
 import com.talent.management.shared.entity.Course;
+import com.talent.management.shared.policy.CourseSessionPolicy;
 import com.talent.management.shared.entity.Lesson;
 import com.talent.management.shared.entity.Room;
 import com.talent.management.shared.entity.User;
@@ -123,6 +124,7 @@ public class ClassManagementService {
 
         Branch branch = findBranch(request.branchId());
         Course course = findCourse(request.courseId());
+        CourseSessionPolicy.requireStandardSessions(course.getTotalSessions());
         User teacher = schedulingService.getTeacher(request.teacherId());
         Room room = schedulingService.getRoom(request.roomId());
         schedulingService.validateAssignments(course, branch, teacher, room, request.maxStudents());
@@ -213,6 +215,9 @@ public class ClassManagementService {
         boolean becomingActive = status != entity.getStatus()
                 && (status == ClassStatus.OPEN || status == ClassStatus.IN_PROGRESS);
         entity.setCourse(findCourse(request.courseId()));
+        if (!hasLessons) {
+            CourseSessionPolicy.requireStandardSessions(entity.getCourse().getTotalSessions());
+        }
         entity.setBranch(findBranch(request.branchId()));
         if (request.clearTeacher() && request.teacherId() != null || request.clearRoom() && request.roomId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể vừa bỏ vừa chọn cùng một phân công");

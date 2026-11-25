@@ -65,7 +65,7 @@ class ClassManagementServiceTest {
     @BeforeEach
     void setUp() {
         course = Course.builder().id(1L).code("PIA-G1").name("Piano Grade 1")
-                .program(Program.builder().code("PIANO").build()).build();
+                .totalSessions(12).program(Program.builder().code("PIANO").build()).build();
         branch = Branch.builder().id(2L).name("Cơ sở A").build();
         ClassSchedulingService scheduling = new ClassSchedulingService(userRepository, roomRepository, lessonRepository,
                 new FacilityRulesService(equipmentRepository));
@@ -101,6 +101,13 @@ class ClassManagementServiceTest {
         assertThat(result.currentStudents()).isZero();
         assertThat(result.availableSeats()).isEqualTo(8L);
         assertThat(result.status()).isEqualTo(ClassStatus.PLANNING);
+    }
+
+    @Test
+    void rejectsNonstandardLegacyCourseEvenForPlanningClassWithoutSchedule() {
+        course.setTotalSessions(20);
+        assertThatThrownBy(() -> service.create(request)).hasMessageContaining("cập nhật khóa học");
+        verify(classRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -216,6 +223,7 @@ class ClassManagementServiceTest {
 
     @Test
     void generatesAllSixtySessionsForOneLessonPerWeek() {
+        course.setTotalSessions(60);
         when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
         when(branchRepository.findById(2L)).thenReturn(Optional.of(branch));
         when(classRepository.saveAndFlush(any())).thenAnswer(inv -> {

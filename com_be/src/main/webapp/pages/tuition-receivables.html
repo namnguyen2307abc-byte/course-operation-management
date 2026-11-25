@@ -11,7 +11,6 @@
 <script defer src="../js/tuition-payment/installment-api.js"></script>
 <script defer src="../js/tuition-payment/installment-receipt.js"></script>
 <script defer src="../js/tuition-payment/installment-pagination.js"></script>
-<script defer src="../js/tuition-payment/installment-adjustments.js"></script>
 <script defer src="../js/tuition-payment/installment-validation.js"></script>
 <script defer src="../js/tuition-payment/installment-page.js"></script>
 <script src="../js/auth.js"></script>
@@ -32,11 +31,7 @@
 <header class="ledger-page-heading"><p class="eyebrow">HỌC PHÍ & LỊCH THANH TOÁN</p><h1>Quản lý học phí</h1>
 <p class="text-secondary">Chốt lịch đóng sau khi xếp lớp, thu học phí và theo dõi công nợ trên cùng một màn hình.</p></header>
 <p id="feedback" hidden role="status" class="alert"></p>
-<nav id="tuition-tabs" class="tuition-tabs" role="tablist" aria-label="Quản lý học phí" hidden>
-<button id="tuition-tab" type="button" role="tab" aria-selected="true" aria-controls="tuition-panel" class="tuition-tab active"><i class="bi bi-wallet2" aria-hidden="true"></i> Học phí</button>
-<button id="corrections-tab" type="button" role="tab" aria-selected="false" aria-controls="reversals" tabindex="-1" class="tuition-tab"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Điều chỉnh khoản thu nhầm <span id="correction-count" class="tab-count">0</span></button>
-</nav>
-<section id="tuition-panel" role="tabpanel" aria-labelledby="tuition-tab">
+<section id="tuition-panel" aria-label="Học phí">
 <section id="notices" hidden aria-label="Thông báo học phí"></section>
 <div id="summary" class="ledger-summary"></div>
 <div class="ledger-toolbar" role="search" aria-label="Lọc hóa đơn">
@@ -45,17 +40,6 @@
 <button id="refresh" class="btn btn-outline-success"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Tải lại</button>
 </div>
 <section id="records" aria-live="polite"></section>
-</section>
-<section id="reversals" role="tabpanel" aria-labelledby="corrections-tab" hidden>
-<header class="adjustment-heading"><div><h2>Điều chỉnh khoản thu nhầm</h2><p>Kiểm tra, duyệt và theo dõi các khoản thu tiền mặt được đề nghị sửa.</p></div><span class="ledger-badge tone-neutral">Dành cho quản lý</span></header>
-<div id="correction-summary" class="adjustment-summary" aria-label="Tổng hợp đề nghị"></div>
-<div class="ledger-toolbar" role="search" aria-label="Lọc đề nghị điều chỉnh">
-<label>Tìm mã phiếu, học viên hoặc người lập<input id="correction-keyword" class="form-control" type="search" placeholder="Nhập mã PT, tên học viên, lý do…"></label>
-<label>Trạng thái đề nghị<select id="correction-state" aria-label="Trạng thái đề nghị" class="form-select"><option value="">Tất cả trạng thái</option><option value="PENDING">Chờ duyệt</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Đã từ chối</option></select></label>
-<button id="correction-refresh" type="button" class="btn btn-outline-success"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Tải lại</button>
-</div>
-<p id="correction-error" class="alert alert-danger" role="alert" hidden></p>
-<div id="correction-records" aria-live="polite"></div>
 </section>
 <dialog id="action-dialog" aria-labelledby="action-title">
 <form id="action-form"><h2 id="action-title"></h2><div id="action-content"></div>
