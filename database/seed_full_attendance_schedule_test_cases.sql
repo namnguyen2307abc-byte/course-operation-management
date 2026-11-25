@@ -265,80 +265,78 @@ UPDATE dbo.lessons SET title = N'Buổi 2: Tư thế ngồi & Kỹ thuật bấm
 
 
 -- ------------------------------------------------------------------------------
--- BƯỚC 4: DỮ LIỆU ĐIỂM DANH & 3 CẤP ĐỘ CHUYÊN CẦN (ATTENDANCE TRACKING)
+-- BƯỚC 4: DỮ LIỆU ĐIỂM DANH & 3 CẤP ĐỘ CHUYÊN CẦN CHUẨN XÁC (ATTENDANCE TRACKING)
 -- ------------------------------------------------------------------------------
 DECLARE @LessonYesterdayClass2 BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 2 AND lesson_date = '2026-11-23' ORDER BY id DESC);
 DECLARE @LessonYesterdayClass4 BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 4 AND lesson_date = '2026-11-23' ORDER BY id DESC);
 DECLARE @LessonYesterdayClass3 BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 3 AND lesson_date = '2026-11-23' ORDER BY id DESC);
 
--- Xóa dữ liệu điểm danh ca quá khứ Lớp 3 (để ca này ở trạng thái CHƯA ĐIỂM DANH, test Admin Override)
-IF @LessonYesterdayClass3 IS NOT NULL
-BEGIN
-    DELETE FROM dbo.attendances WHERE lesson_id = @LessonYesterdayClass3;
-END;
+-- Xóa enrollment rác của Bé Bảo Nam (id=1) khỏi Lớp 3 để khi tra cứu không bị load nhầm lớp rác
+DELETE FROM dbo.enrollments WHERE student_id = 1 AND class_id = 3;
 
 -- CẤP ĐỘ 1: BÉ NGUYỄN MAI CHI (student_id = 2, Lớp CL-PIA-PRE-G01, Khóa 24 buổi)
--- Tỷ lệ vắng: 1 / 24 buổi (4.2% <= 10%) -> CHUYÊN CẦN TỐT / XANH LÁ (NORMAL)
+-- Tỷ lệ vắng: 1 / 24 buổi (4.2% <= 10%) -> CHUYÊN CẦN AN TOÀN / XANH LÁ (NORMAL)
 DELETE FROM dbo.attendances WHERE student_id = 2;
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+SELECT id, 2, 'PRESENT', '2026-11-20 09:30:00', N'Có mặt đầy đủ, chăm chỉ'
+FROM dbo.lessons WHERE class_id = 2 AND lesson_date < '2026-11-25' AND id != 207;
 
 INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-SELECT TOP 10 id, 2, 'PRESENT', '2026-11-20 08:30:00', N'Có mặt đúng giờ, học tập tích cực'
-FROM dbo.lessons
-WHERE class_id = 2 AND lesson_date < '2026-11-23'
-ORDER BY session_number ASC;
+VALUES (207, 2, 'ABSENT', '2026-11-23 09:30:00', N'Nghỉ có phép (Bận việc gia đình)');
 
-IF @LessonYesterdayClass2 IS NOT NULL
-BEGIN
-    INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-    VALUES (@LessonYesterdayClass2, 2, 'PRESENT', '2026-11-23 09:30:00', N'Có mặt đầy đủ');
-END;
-
-DECLARE @AbsentLessonChi BIGINT = (SELECT TOP 1 id FROM dbo.lessons WHERE class_id = 2 AND lesson_date <= '2026-11-22' AND id NOT IN (SELECT lesson_id FROM dbo.attendances WHERE student_id = 2));
-IF @AbsentLessonChi IS NOT NULL
-BEGIN
-    INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-    VALUES (@AbsentLessonChi, 2, 'ABSENT', '2026-11-19 09:30:00', N'Nghỉ có phép (Gia đình có việc bận)');
-END;
+-- Buổi 208 hôm nay Mai Chi có mặt:
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+VALUES (208, 2, 'PRESENT', '2026-11-25 09:30:00', N'Có mặt đầy đủ, tiếp thu bài tốt');
 
 
 -- CẤP ĐỘ 2: BÉ NGUYỄN TRỌNG ANH (student_id = 3, Lớp CL-GUI-BASIC-01, Khóa 24 buổi)
 -- Tỷ lệ vắng: 3 / 24 buổi (12.5% > 10% và < 20%) -> CẢNH BÁO VÀNG (WARNING)
 DELETE FROM dbo.attendances WHERE student_id = 3;
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+SELECT id, 3, 'PRESENT', '2026-11-20 15:30:00', N'Có mặt đúng giờ'
+FROM dbo.lessons WHERE class_id = 4 AND lesson_date < '2026-11-25' AND id NOT IN (52, 53, 212);
 
 INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-SELECT TOP 8 id, 3, 'PRESENT', '2026-11-20 14:00:00', N'Có mặt'
-FROM dbo.lessons
-WHERE class_id = 4 AND lesson_date < '2026-11-23'
-ORDER BY session_number ASC;
-
-IF @LessonYesterdayClass4 IS NOT NULL
-BEGIN
-    INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-    VALUES (@LessonYesterdayClass4, 3, 'PRESENT', '2026-11-23 15:30:00', N'Có mặt đúng giờ');
-END;
-
-INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-SELECT TOP 3 id, 3, 'ABSENT', '2026-11-18 15:30:00', N'Vắng mặt (Bận việc riêng)'
-FROM dbo.lessons
-WHERE class_id = 4 AND lesson_date <= '2026-11-22' AND id NOT IN (SELECT lesson_id FROM dbo.attendances WHERE student_id = 3)
-ORDER BY session_number DESC;
+SELECT id, 3, 'ABSENT', '2026-11-20 15:30:00', N'Vắng mặt có phép'
+FROM dbo.lessons WHERE class_id = 4 AND id IN (52, 53, 212);
 
 
 -- CẤP ĐỘ 3: BÉ NGUYỄN HẢI YẾN (student_id = 4, Lớp CL-PIA-G1-G01, Khóa 32 buổi)
 -- Tỷ lệ vắng: 7 / 32 buổi (21.9% >= 20%) -> BÁO ĐỘNG ĐỎ NGUY CƠ CẤM THI (CRITICAL)
 DELETE FROM dbo.attendances WHERE student_id = 4;
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+SELECT id, 4, 'PRESENT', '2026-11-15 19:30:00', N'Có mặt'
+FROM dbo.lessons WHERE class_id = 3 AND lesson_date < '2026-11-25' AND id NOT IN (SELECT TOP 7 id FROM dbo.lessons WHERE class_id = 3 AND lesson_date < '2026-11-25' ORDER BY id DESC);
 
 INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-SELECT TOP 4 id, 4, 'PRESENT', '2026-11-12 18:00:00', N'Có mặt'
-FROM dbo.lessons
-WHERE class_id = 3 AND lesson_date < '2026-11-23'
-ORDER BY session_number ASC;
+SELECT id, 4, 'ABSENT', '2026-11-20 19:30:00', N'Vắng mặt không phép'
+FROM dbo.lessons WHERE class_id = 3 AND id IN (SELECT TOP 7 id FROM dbo.lessons WHERE class_id = 3 AND lesson_date < '2026-11-25' ORDER BY id DESC);
+
+
+-- BÉ BẢO NAM (student_id = 1, Lớp 1 CL-PIA-01): 0 vắng -> CHUYÊN CẦN AN TOÀN (NORMAL)
+DELETE FROM dbo.attendances WHERE student_id = 1;
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+SELECT id, 1, 'PRESENT', '2026-11-24 10:30:00', N'Có mặt đầy đủ'
+FROM dbo.lessons WHERE class_id = 1 AND lesson_date < '2026-11-25';
+
+
+-- BÉ ĐỖ MINH KHANG (student_id = 9, Lớp 2): 2 vắng / 24 buổi (8.3% <= 10%) -> NORMAL, có 1 MISS ngày 25/11
+DELETE FROM dbo.attendances WHERE student_id = 9;
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+SELECT id, 9, 'PRESENT', '2026-11-20 09:30:00', N'Có mặt đầy đủ'
+FROM dbo.lessons WHERE class_id = 2 AND lesson_date < '2026-11-25' AND id != 207;
 
 INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
-SELECT TOP 7 id, 4, 'ABSENT', '2026-11-15 18:00:00', N'Vắng mặt'
-FROM dbo.lessons
-WHERE class_id = 3 AND lesson_date <= '2026-11-22' AND id NOT IN (SELECT lesson_id FROM dbo.attendances WHERE student_id = 4)
-ORDER BY session_number DESC;
+VALUES (207, 9, 'ABSENT', '2026-11-23 09:30:00', N'Nghỉ ốm có phép (chờ học bù)');
+
+-- BÉ PHẠM GIA HUY (student_id = 8, Lớp 2): 2 vắng / 24 buổi (8.3% <= 10%) -> NORMAL, có 2 LOCK ngày 25/11
+DELETE FROM dbo.attendances WHERE student_id = 8;
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+SELECT id, 8, 'PRESENT', '2026-11-20 09:30:00', N'Có mặt đầy đủ'
+FROM dbo.lessons WHERE class_id = 2 AND lesson_date < '2026-11-25' AND id != 200;
+
+INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
+VALUES (200, 8, 'ABSENT', '2026-11-22 09:30:00', N'Nghỉ thi cờ vua (chờ học bù)');
 
 -- Điểm danh cho học sinh Lớp 22 (Buổi 1 và 2)
 INSERT INTO dbo.attendances (lesson_id, student_id, status, marked_at, note)
