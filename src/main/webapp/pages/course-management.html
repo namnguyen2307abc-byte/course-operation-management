@@ -968,6 +968,17 @@
             document.getElementById('tuitionFeePreview').textContent = validSessions && !message
                 ? formatCurrency(fee) + '/buổi × ' + sessions + ' buổi = ' + formatCurrency(total)
                 : '';
+
+            const codeInput = document.getElementById('fieldCode');
+            if (codeInput) {
+                codeInput.setCustomValidity(codeInput.value.length > 0 && codeInput.value.trim() === ''
+                    ? 'Mã khóa học không được chỉ chứa khoảng trắng.' : '');
+            }
+            const nameInput = document.getElementById('fieldName');
+            if (nameInput) {
+                nameInput.setCustomValidity(nameInput.value.length > 0 && nameInput.value.trim() === ''
+                    ? 'Tên khóa học không được chỉ chứa khoảng trắng.' : '');
+            }
         }
 
         async function submitCourseForm() {

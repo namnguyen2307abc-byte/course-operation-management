@@ -25,7 +25,7 @@
    const key=`installments[${i}]`,period=`Kỳ ${i+1}`,raw=String(due.amount??'').trim(),amount=Number(raw);
    if(!raw) errors[key+'.amount']=period+': vui lòng nhập số tiền phải đóng.';
    else if(Number.isFinite(amount)&&amount<=0) errors[key+'.amount']=period+': số tiền phải lớn hơn 0đ. Nếu không cần kỳ này, hãy chọn ít kỳ hơn.';
-   else if(Number.isFinite(amount)&&amount<1000) errors[key+'.amount']=period+': mỗi kỳ phải từ 1.000đ trở lên. Nếu học phí còn lại quá nhỏ, hãy chọn ít kỳ hơn.';
+   else if(Number.isFinite(amount)&&amount<2000) errors[key+'.amount']=period+': mỗi kỳ phải từ 2.000đ trở lên. Nếu học phí còn lại quá nhỏ, hãy chọn ít kỳ hơn.';
    else if(!/^\d+$/.test(raw)||!Number.isSafeInteger(amount)) errors[key+'.amount']=period+': số tiền phải là số nguyên đồng, không được nhập số thập phân.';
    else if(amount>9999999999) errors[key+'.amount']=period+': số tiền không được vượt giới hạn 9.999.999.999đ.';
    else if(amount>total) errors[key+'.amount']=period+': số tiền không được vượt học phí sau giảm '+money(total)+'.';

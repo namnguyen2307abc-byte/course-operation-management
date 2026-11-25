@@ -336,21 +336,29 @@ test('placement discount shows score and locks policy while submitting the autho
  }finally{await page.close();}
 });
 
-test('a period under 1000 is rejected and no-discount is explicit',async()=>{
+test('each period requires at least 2000 VND and accepts exactly 2000',async()=>{
  let writes=0;
  const {page}=await open('STAFF',(url,req)=>{
   if(req.method()==='POST'){writes++;return {};}
-  if(url.pathname.endsWith('/receivables'))return [{...invoice,paid:0,status:'UNPAID',confirmed:false}];
+  if(url.pathname.endsWith('/receivables'))return [{...invoice,originalAmount:6000,total:6000,balance:6000,paid:0,status:'UNPAID',confirmed:false}];
  });
  try{
   await page.getByRole('button',{name:'Chốt lịch đóng',exact:true}).click();
   assert.equal(await page.getByLabel('Kiểu ưu đãi').inputValue(),'NONE');
-  await page.getByLabel('Phương án đóng').selectOption('2');
-  await page.locator('[name=amount1]').fill('999');
-  await page.locator('[name=date1]').fill('2099-12-31');
-  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
-  assert.match(await page.locator('#action-content').innerText(),/Kỳ 2:.*1.000đ/);
+  await page.getByLabel('Phương án đóng').selectOption('3');
+  for(let i=0;i<3;i++)assert.equal(await page.locator('[name=amount'+i+']').inputValue(),'2000');
+  await page.locator('[name=date1]').fill('2099-12-30');
+  await page.locator('[name=date2]').fill('2099-12-31');
+  for(let i=0;i<3;i++)for(const amount of ['1000','1999']){
+   await page.locator('[name=amount'+i+']').fill(amount);
+   await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+   assert.match(await page.locator('#action-content').innerText(),new RegExp('Kỳ '+(i+1)+':.*2.000đ'));
+   await page.locator('[name=amount'+i+']').fill('2000');
+  }
   assert.equal(writes,0);
+  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+  await page.getByText('Đã lưu và cập nhật số dư.',{exact:true}).waitFor();
+  assert.equal(writes,1);
  }finally{await page.close();}
 });
 

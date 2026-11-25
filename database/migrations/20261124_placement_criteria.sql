@@ -85,5 +85,24 @@ WHERE s.status = 'COMPLETED'
       WHERE sc.schedule_id = s.id
   );
 
+-- Ensure main branches have subject-matched rooms for Guitar, Piano, Mua, and Vo placement tests
+IF EXISTS (SELECT 1 FROM dbo.branches WHERE id = 1)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 1 AND room_type = 'GUITAR_ROOM')
+        INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+        VALUES (1, 'P104', N'Phòng Guitar & Cảm Âm 1', 10, 'GUITAR_ROOM', 'AVAILABLE', N'Phòng thực hành và kiểm tra đầu vào môn Guitar tại Cơ sở 1');
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 1 AND room_type = 'THEORY_ROOM')
+        INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+        VALUES (1, 'P105', N'Võ Đường & Thể Lực 1', 15, 'THEORY_ROOM', 'AVAILABLE', N'Phòng tập và kiểm tra năng khiếu môn Võ thuật tại Cơ sở 1');
+END;
+
+IF EXISTS (SELECT 1 FROM dbo.branches WHERE id = 2)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 2 AND room_type = 'DANCE_ROOM')
+        INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+        VALUES (2, 'P204', N'Phòng Tập Múa & Ballet 2', 15, 'DANCE_ROOM', 'AVAILABLE', N'Phòng tập và kiểm tra năng khiếu môn Múa tại Cơ sở 2');
+END;
+
 COMMIT TRANSACTION;
 GO

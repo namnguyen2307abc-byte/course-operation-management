@@ -1621,6 +1621,23 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
   PRINT N'Da nap day du du lieu demo tong hop.';
  END
  ELSE PRINT N'Bo du lieu tong hop da duoc nap; giu nguyen du lieu hien tai.';
+ -- Subject-specific placement rooms: also applies when the combined demo is rerun.
+ -- Keep this after base data so generated room IDs do not shift existing fixtures.
+ IF EXISTS (SELECT 1 FROM dbo.branches WHERE id = 1)
+ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 1 AND room_type = 'GUITAR_ROOM')
+   INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+   VALUES (1, 'P104', N'Phòng Guitar & Cảm Âm 1', 10, 'GUITAR_ROOM', 'AVAILABLE', N'Phòng thực hành và kiểm tra đầu vào môn Guitar tại Cơ sở 1');
+  IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 1 AND room_type = 'THEORY_ROOM')
+   INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+   VALUES (1, 'P105', N'Võ Đường & Thể Lực 1', 15, 'THEORY_ROOM', 'AVAILABLE', N'Phòng tập và kiểm tra năng khiếu môn Võ thuật tại Cơ sở 1');
+ END;
+ IF EXISTS (SELECT 1 FROM dbo.branches WHERE id = 2)
+ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 2 AND room_type = 'DANCE_ROOM')
+   INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+   VALUES (2, 'P204', N'Phòng Tập Múa & Ballet 2', 15, 'DANCE_ROOM', 'AVAILABLE', N'Phòng tập và kiểm tra năng khiếu môn Múa tại Cơ sở 2');
+ END;
  -- Run after seeding so programs created during the first import are configured too.
  -- Preserve custom mappings and leave historical requests/schedules unchanged.
  EXEC sys.sp_executesql N'
@@ -1645,7 +1662,8 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
  DELETE FROM dbo.programs WHERE code='PROG-MUSIC';
 
  -- Fixed-date demonstration: one class, Slot 1 and Slot 2 on Monday 16/11/2026.
- -- Six Mondays / twelve lessons match the existing PIA-CB-12 course.
+ -- Twelve lessons on available Mondays match the existing PIA-CB-12 course.
+ -- Keep the requested first morning on 16/11; skip later Mondays occupied by relative demo schedules.
  DECLARE @HuongDemoDate date='20261116',
   @HuongDemoTeacher bigint=(SELECT id FROM dbo.users WHERE username='teacher_huong' AND role='TEACHER'),
   @HuongDemoStaff bigint=(SELECT id FROM dbo.users WHERE username='d26_staff'),
@@ -1662,13 +1680,29 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
  IF NOT EXISTS(SELECT 1 FROM dbo.classes WHERE class_code='HUONG-1611-AM')
  BEGIN
   DECLARE @HuongDemoLessons TABLE(session_number int,lesson_date date,start_time time,end_time time);
-  DECLARE @HuongDemoSession int=1;
+  DECLARE @HuongDemoSession int=1, @HuongDemoWeek int=0, @HuongDemoLessonDate date;
   WHILE @HuongDemoSession<=12
   BEGIN
-   INSERT @HuongDemoLessons VALUES(@HuongDemoSession,DATEADD(day,7*((@HuongDemoSession-1)/2),@HuongDemoDate),
-    CASE WHEN @HuongDemoSession%2=1 THEN '07:00' ELSE '09:30' END,
-    CASE WHEN @HuongDemoSession%2=1 THEN '09:00' ELSE '11:30' END);
-   SET @HuongDemoSession+=1;
+   IF @HuongDemoWeek>=52
+    THROW 51808,'Cannot find six available Monday mornings for the Huong demo.',1;
+   SET @HuongDemoLessonDate=DATEADD(day,7*@HuongDemoWeek,@HuongDemoDate);
+   IF EXISTS(SELECT 1 FROM dbo.lessons l
+    WHERE l.lesson_date=@HuongDemoLessonDate AND l.status<>'CANCELLED'
+     AND (l.teacher_id=@HuongDemoTeacher OR l.room_id=@HuongDemoRoom)
+     AND ((l.start_time<'09:00' AND l.end_time>'07:00')
+       OR (l.start_time<'11:30' AND l.end_time>'09:30')))
+   BEGIN
+    IF @HuongDemoWeek=0
+     THROW 51808,'The required Huong morning on 16/11 conflicts with another lesson.',1;
+   END
+   ELSE
+   BEGIN
+    INSERT @HuongDemoLessons VALUES
+     (@HuongDemoSession,@HuongDemoLessonDate,'07:00','09:00'),
+     (@HuongDemoSession+1,@HuongDemoLessonDate,'09:30','11:30');
+    SET @HuongDemoSession+=2;
+   END;
+   SET @HuongDemoWeek+=1;
   END;
   IF EXISTS(SELECT 1 FROM @HuongDemoLessons d JOIN dbo.lessons l ON l.lesson_date=d.lesson_date
    AND l.start_time<d.end_time AND l.end_time>d.start_time
@@ -1677,7 +1711,7 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
   INSERT dbo.classes(course_id,branch_id,room_id,teacher_id,class_code,class_name,class_type,max_students,current_students,
    start_date,end_date,schedule_description,status)
   VALUES(@HuongDemoCourse,@HuongDemoBranch,@HuongDemoRoom,@HuongDemoTeacher,'HUONG-1611-AM',
-   N'Piano sáng thứ Hai - Cô Vũ Thu Hương','GROUP',6,3,@HuongDemoDate,DATEADD(day,35,@HuongDemoDate),
+   N'Piano sáng thứ Hai - Cô Vũ Thu Hương','GROUP',6,3,@HuongDemoDate,(SELECT MAX(lesson_date) FROM @HuongDemoLessons),
    N'Thứ Hai: Slot 1 (07:00-09:00) và Slot 2 (09:30-11:30), khai giảng 16/11/2026','OPEN');
   DECLARE @HuongDemoClass bigint=SCOPE_IDENTITY();
   INSERT dbo.lessons(class_id,room_id,teacher_id,session_number,lesson_date,start_time,end_time,title,status,lesson_note)
@@ -1694,6 +1728,79 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
    N'[HUONG-1611] Ghi danh demo để kiểm tra điểm danh; không tạo giao dịch tiền thật.'
   FROM dbo.students s WHERE s.parent_id=@HuongDemoParent AND s.notes=N'[HUONG-1611] Học viên lớp Piano sáng thứ Hai.';
  END;
+ -- Capacity demo: eight seats, seven real ENROLLED rows, one seat left for enrollment testing.
+ -- This additive fixture never resets a class already used in a manual test.
+ DECLARE @CapacityDemoCode varchar(50)='PIA-DEMO-8-7';
+ IF NOT EXISTS(SELECT 1 FROM dbo.classes WHERE class_code=@CapacityDemoCode)
+ BEGIN
+  DECLARE @CapacityDemoTeacher bigint=(SELECT id FROM dbo.users WHERE username='teacher_ha' AND role='TEACHER'),
+   @CapacityDemoStaff bigint=(SELECT id FROM dbo.users WHERE username='d26_staff' AND role='STAFF'),
+   @CapacityDemoParent bigint=(SELECT id FROM dbo.users WHERE username='parent_lan' AND role='PARENT'),
+   @CapacityDemoCourse bigint=(SELECT id FROM dbo.courses WHERE code='PIA-CB-12' AND total_sessions=12),
+   @CapacityDemoBranch bigint=(SELECT id FROM dbo.branches WHERE code='CS01');
+  IF @CapacityDemoTeacher IS NULL OR @CapacityDemoStaff IS NULL OR @CapacityDemoParent IS NULL
+   OR @CapacityDemoCourse IS NULL OR @CapacityDemoBranch IS NULL
+   THROW 51809,'Missing teacher, parent, course or branch for the eight-seat capacity demo.',1;
+  IF EXISTS(SELECT 1 FROM dbo.rooms WHERE room_code='CAP-PIA-08'
+   AND (branch_id<>@CapacityDemoBranch OR capacity<>8 OR room_type<>'PIANO_GROUP'))
+   THROW 51810,'CAP-PIA-08 is already used by a different room.',1;
+  IF NOT EXISTS(SELECT 1 FROM dbo.rooms WHERE branch_id=@CapacityDemoBranch AND room_code='CAP-PIA-08')
+   INSERT dbo.rooms(branch_id,room_code,room_name,capacity,room_type,status,description)
+   VALUES(@CapacityDemoBranch,'CAP-PIA-08',N'Phòng Piano 8 chỗ',8,'PIANO_GROUP','AVAILABLE',
+    N'[CAPACITY-8-7] Phòng riêng để thử ghi danh vào chỗ còn lại.');
+  DECLARE @CapacityDemoRoom bigint=(SELECT id FROM dbo.rooms WHERE branch_id=@CapacityDemoBranch AND room_code='CAP-PIA-08');
+  DECLARE @CapacityDemoDevice int=1;
+  WHILE @CapacityDemoDevice<=8
+  BEGIN
+   IF NOT EXISTS(SELECT 1 FROM dbo.equipments WHERE code='CAP-PIA-KEY-'+RIGHT('0'+CONVERT(varchar(2),@CapacityDemoDevice),2))
+    INSERT dbo.equipments(room_id,name,code,category,status,description)
+    VALUES(@CapacityDemoRoom,N'Đàn Piano số '+CONVERT(nvarchar(2),@CapacityDemoDevice),
+     'CAP-PIA-KEY-'+RIGHT('0'+CONVERT(varchar(2),@CapacityDemoDevice),2),'KEYBOARD','GOOD',N'[CAPACITY-8-7] Thiết bị lớp demo 8 chỗ.');
+   SET @CapacityDemoDevice+=1;
+  END;
+  DECLARE @CapacityDemoStart date=DATEADD(day,1,CONVERT(date,GETDATE()));
+  SET @CapacityDemoStart=DATEADD(day,(5-DATEDIFF(day,'19000101',@CapacityDemoStart)%7+7)%7,@CapacityDemoStart);
+  DECLARE @CapacityDemoWeeks TABLE(n int PRIMARY KEY);
+  INSERT @CapacityDemoWeeks VALUES(0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11);
+  DECLARE @CapacityDemoSearch int=0;
+  WHILE EXISTS(SELECT 1 FROM @CapacityDemoWeeks w JOIN dbo.lessons l
+    ON l.lesson_date=DATEADD(day,7*w.n,@CapacityDemoStart)
+    WHERE l.status<>'CANCELLED' AND l.start_time<'16:00' AND l.end_time>'14:00'
+     AND (l.teacher_id=@CapacityDemoTeacher OR l.room_id=@CapacityDemoRoom))
+  BEGIN
+   SET @CapacityDemoStart=DATEADD(day,7,@CapacityDemoStart);
+   SET @CapacityDemoSearch+=1;
+   IF @CapacityDemoSearch>=52 THROW 51811,'No free weekly schedule for the eight-seat capacity demo.',1;
+  END;
+  INSERT dbo.classes(course_id,branch_id,room_id,teacher_id,class_code,class_name,class_type,max_students,current_students,
+   start_date,end_date,schedule_description,status)
+  VALUES(@CapacityDemoCourse,@CapacityDemoBranch,@CapacityDemoRoom,@CapacityDemoTeacher,@CapacityDemoCode,
+   N'Piano cơ bản - Lớp 8 chỗ (đã ghi danh 7)','GROUP',8,7,@CapacityDemoStart,DATEADD(day,77,@CapacityDemoStart),
+   N'Thứ Bảy, Slot 3 (14:00-16:00), 12 buổi','OPEN');
+  DECLARE @CapacityDemoClass bigint=SCOPE_IDENTITY();
+  INSERT dbo.lessons(class_id,room_id,teacher_id,session_number,lesson_date,start_time,end_time,title,status,lesson_note)
+  SELECT @CapacityDemoClass,@CapacityDemoRoom,@CapacityDemoTeacher,n+1,DATEADD(day,7*n,@CapacityDemoStart),'14:00','16:00',
+   N'Piano cơ bản - Buổi '+CONVERT(nvarchar(2),n+1),'SCHEDULED',N'[CAPACITY-8-7] Lịch lớp 8 chỗ, còn 1 chỗ.'
+  FROM @CapacityDemoWeeks;
+  DECLARE @CapacityDemoChildren TABLE(full_name nvarchar(150),gender nvarchar(20));
+  INSERT @CapacityDemoChildren VALUES
+   (N'Phạm Minh Anh',N'Nữ'),(N'Đặng Gia Bảo',N'Nam'),(N'Hoàng Khánh Linh',N'Nữ'),
+   (N'Vũ Đức Minh',N'Nam'),(N'Bùi Ngọc Mai',N'Nữ'),(N'Đỗ Tuấn Phong',N'Nam'),(N'Trịnh Hà My',N'Nữ');
+  INSERT dbo.students(parent_id,full_name,date_of_birth,gender,school_name,notes,created_at)
+  SELECT @CapacityDemoParent,d.full_name,'20180520',d.gender,N'Trường demo',N'[CAPACITY-8-7] Học viên lớp còn 1 chỗ.',SYSDATETIME()
+  FROM @CapacityDemoChildren d
+  WHERE NOT EXISTS(SELECT 1 FROM dbo.students s WHERE s.parent_id=@CapacityDemoParent
+   AND s.full_name=d.full_name AND s.notes=N'[CAPACITY-8-7] Học viên lớp còn 1 chỗ.');
+  INSERT dbo.enrollments(student_id,class_id,registered_by_user_id,enrollment_date,status,notes)
+  SELECT s.id,@CapacityDemoClass,@CapacityDemoStaff,SYSDATETIME(),'ENROLLED',
+   N'[CAPACITY-8-7] Ghi danh demo để thử sĩ số; không tạo giao dịch tiền thật.'
+  FROM dbo.students s JOIN @CapacityDemoChildren d ON d.full_name=s.full_name
+  WHERE s.parent_id=@CapacityDemoParent AND s.notes=N'[CAPACITY-8-7] Học viên lớp còn 1 chỗ.';
+  IF (SELECT COUNT(*) FROM dbo.enrollments WHERE class_id=@CapacityDemoClass AND status='ENROLLED')<>7
+   THROW 51812,'The eight-seat capacity demo must have exactly seven enrolled students.',1;
+ END;
+ SELECT class_code,class_name,max_students,current_students,max_students-current_students AS available_seats
+ FROM dbo.classes WHERE class_code=@CapacityDemoCode;
  -- Payment manual-test price: applies to fresh installs and reruns with COMBINED_DEMO_V1.
  -- Only the course catalogue changes. Existing invoices, plans, receipts and discounts are preserved.
  IF (SELECT COUNT(*) FROM dbo.courses WHERE code='PIA-CB-12')<>1
@@ -1742,6 +1849,131 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
     END;
    END;';
  END;
+ -- PLACEMENT_INTAKE_BEGIN
+ -- Intake appointments use natural names and notes; installation metadata stays outside displayed records.
+ IF NOT EXISTS(SELECT 1 FROM dbo.combined_demo_installations WHERE seed_key='PLACEMENT_INTAKE_202611_V1')
+ BEGIN
+  DECLARE @IntakeNow datetime2=CONVERT(datetime2,SYSDATETIMEOFFSET() AT TIME ZONE 'SE Asia Standard Time');
+  DECLARE @IntakeToday date=CONVERT(date,@IntakeNow),
+   @IntakeStaff bigint=(SELECT id FROM dbo.users WHERE username='d26_staff' AND role='STAFF');
+  IF @IntakeStaff IS NULL THROW 51813,'The intake coordinator account is missing.',1;
+  DECLARE @IntakeAppointments TABLE(
+   ordinal int PRIMARY KEY,parent_username varchar(100),student_name nvarchar(100),gender nvarchar(20),
+   program_code varchar(50),course_code varchar(50),branch_code varchar(50),room_code varchar(50),
+   day_offset int,minute_of_day int,score int NULL,teacher_username varchar(100) NULL,
+   parent_note nvarchar(500),teacher_note nvarchar(2000) NULL);
+  INSERT @IntakeAppointments VALUES
+   (1,'d26_parent_wait',N'Nguyễn Hoàng Nam',N'Nam','PIANO','PIA-CB-12','CS01','P101',0,600,NULL,NULL,
+    N'Bé chưa học đàn, gia đình muốn kiểm tra cảm âm và tư thế tay trước khi chọn lớp.',NULL),
+   (2,'parent_lan',N'Lê Gia Hân',N'Nữ','PIANO','PIA-CB-12','CS01','P101',0,630,NULL,NULL,
+    N'Bé yêu thích Piano, phụ huynh ưu tiên lịch học chiều cuối tuần.',NULL),
+   (3,'parent_hoang',N'Trần Đức Anh',N'Nam','PIANO','PIA-CB-12','CS01','P101',1,540,NULL,NULL,
+    N'Gia đình muốn đánh giá khả năng giữ nhịp và tập trung khi học nhạc.',NULL),
+   (4,'d26_parent_new',N'Nguyễn Minh Khang',N'Nam','GUITAR','GUI-BASIC','MD01','MD-GUI-202',0,600,NULL,NULL,
+    N'Bé muốn học Guitar đệm hát, cần tư vấn cách cầm đàn và chọn đàn phù hợp.',NULL),
+   (5,'parent_lan',N'Lê Quốc Bảo',N'Nam','GUITAR','GUI-BASIC','MD01','MD-GUI-202',1,630,NULL,NULL,
+    N'Bé đã tự làm quen hợp âm cơ bản, gia đình muốn đánh giá trước khi đăng ký.',NULL),
+   (6,'parent_hoang',N'Hoàng Ngọc Anh',N'Nữ','DANCE','DAN-KIDS','CS01','P103',1,840,NULL,NULL,
+    N'Phụ huynh muốn kiểm tra độ dẻo, khả năng bắt nhịp và sự tự tin của bé.',NULL),
+   (7,'parent_dung',N'Vũ Gia Huy',N'Nam','MARTIAL_ARTS','MA-BASIC','MD01','P105',1,900,NULL,NULL,
+    N'Gia đình mong bé rèn thể lực và tính kỷ luật, cần tư vấn lớp nhập môn.',NULL),
+   (8,'d26_parent_ready',N'Lê Tuấn Anh',N'Nam','PIANO','PIA-CB-12','CS01','P101',-2,570,85,'d26_teacher_piano',
+    N'Bé có khả năng nhận biết cao độ, gia đình muốn được tư vấn lộ trình Piano.',
+    N'Cảm âm tốt, giữ nhịp ổn định; cần luyện tư thế cổ tay và đọc nốt. Phù hợp khóa Piano nền tảng.'),
+   (9,'d26_parent_pay',N'Phạm Ngọc Linh',N'Nữ','PIANO','PIA-CB-12','CS01','P101',-1,600,95,'d26_teacher_piano',
+    N'Bé yêu thích biểu diễn, phụ huynh mong được đánh giá khả năng học Piano bài bản.',
+    N'Phản xạ cao độ và tiết tấu rất tốt, phối hợp tay linh hoạt. Đề xuất Piano nền tảng để xây dựng kỹ thuật đúng.'),
+   (10,'parent_lan',N'Lê Minh Quân',N'Nam','GUITAR','GUI-BASIC','MD01','MD-GUI-202',-3,540,75,'teacher_tuan',
+    N'Bé thích hát và đệm đàn, gia đình muốn bắt đầu với lớp nhóm cơ bản.',
+    N'Khả năng giữ nhịp khá, nhận biết giai điệu tốt; cần rèn lực ngón và chuyển hợp âm. Đề xuất Guitar cơ bản.'),
+   (11,'d26_parent_new',N'Nguyễn Thanh Mai',N'Nữ','DANCE','DAN-KIDS','CS01','P103',-1,870,65,'teacher_linh',
+    N'Gia đình muốn bé làm quen múa, phát triển vận động và sự tự tin.',
+    N'Bé hợp tác tốt, bắt nhịp còn chậm và cần luyện độ dẻo. Phù hợp lớp Múa thiếu nhi căn bản.'),
+   (12,'parent_dung',N'Vũ Minh Đức',N'Nam','MARTIAL_ARTS','MA-BASIC','MD01','P105',-2,900,80,'teacher_long',
+    N'Phụ huynh muốn bé tăng sức bền và hình thành tác phong tập luyện nghiêm túc.',
+    N'Thể lực khá, phản xạ tốt và thực hiện hướng dẫn nghiêm túc. Đề xuất khóa Võ thuật đai trắng nhập môn.');
+  DECLARE @IntakeIndex int=1;
+  WHILE @IntakeIndex<=12
+  BEGIN
+   DECLARE @IntakeParent bigint=NULL,@IntakeStudent bigint=NULL,@IntakeProgram bigint=NULL,
+    @IntakeCourse bigint=NULL,@IntakeRoom bigint=NULL,@IntakeTeacher bigint=NULL,
+    @IntakeSubject varchar(30),@IntakeBranch nvarchar(150),@IntakeRoomName nvarchar(100),
+    @IntakeStudentName nvarchar(100),@IntakeGender nvarchar(20),@IntakeTitle nvarchar(150),
+    @IntakeParentNote nvarchar(500),@IntakeTeacherNote nvarchar(2000),@IntakeScore int,
+    @IntakeDate datetime2,@IntakeCreated datetime2,@IntakeRequest bigint,@IntakeSchedule bigint;
+   SELECT @IntakeParent=u.id,@IntakeStudentName=a.student_name,@IntakeGender=a.gender,
+    @IntakeProgram=p.id,@IntakeCourse=c.id,@IntakeSubject=p.placement_subject,
+    @IntakeRoom=r.id,@IntakeBranch=b.name,
+    @IntakeRoomName=CONVERT(nvarchar(100),r.room_name+N' ('+r.room_code+N')'),
+    @IntakeTitle=N'Khảo sát đầu vào '+CASE a.program_code WHEN 'PIANO' THEN N'Piano'
+     WHEN 'GUITAR' THEN N'Guitar' WHEN 'DANCE' THEN N'Múa' ELSE N'Võ thuật' END,
+    @IntakeDate=DATEADD(minute,a.minute_of_day,CONVERT(datetime2,DATEADD(day,a.day_offset,@IntakeToday))),
+    @IntakeScore=a.score,@IntakeTeacher=t.id,@IntakeParentNote=a.parent_note,@IntakeTeacherNote=a.teacher_note
+   FROM @IntakeAppointments a JOIN dbo.users u ON u.username=a.parent_username AND u.role='PARENT'
+    JOIN dbo.programs p ON p.code=a.program_code
+    JOIN dbo.courses c ON c.code=a.course_code AND c.program_id=p.id
+    JOIN dbo.branches b ON b.code=a.branch_code AND b.active=1
+    JOIN dbo.rooms r ON r.branch_id=b.id AND r.room_code=a.room_code AND r.status='AVAILABLE'
+    LEFT JOIN dbo.users t ON t.username=a.teacher_username AND t.role='TEACHER' AND t.subject=p.placement_subject
+   WHERE a.ordinal=@IntakeIndex;
+   IF @IntakeParent IS NULL OR @IntakeProgram IS NULL OR @IntakeRoom IS NULL
+    OR @IntakeSubject IS NULL OR (@IntakeScore IS NOT NULL AND @IntakeTeacher IS NULL)
+    THROW 51814,'Missing parent, program, room or qualified teacher for an intake appointment.',1;
+   DECLARE @IntakeSearch int=0;
+   WHILE EXISTS(SELECT 1 FROM dbo.lessons l WHERE l.lesson_date=CONVERT(date,@IntakeDate)
+     AND l.status<>'CANCELLED' AND (l.room_id=@IntakeRoom OR l.teacher_id=@IntakeTeacher)
+     AND l.start_time<CONVERT(time,DATEADD(minute,30,@IntakeDate)) AND l.end_time>CONVERT(time,@IntakeDate))
+    OR EXISTS(SELECT 1 FROM dbo.placement_schedules ps
+     WHERE ps.branch=@IntakeBranch AND ps.room_name=@IntakeRoomName AND ps.status<>'CANCELLED'
+      AND ps.test_date<DATEADD(minute,30,@IntakeDate) AND DATEADD(minute,30,ps.test_date)>@IntakeDate)
+   BEGIN
+    SET @IntakeDate=DATEADD(minute,30,@IntakeDate);
+    IF CONVERT(time,@IntakeDate)>'17:00'
+     SET @IntakeDate=DATEADD(hour,9,CONVERT(datetime2,DATEADD(day,CASE WHEN @IntakeScore IS NULL THEN 1 ELSE -1 END,CONVERT(date,@IntakeDate))));
+    SET @IntakeSearch+=1;
+    IF @IntakeSearch>500 THROW 51815,'No available working-hours appointment for the selected room.',1;
+   END;
+   SET @IntakeCreated=DATEADD(day,-2,CASE WHEN @IntakeDate<@IntakeNow THEN @IntakeDate ELSE @IntakeNow END);
+   SELECT @IntakeStudent=id FROM dbo.students WHERE parent_id=@IntakeParent AND full_name=@IntakeStudentName;
+   IF @IntakeStudent IS NULL
+   BEGIN
+    INSERT dbo.students(parent_id,full_name,date_of_birth,gender,school_name,notes,created_at)
+    VALUES(@IntakeParent,@IntakeStudentName,'20180520',@IntakeGender,N'Trường Tiểu học tại Hà Nội',@IntakeParentNote,@IntakeCreated);
+    SET @IntakeStudent=SCOPE_IDENTITY();
+   END;
+   IF EXISTS(SELECT 1 FROM dbo.enrollment_requests WHERE student_id=@IntakeStudent
+    AND requested_program_id=@IntakeProgram AND status IN ('PENDING','WAITING_PLACEMENT','READY_FOR_ASSIGNMENT','PENDING_PAYMENT'))
+    THROW 51816,'An intake student already has an open request; existing records were preserved.',1;
+   INSERT dbo.enrollment_requests(student_id,requested_program_id,preferred_course_id,placement_requested,
+    requested_by_user_id,status,note,created_at)
+   VALUES(@IntakeStudent,@IntakeProgram,CASE WHEN @IntakeScore IS NOT NULL THEN @IntakeCourse END,1,
+    @IntakeParent,CASE WHEN @IntakeScore IS NULL THEN 'WAITING_PLACEMENT' ELSE 'READY_FOR_ASSIGNMENT' END,
+    @IntakeParentNote,@IntakeCreated);
+   SET @IntakeRequest=SCOPE_IDENTITY();
+   INSERT dbo.placement_schedules(user_id,enrollment_request_id,program_id,student_name,title,room_name,branch,
+    test_date,subject,note,status,score,recommended_level,recommended_course_id,teacher_note,teacher_id,evaluated_at,created_at)
+   VALUES(@IntakeParent,@IntakeRequest,@IntakeProgram,@IntakeStudentName,@IntakeTitle,@IntakeRoomName,@IntakeBranch,
+    @IntakeDate,@IntakeSubject,@IntakeParentNote,CASE WHEN @IntakeScore IS NULL THEN 'SCHEDULED' ELSE 'COMPLETED' END,
+    @IntakeScore,CASE WHEN @IntakeScore IS NOT NULL THEN 'BEGINNER' END,
+    CASE WHEN @IntakeScore IS NOT NULL THEN @IntakeCourse END,@IntakeTeacherNote,@IntakeTeacher,
+    CASE WHEN @IntakeScore IS NOT NULL THEN DATEADD(minute,30,@IntakeDate) END,@IntakeCreated);
+   SET @IntakeSchedule=SCOPE_IDENTITY();
+   IF @IntakeScore IS NOT NULL
+   BEGIN
+    IF (SELECT COUNT(*) FROM dbo.placement_criteria WHERE subject=@IntakeSubject AND is_active=1)<4
+     THROW 51817,'Four active criteria are required to record a complete intake assessment.',1;
+    ;WITH Criteria AS(
+     SELECT id,criteria_name,display_order,ROW_NUMBER() OVER(ORDER BY display_order,id) AS rn
+     FROM dbo.placement_criteria WHERE subject=@IntakeSubject AND is_active=1)
+    INSERT dbo.placement_schedule_criteria_scores(schedule_id,criteria_id,criteria_name_snapshot,score_10,display_order)
+    SELECT @IntakeSchedule,id,criteria_name,@IntakeScore/10.0+CASE rn WHEN 1 THEN -0.5 WHEN 3 THEN 0.5 ELSE 0 END,display_order
+    FROM Criteria WHERE rn<=4;
+   END;
+   SET @IntakeIndex+=1;
+  END;
+  INSERT dbo.combined_demo_installations(seed_key) VALUES('PLACEMENT_INTAKE_202611_V1');
+ END;
+ -- PLACEMENT_INTAKE_END
  -- Full account directory for this combined dataset; passwords shown are initial only.
  SELECT u.username,u.full_name,u.role,u.status,
   CASE WHEN u.username LIKE 'd26[_]%' OR u.username='teacher_huong'

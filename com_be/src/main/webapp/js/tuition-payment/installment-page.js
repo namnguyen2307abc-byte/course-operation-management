@@ -165,7 +165,7 @@
    total=base-reduction;
    reason.required=reduction>0;
    totalLabel.textContent='Học phí gốc '+money(base)+' · Giảm '+money(reduction)+' · Còn phải đóng '+money(total);
-   const count=Number(select.value),first=count===1?total:Math.max(1000,Number((BigInt(total)*30n+99n)/100n));
+   const count=Number(select.value),first=count===1?total:Math.max(2000,Number((BigInt(total)*30n+99n)/100n));
    const amounts=count===1?[first]:count===2?[first,total-first]:[first,Math.floor((total-first)/2),total-first-Math.floor((total-first)/2)];
    for(let i=0;i<count;i++) {
     const group=node('div',null,'ledger-card');
@@ -187,7 +187,7 @@
      for(let j=0;j<count;j++)showFieldError('date'+j,errors[`installments[${j}].date`]);
     });
     const hint=node('small',null,'ledger-help');hint.dataset.dateHint=String(i);
-    amountLabel.append(amount,errorsByField.get('amount'+i));dateLabel.append(due,hint,errorsByField.get('date'+i));group.append(amountLabel,dateLabel);rows.append(group);
+    amountLabel.append(amount,node('small','Số tiền mỗi kỳ tối thiểu 2.000đ.','ledger-help'),errorsByField.get('amount'+i));dateLabel.append(due,hint,errorsByField.get('date'+i));group.append(amountLabel,dateLabel);rows.append(group);
    }
    updateDateLimits();
   }

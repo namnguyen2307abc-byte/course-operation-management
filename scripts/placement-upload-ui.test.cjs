@@ -202,6 +202,57 @@ test('placement rooms remain scoped to the latest branch when an earlier respons
  }finally{release?.();await page.close();}
 });
 
+test('placement creation filters rooms by program and prevents booking outside working hours',async()=>{
+ let posted;
+ const {page,errors}=await open('STAFF','placement-test.html',(url,request)=>{
+  if(url.pathname.endsWith('/placement-programs'))return programs;
+  if(url.pathname==='/api/branches')return [{id:1,name:'Cơ sở 1',active:true}];
+  if(url.pathname==='/api/branches/1/rooms')return [
+   {id:1,roomCode:'P1',roomName:'Phòng Piano',roomType:'PIANO_GROUP',status:'AVAILABLE'},
+   {id:2,roomCode:'G1',roomName:'Phòng Guitar',roomType:'GUITAR_ROOM',status:'AVAILABLE'},
+   {id:3,roomCode:'D1',roomName:'Phòng Múa',roomType:'DANCE_ROOM',status:'AVAILABLE'}
+  ];
+  if(url.pathname==='/api/placement-tests'&&request.method()==='POST'){
+   posted=request.postDataJSON();return {...assessment,...posted,id:18};
+  }
+ });
+ try{
+  await page.locator('button[onclick="openCreateModal()"]').click();
+  await page.locator('#createRoomName option[value="Phòng Piano (P1)"]').waitFor({state:'attached'});
+  await page.locator('#createProgram').selectOption('31');
+  assert.equal(await page.locator('#createRoomName option[value="Phòng Piano (P1)"]').count(),1);
+  assert.equal(await page.locator('#createRoomName option[value="Phòng Guitar (G1)"]').count(),0);
+  await page.locator('#createProgram').selectOption('32');
+  assert.equal(await page.locator('#createRoomName option[value="Phòng Guitar (G1)"]').count(),1);
+  assert.equal(await page.locator('#createRoomName option[value="Phòng Piano (P1)"]').count(),0);
+  await page.locator('#createStudentName').fill('Học viên kiểm thử');
+  await page.locator('#createTitle').fill('Kiểm tra Guitar');
+  const future=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+3);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);});
+  await page.locator('#createTestDate').fill(future);
+  const time=page.locator('#createTestTime');
+  assert.equal(await time.getAttribute('min'),'08:00');
+  assert.equal(await time.getAttribute('max'),'17:30');
+  await time.fill('07:59');await time.blur();
+  assert.equal(await time.inputValue(),'08:00');
+  await time.fill('17:31');await time.blur();
+  assert.equal(await time.inputValue(),'17:30');
+  for(const invalid of ['07:59','17:31']){
+   // Exercise the explicit submit guard as well as native input min/max constraints.
+   await time.evaluate((el,value)=>el.value=value,invalid);
+   await page.locator('#createPlacementTestForm').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+   assert.equal(posted,undefined);
+   assert.equal(await page.locator('#createModal').isVisible(),true);
+  }
+  await time.fill('17:30');
+  await page.locator('#createPlacementTestForm button[type="submit"]').click();
+  await page.locator('#createModal').waitFor({state:'hidden'});
+  assert.equal(posted.programId,32);
+  assert.equal(posted.roomName,'Phòng Guitar (G1)');
+  assert.equal(posted.testDate,future+'T17:30:00');
+  assert.deepEqual(errors,[]);
+ }finally{await page.close();}
+});
+
 test('placement cancellation requires a reason, preserves a failed draft and retries on the same schedule',async()=>{
  const {page,errors}=await open('STAFF','placement-test.html',u=>u.pathname==='/api/placement-tests'?[assessment]:undefined);
  let attempts=0;

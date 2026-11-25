@@ -78,6 +78,48 @@ async function screen(file, role, width) {
     return { page, calls, errors };
 }
 
+for (const width of [390, 1440]) test(`assignment modal keeps long class details within the form at ${width}px`, async () => {
+    const { page, errors } = await screen('course-enrollment.html', 'STAFF', width);
+    page.setDefaultTimeout(7000);
+    const first = { id: 101, classCode: 'CL-PIA-G1-G01', className: 'Piano Grade 1 - Nhóm Chiều Tối',
+        teacherName: 'Cô Trần Thu Hà (Giáo viên Piano)', branchName: 'Cơ sở Cầu Giấy',
+        roomName: 'Phòng Piano Nhóm 1', availableSeats: 1,
+        scheduleDescription: 'Thứ Bảy 14:00–16:00, từ ngày 28/11/2026. '.repeat(8) + 'A'.repeat(180) };
+    const second = { ...first, id: 102, classCode: 'CL-PIA-G1-G02', className: 'Piano Grade 1 - Cơ sở Đống Đa',
+        roomName: 'Phòng Piano Thực Hành 2', availableSeats: 2, scheduleDescription: 'Chủ Nhật 09:30–11:30' };
+    await page.route('**/api/course-enrollment/courses/1/classes', route => route.fulfill({ json: [first, second] }));
+    try {
+        await page.locator('#pendingTableBody tr').first().waitFor();
+        await page.evaluate(() => {
+            pendingRequestMap.set(1, { ...pendingRequestMap.get(1), preferredCourseId: 1 });
+            return openDecision(1, 'APPROVE');
+        });
+        await page.locator('#assignedClassSelect option[value="101"]').waitFor({ state: 'attached' });
+        const options = await page.locator('#assignedClassSelect option').allTextContents();
+        assert(options.every(label => label.length <= 40));
+        assert(options.every(label => !label.includes('GV:') && !label.includes('Lịch:')));
+        const details = page.locator('#assignedClassDetails');
+        assert.match(await details.innerText(), /CL-PIA-G1-G01/);
+        assert.match(await details.innerText(), /Cô Trần Thu Hà/);
+        assert.match(await details.innerText(), /Phòng Piano Nhóm 1/);
+        assert((await details.innerText()).includes(first.scheduleDescription));
+        await page.locator('#decisionModal.show').waitFor();
+        await page.waitForTimeout(350);
+        const bounds = await page.locator('#decisionModal .modal-content').evaluate(el => {
+            const r = el.getBoundingClientRect(), body = el.querySelector('.modal-body');
+            return { left: r.left, right: r.right, width: innerWidth, scroll: body.scrollWidth, client: body.clientWidth };
+        });
+        assert(bounds.left >= 0 && bounds.right <= bounds.width);
+        assert(bounds.scroll <= bounds.client + 1, 'class details must wrap instead of widening the modal');
+        await page.screenshot({ path: path.resolve(`.local-run/assignment-modal-${width}.png`) });
+        await page.locator('#assignedClassSelect').selectOption('102');
+        assert.match(await details.innerText(), /CL-PIA-G1-G02/);
+        assert.match(await details.innerText(), /Phòng Piano Thực Hành 2/);
+        assert.equal(await page.locator('#staffFacilityPreviewBtn').isDisabled(), false);
+        assert.deepEqual(errors, []);
+    } finally { await page.close(); }
+});
+
 test('family enrollment distinguishes admin reservation cancellation from a parent withdrawal', async () => {
     const { page, errors } = await screen('course-enrollment.html', 'PARENT', 1440);
     try {

@@ -20,4 +20,8 @@ public interface PlacementCriteriaRepository extends JpaRepository<PlacementCrit
     long countBySubjectIgnoreCase(String subject);
 
     long countBySubjectIgnoreCaseAndActiveTrue(String subject);
+
+    boolean existsBySubjectIgnoreCaseAndDisplayOrder(String subject, Integer displayOrder);
+
+    boolean existsBySubjectIgnoreCaseAndDisplayOrderAndIdNot(String subject, Integer displayOrder, Long id);
 }

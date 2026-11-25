@@ -65,6 +65,35 @@
         #parentPreviewClassSelect,
         #assignedClassSelect {
             min-width: 0;
+            max-width: 100%;
+            text-overflow: ellipsis;
+        }
+        .selected-class-details {
+            min-width: 0;
+            margin-top: .75rem;
+            padding: .75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: .5rem;
+            background: #f8fafc;
+            font-size: .875rem;
+            overflow-wrap: anywhere;
+        }
+        .selected-class-details dl { margin: .5rem 0 0; }
+        .selected-class-details dl > div {
+            display: grid;
+            grid-template-columns: 5rem minmax(0, 1fr);
+            gap: .5rem;
+            margin-top: .25rem;
+        }
+        .selected-class-details dt { color: #64748b; font-weight: 500; }
+        .selected-class-details dd { min-width: 0; margin: 0; }
+        #decisionSummary { overflow-wrap: anywhere; }
+        #decisionModal .modal-dialog { max-width: 620px; }
+        #decisionModal .modal-footer { gap: .5rem; }
+        #decisionModal .modal-footer .btn { white-space: normal; }
+        @media (max-width: 575.98px) {
+            #decisionModal .modal-dialog { margin: .5rem; }
+            #decisionModal .modal-footer .btn { flex: 1 1 auto; }
         }
         .facility-detail-label {
             color: #64748b;
@@ -248,7 +277,7 @@
     <div id="footer-container"></div>
 
     <div class="modal fade" id="decisionModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="decisionModalTitle">Xử lý yêu cầu</h5>
@@ -266,6 +295,7 @@
                             </button>
                         </div>
                         <div class="form-text">Danh sách chỉ gồm các lớp đang mở thuộc khóa học đã chọn hoặc được đề xuất.</div>
+                        <div id="assignedClassDetails" class="selected-class-details d-none" aria-live="polite"></div>
                     </div>
                     <label for="reviewNote" class="form-label small fw-semibold">Ghi chú phản hồi</label>
                     <textarea class="form-control" id="reviewNote" rows="3" maxlength="500" placeholder="Nhập lý do hoặc thông tin phản hồi"></textarea>
@@ -342,6 +372,8 @@
                 openFacilityPreview(Number(document.getElementById('parentPreviewClassSelect').value)));
             document.getElementById('staffFacilityPreviewBtn').addEventListener('click', () =>
                 openFacilityPreview(Number(document.getElementById('assignedClassSelect').value)));
+            document.getElementById('assignedClassSelect').addEventListener('change', () =>
+                renderSelectedClassDetails('assignedClassSelect', 'assignedClassDetails'));
             document.getElementById('requestForm').addEventListener('submit', submitRequest);
             document.getElementById('myRequestTableBody').addEventListener('click', event => {
                 const button = event.target.closest('[data-cancel-request]');
@@ -558,22 +590,39 @@
                 </div>`;
         }
 
+        function shortClassOption(item) {
+            const name = String(item.className || item.classCode || 'Lớp học');
+            return `${name.length > 26 ? name.slice(0, 25) + '…' : name} · ${item.availableSeats} chỗ`;
+        }
+
+        function renderSelectedClassDetails(selectId, detailsId) {
+            const details = document.getElementById(detailsId);
+            const selected = availableClassMap.get(Number(document.getElementById(selectId).value));
+            details.classList.toggle('d-none', !selected);
+            details.innerHTML = selected ? `
+                <div class="fw-semibold">${escapeHtml(selected.className)} (${escapeHtml(selected.classCode || '')})</div>
+                <dl>
+                    <div><dt>Giáo viên</dt><dd>${escapeHtml(selected.teacherName || 'Chưa cập nhật')}</dd></div>
+                    <div><dt>Cơ sở</dt><dd>${escapeHtml(selected.branchName || 'Chưa cập nhật')}</dd></div>
+                    <div><dt>Phòng</dt><dd>${escapeHtml(selected.roomName || 'Chưa cập nhật')}</dd></div>
+                    <div><dt>Lịch học</dt><dd>${escapeHtml(selected.scheduleDescription || 'Chưa cập nhật')}</dd></div>
+                    <div><dt>Còn chỗ</dt><dd>${escapeHtml(String(selected.availableSeats))}</dd></div>
+                </dl>` : '';
+        }
+
         async function loadAssignableClasses(courseId) {
             const select = document.getElementById('assignedClassSelect');
             select.innerHTML = '<option value="">Đang tải lớp còn chỗ...</option>';
             availableClassMap = new Map();
+            renderSelectedClassDetails('assignedClassSelect', 'assignedClassDetails');
             document.getElementById('staffFacilityPreviewBtn').disabled = true;
             const classes = await callApi(`/api/course-enrollment/courses/${courseId}/classes`, 'GET', null, false, false);
             availableClassMap = new Map((classes || []).map(item => [item.id, item]));
             select.innerHTML = classes && classes.length
-                ? classes.map(item => {
-                    const teacher = item.teacherName ? ` | GV: ${item.teacherName}` : '';
-                    const room = item.roomName ? ` | Phòng: ${item.roomName}` : '';
-                    const sched = item.scheduleDescription ? ` | Lịch: ${item.scheduleDescription}` : '';
-                    return `<option value="${item.id}">${escapeHtml(item.className)} (${escapeHtml(item.classCode)})${escapeHtml(teacher)}${escapeHtml(room)}${escapeHtml(sched)} - còn ${item.availableSeats} chỗ</option>`;
-                }).join('')
+                ? classes.map(item => `<option value="${item.id}">${escapeHtml(shortClassOption(item))}</option>`).join('')
                 : '<option value="">Không có lớp đang mở còn chỗ</option>';
             document.getElementById('staffFacilityPreviewBtn').disabled = !classes?.length;
+            renderSelectedClassDetails('assignedClassSelect', 'assignedClassDetails');
             return classes || [];
         }
 
