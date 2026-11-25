@@ -757,86 +757,42 @@ class TuitionInstallmentFlowTest {
     }
 
     @Test
-    void cashierCanRequestOnlyTheirOwnCashCorrectionWhileAdminCanRequestAny() {
+    void retiredCashCorrectionCannotChangeReceiptsOrBalancesForAnyRole() {
         configure();
-        var payment =
-                cashCollections.cash(
-                        invoice.getId(), money(3000000), money(3000000), "owned-receipt");
-        assertThat(queries.view(invoice.getId()).receipts().get(0).cashierId())
-                .isEqualTo(staff.getId());
-        as(user("different-cashier", Role.STAFF));
-        assertThatThrownBy(() -> reversals.request(payment.getId(), "Khoản người khác thu"))
-                .isInstanceOf(ApplicationException.class)
-                .satisfies(
-                        error ->
-                                assertThat(((ApplicationException) error).getStatusCode().value())
-                                        .isEqualTo(403));
-        as(manager);
-        reversals.request(payment.getId(), "Admin kiểm tra khoản thu của nhân viên");
-        assertThat(reversals.list())
-                .singleElement()
-                .satisfies(item -> assertThat(item.requestedBy()).isEqualTo(manager.getFullName()));
+        var payment = cashCollections.cash(invoice.getId(), money(3000000), money(3000000), "retired-correction");
+        for (var actor : List.of(staff, manager, parent)) {
+            as(actor);
+            for (org.assertj.core.api.ThrowableAssert.ThrowingCallable call : List.<org.assertj.core.api.ThrowableAssert.ThrowingCallable>of(
+                    () -> reversals.request(payment.getId(), "Thu nhầm"),
+                    () -> reversals.review(1L, new ReviewTuitionRequest(true, "Duyệt")),
+                    () -> reversals.list())) {
+                assertThatThrownBy(call).isInstanceOfSatisfying(ApplicationException.class, ex -> {
+                    assertThat(ex.getStatusCode().value()).isEqualTo(410);
+                    assertThat(ex.getCode()).isEqualTo("TUITION_CASH_CORRECTION_REMOVED");
+                });
+            }
+        }
+        as(staff);
+        assertThat(queries.view(invoice.getId()).paid()).isEqualByComparingTo("3000000");
+        assertThat(queries.view(invoice.getId()).receipts().get(0).reversed()).isFalse();
     }
 
     @Test
-    void approvedCashCorrectionRestoresDebtAndKeepsEnrollmentHistory() {
+    void historicalApprovedCorrectionStillExcludesOriginalReceiptFromPaidBalance() {
         configure();
-        Payment payment =
-                cashCollections.cash(invoice.getId(), money(3000000), money(3000000), "wrong");
-        reversals.request(payment.getId(), "Nhập nhầm số tiền mặt chưa nhận");
-        assertThatThrownBy(() -> reversals.list())
-                .isInstanceOf(ApplicationException.class)
-                .satisfies(
-                        error ->
-                                assertThat(((ApplicationException) error).getStatusCode().value())
-                                        .isEqualTo(403));
-        as(manager);
-        var requestId = reversals.list().get(0).id();
-        as(staff);
-        assertThatThrownBy(
-                        () ->
-                                reversals.review(
-                                        requestId, new ReviewTuitionRequest(true, "Tự duyệt")))
-                .isInstanceOf(ApplicationException.class)
-                .satisfies(
-                        error ->
-                                assertThat(((ApplicationException) error).getStatusCode().value())
-                                        .isEqualTo(403));
-        as(manager);
-        reversals.review(
-                reversals.list().get(0).id(),
-                new ReviewTuitionRequest(true, "Đã kiểm đếm và xác minh"));
+        var payment = cashCollections.cash(invoice.getId(), money(3000000), money(3000000), "historical-correction");
+        var historical = new com.talent.management.shared.entity.TuitionReversal();
+        historical.setPayment(payment);
+        historical.setReason("Lịch sử điều chỉnh trước khi ngừng chức năng");
+        historical.setRequestedBy(staff);
+        historical.setReviewedBy(manager);
+        historical.setStatus("APPROVED");
+        db.persistAndFlush(historical);
+
         var view = queries.view(invoice.getId());
         assertThat(view.paid()).isEqualByComparingTo("0");
         assertThat(view.receipts().get(0).reversed()).isTrue();
-        assertThat(view.receipts().get(0).code()).matches("PT-\\d{8}-\\d{6,}");
-        assertThat(payment.getPaymentCode()).startsWith("PAY-");
-        assertThat(invoice.getEnrollment().getStatus()).isEqualTo(EnrollmentStatus.ENROLLED);
-        assertThat(clazz.getCurrentStudents()).isEqualTo(1);
-    }
-
-    @Test
-    void cashCorrectionRejectsParentsAndManagerSelfApproval() {
-        configure();
-        Payment payment =
-                cashCollections.cash(
-                        invoice.getId(), money(3000000), money(3000000), "self-review");
-        as(parent);
-        assertThatThrownBy(() -> reversals.request(payment.getId(), "Nhập nhầm"))
-                .isInstanceOf(ApplicationException.class)
-                .satisfies(
-                        error ->
-                                assertThat(((ApplicationException) error).getStatusCode().value())
-                                        .isEqualTo(403));
-        as(manager);
-        reversals.request(payment.getId(), "Nhập nhầm");
-        var requestId = reversals.list().get(0).id();
-        assertThatThrownBy(
-                        () ->
-                                reversals.review(
-                                        requestId, new ReviewTuitionRequest(true, "Tự duyệt")))
-                .isInstanceOf(ApplicationException.class)
-                .hasMessageContaining("không được tự duyệt");
+        assertThat(view.balance()).isEqualByComparingTo(invoice.getFinalAmount());
     }
 
     @Test
@@ -909,12 +865,10 @@ class TuitionInstallmentFlowTest {
                                 .getId())
                 .isEqualTo(receipt.getPaymentId());
         assertThat(payments.findByInvoiceId(invoice.getId())).hasSize(1);
-        reversals.request(receipt.getPaymentId(), "Thu nhầm");
-        as(manager);
-        reversals.review(
-                reversals.list().get(0).id(), new ReviewTuitionRequest(true, "Đã kiểm tra"));
-        assertThat(payments.sumAmountSince(today.atStartOfDay())).isEqualByComparingTo("0");
-        assertThat(queries.view(invoice.getId()).balance()).isEqualByComparingTo("4700");
+        assertThatThrownBy(() -> reversals.request(receipt.getPaymentId(), "Thu nhầm"))
+                .isInstanceOf(ApplicationException.class);
+        assertThat(payments.sumAmountSince(today.atStartOfDay())).isEqualByComparingTo("4600");
+        assertThat(queries.view(invoice.getId()).balance()).isEqualByComparingTo("0");
     }
 
     @Test

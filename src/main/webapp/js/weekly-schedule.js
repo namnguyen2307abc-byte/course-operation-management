@@ -16,7 +16,6 @@ let currentUser = null;
 
 // Bootstrap Modals
 let modalAttendanceObj = null;
-let modalCreateClassObj = null;
 
 // Danh sách bộ lọc
 let filterTeacherId = '';
@@ -37,9 +36,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Khởi tạo Bootstrap Modals
     const attModalEl = document.getElementById('modalAttendance');
     if (attModalEl) modalAttendanceObj = new bootstrap.Modal(attModalEl);
-
-    const createModalEl = document.getElementById('modalCreateClass');
-    if (createModalEl) modalCreateClassObj = new bootstrap.Modal(createModalEl);
 
     // 3. Khởi tạo Datepicker (ưu tiên ?date=YYYY-MM-DD khi quay lại từ trang điểm danh)
     const dateParam = new URLSearchParams(window.location.search).get('date');
@@ -72,7 +68,6 @@ function initNavbarAndRoleBadge() {
 
     // Cập nhật huy hiệu vai trò và tiêu đề động theo Role
     const roleBadge = document.getElementById('currentUserRoleBadge');
-    const btnCreateClass = document.getElementById('btnOpenCreateClassModal');
     const heroBreadcrumb = document.getElementById('heroBreadcrumbCurrent');
     const heroTitle = document.getElementById('heroTitleText');
     const heroSubtitle = document.getElementById('heroSubtitleText');
@@ -113,11 +108,6 @@ function initNavbarAndRoleBadge() {
             roleBadge.innerHTML = '<i class="bi bi-shield-check me-1"></i>' + (role === 'ADMIN' ? 'Quản Trị Viên' : 'Giáo Vụ');
             roleBadge.className = 'badge bg-danger px-3 py-2 rounded-pill small';
         }
-    }
-
-    // Hiển thị nút Tạo Lớp đối với Quản trị viên / Giáo vụ
-    if (btnCreateClass && (role === 'ADMIN' || role === 'STAFF' || role === 'BRANCH_MANAGER')) {
-        btnCreateClass.classList.remove('d-none');
     }
 }
 
@@ -552,197 +542,6 @@ function toggleExpandAllCells() {
 }
 
 // =============================================================================
-// MODAL TẠO LỚP HỌC MỚI MODAL TẠO LỚP HỌC MỚI & TỰ ĐỘNG SINH DANH SÁCH BUỔI HỌC (LESSON GENERATOR)
-// =============================================================================
-function openCreateClassModal() {
-    if (!modalCreateClassObj) return;
-
-    // Reset Form
-    document.getElementById('createClassForm').reset();
-    document.getElementById('newStartDate').value = formatDateForInput(new Date());
-
-    // Mặc định chọn Thứ 2 (1) và Thứ 5 (4)
-    const chk1 = document.getElementById('dow1');
-    const chk4 = document.getElementById('dow4');
-    if (chk1) chk1.checked = true;
-    if (chk4) chk4.checked = true;
-
-    // Tự sinh mã lớp ngẫu nhiên gợi ý
-    const randomNum = Math.floor(10 + Math.random() * 90);
-    document.getElementById('newClassCode').value = `CL-PIA-K${randomNum}`;
-    document.getElementById('newClassName').value = `Piano Cơ Bản K${randomNum}`;
-
-    loadCreateClassDependencies();
-    modalCreateClassObj.show();
-}
-
-async function loadCreateClassDependencies() {
-    try {
-        // Nạp khóa học
-        const courses = await callApi('/api/course-enrollment/courses').catch(() => []);
-        const courseSelect = document.getElementById('newCourseSelect');
-        if (courseSelect && courses) {
-            courseSelect.innerHTML = '<option value="">-- Chọn khóa học --</option>' +
-                courses.map(c => `<option value="${c.id}" data-sessions="${c.totalSessions || 12}">${c.name} (${c.level || 'Cơ bản'} - ${c.totalSessions || 12} buổi)</option>`).join('');
-            if (courses.length > 0) {
-                courseSelect.value = courses[0].id;
-                const totalInput = document.getElementById('newTotalSessions');
-                if (totalInput && courses[0].totalSessions) totalInput.value = courses[0].totalSessions;
-            }
-            courseSelect.onchange = function() {
-                const opt = courseSelect.options[courseSelect.selectedIndex];
-                const totalInput = document.getElementById('newTotalSessions');
-                if (opt && opt.dataset.sessions && totalInput) {
-                    totalInput.value = opt.dataset.sessions;
-                }
-            };
-        }
-
-        // Nạp cơ sở
-        const branches = await callApi('/api/branches').catch(() => []);
-        const branchSelect = document.getElementById('newBranchSelect');
-        if (branchSelect && branches) {
-            branchSelect.innerHTML = '<option value="">-- Chọn cơ sở đào tạo --</option>' +
-                branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-            if (branches.length > 0) {
-                branchSelect.value = branches[0].id;
-                onNewBranchChanged();
-            }
-        }
-
-        // Nạp giáo viên
-        const teachers = await callApi('/api/schedule/teachers').catch(() => []);
-        const teacherSelect = document.getElementById('newTeacherSelect');
-        if (teacherSelect && teachers) {
-            teacherSelect.innerHTML = '<option value="">-- Chọn giáo viên phụ trách --</option>' +
-                teachers.map(t => `<option value="${t.id}">${t.fullName} (@${t.username})</option>`).join('');
-            if (teachers.length > 0) teacherSelect.value = teachers[0].id;
-        }
-    } catch (e) {
-        console.error("Lỗi tải dependency tạo lớp:", e);
-    }
-}
-
-async function onNewBranchChanged() {
-    const branchId = document.getElementById('newBranchSelect').value;
-    const roomSelect = document.getElementById('newRoomSelect');
-    if (!roomSelect) return;
-
-    if (!branchId) {
-        roomSelect.innerHTML = '<option value="">-- Vui lòng chọn cơ sở trước --</option>';
-        return;
-    }
-
-    try {
-        const rooms = await callApi(`/api/branches/${branchId}/rooms`).catch(() => []);
-        if (rooms && rooms.length > 0) {
-            roomSelect.innerHTML = '<option value="">-- Chọn phòng học --</option>' +
-                rooms.map(r => `<option value="${r.id}">${r.roomName} (${r.roomCode})</option>`).join('');
-            roomSelect.value = rooms[0].id;
-        } else {
-            roomSelect.innerHTML = '<option value="">-- Chưa có phòng nào khả dụng --</option>';
-        }
-    } catch (e) {
-        roomSelect.innerHTML = '<option value="">-- Không thể tải phòng --</option>';
-    }
-}
-
-async function submitCreateClass() {
-    const classCode = document.getElementById('newClassCode').value.trim();
-    const className = document.getElementById('newClassName').value.trim();
-    const courseId = document.getElementById('newCourseSelect').value;
-    const branchId = document.getElementById('newBranchSelect').value;
-    const roomId = document.getElementById('newRoomSelect').value;
-    const teacherId = document.getElementById('newTeacherSelect').value;
-    const maxStudents = parseInt(document.getElementById('newMaxStudents').value, 10);
-    const startDate = document.getElementById('newStartDate').value;
-    const totalSessions = parseInt(document.getElementById('newTotalSessions').value, 10);
-    const startTimeStr = document.getElementById('newStartTime').value;
-    const endTimeStr = document.getElementById('newEndTime').value;
-    const scheduleDesc = document.getElementById('newScheduleDesc').value.trim();
-
-    if (!courseId) {
-        showToast('error', 'Thiếu thông tin', 'Vui lòng chọn khóa học!');
-        return;
-    }
-    if (!branchId) {
-        showToast('error', 'Thiếu thông tin', 'Vui lòng chọn cơ sở đào tạo!');
-        return;
-    }
-    if (!classCode || classCode.length > 50) {
-        showToast('error', 'Mã lớp không hợp lệ', 'Vui lòng nhập mã lớp (tối đa 50 ký tự)!');
-        return;
-    }
-    if (!className || className.length > 150) {
-        showToast('error', 'Tên lớp không hợp lệ', 'Vui lòng nhập tên lớp học (tối đa 150 ký tự)!');
-        return;
-    }
-    if (!startDate) {
-        showToast('error', 'Thiếu ngày bắt đầu', 'Vui lòng chọn ngày bắt đầu khai giảng lớp!');
-        return;
-    }
-    if (isNaN(maxStudents) || maxStudents < 1 || maxStudents > 100) {
-        showToast('error', 'Sĩ số không hợp lệ', 'Sĩ số tối đa phải nằm trong khoảng từ 1 đến 100 học viên!');
-        return;
-    }
-    if (isNaN(totalSessions) || totalSessions < 1 || totalSessions > 60) {
-        showToast('error', 'Số buổi không hợp lệ', 'Tổng số buổi học phải nằm trong khoảng từ 1 đến 60 buổi!');
-        return;
-    }
-    if (!startTimeStr || !endTimeStr || endTimeStr <= startTimeStr) {
-        showToast('error', 'Giờ học không hợp lệ', 'Giờ kết thúc phải lớn hơn giờ bắt đầu!');
-        return;
-    }
-
-    // Lấy danh sách thứ trong tuần
-    const checkedDays = Array.from(document.querySelectorAll('input[name="daysOfWeek"]:checked'))
-        .map(el => parseInt(el.value, 10))
-        .filter(d => d >= 1 && d <= 7);
-
-    if (checkedDays.length === 0) {
-        showToast('error', 'Chưa chọn thứ học', 'Vui lòng chọn ít nhất một thứ trong tuần để sinh lịch học!');
-        return;
-    }
-
-    const payload = {
-        courseId: parseInt(courseId, 10),
-        branchId: parseInt(branchId, 10),
-        roomId: roomId ? parseInt(roomId, 10) : null,
-        teacherId: teacherId ? parseInt(teacherId, 10) : null,
-        classCode: classCode,
-        className: className,
-        maxStudents: maxStudents,
-        startDate: startDate,
-        totalSessions: totalSessions,
-        daysOfWeek: checkedDays,
-        startTime: startTimeStr.length === 5 ? startTimeStr + ":00" : startTimeStr,
-        endTime: endTimeStr.length === 5 ? endTimeStr + ":00" : endTimeStr,
-        scheduleDescription: scheduleDesc || `Ca học thứ ${checkedDays.join(', ')}`
-    };
-
-    const btnSubmit = document.getElementById('btnSubmitCreateClass');
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Đang tạo & sinh lịch...`;
-
-    try {
-        const response = await callApi('/api/schedule/classes', 'POST', payload);
-        showToast('success', 'Thành công', response.message || 'Đã tạo lớp và tự động sinh lịch học!');
-        modalCreateClassObj.hide();
-
-        // Chuyển ngày xem đến ngày khai giảng lớp mới để thấy ngay lịch
-        currentTargetDate = new Date(startDate);
-        syncDatepicker();
-        loadWeeklySchedule();
-    } catch (err) {
-        console.error("Lỗi khi tạo lớp:", err);
-        showToast('error', 'Lỗi tạo lớp', err.message || 'Không thể tạo lớp học');
-    } finally {
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = `<i class="bi bi-check2-circle me-1"></i> Tạo Lớp & Sinh Lịch`;
-    }
-}
-
-// =============================================================================
 // BỘ LỌC GIÁO VIÊN & HỌC VIÊN
 // =============================================================================
 async function loadFilterOptions() {
@@ -868,15 +667,6 @@ function showToast(type, title, message) {
     toastEl.addEventListener('hidden.bs.toast', () => {
         toastEl.remove();
     });
-}
-
-function selectSlotPreset(startTime, endTime, desc) {
-    const startInput = document.getElementById('newStartTime');
-    const endInput = document.getElementById('newEndTime');
-    const descInput = document.getElementById('newScheduleDesc');
-    if (startInput) startInput.value = startTime;
-    if (endInput) endInput.value = endTime;
-    if (descInput && !descInput.value) descInput.value = desc;
 }
 
 function escapeHtml(v) {

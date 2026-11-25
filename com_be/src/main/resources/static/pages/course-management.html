@@ -368,7 +368,6 @@
                                 <th style="min-width:200px;">Tên Khóa Học</th>
                                 <th style="min-width:120px;">Bộ Môn</th>
                                 <th style="min-width:100px;">Trình Độ</th>
-                                <th style="min-width:100px;">Số tuần</th>
                                 <th style="min-width:120px;">Học Phí</th>
                                 <th style="min-width:100px;">Lớp học</th>
                                 <th style="min-width:110px;">Học viên</th>
@@ -377,7 +376,7 @@
                         </thead>
                         <tbody id="courseTableBody">
                             <tr>
-                                <td colspan="10">
+                                <td colspan="9">
                                     <div class="cm-empty">
                                         <span class="spinner-border spinner-border-sm text-primary me-2"></span>
                                         Đang tải danh sách khóa học...
@@ -444,27 +443,31 @@
                                        placeholder="Vd: Piano Cổ Điển Cơ Bản" maxlength="150" required>
                                 <div class="invalid-feedback">Tên khóa học không được để trống.</div>
                             </div>
-                            <!-- Số tuần -->
-                            <div class="col-6 col-md-4">
-                                <label for="fieldDurationWeeks" class="form-label-cm">Thời lượng (tuần)</label>
-                                <input type="number" class="form-control" id="fieldDurationWeeks"
-                                       placeholder="Vd: 16" min="1" max="200">
-                                <div class="invalid-feedback">Số tuần phải lớn hơn 0.</div>
-                            </div>
                             <!-- Số buổi -->
-                            <div class="col-6 col-md-4">
-                                <label for="fieldTotalSessions" class="form-label-cm">Tổng số buổi</label>
-                                <input type="number" class="form-control" id="fieldTotalSessions"
-                                       placeholder="Vd: 48" min="1" max="1000">
-                                <div class="invalid-feedback">Số buổi phải lớn hơn 0.</div>
+                            <div class="col-12 col-md-6">
+                                <label for="fieldTotalSessions" class="form-label-cm">Tổng số buổi <span class="text-danger">*</span></label>
+                                <select class="form-select" id="fieldTotalSessions" required>
+                                    <option value="">Chọn số buổi</option>
+                                    <option value="12">12 buổi</option>
+                                    <option value="24">24 buổi</option>
+                                    <option value="36">36 buổi</option>
+                                    <option value="48">48 buổi</option>
+                                    <option value="60">60 buổi</option>
+                                </select>
+                                <div class="invalid-feedback" id="totalSessionsFeedback">Chọn 12, 24, 36, 48 hoặc 60 buổi.</div>
                             </div>
-                            <!-- Học phí -->
-                            <div class="col-12 col-md-4">
-                                <label for="fieldTuitionFee" class="form-label-cm">Học Phí (VNĐ) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="fieldTuitionFee"
-                                       placeholder="Vd: 3500000" min="1" required>
-                                <div class="invalid-feedback">Học phí phải là số dương.</div>
+                            <!-- Đơn giá của khóa học và trình độ đã chọn -->
+                            <div class="col-12 col-md-6">
+                                <label for="fieldTuitionPerSession" class="form-label-cm">Đơn giá mỗi buổi (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="fieldTuitionPerSession"
+                                       placeholder="Vd: 200000" min="50000" max="1000000" step="1" required>
+                                <div class="invalid-feedback" id="tuitionFeeFeedback">Đơn giá mỗi buổi phải là số nguyên dương.</div>
+                            </div>
+                            <div class="col-12">
+                                <label for="fieldTuitionFee" class="form-label-cm">Tổng học phí (VNĐ)</label>
+                                <input type="text" class="form-control" id="fieldTuitionFee" readonly placeholder="Tự tính theo đơn giá mỗi buổi × số buổi">
                                 <div class="form-text" id="tuitionFeePreview"></div>
+                                <div class="form-text" id="coursePricingHint">Đơn giá từ 50.000 đến 1.000.000 đồng/buổi, áp dụng riêng cho khóa học và trình độ đã chọn.</div>
                             </div>
                             <!-- Mô tả -->
                             <div class="col-12">
@@ -596,13 +599,9 @@
                 setTimeout(() => openEditModal(viewingCourse), 350);
             });
 
-            // Live preview for tuition fee
-            document.getElementById('fieldTuitionFee').addEventListener('input', () => {
-                const val = parseInt(document.getElementById('fieldTuitionFee').value) || 0;
-                document.getElementById('tuitionFeePreview').textContent = val > 0
-                    ? '≈ ' + formatCurrency(val)
-                    : '';
-            });
+            // Live preview & numeric validation for total sessions and tuition fee
+            document.getElementById('fieldTotalSessions').addEventListener('change', validateCourseNumericFields);
+            document.getElementById('fieldTuitionPerSession').addEventListener('input', validateCourseNumericFields);
 
             // Char counter for description
             document.getElementById('fieldDescription').addEventListener('input', () => {
@@ -729,7 +728,7 @@
 
             if (!courses.length) {
                 body.innerHTML = `
-                    <tr><td colspan="10">
+                    <tr><td colspan="9">
                         <div class="cm-empty">
                             <i class="bi bi-inbox"></i>
                             <div class="fw-semibold">Không có khóa học nào</div>
@@ -758,9 +757,6 @@
                         ${c.level
                             ? `<span class="badge-level ${getLevelBadgeClass(c.level)}">${escapeHtml(getLevelLabel(c.level))}</span>`
                             : `<span class="text-muted small">—</span>`}
-                    </td>
-                    <td class="text-center">
-                        ${c.durationWeeks != null ? `<span class="fw-semibold">${c.durationWeeks}</span> <span class="text-muted small">tuần</span>` : '<span class="text-muted">—</span>'}
                     </td>
                     <td>
                         <span class="fw-semibold text-success">${formatCurrency(c.tuitionFee)}</span>
@@ -833,14 +829,15 @@
             document.getElementById('fieldCode').value           = course.code || '';
             document.getElementById('fieldName').value           = course.name || '';
             document.getElementById('fieldLevel').value          = normalizeLevel(course.level);
-            document.getElementById('fieldDurationWeeks').value  = course.durationWeeks || '';
             document.getElementById('fieldTotalSessions').value  = course.totalSessions || '';
-            document.getElementById('fieldTuitionFee').value     = course.tuitionFee || '';
+            document.getElementById('fieldTuitionPerSession').value = course.tuitionPerSession ?? '';
+            document.getElementById('coursePricingHint').textContent = course.tuitionPerSession == null
+                ? `Khóa học cũ: ${course.totalSessions ?? 'chưa có'} buổi, học phí hiện tại ${formatCurrency(course.tuitionFee)}. Chọn số buổi chuẩn và nhập đơn giá để lưu; lịch và hóa đơn đã tạo được giữ nguyên.`
+                : 'Đơn giá từ 50.000 đến 1.000.000 đồng/buổi, áp dụng riêng cho khóa học và trình độ đã chọn.';
             document.getElementById('fieldDescription').value    = course.description || '';
+            validateCourseNumericFields();
 
             // Update live previews
-            document.getElementById('tuitionFeePreview').textContent = course.tuitionFee
-                ? '≈ ' + formatCurrency(course.tuitionFee) : '';
             document.getElementById('descCharCount').textContent = (course.description || '').length;
 
             courseFormModal.show();
@@ -882,25 +879,19 @@
                                 <div class="fw-bold text-success fs-5">${formatCurrency(course.tuitionFee)}</div>
                             </div>
                             <div class="row g-2 mt-1">
-                                <div class="col-6">
-                                    <div class="text-center p-2 bg-white rounded-2 border">
-                                        <div class="fw-bold text-primary" style="font-size:1.3rem;">${course.durationWeeks || '—'}</div>
-                                        <div class="text-muted small">Tuần học</div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center p-2 bg-white rounded-2 border">
                                         <div class="fw-bold text-primary" style="font-size:1.3rem;">${course.totalSessions || '—'}</div>
                                         <div class="text-muted small">Buổi học</div>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center p-2 bg-white rounded-2 border">
                                         <div class="fw-bold" style="font-size:1.3rem;color:var(--cm-primary);">${course.totalClasses || 0}</div>
                                         <div class="text-muted small">Lớp học</div>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center p-2 bg-white rounded-2 border">
                                         <div class="fw-bold" style="font-size:1.3rem;color:var(--cm-secondary);">${course.totalEnrollments || 0}</div>
                                         <div class="text-muted small">Học viên</div>
@@ -948,8 +939,40 @@
         }
 
         // ─── Form Submit ──────────────────────────────────────────────────────────
+        function validateCourseNumericFields() {
+            const sessionsInput = document.getElementById('fieldTotalSessions');
+            const sessions = Number(sessionsInput.value);
+            const validSessions = [12, 24, 36, 48, 60].includes(sessions);
+            sessionsInput.setCustomValidity(validSessions ? '' : 'Chọn 12, 24, 36, 48 hoặc 60 buổi.');
+
+            const feeInput = document.getElementById('fieldTuitionPerSession');
+            const fee = Number(feeInput.value);
+            const total = fee * sessions;
+            let message = '';
+            if (feeInput.validity.badInput) {
+                message = 'Đơn giá mỗi buổi không hợp lệ.';
+            } else if (!feeInput.value.trim()) {
+                message = 'Đơn giá mỗi buổi không được để trống.';
+            } else if (fee < 0) {
+                message = 'Đơn giá mỗi buổi không được là số âm.';
+            } else if (!Number.isSafeInteger(fee)) {
+                message = 'Đơn giá mỗi buổi phải là số nguyên VNĐ, không được nhập số thập phân.';
+            } else if (fee === 0) {
+                message = 'Đơn giá mỗi buổi phải lớn hơn 0.';
+            } else if (fee < 50000 || fee > 1000000) {
+                message = 'Đơn giá mỗi buổi phải từ 50.000 đến 1.000.000 đồng.';
+            }
+            feeInput.setCustomValidity(message);
+            document.getElementById('tuitionFeeFeedback').textContent = message;
+            document.getElementById('fieldTuitionFee').value = validSessions && !message ? total : '';
+            document.getElementById('tuitionFeePreview').textContent = validSessions && !message
+                ? formatCurrency(fee) + '/buổi × ' + sessions + ' buổi = ' + formatCurrency(total)
+                : '';
+        }
+
         async function submitCourseForm() {
             const form = document.getElementById('courseForm');
+            validateCourseNumericFields();
             form.classList.add('was-validated');
             if (!form.checkValidity()) return;
 
@@ -957,14 +980,16 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
 
+            const rawSessions = document.getElementById('fieldTotalSessions').value.trim();
+            const rawTuition = document.getElementById('fieldTuitionPerSession').value.trim();
+
             const payload = {
-                programId:      parseInt(document.getElementById('fieldProgram').value) || null,
+                programId:      parseInt(document.getElementById('fieldProgram').value, 10) || null,
                 code:           document.getElementById('fieldCode').value.trim(),
                 name:           document.getElementById('fieldName').value.trim(),
                 level:          document.getElementById('fieldLevel').value || null,
-                durationWeeks:  parseInt(document.getElementById('fieldDurationWeeks').value) || null,
-                totalSessions:  parseInt(document.getElementById('fieldTotalSessions').value) || null,
-                tuitionFee:     parseFloat(document.getElementById('fieldTuitionFee').value) || null,
+                totalSessions:  rawSessions !== '' ? Number(rawSessions) : null,
+                tuitionPerSession: rawTuition !== '' ? Number(rawTuition) : null,
                 description:    document.getElementById('fieldDescription').value.trim() || null
             };
 
@@ -992,6 +1017,9 @@
             const form = document.getElementById('courseForm');
             form.reset();
             form.classList.remove('was-validated');
+            document.getElementById('fieldTotalSessions')?.setCustomValidity('');
+            document.getElementById('fieldTuitionPerSession')?.setCustomValidity('');
+            document.getElementById('coursePricingHint').textContent = 'Đơn giá từ 50.000 đến 1.000.000 đồng/buổi, áp dụng riêng cho khóa học và trình độ đã chọn.';
             document.getElementById('tuitionFeePreview').textContent = '';
             document.getElementById('descCharCount').textContent = '0';
             editingId = null;

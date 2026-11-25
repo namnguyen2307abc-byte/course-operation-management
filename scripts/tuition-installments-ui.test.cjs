@@ -220,42 +220,9 @@ test('invoices paginate five items while all receipts remain visible',async()=>{
   await page.locator('#records summary').click();
   assert.equal(await page.locator('.receipt-history-row').count(),7);
   assert.equal(await page.getByRole('navigation',{name:'Phân trang biên lai 11',exact:true}).count(),0);
-  assert.equal(await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).count(),7);
+  assert.equal(await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).count(),0);
   assert.equal(reversalReads,0);
   assert.equal(await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).count(),0);
-  assert.deepEqual(errors,[]);
- }finally{await page.close();}
-});
-
-test('staff submits a cash correction without access to management review',async()=>{
- let posted;
- const data=structuredClone(invoice);
- data.receipts=[{id:21,code:'PT-20261111-000021',amount:1000000,method:'CASH_AT_DESK',cashierId:71,at:'2026-11-11T09:35:00',reversed:false}];
- const {page,errors}=await open('STAFF',(url,req)=>{
-  if(url.pathname.endsWith('/receivables'))return [data];
-  if(req.method()==='POST'&&url.pathname.endsWith('/payments/21/reversal')){posted=req.postDataJSON();return {};}
- });
- try{
-  await page.locator('summary').filter({hasText:'Biên lai (1)'}).click();
-  await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).click();
-  await page.getByLabel('Lý do và kết quả kiểm tra',{exact:true}).fill('Nhập sai số tiền mặt');
-  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
-  await page.getByText('Đã gửi đề nghị điều chỉnh; chờ quản lý khác kiểm tra và duyệt.',{exact:true}).waitFor();
-  assert.deepEqual(posted,{reason:'Nhập sai số tiền mặt'});
-  assert.equal(await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).count(),0);
-  assert.deepEqual(errors,[]);
- }finally{await page.close();}
-});
-
-for(const [role,expected] of [['STAFF',1],['ADMIN',3]])test(role+' only sees permitted cash correction actions',async()=>{
- const data=structuredClone(invoice);
- data.receipts=[71,72,null].map((cashierId,index)=>({id:21+index,code:'PT-'+index,amount:1000000,method:'CASH_AT_DESK',cashierId,at:'2026-11-11T09:35:00',reversed:false}));
- data.receipts.push({id:24,code:'QR-24',amount:1000000,method:'VIET_QR',cashierId:71,at:'2026-11-11T09:35:00',reversed:false});
- const {page,errors}=await open(role,url=>url.pathname.endsWith('/receivables')?[data]:undefined);
- try{
-  await page.locator('summary').filter({hasText:'Biên lai (4)'}).click();
-  assert.equal(await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).count(),expected);
-  assert.equal(await page.locator('.receipt-history-row').last().getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).count(),0);
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
@@ -278,54 +245,6 @@ test('receipt uses saved payment amounts and prints only the receipt',async()=>{
   assert.equal(await page.locator('#records').isVisible(),false);
   assert.equal(await page.locator('.dialog-actions').isVisible(),false);
   assert.equal(await receipt.isVisible(),true);
-  assert.deepEqual(errors,[]);
- }finally{await page.close();}
-});
-
-test('adjustments have a separate searchable five-item tab and overdue contacts are absent',async()=>{
- const rows=Array.from({length:7},(_,i)=>({id:i+1,code:'PT-20261111-'+String(i+1).padStart(6,'0'),student:i===0?'Nguyễn An':'Học viên '+(i+1),amount:1000000,status:i===6?'APPROVED':'PENDING',reason:'Nhập nhầm số tiền',requestedBy:'Quản lý A',reviewedBy:i===6?'Quản lý B':null,reviewNote:i===6?'Đã kiểm tra':null}));
- const {page,errors}=await open('ADMIN',url=>url.pathname.endsWith('/reversals')?rows:undefined);
- try{
-  await page.goto(origin+'/pages/tuition-receivables.html?invoiceId=11');
-  await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).click();
-  await page.locator('.adjustment-card').first().waitFor();
-  assert.equal(await page.locator('.adjustment-card').count(),5);
-  assert.equal(await page.locator('#records').isVisible(),false);
-  assert.equal(new URL(page.url()).searchParams.has('invoiceId'),false);
-  await page.reload();await page.locator('.adjustment-card').first().waitFor();
-  assert.equal(await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).getAttribute('aria-selected'),'true');
-  assert.equal(await page.locator('#follow-ups').count(),0);
-  const nav=page.getByRole('navigation',{name:'Phân trang điều chỉnh khoản thu',exact:true});
-  await nav.getByRole('button',{name:'Sau',exact:true}).click();
-  assert.equal(await page.locator('.adjustment-card').count(),2);
-  await page.getByLabel('Tìm mã phiếu, học viên hoặc người lập',{exact:true}).fill('nguyen an');
-  assert.equal(await page.locator('.adjustment-card').count(),1);
-  await page.locator('.adjustment-card').getByText('Nguyễn An',{exact:true}).waitFor();
-  await page.locator('#correction-keyword').fill('');await page.getByLabel('Trạng thái đề nghị',{exact:true}).selectOption('APPROVED');
-  assert.equal(await page.locator('.adjustment-card').count(),1);
-  await page.locator('.adjustment-card').getByText('Quản lý B',{exact:true}).waitFor();
-  await page.getByRole('tab',{name:'Học phí',exact:true}).click();
-  assert.equal(await page.locator('#records').isVisible(),true);
-  assert.deepEqual(errors,[]);
- }finally{await page.close();}
-});
-
-test('adjustment review refreshes its status and works on a mobile layout',async()=>{
- let posted,approved=false;
- const row={id:1,code:'PT-20261111-000001',student:'Minh An',amount:1000000,status:'PENDING',reason:'Ghi nhầm số tiền',requestedBy:'Quản lý khác'};
- const {page,errors}=await open('ADMIN',(url,req)=>{
-  if(req.method()==='POST'&&url.pathname.endsWith('/reversals/1/review')){posted=req.postDataJSON();approved=true;return {};}
-  if(url.pathname.endsWith('/reversals'))return [{...row,status:approved?'APPROVED':'PENDING',reviewedBy:approved?'Admin':null,reviewNote:approved?'Đã kiểm tra phiếu thu và tiền mặt':null}];
- },{width:390,height:844});
- try{
-  await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).click();
-  await page.getByRole('button',{name:'Duyệt điều chỉnh',exact:true}).click();
-  await page.getByLabel('Ghi chú xác minh và quyết định',{exact:true}).fill('Đã kiểm tra phiếu thu và tiền mặt');
-  await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
-  await page.getByText('Đã duyệt điều chỉnh và cập nhật tiền đã thu.',{exact:true}).waitFor();
-  await page.locator('.adjustment-card .ledger-badge').getByText('Đã duyệt',{exact:true}).waitFor();
-  assert.deepEqual(posted,{approve:true,note:'Đã kiểm tra phiếu thu và tiền mặt'});
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
@@ -635,14 +554,13 @@ test('checkout rejects an external URL outside the PayOS payment host',async()=>
  }finally{await page.close();}
 });
 
-test('admin keeps tuition and cash corrections without bank reconciliation UI or requests',async()=>{
+test('admin keeps tuition without retired correction or bank reconciliation controls',async()=>{
  let bankReads=0;
  const {page,errors}=await open('ADMIN',url=>{if(url.pathname.includes('bank-reconciliation'))bankReads++;});
  try{
   await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).waitFor();
   assert.equal(await page.locator('#bank-transfers-tab, #bank-transfers').count(),0);
-  await page.getByRole('tab',{name:/Điều chỉnh khoản thu nhầm/}).click();
-  assert.equal(await page.locator('#reversals').isVisible(),true);
+  assert.equal(await page.locator('#corrections-tab, #reversals').count(),0);
   assert.equal(bankReads,0);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });
@@ -685,5 +603,20 @@ for(const role of ['ADMIN','STAFF'])test(role+' directly extends without an appr
   await page.locator('#feedback').filter({hasText:'Đã gia hạn kỳ 2'}).waitFor();
   assert.equal(posted.proposedDate,'2099-12-19');assert.equal(reviews,0);
   assert.equal(await page.locator('#due-date-changes').count(),0);
+ }finally{await page.close();}
+});
+
+for(const role of ['STAFF','ADMIN'])test(role+' cannot access removed cash correction UI even through a legacy tab URL',async()=>{
+ let correctionRequests=0;
+ const {page,errors}=await open(role,url=>{if(url.pathname.includes('reversal'))correctionRequests++;if(url.pathname.endsWith('/receivables'))return [{...invoice,receipts:[{id:21,code:'PT-OLD',amount:3000000,method:'CASH_AT_DESK',cashierId:71,reversed:false,at:'2026-11-24T10:00:00'}]}];});
+ try{
+  await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).waitFor();
+  await page.locator('#records summary').first().click();
+  assert.equal(await page.getByRole('button',{name:'Điều chỉnh thu nhầm',exact:true}).count(),0);
+  assert.equal(await page.locator('#corrections-tab, #reversals').count(),0);
+  await page.goto(page.url()+'?tab=adjustments');
+  await page.getByRole('button',{name:'Thanh toán đợt 2',exact:true}).waitFor();
+  assert.equal(await page.locator('#tuition-panel').isVisible(),true);
+  assert.equal(correctionRequests,0);assert.deepEqual(errors,[]);
  }finally{await page.close();}
 });

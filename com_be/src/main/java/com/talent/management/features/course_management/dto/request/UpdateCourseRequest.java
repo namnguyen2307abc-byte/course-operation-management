@@ -27,15 +27,15 @@ public class UpdateCourseRequest {
     @NotNull(message = "Trình độ (level) không được để trống")
     private PlacementLevel level;
 
-    @Min(value = 1, message = "Số tuần học phải lớn hơn 0")
     private Integer durationWeeks;
 
-    @Min(value = 1, message = "Tổng số buổi học phải lớn hơn 0")
-    private Integer totalSessions;
+    private BigDecimal totalSessions;
 
-    @NotNull(message = "Học phí không được để trống")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Học phí phải lớn hơn 0")
+    // Kept for old JSON clients. Total tuition is always calculated by the server.
     private BigDecimal tuitionFee;
+
+    @NotNull(message = "Đơn giá mỗi buổi không được để trống")
+    private BigDecimal tuitionPerSession;
 
     @Size(max = 1000, message = "Mô tả không vượt quá 1000 ký tự")
     private String description;

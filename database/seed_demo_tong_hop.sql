@@ -138,7 +138,40 @@ BEGIN
     (''VO'', N''2. Tốc độ & Phản xạ tự vệ (Reflexes & Speed)'', 2, 1, SYSDATETIME()),
     (''VO'', N''3. Tấn pháp & Kỹ thuật đòn (Stances & Technique)'', 3, 1, SYSDATETIME()),
     (''VO'', N''4. Tác phong & Kỷ luật võ đạo (Martial Discipline)'', 4, 1, SYSDATETIME());
-END;';
+END;
+
+-- Backfill historical criteria snapshots for existing COMPLETED schedules that were graded before per-criteria tracking
+;WITH BaseCriteria AS (
+    SELECT id, subject, criteria_name, display_order,
+           ROW_NUMBER() OVER (PARTITION BY subject ORDER BY display_order ASC, id ASC) AS rn
+    FROM dbo.placement_criteria
+    WHERE is_active = 1
+)
+INSERT INTO dbo.placement_schedule_criteria_scores (schedule_id, criteria_id, criteria_name_snapshot, score_10, display_order)
+SELECT
+    s.id AS schedule_id,
+    c.id AS criteria_id,
+    c.criteria_name AS criteria_name_snapshot,
+    ROUND(COALESCE(s.score, 0) / 10.0, 1) AS score_10,
+    c.display_order
+FROM dbo.placement_schedules s
+INNER JOIN BaseCriteria c
+    ON c.subject = CASE
+        WHEN UPPER(LTRIM(RTRIM(COALESCE(s.subject, '''')))) IN (''MUA'', ''DANCE'') THEN ''MUA''
+        WHEN UPPER(LTRIM(RTRIM(COALESCE(s.subject, '''')))) IN (''VO'', ''MARTIAL_ARTS'') THEN ''VO''
+        ELSE ''DAN''
+    END
+   AND c.rn <= 4
+WHERE s.status = ''COMPLETED''
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.placement_schedule_criteria_scores sc
+      WHERE sc.schedule_id = s.id
+  );';
+
+ -- Course session pricing: preserve legacy total fees and invoices.
+ IF COL_LENGTH(N'dbo.courses',N'tuition_per_session') IS NULL
+  ALTER TABLE dbo.courses ADD tuition_per_session DECIMAL(12,2) NULL;
 
  IF OBJECT_ID(N'dbo.combined_demo_installations',N'U') IS NULL
   CREATE TABLE dbo.combined_demo_installations(seed_key varchar(80) NOT NULL PRIMARY KEY,installed_at datetime2 NOT NULL DEFAULT SYSDATETIME());
