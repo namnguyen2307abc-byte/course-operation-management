@@ -191,6 +191,12 @@ function renderMakeupTable(resetPage = false) {
     if (statusFilter === 'NO_SLOT') {
         filtered = filtered.filter(m => m.status === 'NO_SLOT'
             || (m.status === 'CANCELLED' && m.note && m.note.includes('Chưa có lớp phù hợp')));
+    } else if (statusFilter === 'MISSED') {
+        filtered = filtered.filter(m => m.status === 'MISSED'
+            || (m.status === 'CANCELLED' && m.note && m.note.includes('- KHÓA]')));
+    } else if (statusFilter === 'CANCELLED') {
+        filtered = filtered.filter(m => m.status === 'CANCELLED'
+            && !(m.note && (m.note.includes('Chưa có lớp phù hợp') || m.note.includes('- KHÓA]'))));
     } else if (statusFilter) {
         filtered = filtered.filter(m => m.status === statusFilter);
     }
@@ -331,11 +337,13 @@ function renderMakeupTable(resetPage = false) {
                         </button>
                     `;
                 }
-                actionButtons += `
-                    <button class="btn-action-icon btn-action-reject" title="Hủy ca bù" onclick="confirmCancelMakeup(${item.id})">
-                        <i class="bi bi-x-circle"></i>
-                    </button>
-                `;
+                if (item.status === 'SCHEDULED' && isFutureMakeup(item)) {
+                    actionButtons += `
+                        <button class="btn-action-icon btn-action-reject" title="Hủy ca bù" onclick="confirmCancelMakeup(${item.id})">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    `;
+                }
             }
         }
 

@@ -145,7 +145,7 @@ function getAbsenceStatusBadgeHtml(status) {
  */
 function renderMakeupCounterBadge(count, max = 3) {
     const val = Number(count || 0);
-    const tip = `Đã dùng hoặc đang giữ ${val}/${max} lượt học bù trong khóa học`;
+    const tip = `Đã xếp/sử dụng ${val}/${max} buổi học bù trong khóa học`;
     if (val >= max) {
         return `<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1" style="font-size:0.72rem; font-weight:600;" title="${tip}"><i class="bi bi-exclamation-octagon-fill me-1"></i>Lượt bù khóa: ${val}/${max}</span>`;
     }

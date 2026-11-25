@@ -476,6 +476,9 @@ async function saveAttendance() {
         justSaved = true;
         setupMode();
         renderStudents();
+        if (typeof window.refreshNotifications === 'function') {
+            window.refreshNotifications();
+        }
     } catch (err) {
         console.error('Lỗi lưu điểm danh:', err);
         showToast('error', 'Lưu thất bại', err.message || 'Không thể lưu điểm danh');

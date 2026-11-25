@@ -460,4 +460,26 @@ class ScheduleWeeklyFlowTest {
         assertThat(tracking.getLessons().get(0).getStatus()).isEqualTo("ABSENT");
         assertThat(tracking.getLessons().get(0).getStatusLabel()).isEqualTo("Vắng mặt");
     }
+
+    @Test void lockedAbsentMakeupRemainsOnSheetForAccidentalMissRecovery() {
+        Lesson target = lesson(200);
+        roster(target);
+        MakeupRegistration lockedMakeup = MakeupRegistration.builder().id(5L).student(child)
+                .originalLesson(lesson(100)).targetLesson(target).status(MakeupStatus.CANCELLED)
+                .note("[Lần bù: 1/1 - KHÓA] Vắng mặt buổi học bù").build();
+        MakeupRegistration manualCancel = MakeupRegistration.builder().id(6L).student(sibling)
+                .originalLesson(lesson(101)).targetLesson(target).status(MakeupStatus.CANCELLED)
+                .note("HỦY: Gia đình xin hủy không học bù").build();
+        when(makeups.findByTargetLessonIdAndStatusIn(eq(200L), any())).thenReturn(List.of(lockedMakeup, manualCancel));
+        when(makeups.findFirstByTargetLessonIdAndStudentIdAndStatusIn(eq(200L), eq(1L), any()))
+                .thenReturn(Optional.of(lockedMakeup));
+        when(students.findById(1L)).thenReturn(Optional.of(child));
+
+        var sheet = attendanceService.getLessonAttendanceSheet(200L);
+        assertThat(sheet.getStudents()).extracting("studentId").containsExactly(1L);
+
+        attendanceService.saveLessonAttendanceBatch(200L, batch(1L, "PRESENT"));
+        assertThat(lockedMakeup.getStatus()).isEqualTo(MakeupStatus.COMPLETED);
+        verify(makeups).save(lockedMakeup);
+    }
 }

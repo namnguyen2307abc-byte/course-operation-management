@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +44,8 @@ import java.util.Set;
 public class AbsenceMakeupValidator {
 
     public static final ZoneId CENTER_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    public static final int MIN_ABSENCE_LEAD_HOURS = 2;
+    private static final DateTimeFormatter DEADLINE_FMT = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
     /** Trạng thái ca bù đang chiếm chỗ trong lớp đích. */
     public static final List<MakeupStatus> SEAT_HOLDING_STATUSES =
@@ -81,6 +84,48 @@ public class AbsenceMakeupValidator {
         return lesson.getLessonDate().isEqual(today)
                 && lesson.getStartTime() != null
                 && !lesson.getStartTime().isAfter(now.toLocalTime());
+    }
+
+    /** Chỉ cho phép gửi đơn xin nghỉ trước giờ bắt đầu buổi học tối thiểu 2 tiếng. */
+    public boolean canSubmitAbsence(Lesson lesson, LocalDateTime now) {
+        if (lesson == null || lesson.getLessonDate() == null) return false;
+        if (lesson.getStatus() == LessonStatus.COMPLETED || lesson.getStatus() == LessonStatus.CANCELLED) {
+            return false;
+        }
+        if (lesson.getClassEntity() != null && lesson.getClassEntity().getStatus() == ClassStatus.FINISHED) {
+            return false;
+        }
+        if (lesson.getStartTime() == null) {
+            return lesson.getLessonDate().isAfter(now.toLocalDate());
+        }
+        LocalDateTime deadline = LocalDateTime.of(lesson.getLessonDate(), lesson.getStartTime())
+                .minusHours(MIN_ABSENCE_LEAD_HOURS);
+        return !now.isAfter(deadline);
+    }
+
+    public void validateAbsenceSubmissionTiming(Lesson lesson, LocalDateTime now) {
+        if (lesson.getStatus() == LessonStatus.COMPLETED || lesson.getStatus() == LessonStatus.CANCELLED) {
+            throw new AttendanceMakeupException(
+                    "Chỉ có thể xin nghỉ cho buổi học chưa diễn ra. Buổi học ngày " + lesson.getLessonDate()
+                            + " đã kết thúc hoặc bị hủy, không thể gửi đơn xin nghỉ.");
+        }
+        if (lesson.getClassEntity() != null && lesson.getClassEntity().getStatus() == ClassStatus.FINISHED) {
+            throw new AttendanceMakeupException("Lớp học đã kết thúc, không thể gửi đơn xin nghỉ!");
+        }
+        if (hasStarted(lesson, now)) {
+            throw new AttendanceMakeupException(
+                    "Chỉ có thể xin nghỉ cho buổi học chưa diễn ra. Buổi học ngày " + lesson.getLessonDate()
+                            + " đã diễn ra hoặc đã bắt đầu, không thể gửi đơn xin nghỉ.");
+        }
+        if (!canSubmitAbsence(lesson, now)) {
+            String deadlineNote = lesson.getStartTime() != null
+                    ? " (hạn gửi trước " + LocalDateTime.of(lesson.getLessonDate(), lesson.getStartTime())
+                            .minusHours(MIN_ABSENCE_LEAD_HOURS).format(DEADLINE_FMT) + ")"
+                    : "";
+            throw new AttendanceMakeupException(
+                    "Phải gửi đơn xin nghỉ trước giờ bắt đầu buổi học tối thiểu "
+                            + MIN_ABSENCE_LEAD_HOURS + " tiếng" + deadlineNote + ".");
+        }
     }
 
     // -------------------------------------------------------------------------

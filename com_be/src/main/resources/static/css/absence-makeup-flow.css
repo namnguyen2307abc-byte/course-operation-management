@@ -639,7 +639,7 @@ body.flow-page {
 
 .leave-mode-card {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.7rem;
     padding: 0.78rem 0.95rem;
     border-radius: 13px;
@@ -669,7 +669,6 @@ body.flow-page {
 }
 
 .leave-mode-card input[type="radio"] {
-    margin-top: 0.2rem;
     accent-color: var(--tc-brand-mid);
 }
 

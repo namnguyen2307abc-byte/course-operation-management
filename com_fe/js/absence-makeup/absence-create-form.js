@@ -72,7 +72,10 @@ function updateLeaveModeForLesson(lesson) {
     if (!lesson) {
         if (radioMakeup) radioMakeup.disabled = false;
         if (cardMakeup) cardMakeup.classList.remove('disabled');
-        if (hintEl) hintEl.textContent = 'Chọn buổi học để xem lượt bù của khóa';
+        if (hintEl) {
+            hintEl.textContent = '';
+            hintEl.classList.add('d-none');
+        }
         if (warningBox) {
             warningBox.className = 'd-none';
             warningBox.innerHTML = '';
@@ -89,7 +92,10 @@ function updateLeaveModeForLesson(lesson) {
     if (!available) {
         if (radioMakeup) radioMakeup.disabled = true;
         if (cardMakeup) cardMakeup.classList.add('disabled');
-        if (hintEl) hintEl.textContent = `${courseLabel}: đã hết ${used}/${limit} lượt bù`;
+        if (hintEl) {
+            hintEl.textContent = `Đã hết ${used}/${limit} lượt bù`;
+            hintEl.classList.remove('d-none');
+        }
         selectLeaveMode(false);
         if (warningBox) {
             warningBox.className = 'd-block';
@@ -98,7 +104,7 @@ function updateLeaveModeForLesson(lesson) {
                     <i class="bi bi-info-circle-fill"></i>
                     <div>
                         <div class="makeup-limit-alert-title">${escapeHtml(courseLabel)} đã hết lượt học bù (${used}/${limit})</div>
-                        <p class="makeup-limit-alert-text">Vẫn có thể gửi đơn ở chế độ Chỉ xin nghỉ để giáo viên nắm lịch.</p>
+                        <p class="makeup-limit-alert-text">Chỉ có thể gửi đơn ở chế độ Chỉ xin nghỉ.</p>
                     </div>
                 </div>
             `;
@@ -106,7 +112,10 @@ function updateLeaveModeForLesson(lesson) {
     } else {
         if (radioMakeup) radioMakeup.disabled = false;
         if (cardMakeup) cardMakeup.classList.remove('disabled');
-        if (hintEl) hintEl.textContent = `${courseLabel}: đã dùng ${used}/${limit} lượt bù`;
+        if (hintEl) {
+            hintEl.textContent = '';
+            hintEl.classList.add('d-none');
+        }
         if (warningBox) {
             warningBox.className = 'd-none';
             warningBox.innerHTML = '';
@@ -237,16 +246,16 @@ async function onStudentSelectChanged() {
         const rawLessons = await callApi(`/api/attendance-makeup/students/${studentId}/lessons`, 'GET', null, false, false);
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const cutoffMs = now.getTime() + 2 * 60 * 60 * 1000;
 
         const lessons = (rawLessons || []).filter(l => {
             if (!l.lessonDate) return false;
-            if (l.lessonDate < todayStr) return false;
-            if (l.lessonDate === todayStr) {
-                const startTimeStr = (l.startTime || (l.timeSlot ? l.timeSlot.split('-')[0].trim() : '')).substring(0, 5);
-                if (startTimeStr && startTimeStr <= currentTimeStr) return false;
+            const startTimeStr = (l.startTime || (l.timeSlot ? l.timeSlot.split('-')[0].trim() : '')).substring(0, 5);
+            if (!startTimeStr || !/^\d{2}:\d{2}$/.test(startTimeStr)) {
+                return l.lessonDate > todayStr;
             }
-            return true;
+            const startDt = new Date(`${l.lessonDate}T${startTimeStr}:00`);
+            return !isNaN(startDt.getTime()) && startDt.getTime() >= cutoffMs;
         });
         currentSelectableLessons = lessons;
 
@@ -256,7 +265,7 @@ async function onStudentSelectChanged() {
                 lessonSelect.disabled = true;
             }
             if (lessonCountEl) lessonCountEl.textContent = '0 buổi';
-            if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box">Học viên chưa có buổi học sắp tới</div>';
+            if (lessonList) lessonList.innerHTML = '<div class="lesson-empty-box">Chưa có buổi học phù hợp (phải gửi đơn trước giờ học tối thiểu 2 tiếng)</div>';
             return;
         }
 

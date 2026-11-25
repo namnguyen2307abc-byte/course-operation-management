@@ -2,10 +2,6 @@ package com.talent.management.features.weekly_schedule.service;
 
 import com.talent.management.features.weekly_schedule.dto.request.CreateClassWithLessonsRequest;
 import com.talent.management.features.weekly_schedule.dto.response.WeeklyScheduleResponse;
-import com.talent.management.features.attendance_tracking.dto.request.BatchAttendanceSaveRequest;
-import com.talent.management.features.attendance_tracking.dto.response.EnrolledClassOptionResponse;
-import com.talent.management.features.attendance_tracking.dto.response.LessonAttendanceSheetResponse;
-import com.talent.management.features.attendance_tracking.dto.response.StudentAttendanceTrackingResponse;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,24 +28,4 @@ public interface ScheduleWeeklyService {
      * Lấy danh sách lớp học để làm bộ lọc
      */
     List<Map<String, Object>> getFilterClasses();
-
-    /**
-     * Lấy danh sách điểm danh chi tiết của một buổi học (kèm kiểm tra quyền canEdit)
-     */
-    LessonAttendanceSheetResponse getLessonAttendanceSheet(Long lessonId);
-
-    /**
-     * Lưu danh sách điểm danh cả lớp (Batch Attendance)
-     */
-    void saveLessonAttendanceBatch(Long lessonId, BatchAttendanceSaveRequest request);
-
-    /**
-     * Lấy danh sách lớp học mà học viên đã ghi danh
-     */
-    List<EnrolledClassOptionResponse> getEnrolledClassesForStudent(Long studentId);
-
-    /**
-     * Tra cứu chi tiết tiến độ điểm danh toàn bộ khóa học của học viên
-     */
-    StudentAttendanceTrackingResponse getStudentAttendanceTracking(Long studentId, Long classId);
 }
