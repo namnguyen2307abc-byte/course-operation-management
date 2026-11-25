@@ -70,11 +70,11 @@ public final class TuitionSchedulePolicy {
                         period
                                 + ": số tiền phải lớn hơn 0đ. Nếu không cần kỳ này, hãy chọn ít kỳ"
                                 + " hơn.");
-            else if (amount.compareTo(BigDecimal.valueOf(1000)) < 0)
+            else if (amount.compareTo(BigDecimal.valueOf(2000)) < 0)
                 errors.put(
                         key + ".amount",
                         period
-                                + ": mỗi kỳ phải từ 1.000đ trở lên. Nếu học phí còn lại quá nhỏ,"
+                                + ": mỗi kỳ phải từ 2.000đ trở lên. Nếu học phí còn lại quá nhỏ,"
                                 + " hãy chọn ít kỳ hơn.");
             else if (amount.stripTrailingZeros().scale() > 0)
                 errors.put(

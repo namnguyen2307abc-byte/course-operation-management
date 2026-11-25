@@ -48,14 +48,33 @@ Tổng cộng **21 tài khoản**: 2 Admin, 4 Staff, 8 Teacher và 7 Parent. M�
 2. Đăng nhập `d26_parent_new`, xem chuyên cần lớp trên: Bảo An 0%, An Nhiên 8,3%, Minh Quân 16,7% (cảnh báo), Ngọc Hân 25% (nguy cơ cao). Chi tiết tại `docs/DEMO_WEEKLY_ATTENDANCE.md`.
 3. Dùng `d26_staff`, `d26_parent_new`, `teacher_huong` kiểm tra đơn xin nghỉ và học bù của bộ D26; dùng `staff_minh` và các phụ huynh dữ liệu cũ kiểm tra các trường hợp còn lại.
 
-D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701-01` mà kịch bản Word ban đầu dành cho thao tác tạo mới. Vì vậy sau khi nạp gộp, lớp này đã tồn tại. Bộ tổng hợp sau khi bổ sung lớp cô Hương có 21 tài khoản, 13 học viên, 14 lớp, 73 buổi, 21 đơn nghỉ, 17 lượt học bù và 62 bản ghi điểm danh.
+D26 dùng lại học viên Nguyễn Bảo An và tạo sẵn lớp `PIA-MD-2701-01` mà kịch bản Word ban đầu dành cho thao tác tạo mới. Vì vậy sau khi nạp gộp, lớp này đã tồn tại. Bộ tổng hợp sau khi bổ sung lớp cô Hương, lớp còn một chỗ và dữ liệu khảo sát đầu vào có 21 tài khoản, 32 học viên, 15 lớp, 85 buổi, 21 đơn nghỉ, 17 lượt học bù và 62 bản ghi điểm danh.
+
+## Dữ liệu khảo sát đầu vào
+
+- Thêm 12 ca cho Piano, Guitar, Múa và Võ thuật: 7 ca chờ chấm và 5 ca đã hoàn thành. Tên học viên, tiêu đề và ghi chú hiển thị dùng nội dung tự nhiên.
+- Mỗi ca liên kết đúng phụ huynh, học viên, môn và yêu cầu đăng ký. Ca chờ chấm ở trạng thái `WAITING_PLACEMENT`; ca có kết quả chuyển yêu cầu sang `READY_FOR_ASSIGNMENT` và có khóa học gợi ý cùng môn.
+- Năm ca hoàn thành có đủ bốn điểm tiêu chí, bản chụp tên tiêu chí, nhận xét, giáo viên và thời gian chấm. Các mức tổng điểm là 65, 75, 80, 85 và 95/100.
+- Tài khoản `d26_teacher_piano` thấy các ca bộ môn Đàn; `teacher_linh` thấy Múa, `teacher_long` thấy Võ. Ca chưa chấm giữ thông tin người chấm trống theo luồng tạo lịch của ứng dụng.
+- Các lịch nằm trong giờ hành chính, chọn khung 30 phút không trùng phòng hoặc buổi dạy của giáo viên chấm. Thời gian được tính khi nạp lần đầu.
+- Khóa cài đặt nội bộ `PLACEMENT_INTAKE_202611_V1` giúp chạy lại không tạo thêm ca trùng hoặc ghi đè kết quả đã thao tác. Các ca tạo thủ công được giữ nguyên.
+
+## Lớp 8 chỗ đã có 7 ghi danh
+
+- Mã lớp: `PIA-DEMO-8-7`, tên: Piano cơ bản - Lớp 8 chỗ (đã ghi danh 7).
+- Sĩ số tối đa **8**, có **7 ghi danh ENROLLED** của 7 học viên, còn **1 chỗ**.
+- Giáo viên `teacher_ha`, cơ sở `CS01`, phòng `CAP-PIA-08` có 8 đàn Piano hoạt động.
+- Khóa `PIA-CB-12`, trình độ `BEGINNER`, học 12 buổi vào thứ Bảy, Slot 3 **14:00–16:00**.
+- Ngày khai giảng là thứ Bảy sắp tới có đủ 12 tuần không trùng giáo viên hoặc phòng. Các ngày được tính khi nạp dữ liệu lần đầu.
+- Dùng `d26_staff` vào Quản lý lớp hoặc xếp lớp để tìm mã trên và thử ghi danh vào chỗ cuối. Bảy học viên demo thuộc phụ huynh `parent_lan`.
+- Chạy lại file chung không đưa sĩ số của lớp đã được thao tác về 7; reset rồi nạp mới sẽ tạo lại đúng 7/8.
 
 ## Lớp cô Vũ Thu Hương ngày 16/11/2026
 
 - Mã lớp: `HUONG-1611-AM`, tên: Piano sáng thứ Hai - Cô Vũ Thu Hương.
 - Giáo viên: `teacher_huong`, mật khẩu `Test@123456`.
 - Cơ sở Cầu Giấy (`CS01`), phòng Piano Nhóm 1 (`P102`), khóa `PIA-CB-12` / trình độ `BEGINNER`.
-- Ngày 16/11/2026 có Slot 1 **07:00–09:00** và Slot 2 **09:30–11:30**. Lớp có 12 buổi trong 6 thứ Hai, kết thúc 21/12/2026.
+- Ngày 16/11/2026 có Slot 1 **07:00–09:00** và Slot 2 **09:30–11:30**. Lớp có 12 buổi trong 6 thứ Hai còn trống; các tuần sau bỏ qua lịch trùng với ca demo tương đối. Ngày kết thúc lấy theo buổi cuối được tạo.
 - Ba học viên đã ghi danh: Nguyễn An Nhiên, Trần Minh Khang, Lê Ngọc Anh; phụ huynh `parent_lan` (mật khẩu `123456`). Các buổi mới chưa có bản ghi điểm danh.
 - Mở lịch tuần chứa ngày 16/11/2026, lọc cô Vũ Thu Hương và mở điểm danh từng slot. Backend vẫn giữ quy định không điểm danh buổi tương lai.
 
@@ -82,7 +101,7 @@ Lần reset này chỉ nạp bộ tổng hợp trên; dữ liệu demo HD/DD và
 - Bảng mới lưu chính sách, điểm test thang 10, mã test, mức giảm, học phí gốc và thời điểm chốt. Không tính lại hóa đơn lịch sử.
 - Điểm test nguồn trong `placement_schedules.score` theo thang 100: dưới 70 không giảm; 70–79 giảm 10%; 80–89 giảm 20%; 90–100 giảm 30%. Chỉ dùng kết quả COMPLETED phù hợp với khóa học và hồ sơ đã xếp lớp.
 - Đăng ký không qua test: Không giảm / phần trăm nguyên 1–30 / số tiền nguyên từ 1.000đ đến tối đa 30% học phí gốc. Có giảm phải có lý do.
-- Tối đa 3 kỳ, mỗi kỳ ít nhất 1.000đ; kỳ đầu ít nhất 30% học phí sau giảm (làm tròn lên đến đồng). Tổng kỳ bằng học phí sau giảm. Hạn đóng tăng dần, từ hôm nay và không sau ngày kết thúc lớp.
+- Tối đa 3 kỳ, mỗi kỳ ít nhất 2.000đ; kỳ đầu ít nhất 30% học phí sau giảm (làm tròn lên đến đồng). Tổng kỳ bằng học phí sau giảm. Hạn đóng tăng dần, từ hôm nay và không sau ngày kết thúc lớp.
 - Chốt lịch không tạo giao dịch thu tiền. Giao dịch/biên lai 0đ bị từ chối; thanh toán tiền mặt/PayOS tiếp tục dùng luồng xác nhận riêng.
 
 

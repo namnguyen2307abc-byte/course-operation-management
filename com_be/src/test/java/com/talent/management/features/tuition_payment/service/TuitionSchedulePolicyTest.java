@@ -31,6 +31,24 @@ class TuitionSchedulePolicyTest {
     }
 
     @Test
+    void rejectsAmountsBelowTwoThousandForAnyPeriodAndAcceptsTheBoundary() {
+        for (String amount : List.of("1", "999", "1000", "1999")) {
+            invalid(List.of(due(amount, today)), "installments[0].amount", "2.000đ");
+            invalid(List.of(due("8000", today), due(amount, end)),
+                    "installments[1].amount", "Kỳ 2: mỗi kỳ phải từ 2.000đ");
+            invalid(List.of(due("4000", today), due("4000", today.plusDays(1)), due(amount, end)),
+                    "installments[2].amount", "Kỳ 3: mỗi kỳ phải từ 2.000đ");
+        }
+        assertThatCode(() -> TuitionSchedulePolicy.validate(
+                List.of(due("2000", today)), new BigDecimal("2000"), today, end))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> TuitionSchedulePolicy.validate(
+                List.of(due("2000", today), due("2000", today.plusDays(1)), due("2000", end)),
+                new BigDecimal("6000"), today, end))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void endDateIsInclusiveAndFirstThirtyPercentIsAccepted() {
         assertThatCode(
                         () ->
