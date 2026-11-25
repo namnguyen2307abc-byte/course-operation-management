@@ -1621,6 +1621,23 @@ WHERE c.class_code = ''ATT-MD-DEMO-01'' GROUP BY s.id, s.full_name;
   PRINT N'Da nap day du du lieu demo tong hop.';
  END
  ELSE PRINT N'Bo du lieu tong hop da duoc nap; giu nguyen du lieu hien tai.';
+ -- Subject-specific placement rooms: also applies when the combined demo is rerun.
+ -- Keep this after base data so generated room IDs do not shift existing fixtures.
+ IF EXISTS (SELECT 1 FROM dbo.branches WHERE id = 1)
+ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 1 AND room_type = 'GUITAR_ROOM')
+   INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+   VALUES (1, 'P104', N'Phòng Guitar & Cảm Âm 1', 10, 'GUITAR_ROOM', 'AVAILABLE', N'Phòng thực hành và kiểm tra đầu vào môn Guitar tại Cơ sở 1');
+  IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 1 AND room_type = 'THEORY_ROOM')
+   INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+   VALUES (1, 'P105', N'Võ Đường & Thể Lực 1', 15, 'THEORY_ROOM', 'AVAILABLE', N'Phòng tập và kiểm tra năng khiếu môn Võ thuật tại Cơ sở 1');
+ END;
+ IF EXISTS (SELECT 1 FROM dbo.branches WHERE id = 2)
+ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM dbo.rooms WHERE branch_id = 2 AND room_type = 'DANCE_ROOM')
+   INSERT INTO dbo.rooms (branch_id, room_code, room_name, capacity, room_type, status, description)
+   VALUES (2, 'P204', N'Phòng Tập Múa & Ballet 2', 15, 'DANCE_ROOM', 'AVAILABLE', N'Phòng tập và kiểm tra năng khiếu môn Múa tại Cơ sở 2');
+ END;
  -- Run after seeding so programs created during the first import are configured too.
  -- Preserve custom mappings and leave historical requests/schedules unchanged.
  EXEC sys.sp_executesql N'

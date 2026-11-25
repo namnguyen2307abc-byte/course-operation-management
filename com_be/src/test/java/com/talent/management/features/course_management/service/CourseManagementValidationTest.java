@@ -41,8 +41,8 @@ class CourseManagementValidationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"-1,số âm", "1.5,số thập phân", "0,lớn hơn 0"})
-    void createAndUpdateRejectInvalidTuitionAmounts(String raw, String message) {
+    @CsvSource({"-1,số âm", "1.5,số thập phân", "0,lớn hơn 0", "10000000000,50.000 đến 1.000.000"})
+    void createAndUpdateRejectInvalidUnitPrices(String raw, String message) {
         var fee = new BigDecimal(raw);
         assertBadRequest(() -> service.createCourse(CreateCourseRequest.builder()
                 .totalSessions(new BigDecimal("12")).tuitionPerSession(fee).build()), message);

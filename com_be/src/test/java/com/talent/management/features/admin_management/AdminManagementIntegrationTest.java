@@ -108,7 +108,7 @@ class AdminManagementIntegrationTest {
 
         var schedule = new HashMap<String, Object>(Map.of("enrollmentRequestId", requestId, "studentName", "Other",
                 "title", "Kiểm tra Piano", "roomName", "P101", "subject", "VO", "programId", guitar.getId(),
-                "testDate", LocalDateTime.now().plusDays(2).withNano(0).toString()));
+                "testDate", LocalDateTime.now().plusDays(2).withHour(10).withMinute(0).withSecond(0).withNano(0).toString()));
         postJson("/api/placement-tests", staffToken, schedule).andExpect(status().isBadRequest());
         schedule.remove("programId");
         postJson("/api/placement-tests", staffToken, schedule)
@@ -142,7 +142,7 @@ class AdminManagementIntegrationTest {
         postJson("/api/placement-tests", staffToken,
                 Map.of("enrollmentRequestId", requestId, "studentName", child.getFullName(),
                         "title", "Kiểm tra Cờ vua", "roomName", "C101",
-                        "testDate", LocalDateTime.now().plusDays(2).withNano(0).toString()))
+                        "testDate", LocalDateTime.now().plusDays(2).withHour(10).withMinute(0).withSecond(0).withNano(0).toString()))
                 .andExpect(status().isBadRequest());
         assertThat(em.find(EnrollmentRequest.class, requestId).getRequestedProgram().getId()).isEqualTo(chess.getId());
     }

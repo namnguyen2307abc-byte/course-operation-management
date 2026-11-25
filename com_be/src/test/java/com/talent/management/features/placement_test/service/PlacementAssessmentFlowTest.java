@@ -357,4 +357,60 @@ class PlacementAssessmentFlowTest {
             return list.size() == 2;
         }));
     }
+
+    @Test
+    void assessmentRejectsSavingWhenAllSubjectCriteriaHaveBeenDeleted() {
+        PlacementSchedule schedule = PlacementSchedule.builder().id(9L).subject("DAN").testDate(LocalDateTime.now()).build();
+        when(scheduleRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(schedule));
+        when(criteriaRepository.findBySubjectIgnoreCaseAndActiveTrueOrderByDisplayOrderAscIdAsc("DAN"))
+                .thenReturn(List.of());
+        when(criteriaScoreRepository.findByScheduleIdOrderByDisplayOrderAscIdAsc(9L))
+                .thenReturn(List.of());
+
+        PlacementAssessmentRequest request = PlacementAssessmentRequest.builder()
+                .score(0)
+                .recommendedLevel(PlacementLevel.BEGINNER)
+                .criteriaScores(List.of())
+                .build();
+
+        assertThatThrownBy(() -> service.saveAssessment(9L, request, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("chưa có tiêu chí đánh giá nào đang áp dụng");
+        verify(scheduleRepository, never()).save(any());
+    }
+
+    @Test
+    void createAndUpdateCriteriaRejectDuplicateDisplayOrderInSameSubject() {
+        when(criteriaRepository.count()).thenReturn(1L);
+        when(criteriaRepository.existsBySubjectIgnoreCaseAndDisplayOrder("DAN", 1)).thenReturn(true);
+
+        SavePlacementCriteriaRequest duplicateCreate = SavePlacementCriteriaRequest.builder()
+                .subject("DAN")
+                .criteriaName("Tiêu chí trùng ID 1")
+                .displayOrder(1)
+                .active(true)
+                .build();
+
+        assertThatThrownBy(() -> service.createCriteria(duplicateCreate))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("đã tồn tại");
+        verify(criteriaRepository, never()).save(any());
+
+        PlacementCriteria existing = PlacementCriteria.builder()
+                .id(15L).subject("DAN").criteriaName("Cảm nhạc").displayOrder(5).active(true).build();
+        when(criteriaRepository.findById(15L)).thenReturn(Optional.of(existing));
+        when(criteriaRepository.existsBySubjectIgnoreCaseAndDisplayOrderAndIdNot("DAN", 2, 15L)).thenReturn(true);
+
+        SavePlacementCriteriaRequest duplicateUpdate = SavePlacementCriteriaRequest.builder()
+                .subject("DAN")
+                .criteriaName("Cảm nhạc")
+                .displayOrder(2)
+                .active(true)
+                .build();
+
+        assertThatThrownBy(() -> service.updateCriteria(15L, duplicateUpdate))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("đã tồn tại");
+        verify(criteriaRepository, never()).save(any());
+    }
 }
